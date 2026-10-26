@@ -28,9 +28,9 @@ A branch `dev` é a linha de integração. A `main` é release e está atrás da
 - Rate limiting distribuído, métricas Prometheus, Ruff, mypy e pytest.
 - Contrato OpenAPI estático em paridade com `app.openapi()` (teste de CI).
 
-## Fase -1 em andamento
+## Fase -1 concluída
 
-A milestone `00 · Fase -1 — Correções e Fundação Técnica` concentra:
+A milestone `00 · Fase -1 — Correções e Fundação Técnica` foi concluída em 2026-10-26 (22/22 issues). Ela entregou:
 
 - security gate, lint/type e E2E no CI;
 - Docker Compose com SQLite em volume, Redis, API, worker e migrations;
@@ -39,6 +39,8 @@ A milestone `00 · Fase -1 — Correções e Fundação Técnica` concentra:
 - SQLite e tipos portáveis (ADR-021);
 - correção do entrypoint `creator-worker`;
 - documentação e governança.
+
+O PR #115 foi mergeado em `dev`. O CI da `dev` passou em quality, security, contract, e2e e containers. A milestone está fechada; as fases seguintes estão desbloqueadas.
 
 ## Pendências conhecidas
 
