@@ -5,22 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/creator-backend.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/creator-backend.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/adr/0017-versioned-agent-pipeline-contracts.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/adr/0017-versioned-agent-pipeline-contracts.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/issues/0039-versioned-agent-pipeline-contracts.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/issues/0039-versioned-agent-pipeline-contracts.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/domain/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/domain/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/models/enums.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/models/enums.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/prompts/agents.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/prompts/agents.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/crewai_adapter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/crewai_adapter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/factory.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/factory.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/orchestrator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/orchestrator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/ai/factory.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/ai/factory.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/ai/gemini.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/ai/gemini.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_workflow.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
