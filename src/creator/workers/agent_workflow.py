@@ -14,6 +14,7 @@ from creator.domain.agent_workflow import (
     AgentWorkflowStatus,
     AgentWorkflowStepRole,
 )
+from creator.domain.auth import Principal, WorkspaceRole
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
 from creator.infrastructure.storage import create_storage_provider
 from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
@@ -22,8 +23,10 @@ from creator.services.agents.contracts import (
     AgentExecutionContext,
     BusinessOutput,
     PlannerOutput,
+    WorkspaceAuthorizationContext,
     WriterOutput,
 )
+from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
 from creator.services.agents.factory import create_multi_agent_orchestrator
 from creator.services.agents.orchestrator import MultiAgentOrchestrator
 from creator.services.agents.pipeline import (
@@ -480,6 +483,21 @@ def _execute_agent_step[OutputModel: BaseModel](
         run = unit_of_work.agent_workflows.get_internal(run_id)
         if run is None:
             raise RuntimeError("Agent workflow not found")
+        if run.requested_by_user_id is None or not unit_of_work.workspaces.user_has_workspace_role(
+            user_id=run.requested_by_user_id,
+            workspace_id=run.workspace_id,
+            minimum_role="editor",
+        ):
+            raise AgentKickoffError(
+                AgentKickoffErrorCode.WORKSPACE_UNAUTHORIZED,
+                "Workspace is not authorized for agent execution",
+            )
+        principal_record = unit_of_work.users.get_by_id(run.requested_by_user_id)
+        if principal_record is None:
+            raise AgentKickoffError(
+                AgentKickoffErrorCode.WORKSPACE_UNAUTHORIZED,
+                "Principal is not available for agent execution",
+            )
         existing_steps = unit_of_work.agent_workflows.list_steps_internal(run_id)
         if role in {AgentWorkflowStepRole.BUSINESS, AgentWorkflowStepRole.PLANNER}:
             completed = next(
@@ -512,35 +530,48 @@ def _execute_agent_step[OutputModel: BaseModel](
             AgentExecutionContext(
                 workspace_id=run.workspace_id,
                 brand_id=run.brand_id,
+                authorization=WorkspaceAuthorizationContext(
+                    principal=Principal(subject=principal_record.external_id),
+                    workspace_id=run.workspace_id,
+                    workspace_role=WorkspaceRole.EDITOR,
+                ),
                 role=role,
                 inputs=inputs,
                 prompt_template_id=f"agent.{role.value.lower()}.v1",
                 prompt_template_version="1.0",
-            ),
-            output_model,
+                schema_version="1.0",
+            )
         )
+    except AgentKickoffError as error:
+        with SqlAlchemyUnitOfWork() as unit_of_work:
+            unit_of_work.agent_workflows.fail_step(
+                step.id, error_code=error.code.value, error_message=str(error)
+            )
+            unit_of_work.commit()
+        raise
     except Exception:
         with SqlAlchemyUnitOfWork() as unit_of_work:
             unit_of_work.agent_workflows.fail_step(
-                step.id, error_code="AGENT_OUTPUT_INVALID", error_message="Specialist agent failed"
+                step.id,
+                error_code=AgentKickoffErrorCode.PROVIDER_FAILURE.value,
+                error_message="Specialist agent failed",
             )
             unit_of_work.commit()
         raise
     with SqlAlchemyUnitOfWork() as unit_of_work:
         predecessor = unit_of_work.agent_workflows.list_steps_internal(run_id)
-        output_hash = stable_hash(result.output.model_dump(mode="json"))
         unit_of_work.agent_workflows.complete_step(
             step.id,
             output=result.output.model_dump(mode="json"),
             prompt=result.prompt,
-            prompt_template_id=f"agent.{role.value.lower()}.v1",
-            prompt_template_version="1.0",
+            prompt_template_id=result.prompt_template_id,
+            prompt_template_version=result.prompt_template_version,
             input_hash=result.input_hash,
             provider=result.provider,
             model=result.model,
-            output_hash=output_hash,
-            schema_name=output_model.__name__,
-            schema_version="1.0",
+            output_hash=result.output_hash,
+            schema_name=result.schema_name,
+            schema_version=result.schema_version,
             predecessor_step_id=predecessor[-1].id if predecessor else None,
             correlation_id=run_id,
         )
@@ -564,7 +595,7 @@ def _execute_agent_step[OutputModel: BaseModel](
                     predecessor_step_id=predecessor[-1].id if predecessor else None,
                     correlation_id=run_id,
                     input_hash=result.input_hash,
-                    output_hash=output_hash,
+                    output_hash=result.output_hash,
                     payload_ref={"step_id": str(step.id), "schema": output_model.__name__},
                 ),
             )
@@ -879,4 +910,6 @@ def _reject_workflow(run_id: UUID, code: str, message: str) -> None:
 
 
 def _failure_code(error: Exception) -> str:
+    if isinstance(error, AgentKickoffError):
+        return error.code.value
     return str(error).split(":", 1)[0][:100] or "AGENT_WORKFLOW_FAILED"

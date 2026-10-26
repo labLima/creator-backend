@@ -29,6 +29,8 @@ AUTH_STATUS_CODES = {401, 403}
 
 
 class GeminiLLMProvider:
+    provider_name = "gemini"
+
     def __init__(
         self,
         settings: Settings,

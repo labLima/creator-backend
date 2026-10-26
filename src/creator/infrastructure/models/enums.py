@@ -10,6 +10,7 @@ from creator.domain.agent_workflow import (
     AgentWorkflowStepStatus,
     HumanReviewMode,
 )
+from creator.domain.auth import WorkspaceRole
 from creator.domain.generation import GenerationJobStatus
 
 
@@ -21,13 +22,6 @@ class GlobalRole(StrEnum):
     ADMIN = "admin"
     GESTOR = "gestor"
     MEMBRO = "membro"
-
-
-class WorkspaceRole(StrEnum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    EDITOR = "editor"
-    VIEWER = "viewer"
 
 
 class ContentType(StrEnum):

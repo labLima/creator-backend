@@ -8,6 +8,9 @@ from creator.services.ai.reviewer import (
 
 
 class UnconfiguredLLMProvider:
+    provider_name = "unconfigured"
+    model = None
+
     def generate_text(self, prompt: str, temperature: float = 0.7) -> str:
         raise ProviderNotConfiguredError("LLM provider is not configured")
 

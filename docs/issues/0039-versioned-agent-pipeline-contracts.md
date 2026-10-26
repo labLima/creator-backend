@@ -15,3 +15,6 @@ provenance, hashes, refinamento estruturado e auditoria de lineage.
 - [x] Feedback de Reviewer preserva origem e precedência.
 - [x] Auditoria registra hashes, schema, predecessor e correlation.
 - [x] Testes cobrem handoff, mismatch e isolamento.
+- [x] `kickoff()` usa contrato tipado, registry de schemas e contexto explícito de Workspace.
+- [x] Saída do provider é JSON estrito, com erros limitados e metadados de prompt/provider/model.
+- [x] Saída inválida não é encaminhada para Content, Generation, Generation Job ou Image.

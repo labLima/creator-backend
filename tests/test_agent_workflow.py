@@ -26,6 +26,7 @@ from creator.domain.agent_workflow import (
     can_transition_agent_workflow,
     can_transition_agent_workflow_step,
 )
+from creator.domain.auth import Principal, WorkspaceRole
 from creator.repositories import (
     AgentWorkflowRunRecord,
     AgentWorkflowStepRecord,
@@ -35,8 +36,11 @@ from creator.repositories import (
 from creator.services.agents.contracts import (
     AgentExecutionContext,
     BusinessOutput,
+    WorkspaceAuthorizationContext,
     WriterOutput,
+    contract_for_role,
 )
+from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
 from creator.services.agents.runner import StructuredAgentRunner
 from creator.services.ai.image_provider import ImageGenerationResult
 from creator.services.ai.reviewer import UnconfiguredMultimodalImageReviewer
@@ -327,10 +331,16 @@ def test_structured_agent_runner_validates_json_and_prompt_is_deterministic() ->
     context = AgentExecutionContext(
         workspace_id=WORKSPACE_ID,
         brand_id=BRAND_ID,
+        authorization=WorkspaceAuthorizationContext(
+            principal=Principal(subject="principal"),
+            workspace_id=WORKSPACE_ID,
+            workspace_role=WorkspaceRole.EDITOR,
+        ),
         role=AgentWorkflowStepRole.BUSINESS,
         inputs={"campaign": "Launch"},
         prompt_template_id="agent.business.v1",
         prompt_template_version="1.0",
+        schema_version="1.0",
     )
     first = StructuredAgentRunner(FakeLLM()).run(context, BusinessOutput)
     second = StructuredAgentRunner(FakeLLM()).run(context, BusinessOutput)
@@ -348,6 +358,15 @@ def test_reviewer_terminal_codes_are_preserved_for_a_rejection() -> None:
 
     assert _failure_code(RuntimeError("REVIEW_QUALITY_REJECTED")) == "REVIEW_QUALITY_REJECTED"
     assert _failure_code(RuntimeError("REVIEW_SAFETY_REJECTED")) == "REVIEW_SAFETY_REJECTED"
+    assert (
+        _failure_code(
+            AgentKickoffError(
+                AgentKickoffErrorCode.OUTPUT_SCHEMA_INVALID,
+                "safe message",
+            )
+        )
+        == AgentKickoffErrorCode.OUTPUT_SCHEMA_INVALID.value
+    )
 
 
 def test_storage_validation_type_remains_explicit() -> None:
@@ -454,6 +473,7 @@ class WorkerUow:
         self.users = SimpleNamespace(
             get_by_id=lambda user_id: SimpleNamespace(id=USER_ID, external_id="principal")
         )
+        self.workspaces = SimpleNamespace(user_has_workspace_role=lambda **kwargs: True)
         self.brands = SimpleNamespace(
             get_for_user=lambda **kwargs: SimpleNamespace(
                 id=BRAND_ID,
@@ -516,8 +536,8 @@ def test_worker_runs_specialists_and_finishes(monkeypatch: pytest.MonkeyPatch) -
         worker,
         "create_multi_agent_orchestrator",
         lambda settings: SimpleNamespace(
-            execute=lambda context, output_model: StructuredAgentRunner(WorkflowLLM()).run(
-                context, output_model
+            execute=lambda context: StructuredAgentRunner(WorkflowLLM()).run(
+                context, contract_for_role(context.role).output_model
             )
         ),
     )
@@ -572,8 +592,8 @@ def test_worker_stage_checkpoints_resume_from_persisted_outputs(
         worker,
         "create_multi_agent_orchestrator",
         lambda settings: SimpleNamespace(
-            execute=lambda context, output_model: StructuredAgentRunner(WorkflowLLM()).run(
-                context, output_model
+            execute=lambda context: StructuredAgentRunner(WorkflowLLM()).run(
+                context, contract_for_role(context.role).output_model
             )
         ),
     )
