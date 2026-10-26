@@ -1,51 +1,47 @@
-"""Shared SQLAlchemy scalar types used by the infrastructure boundary.
+"""Shared, database-portable SQLAlchemy scalar types.
 
-The types in this module intentionally use SQLAlchemy's generic types.  The
-PostgreSQL deployment can still optimize them through its dialect, while
-SQLite remains usable for local development and schema tests.
+SQLite is the default runtime database. These types keep the model layer free
+of PostgreSQL-only constructs while preserving the UUID/JSON/UTC semantics the
+application expects.
 """
+
+from __future__ import annotations
 
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, Uuid
-from sqlalchemy.engine import Dialect
-from sqlalchemy.types import TypeDecorator, TypeEngine
+from sqlalchemy import JSON, DateTime, TypeDecorator, Uuid
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class UTCDateTime(TypeDecorator[datetime]):
-    """Store aware datetimes normalized to UTC on every supported dialect."""
+    """Persist timestamps as UTC and always return timezone-aware values.
 
-    impl = DateTime
+    SQLite's ``DATETIME`` storage does not retain an offset. Normalising at the
+    type boundary avoids naive/aware comparison bugs in repositories and tests.
+    """
+
+    impl = DateTime(timezone=True)
     cache_ok = True
 
-    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[datetime]:
-        return dialect.type_descriptor(DateTime(timezone=True))
-
-    def process_bind_param(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+    def process_bind_param(self, value: datetime | None, dialect: object) -> datetime | None:
         if value is None:
             return None
-        if value.tzinfo is None or value.utcoffset() is None:
-            raise ValueError("UTCDateTime requires a timezone-aware datetime")
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
 
-    def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+    def process_result_value(self, value: datetime | None, dialect: object) -> datetime | None:
         if value is None:
             return None
-        if value.tzinfo is None or value.utcoffset() is None:
-            value = value.replace(tzinfo=UTC)
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
 
 
 uuid_pk = Uuid(as_uuid=True)
 uuid_default = uuid4
-json_type = JSON()
 timestamp_tz = UTCDateTime()
+json_type = JSON().with_variant(JSONB(), "postgresql")
 
-__all__ = [
-    "UTCDateTime",
-    "json_type",
-    "timestamp_tz",
-    "uuid_default",
-    "uuid_pk",
-]
+__all__ = ["UTCDateTime", "json_type", "timestamp_tz", "uuid_default", "uuid_pk"]

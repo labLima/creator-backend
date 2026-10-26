@@ -57,7 +57,6 @@ class Image(Base):
             "version_number",
             unique=True,
             sqlite_where=text("deleted_at IS NULL"),
-            postgresql_where=text("deleted_at IS NULL"),
         ),
     )
 

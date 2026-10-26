@@ -50,7 +50,6 @@ class GenerationJob(Base):
             "external_id",
             unique=True,
             sqlite_where=text("external_id IS NOT NULL"),
-            postgresql_where=text("external_id IS NOT NULL"),
         ),
     )
 

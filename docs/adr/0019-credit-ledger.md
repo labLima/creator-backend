@@ -1,7 +1,7 @@
 # ADR-019: Ledger de créditos por Workspace
 
 - Status: accepted
-- Tracker: [#38](https://github.com/lefilcompany/creator-backend-python/issues/38)
+- Tracker: [#38](https://github.com/labLima/creator-backend/issues/38)
 - Issue: [0031-credits](../issues/0031-credits.md)
 
 ## Decisão

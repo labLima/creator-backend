@@ -138,7 +138,7 @@ def fake_session(session: FakeSession) -> Session:
 def user_row() -> models.User:
     return models.User(
         id=uuid4(),
-        external_id=f"supabase:{uuid4()}",
+        external_id=f"local:{uuid4()}",
         email="user@example.com",
         display_name="User",
         global_role=models.GlobalRole.MEMBRO,
@@ -309,8 +309,8 @@ def test_user_repository_crud_and_soft_delete_paths() -> None:
     session = FakeSession()
     repository = SqlAlchemyUserRepository(fake_session(session))
 
-    created = repository.add(external_id="supabase:new", email="new@example.com")
-    assert created.external_id == "supabase:new"
+    created = repository.add(external_id="local:new", email="new@example.com")
+    assert created.external_id == "local:new"
 
     stored = user_row()
     session.scalars_results.append(ScalarResult(stored))
@@ -723,7 +723,7 @@ def test_image_generation_repository_lifecycle_paths() -> None:
     assert created.status == GenerationJobStatus.PENDING
 
     session.scalars_results.append(ScalarResult(pending_job))
-    session.execute_results.append(ExecuteResult(content.id))
+    session.execute_results.extend([ExecuteResult(None), ExecuteResult(content.id)])
     claimed = repository.claim_next_pending(workspace_id=content.workspace_id)
     assert claimed is not None
     assert claimed.status == GenerationJobStatus.PROCESSING

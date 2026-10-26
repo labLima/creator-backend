@@ -80,8 +80,8 @@ class BrandKnowledgeChunk(Base):
         ),
         UniqueConstraint("document_id", "chunk_index", name="uq_bk_chunks_document_index"),
         CheckConstraint("chunk_index >= 0", name="ck_bk_chunks_index_nonnegative"),
-        CheckConstraint("embedding IS NOT NULL", name="ck_bk_chunks_embedding_array"),
-        CheckConstraint("metadata IS NOT NULL", name="ck_bk_chunks_metadata_object"),
+        CheckConstraint("json_type(embedding) = 'array'", name="ck_bk_chunks_embedding_array"),
+        CheckConstraint("json_type(metadata) = 'object'", name="ck_bk_chunks_metadata_object"),
         CheckConstraint("length(content) BETWEEN 1 AND 100000", name="ck_bk_chunks_content_length"),
         Index(
             "ix_bk_chunks_workspace_brand", "workspace_id", "brand_id", "document_id", "chunk_index"

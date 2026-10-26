@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import Select, Text, and_, asc, desc, func, select, update
+from sqlalchemy import Integer, Select, Text, and_, asc, desc, func, select, update
 from sqlalchemy import cast as sql_cast
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -101,6 +101,7 @@ def _user_record(row: models.User) -> UserRecord:
         created_at=_datetime(row.created_at),
         updated_at=_datetime(row.updated_at),
         deleted_at=_optional_datetime(row.deleted_at),
+        password_hash=row.password_hash,
     )
 
 
@@ -369,12 +370,14 @@ class SqlAlchemyUserRepository:
         email: str | None = None,
         display_name: str | None = None,
         global_role: str = "membro",
+        password_hash: str | None = None,
     ) -> UserRecord:
         row = models.User(
             external_id=external_id,
             email=email,
             display_name=display_name,
             global_role=global_role,
+            password_hash=password_hash,
         )
         self._session.add(row)
         flush_or_raise(self._session)
@@ -391,6 +394,13 @@ class SqlAlchemyUserRepository:
         self, external_id: str, *, include_deleted: bool = False
     ) -> UserRecord | None:
         statement = select(models.User).where(models.User.external_id == external_id)
+        if not include_deleted:
+            statement = statement.where(models.User.deleted_at.is_(None))
+        row = self._session.scalars(statement).one_or_none()
+        return _user_record(row) if row else None
+
+    def get_by_email(self, email: str, *, include_deleted: bool = False) -> UserRecord | None:
+        statement = select(models.User).where(func.lower(models.User.email) == email.lower())
         if not include_deleted:
             statement = statement.where(models.User.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
@@ -2048,30 +2058,58 @@ class SqlAlchemyImageGenerationRepository:
         *,
         workspace_id: UUID | None = None,
     ) -> GenerationJobRecord | None:
-        statement = (
+        candidate_statement = (
             select(models.GenerationJob)
             .where(
                 models.GenerationJob.status == GenerationJobStatus.PENDING,
                 models.GenerationJob.deleted_at.is_(None),
             )
             .order_by(models.GenerationJob.created_at.asc())
-            .with_for_update(skip_locked=True)
             .limit(1)
         )
         if workspace_id is not None:
-            statement = statement.where(models.GenerationJob.workspace_id == workspace_id)
+            candidate_statement = candidate_statement.where(
+                models.GenerationJob.workspace_id == workspace_id
+            )
 
-        job = self._session.scalars(statement).first()
-        if job is None:
+        candidate = self._session.scalars(candidate_statement).first()
+        if candidate is None:
             return None
-        self._transition_job(job, GenerationJobStatus.PROCESSING)
+        candidate_id = candidate.id
+
         timestamp = _now()
-        job.started_at = timestamp
-        job.attempt_count += 1
-        job.updated_at = timestamp
+        # SQLite ignores FOR UPDATE/SKIP LOCKED. A conditional UPDATE gives both
+        # SQLite and PostgreSQL a single-winner claim.
+        result = self._session.execute(
+            update(models.GenerationJob)
+            .where(
+                models.GenerationJob.id == candidate_id,
+                models.GenerationJob.status == GenerationJobStatus.PENDING,
+                models.GenerationJob.deleted_at.is_(None),
+            )
+            .values(
+                status=GenerationJobStatus.PROCESSING,
+                started_at=timestamp,
+                attempt_count=models.GenerationJob.attempt_count + 1,
+                updated_at=timestamp,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        if getattr(result, "rowcount", 1) == 0:
+            return None
+
+        candidate.status = GenerationJobStatus.PROCESSING
+        candidate.started_at = timestamp
+        candidate.attempt_count = (candidate.attempt_count or 0) + 1
+        candidate.updated_at = timestamp
+        self._add_status_event(
+            candidate.id,
+            GenerationJobStatus.PENDING,
+            GenerationJobStatus.PROCESSING,
+        )
         flush_or_raise(self._session)
-        content_id = self._content_id_for_generation(job.generation_id)
-        return _job_record(job, content_id)
+        content_id = self._content_id_for_generation(candidate.generation_id)
+        return _job_record(candidate, content_id)
 
     def next_image_version(self, content_id: UUID) -> int:
         return self._next_image_version(content_id)
@@ -2463,17 +2501,22 @@ class SqlAlchemyImageGenerationRepository:
                 models.Image.content_id == content_id
             )
         ).scalar_one()
-        reserved_version: int = self._session.execute(
+        reserved_version = self._session.execute(
             select(
                 func.coalesce(
-                    func.max(models.Generation.parameters["image_version_number"].as_integer()),
+                    func.max(
+                        sql_cast(
+                            models.Generation.parameters["image_version_number"].as_integer(),
+                            Integer,
+                        )
+                    ),
                     0,
                 )
                 + 1
             ).where(
                 models.Generation.content_id == content_id,
                 models.Generation.deleted_at.is_(None),
-                models.Generation.parameters["image_version_number"].is_not(None),
+                func.json_type(models.Generation.parameters["image_version_number"]) == "number",
             )
         ).scalar_one()
         return max(int(completed_version), int(reserved_version))

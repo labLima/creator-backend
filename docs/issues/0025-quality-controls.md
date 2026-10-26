@@ -1,7 +1,7 @@
 # Issue 0025: automated quality controls
 
 - ADR primária: [`0010-architecture-governance`](../adr/0010-architecture-governance.md)
-- ADR tracker: [`#43`](https://github.com/lefilcompany/creator-backend-python/issues/43)
+- ADR tracker: [`#43`](https://github.com/labLima/creator-backend/issues/43)
 - Labels: `process`, `quality`, `security`, `ci`
 
 ## Objetivo

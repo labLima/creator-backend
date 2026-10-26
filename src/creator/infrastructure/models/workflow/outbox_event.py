@@ -29,6 +29,8 @@ class OutboxEvent(Base):
     available_at: Mapped[object] = mapped_column(
         timestamp_tz, nullable=False, server_default=func.now()
     )
+    claimed_at: Mapped[object | None] = mapped_column(timestamp_tz)
+    claimed_by: Mapped[str | None] = mapped_column(String(64))
     published_at: Mapped[object | None] = mapped_column(timestamp_tz)
     last_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[object] = mapped_column(

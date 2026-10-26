@@ -31,7 +31,8 @@ class User(Base):
 
     id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     external_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    email: Mapped[str | None] = mapped_column(String(50))
+    email: Mapped[str | None] = mapped_column(String(320))
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     display_name: Mapped[str | None] = mapped_column(String(50))
     cpf: Mapped[str | None] = mapped_column(String(11))
     cnpj: Mapped[str | None] = mapped_column(String(14))

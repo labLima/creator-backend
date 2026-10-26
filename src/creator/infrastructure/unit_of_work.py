@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from creator.domain.exceptions import PersistenceError
+from creator.infrastructure.auth_session_repositories import SqlAlchemyAuthSessionRepository
 from creator.infrastructure.billing_lifecycle_repositories import (
     SqlAlchemyChargeRepository,
     SqlAlchemyInvoiceRepository,
@@ -84,6 +85,7 @@ from creator.infrastructure.workspace_invite_repositories import SqlAlchemyWorks
 from creator.repositories import (
     AgentWorkflowRepository,
     AssetRepository,
+    AuthSessionRepository,
     BillingAccountRepository,
     BillingAddressRepository,
     BillingPaymentMethodRepository,
@@ -135,6 +137,7 @@ SessionFactory = Callable[[], Session]
 
 class SqlAlchemyUnitOfWork:
     users: UserRepository
+    auth_sessions: AuthSessionRepository
     settings: SettingsRepository
     workspaces: WorkspaceRepository
     brands: BrandRepository
@@ -190,6 +193,7 @@ class SqlAlchemyUnitOfWork:
         session = self._session_factory()
         self._session = session
         self.users = SqlAlchemyUserRepository(session)
+        self.auth_sessions = SqlAlchemyAuthSessionRepository(session)
         self.settings = SqlAlchemySettingsRepository(session)
         self.workspaces = SqlAlchemyWorkspaceRepository(session)
         self.brands = SqlAlchemyBrandRepository(session)

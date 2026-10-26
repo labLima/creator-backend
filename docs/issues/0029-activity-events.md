@@ -1,8 +1,8 @@
 # Issue 0029: activity events timeline
 
 - ADR primária: [`0010-architecture-governance`](../adr/0010-architecture-governance.md)
-- ADR tracker: [#43](https://github.com/lefilcompany/creator-backend-python/issues/43)
-- GitHub: [#52](https://github.com/lefilcompany/creator-backend-python/issues/52)
+- ADR tracker: [#43](https://github.com/labLima/creator-backend/issues/43)
+- GitHub: [#52](https://github.com/labLima/creator-backend/issues/52)
 - Labels: `backend`, `database`, `architecture`, `adr-010`
 
 ## Contexto

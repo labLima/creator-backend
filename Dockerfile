@@ -9,7 +9,9 @@ RUN pip install --no-cache-dir .
 COPY alembic.ini ./
 COPY migrations ./migrations
 
-RUN useradd --create-home --uid 10001 appuser
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /app/.local/db /app/.local/storage /data \
+    && chown -R appuser:appuser /app/.local /data
 USER appuser
 EXPOSE 8000
 CMD ["uvicorn", "creator.main:app", "--host", "0.0.0.0", "--port", "8000"]

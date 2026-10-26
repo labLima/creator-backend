@@ -44,9 +44,13 @@ class GenerationJobStatusEvent(Base):
     )
     previous_status: Mapped[GenerationJobStatus | None] = mapped_column(generation_job_status_enum)
     status: Mapped[GenerationJobStatus] = mapped_column(generation_job_status_enum, nullable=False)
-    artifact_type: Mapped[GenerationType] = mapped_column(generation_type_enum, nullable=False)
+    artifact_type: Mapped[GenerationType] = mapped_column(
+        generation_type_enum, nullable=False, server_default=text("'IMAGE'")
+    )
     version: Mapped[int] = mapped_column(nullable=False, server_default=text("1"))
-    correlation_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=text("''")
+    )
     sanitized_result: Mapped[dict[str, object] | None] = mapped_column(json_type)
     request_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     occurred_at: Mapped[object] = mapped_column(

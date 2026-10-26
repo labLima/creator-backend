@@ -2,6 +2,7 @@
 
 - ADR primária: [ADR-016](../adr/0016-polymorphic-generation-job-artifacts.md)
 - Relacionadas: ADR-003, ADR-014, #56, #58 e #66
+- Status: #79 reaberta em 2026-10-26; modelo entregue, executores pendentes
 
 ## Escopo
 

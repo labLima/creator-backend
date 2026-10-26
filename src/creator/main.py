@@ -10,11 +10,11 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from creator.api.dependencies import (
     enforce_rate_limit,
-    get_auth_client,
     get_current_user,
     get_generation_queue,
     get_llm_provider,
     get_metrics_registry,
+    get_principal,
     get_storage_provider,
     get_uow,
 )
@@ -22,6 +22,7 @@ from creator.api.dtos import (
     AssetCreateRequest,
     AssetUpdateRequest,
     AuthLoginRequest,
+    AuthRefreshRequest,
     AuthSignupRequest,
     BillingAccountCreateRequest,
     BillingAccountUpdateRequest,
@@ -105,6 +106,27 @@ from creator.application.agent_image_workflow import (
     decide_image_workflow,
     start_image_workflow,
 )
+from creator.application.auth import (
+    AuthConfigurationError,
+    EmailAlreadyRegisteredError,
+    ExpiredTokenError,
+    InvalidCredentialsError,
+    InvalidTokenError,
+    LocalSignupResult,
+    RevokedSessionError,
+)
+from creator.application.auth import (
+    login as login_local,
+)
+from creator.application.auth import (
+    logout as logout_local,
+)
+from creator.application.auth import (
+    refresh as refresh_local,
+)
+from creator.application.auth import (
+    signup as signup_local,
+)
 from creator.application.content_generation import (
     ContentGenerationPersistenceError,
     GenerateContentCommand,
@@ -130,16 +152,6 @@ from creator.domain.agent_workflow import WorkflowDecision
 from creator.domain.auth import AuthSession, AuthSignupResult, Principal
 from creator.domain.exceptions import EntityNotFoundError, PersistenceError
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.auth import (
-    AuthClient,
-    AuthConfigurationError,
-    AuthInvalidResponseError,
-    AuthLoginRejectedError,
-    AuthRateLimitedError,
-    AuthSignupRejectedError,
-    AuthTimeoutError,
-    AuthUpstreamError,
-)
 from creator.infrastructure.metrics import MetricsRegistry
 from creator.integrations.gemini.exceptions import (
     GeminiAuthenticationError,
@@ -1373,12 +1385,17 @@ def create_app() -> FastAPI:
     def login_with_password(
         payload: AuthLoginRequest,
         request: Request,
-        auth_client: Annotated[AuthClient, Depends(get_auth_client)],
+        unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+        settings: Annotated[Settings, Depends(get_settings)],
     ) -> JSONResponse:
         try:
-            session = auth_client.sign_in_with_password(
+            session = login_local(
+                unit_of_work=unit_of_work,
+                settings=settings,
                 email=payload.email,
                 password=payload.password,
+                user_agent=request.headers.get("user-agent"),
+                ip_address=request.client.host if request.client else None,
             )
         except AuthConfigurationError as error:
             raise HTTPException(
@@ -1388,60 +1405,29 @@ def create_app() -> FastAPI:
                     "message": "Authentication is not configured",
                 },
             ) from error
-        except AuthLoginRejectedError as error:
+        except InvalidCredentialsError as error:
             raise HTTPException(
                 status_code=401,
-                detail={
-                    "code": "LOGIN_REJECTED",
-                    "message": "Invalid email or password",
-                },
+                detail={"code": "LOGIN_REJECTED", "message": "Invalid email or password"},
             ) from error
-        except AuthRateLimitedError as error:
-            raise HTTPException(
-                status_code=429,
-                detail={
-                    "code": "AUTH_RATE_LIMITED",
-                    "message": "Authentication quota or rate limit exceeded",
-                },
-            ) from error
-        except AuthInvalidResponseError as error:
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "code": "AUTH_INVALID_RESPONSE",
-                    "message": "Authentication provider returned an invalid response",
-                },
-            ) from error
-        except AuthTimeoutError as error:
-            raise HTTPException(
-                status_code=504,
-                detail={
-                    "code": "AUTH_TIMEOUT",
-                    "message": "Authentication provider timed out",
-                },
-            ) from error
-        except AuthUpstreamError as error:
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "code": "AUTH_UPSTREAM_ERROR",
-                    "message": "Authentication provider failed",
-                },
-            ) from error
-
         return success_response(_auth_session_data(session), request)
 
     @application.post("/api/v1/auth/signup", tags=["Auth"])
     def signup_with_password(
         payload: AuthSignupRequest,
         request: Request,
-        auth_client: Annotated[AuthClient, Depends(get_auth_client)],
         unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+        settings: Annotated[Settings, Depends(get_settings)],
     ) -> JSONResponse:
         try:
-            result = auth_client.sign_up_with_password(
+            result: LocalSignupResult = signup_local(
+                unit_of_work=unit_of_work,
+                settings=settings,
                 email=payload.email,
                 password=payload.password,
+                workspace_name=payload.workspace.name,
+                user_agent=request.headers.get("user-agent"),
+                ip_address=request.client.host if request.client else None,
             )
         except AuthConfigurationError as error:
             raise HTTPException(
@@ -1451,55 +1437,20 @@ def create_app() -> FastAPI:
                     "message": "Authentication is not configured",
                 },
             ) from error
-        except AuthSignupRejectedError as error:
+        except EmailAlreadyRegisteredError as error:
             raise HTTPException(
-                status_code=400,
+                status_code=409,
                 detail={
-                    "code": "SIGNUP_REJECTED",
-                    "message": error.provider_message or "Signup request was rejected",
+                    "code": "EMAIL_ALREADY_REGISTERED",
+                    "message": "Email is already registered",
                 },
             ) from error
-        except AuthRateLimitedError as error:
+        except ValueError as error:
             raise HTTPException(
-                status_code=429,
-                detail={
-                    "code": "AUTH_RATE_LIMITED",
-                    "message": "Authentication quota or rate limit exceeded",
-                },
+                status_code=422,
+                detail={"code": "WEAK_PASSWORD", "message": str(error)},
             ) from error
-        except AuthInvalidResponseError as error:
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "code": "AUTH_INVALID_RESPONSE",
-                    "message": "Authentication provider returned an invalid response",
-                },
-            ) from error
-        except AuthTimeoutError as error:
-            raise HTTPException(
-                status_code=504,
-                detail={
-                    "code": "AUTH_TIMEOUT",
-                    "message": "Authentication provider timed out",
-                },
-            ) from error
-        except AuthUpstreamError as error:
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "code": "AUTH_UPSTREAM_ERROR",
-                    "message": "Authentication provider failed",
-                },
-            ) from error
-
-        try:
-            _, workspace, membership = _bootstrap_signup_workspace(
-                unit_of_work=unit_of_work,
-                principal=result.principal,
-                workspace_name=payload.workspace.name,
-            )
         except PersistenceError as error:
-            unit_of_work.rollback()
             raise HTTPException(
                 status_code=500,
                 detail={
@@ -1507,11 +1458,58 @@ def create_app() -> FastAPI:
                     "message": "Signup Workspace could not be created",
                 },
             ) from error
-
         return success_response(
-            _auth_signup_data(result, workspace=workspace, membership=membership),
+            _auth_signup_data(
+                result.result, workspace=result.workspace, membership=result.membership
+            ),
             request,
+            status_code=201,
         )
+
+    @application.post("/api/v1/auth/refresh", tags=["Auth"])
+    def refresh_session(
+        payload: AuthRefreshRequest,
+        request: Request,
+        unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+        settings: Annotated[Settings, Depends(get_settings)],
+    ) -> JSONResponse:
+        try:
+            session = refresh_local(
+                unit_of_work=unit_of_work,
+                settings=settings,
+                refresh_token=payload.refresh_token,
+                user_agent=request.headers.get("user-agent"),
+                ip_address=request.client.host if request.client else None,
+            )
+        except AuthConfigurationError as error:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "AUTHENTICATION_MISCONFIGURED",
+                    "message": "Authentication is not configured",
+                },
+            ) from error
+        except (InvalidTokenError, ExpiredTokenError, RevokedSessionError) as error:
+            raise HTTPException(
+                status_code=401,
+                detail={"code": "INVALID_REFRESH_TOKEN", "message": "Refresh token is invalid"},
+            ) from error
+        return success_response(_auth_session_data(session), request)
+
+    @application.post("/api/v1/auth/logout", tags=["Auth"])
+    def logout_session(
+        request: Request,
+        current_user: Annotated[UserRecord, Depends(get_current_user)],
+        principal: Annotated[Principal | None, Depends(get_principal)],
+        unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    ) -> JSONResponse:
+        if principal is None or principal.session_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail={"code": "AUTHENTICATION_INVALID", "message": "Authentication failed"},
+            )
+        logout_local(unit_of_work=unit_of_work, session_id=UUID(principal.session_id))
+        return success_response({"logged_out": True}, request)
 
     @application.get("/api/v1/users/me", tags=["Users"])
     def get_my_profile(

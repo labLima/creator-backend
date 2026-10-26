@@ -2,8 +2,8 @@
 
 - ADR primária: [`0005-postgresql-sqlalchemy-alembic`](../adr/0005-postgresql-sqlalchemy-alembic.md)
 - ADR relacionada: [`0011-core-resource-crud`](../adr/0011-core-resource-crud.md)
-- ADR tracker: [#38](https://github.com/lefilcompany/creator-backend-python/issues/38)
-- GitHub: [#51](https://github.com/lefilcompany/creator-backend-python/issues/51)
+- ADR tracker: [#38](https://github.com/labLima/creator-backend/issues/38)
+- GitHub: [#51](https://github.com/labLima/creator-backend/issues/51)
 - Labels: `backend`, `database`, `architecture`, `adr-005`
 
 ## Contexto

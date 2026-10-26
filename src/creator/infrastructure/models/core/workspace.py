@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import Index, String, func
+from sqlalchemy import (
+    Index,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
