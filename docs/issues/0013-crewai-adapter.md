@@ -2,6 +2,7 @@
 
 - ADR: [`0011-crewai-multi-agent-orchestration`](../adr/0011-crewai-multi-agent-orchestration.md)
 - Labels: `agents`, `provider`, `implementation`
+- Status: #64 reaberta em 2026-10-26; adapter real pendente
 
 ## Goal
 

@@ -16,13 +16,11 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.db import Base
 
-from .types import timestamp_tz, uuid_pk
+from .types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class BrandKnowledgeDocument(Base):
@@ -48,17 +46,15 @@ class BrandKnowledgeDocument(Base):
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+        uuid_pk, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
-    brand_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    brand_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     source: Mapped[str] = mapped_column(String(2000), nullable=False)
     metadata_json: Mapped[dict[str, object]] = mapped_column(
-        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+        "metadata", json_type, nullable=False, server_default=text("'{}'")
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz, nullable=False, server_default=func.now()
@@ -84,8 +80,8 @@ class BrandKnowledgeChunk(Base):
         ),
         UniqueConstraint("document_id", "chunk_index", name="uq_bk_chunks_document_index"),
         CheckConstraint("chunk_index >= 0", name="ck_bk_chunks_index_nonnegative"),
-        CheckConstraint("jsonb_typeof(embedding) = 'array'", name="ck_bk_chunks_embedding_array"),
-        CheckConstraint("jsonb_typeof(metadata) = 'object'", name="ck_bk_chunks_metadata_object"),
+        CheckConstraint("json_type(embedding) = 'array'", name="ck_bk_chunks_embedding_array"),
+        CheckConstraint("json_type(metadata) = 'object'", name="ck_bk_chunks_metadata_object"),
         CheckConstraint("length(content) BETWEEN 1 AND 100000", name="ck_bk_chunks_content_length"),
         Index(
             "ix_bk_chunks_workspace_brand", "workspace_id", "brand_id", "document_id", "chunk_index"
@@ -93,19 +89,17 @@ class BrandKnowledgeChunk(Base):
         Index("ix_bk_chunks_document_index", "document_id", "chunk_index"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+        uuid_pk, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
-    brand_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    document_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    brand_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    document_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(JSONB, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(json_type, nullable=False)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     metadata_json: Mapped[dict[str, object]] = mapped_column(
-        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+        "metadata", json_type, nullable=False, server_default=text("'{}'")
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz, nullable=False, server_default=func.now()

@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Fonte: decisão de bootstrap do repositório
-- Tracker: [#43](https://github.com/lefilcompany/creator-backend-python/issues/43)
+- Tracker: [#43](https://github.com/labLima/creator-backend/issues/43)
 
 ## Contexto
 

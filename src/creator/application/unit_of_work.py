@@ -4,6 +4,7 @@ from typing import Protocol, Self
 from creator.repositories import (
     AgentWorkflowRepository,
     AssetRepository,
+    AuthSessionRepository,
     BillingAccountRepository,
     BillingAddressRepository,
     BillingPaymentMethodRepository,
@@ -53,6 +54,7 @@ from creator.repositories import (
 
 class UnitOfWork(Protocol):
     users: UserRepository
+    auth_sessions: AuthSessionRepository
     settings: SettingsRepository
     workspaces: WorkspaceRepository
     brands: BrandRepository

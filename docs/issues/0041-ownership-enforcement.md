@@ -1,6 +1,7 @@
 # Ownership enforcement for protected resources
 
 - Status: in progress
+- GitHub: [#20](https://github.com/labLima/creator-backend/issues/20) (reaberta em 2026-10-26)
 - ADR primária: [ADR-011 Core Resource CRUD](../adr/0011-core-resource-crud.md)
 - ADR relacionada: [ADR-004 Supabase Auth](../adr/0004-supabase-auth.md)
 

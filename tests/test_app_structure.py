@@ -32,13 +32,17 @@ def test_compose_runs_migrations_before_api_and_worker() -> None:
 
     assert "  migrate:" in compose
     assert 'command: ["alembic", "upgrade", "head"]' in compose
-    assert 'command: ["creator-worker", "image-generation"]' in compose
-    assert compose.count("migrate: { condition: service_completed_successfully }") == 2
+    assert 'command: ["creator-worker", "all"]' in compose
+    assert compose.count("condition: service_completed_successfully") == 2
 
 
 def test_business_routes_require_authenticated_principal() -> None:
     tree = ast.parse((PROJECT_ROOT / "src/creator/main.py").read_text(encoding="utf-8"))
-    public_routes = {"/api/v1/auth/login", "/api/v1/auth/signup"}
+    public_routes = {
+        "/api/v1/auth/login",
+        "/api/v1/auth/signup",
+        "/api/v1/auth/refresh",
+    }
 
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -64,13 +68,17 @@ def test_business_routes_require_authenticated_principal() -> None:
 
 def test_openapi_declares_bearer_security_for_business_operations() -> None:
     document = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
-    public_routes = {"/api/v1/auth/login", "/api/v1/auth/signup"}
+    public_routes = {
+        "/api/v1/auth/login",
+        "/api/v1/auth/signup",
+        "/api/v1/auth/refresh",
+    }
 
     for path, operations in document["paths"].items():
         if not path.startswith("/api/v1/") or path in public_routes:
             continue
         for method, operation in operations.items():
             if method in {"get", "post", "put", "patch", "delete"}:
-                assert operation.get("security") == [{"SupabaseBearerAuth": []}], (
+                assert operation.get("security") == [{"CreatorBearerAuth": []}], (
                     f"{method.upper()} {path} must declare bearer security"
                 )

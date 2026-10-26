@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Fonte: `Fluxo de geração de imagem - creator.pdf` e plano de implementação aprovado
-- Tracker: [`docs/issues/0032-agent-image-generation-workflow.md`](../issues/0032-agent-image-generation-workflow.md), [#56](https://github.com/lefilcompany/creator-backend-python/issues/56)
+- Tracker: [`docs/issues/0032-agent-image-generation-workflow.md`](../issues/0032-agent-image-generation-workflow.md), [#56](https://github.com/labLima/creator-backend/issues/56)
 
 ## Contexto
 

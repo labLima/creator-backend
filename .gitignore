@@ -12,3 +12,8 @@ build/
 *.egg-info/
 tmp/
 .env.*
+
+.pytest-tmp/
+.pytest-tmp-clean/
+pytest-output.txt
+.local/

@@ -1,7 +1,7 @@
 # Issue 0024: distributed API and provider rate limiting
 
 - ADR primária: [`0008-api-limits-and-soft-delete`](../adr/0008-api-limits-and-soft-delete.md)
-- ADR tracker: [`#41`](https://github.com/lefilcompany/creator-backend-python/issues/41)
+- ADR tracker: [`#41`](https://github.com/labLima/creator-backend/issues/41)
 - Labels: `security`, `api`, `redis`, `observability`
 
 ## Objetivo

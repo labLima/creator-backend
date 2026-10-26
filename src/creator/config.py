@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "creator-api"
     app_env: str = "local"
     log_level: str = "INFO"
-    database_url: str = "postgresql+psycopg://creator:creator@localhost:5432/creator"
+    database_url: str = "sqlite+pysqlite:///./.local/db/creator.db"
     redis_url: str = "redis://localhost:6379/0"
     rate_limit_backend: Literal["redis", "memory"] = "redis"
     rate_limit_redis_url: str | None = None
@@ -19,13 +19,16 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: float = 1.0
     rate_limit_key_prefix: str = "creator:rate-limit:v1"
     auth_required: bool = False
+    auth_jwt_secret: str | None = Field(default=None, repr=False)
+    auth_jwt_issuer: str = "creator"
+    auth_jwt_audience: str = "creator-api"
+    auth_access_token_ttl_seconds: int = 900
+    auth_refresh_token_ttl_days: int = 30
+    auth_password_min_length: int = 12
+    auth_login_max_attempts: int = 5
+    auth_login_lockout_seconds: int = 900
     supabase_url: str | None = None
-    supabase_anon_key: str | None = Field(default=None, repr=False)
     supabase_service_role_key: str | None = Field(default=None, repr=False)
-    supabase_jwt_secret: str | None = Field(default=None, repr=False)
-    supabase_jwt_audience: str = "authenticated"
-    supabase_allowed_jwt_algorithms: tuple[str, ...] = ("HS256", "RS256")
-    supabase_jwks_cache_seconds: int = 300
     supabase_auth_timeout_seconds: float = 5.0
     gemini_api_key: str | None = Field(default=None, repr=False)
     gemini_text_model: str = "gemini-2.5-flash"

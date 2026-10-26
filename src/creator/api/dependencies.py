@@ -1,20 +1,20 @@
 import logging
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from creator.application.auth import (
+    AuthConfigurationError,
+    ExpiredTokenError,
+    InvalidTokenError,
+    principal_from_access_token,
+    session_is_active,
+)
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
-from creator.infrastructure.auth import (
-    AccessTokenExpiredError,
-    AccessTokenInvalidError,
-    AuthClient,
-    AuthConfigurationError,
-    create_auth_client,
-    create_auth_token_verifier,
-)
 from creator.infrastructure.metrics import MetricsRegistry
 from creator.infrastructure.queue import RqGenerationQueue
 from creator.infrastructure.queue import get_generation_queue as get_rq_generation_queue
@@ -30,7 +30,7 @@ from creator.services.ai.factory import create_llm_provider
 from creator.services.ai.provider import LLMProvider
 from creator.services.storage.provider import StorageConfigurationError, StorageProvider
 
-bearer_scheme = HTTPBearer(auto_error=False, scheme_name="SupabaseBearerAuth")
+bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorBearerAuth")
 logger = logging.getLogger(__name__)
 
 
@@ -59,9 +59,8 @@ def get_principal(
             raise _invalid_auth_exception()
         return None
 
-    verifier = create_auth_token_verifier(settings)
     try:
-        return verifier.verify(token)
+        return principal_from_access_token(token, settings)
     except AuthConfigurationError as error:
         if not settings.auth_required:
             return None
@@ -70,7 +69,7 @@ def get_principal(
             "Authentication is not configured",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         ) from error
-    except (AccessTokenExpiredError, AccessTokenInvalidError) as error:
+    except (ExpiredTokenError, InvalidTokenError) as error:
         raise _invalid_auth_exception() from error
 
 
@@ -90,9 +89,8 @@ def get_optional_principal(
     bearer_token = _bearer_token(token)
     if bearer_token is None:
         return None
-    verifier = create_auth_token_verifier(settings)
     try:
-        return verifier.verify(bearer_token)
+        return principal_from_access_token(bearer_token, settings)
     except AuthConfigurationError as error:
         if not settings.auth_required:
             return None
@@ -101,7 +99,7 @@ def get_optional_principal(
             "Authentication is not configured",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         ) from error
-    except (AccessTokenExpiredError, AccessTokenInvalidError) as error:
+    except (ExpiredTokenError, InvalidTokenError) as error:
         raise _invalid_auth_exception() from error
 
 
@@ -117,37 +115,17 @@ def get_current_user(
 ) -> UserRecord:
     if principal is None:
         raise _invalid_auth_exception()
-
-    existing = unit_of_work.users.get_by_external_id(principal.subject, include_deleted=True)
-    if existing is not None and existing.deleted_at is not None:
+    try:
+        user_id = UUID(principal.subject)
+        session_id = UUID(principal.session_id or "")
+    except ValueError as error:
+        raise _invalid_auth_exception() from error
+    if not session_is_active(unit_of_work=unit_of_work, session_id=session_id):
         raise _invalid_auth_exception()
-    if existing is None:
-        user = unit_of_work.users.add(
-            external_id=principal.subject,
-            email=principal.email,
-            display_name=_display_name_from_claims(principal),
-        )
-        unit_of_work.commit()
-        return user
-
-    display_name = _display_name_from_claims(principal)
-    if (principal.email and principal.email != existing.email) or (
-        display_name and display_name != existing.display_name
-    ):
-        user = unit_of_work.users.update_profile(
-            existing.id,
-            email=principal.email,
-            display_name=display_name,
-        )
-        unit_of_work.commit()
-        return user
+    existing = unit_of_work.users.get_by_id(user_id, include_deleted=True)
+    if existing is None or existing.deleted_at is not None:
+        raise _invalid_auth_exception()
     return existing
-
-
-def get_auth_client(
-    settings: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
-) -> AuthClient:
-    return create_auth_client(settings)
 
 
 def get_llm_provider(

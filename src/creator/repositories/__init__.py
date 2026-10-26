@@ -3,6 +3,7 @@ from creator.repositories.agent_workflows import (
     AgentWorkflowRunRecord,
     AgentWorkflowStepRecord,
 )
+from creator.repositories.auth import AuthSessionRecord, AuthSessionRepository
 from creator.repositories.billing import (
     BillingAccountRecord,
     BillingAccountRepository,
@@ -131,6 +132,8 @@ from creator.repositories.workspace import (
 
 __all__ = [
     "AssetRecord",
+    "AuthSessionRecord",
+    "AuthSessionRepository",
     "AssetRepository",
     "AgentWorkflowRepository",
     "AgentWorkflowRunRecord",

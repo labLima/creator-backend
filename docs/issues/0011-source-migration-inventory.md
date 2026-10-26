@@ -2,6 +2,7 @@
 
 - ADR: [`0010-architecture-governance`](../adr/0010-architecture-governance.md)
 - Labels: `migration`, `blocked`
+- GitHub: [#44](https://github.com/labLima/creator-backend/issues/44) (reaberta em 2026-10-26)
 
 ## Goal
 

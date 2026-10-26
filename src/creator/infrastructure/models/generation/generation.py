@@ -13,8 +13,6 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
@@ -24,7 +22,7 @@ from ..enums import (
     GenerationType,
     generation_type_enum,
 )
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class Generation(Base):
@@ -52,9 +50,7 @@ class Generation(Base):
             name="fk_generations_project_workspace",
             ondelete="RESTRICT",
         ),
-        CheckConstraint(
-            "char_length(prompt) BETWEEN 1 AND 20000", name="ck_generations_prompt_length"
-        ),
+        CheckConstraint("length(prompt) BETWEEN 1 AND 20000", name="ck_generations_prompt_length"),
         CheckConstraint(
             "deleted_at IS NULL OR deleted_at >= created_at",
             name="ck_generations_deleted_after_created",
@@ -65,21 +61,19 @@ class Generation(Base):
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("workspaces.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    content_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    content_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
     requested_by_user_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("users.id", ondelete="SET NULL"),
     )
-    brand_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
-    project_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    brand_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    project_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     generation_type: Mapped[GenerationType] = mapped_column(
         "type",
         generation_type_enum,
@@ -89,9 +83,9 @@ class Generation(Base):
     model: Mapped[str] = mapped_column(String(255), nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     parameters: Mapped[dict[str, object]] = mapped_column(
-        JSONB,
+        json_type,
         nullable=False,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'{}'"),
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,

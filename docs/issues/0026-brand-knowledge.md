@@ -2,8 +2,9 @@
 
 - ADR primária: [`0012-langchain-rag-tool-calling`](../adr/0012-langchain-rag-tool-calling.md)
 - ADR tracker: [`docs/issues/0021`](0021-langchain-rag-tool-calling.md)
-- GitHub: [#49](https://github.com/lefilcompany/creator-backend-python/issues/49)
+- GitHub: [#49](https://github.com/labLima/creator-backend/issues/49)
 - Labels: `backend`, `database`, `architecture`, `priority-high`, `adr-012`
+- Status: reaberta em 2026-10-26; schema entregue, lifecycle pendente
 
 ## Contexto
 

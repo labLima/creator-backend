@@ -11,7 +11,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-DEFAULT_ALEMBIC_DATABASE_URL = "postgresql+psycopg://creator:creator@localhost:5432/creator"
+DEFAULT_ALEMBIC_DATABASE_URL = "sqlite+pysqlite:///./.local/db/creator.db"
 configured_database_url = config.get_main_option("sqlalchemy.url")
 if not configured_database_url or configured_database_url == DEFAULT_ALEMBIC_DATABASE_URL:
     config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))

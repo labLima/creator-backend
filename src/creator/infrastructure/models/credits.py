@@ -12,12 +12,11 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.db import Base
 
-from .types import timestamp_tz, uuid_pk
+from .types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class CreditWallet(Base):
@@ -31,9 +30,7 @@ class CreditWallet(Base):
         Index("ix_credit_wallets_workspace_id", "workspace_id"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
         ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
@@ -65,9 +62,7 @@ class CreditTransaction(Base):
         Index("ix_credit_transactions_workspace_user", "workspace_id", "user_id"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
         ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
@@ -78,7 +73,7 @@ class CreditTransaction(Base):
     balance_after: Mapped[int] = mapped_column(Integer, nullable=False)
     idempotency_key: Mapped[str | None] = mapped_column(String(255))
     metadata_: Mapped[dict[str, object]] = mapped_column(
-        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+        "metadata", json_type, nullable=False, server_default=text("'{}'")
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz, nullable=False, server_default=func.now()
@@ -93,14 +88,12 @@ class CreditPrice(Base):
         Index("ix_credit_prices_action_active", "action_key", "active"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     action_key: Mapped[str] = mapped_column(String(100), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     credits: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str | None] = mapped_column(String(500))
     active: Mapped[bool] = mapped_column(nullable=False, server_default="true")
     metadata_: Mapped[dict[str, object]] = mapped_column(
-        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+        "metadata", json_type, nullable=False, server_default=text("'{}'")
     )

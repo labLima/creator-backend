@@ -2,7 +2,7 @@
 
 - ADR: [`0014-agent-image-generation-workflow`](../adr/0014-agent-image-generation-workflow.md)
 - Labels: `agents`, `provider`, `implementation`
-- GitHub: [#59](https://github.com/lefilcompany/creator-backend-python/issues/59)
+- GitHub: [#59](https://github.com/labLima/creator-backend/issues/59)
 
 ## Scope
 
