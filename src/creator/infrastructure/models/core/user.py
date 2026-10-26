@@ -18,7 +18,7 @@ from ..enums import (
     GlobalRole,
     global_role_enum,
 )
-from ..types import timestamp_tz, uuid_pk
+from ..types import timestamp_tz, uuid_default, uuid_pk
 
 
 class User(Base):
@@ -29,9 +29,7 @@ class User(Base):
         Index("ix_users_deleted_at", "deleted_at"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     external_id: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str | None] = mapped_column(String(50))
     display_name: Mapped[str | None] = mapped_column(String(50))

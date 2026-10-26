@@ -8,7 +8,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 revision: str = "0007_user_brand_settings"
 down_revision: str | Sequence[str] | None = "0006_core_resource_crud_tables"
@@ -50,8 +49,8 @@ def upgrade() -> None:
         "settings",
         sa.Column(
             "default_preferences",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
     )
@@ -59,7 +58,6 @@ def upgrade() -> None:
         """
         UPDATE settings
         SET default_preferences = preferences
-        WHERE preferences <> '{}'::jsonb
         """
     )
     op.drop_column("settings", "preferences")
@@ -70,8 +68,8 @@ def downgrade() -> None:
         "settings",
         sa.Column(
             "preferences",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
     )
@@ -79,7 +77,6 @@ def downgrade() -> None:
         """
         UPDATE settings
         SET preferences = default_preferences
-        WHERE default_preferences <> '{}'::jsonb
         """
     )
     op.drop_column("settings", "default_preferences")

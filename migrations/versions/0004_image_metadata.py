@@ -8,7 +8,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 revision: str = "0004_image_metadata"
 down_revision: str | Sequence[str] | None = "0003_user_external_id"
@@ -21,8 +20,8 @@ def upgrade() -> None:
         "images",
         sa.Column(
             "metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
     )

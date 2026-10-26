@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import Integer, Select, Text, and_, asc, desc, func, select, update
+from sqlalchemy import Select, Text, and_, asc, desc, func, select, update
 from sqlalchemy import cast as sql_cast
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -2463,22 +2463,17 @@ class SqlAlchemyImageGenerationRepository:
                 models.Image.content_id == content_id
             )
         ).scalar_one()
-        reserved_version = self._session.execute(
+        reserved_version: int = self._session.execute(
             select(
                 func.coalesce(
-                    func.max(
-                        sql_cast(
-                            models.Generation.parameters["image_version_number"].astext,
-                            Integer,
-                        )
-                    ),
+                    func.max(models.Generation.parameters["image_version_number"].as_integer()),
                     0,
                 )
                 + 1
             ).where(
                 models.Generation.content_id == content_id,
                 models.Generation.deleted_at.is_(None),
-                func.jsonb_typeof(models.Generation.parameters["image_version_number"]) == "number",
+                models.Generation.parameters["image_version_number"].is_not(None),
             )
         ).scalar_one()
         return max(int(completed_version), int(reserved_version))

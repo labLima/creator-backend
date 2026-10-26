@@ -8,7 +8,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 revision: str = "0002_initial_relational_model"
 down_revision: str | Sequence[str] | None = "0001_foundation"
@@ -16,61 +15,44 @@ branch_labels = None
 depends_on = None
 
 
-GLOBAL_ROLE = postgresql.ENUM(
+GLOBAL_ROLE = sa.Enum(
     "admin",
     "gestor",
     "membro",
     name="global_role",
-    create_type=False,
+    native_enum=False,
+    create_constraint=True,
 )
-WORKSPACE_ROLE = postgresql.ENUM(
+WORKSPACE_ROLE = sa.Enum(
     "owner",
     "admin",
     "editor",
     "viewer",
     name="workspace_role",
-    create_type=False,
+    native_enum=False,
+    create_constraint=True,
 )
-CONTENT_TYPE = postgresql.ENUM("IMAGE", name="content_type", create_type=False)
-GENERATION_TYPE = postgresql.ENUM("IMAGE", name="generation_type", create_type=False)
-GENERATION_JOB_STATUS = postgresql.ENUM(
+CONTENT_TYPE = sa.Enum("IMAGE", name="content_type", native_enum=False, create_constraint=True)
+GENERATION_TYPE = sa.Enum(
+    "IMAGE", name="generation_type", native_enum=False, create_constraint=True
+)
+GENERATION_JOB_STATUS = sa.Enum(
     "PENDING",
     "PROCESSING",
     "COMPLETED",
     "FAILED",
     name="generation_job_status",
-    create_type=False,
+    native_enum=False,
+    create_constraint=True,
 )
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    op.execute(sa.text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
-
-    postgresql.ENUM("admin", "gestor", "membro", name="global_role").create(
-        bind,
-        checkfirst=True,
-    )
-    postgresql.ENUM("owner", "admin", "editor", "viewer", name="workspace_role").create(
-        bind,
-        checkfirst=True,
-    )
-    postgresql.ENUM("IMAGE", name="content_type").create(bind, checkfirst=True)
-    postgresql.ENUM("IMAGE", name="generation_type").create(bind, checkfirst=True)
-    postgresql.ENUM(
-        "PENDING",
-        "PROCESSING",
-        "COMPLETED",
-        "FAILED",
-        name="generation_job_status",
-    ).create(bind, checkfirst=True)
-
     op.create_table(
         "users",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
         sa.Column("auth_subject", sa.String(length=255), nullable=False),
@@ -100,15 +82,14 @@ def upgrade() -> None:
         "settings",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("user_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "preferences",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
@@ -135,8 +116,7 @@ def upgrade() -> None:
         "workspaces",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
         sa.Column("name", sa.String(length=255), nullable=False),
@@ -161,12 +141,11 @@ def upgrade() -> None:
         "workspace_memberships",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("user_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("role", WORKSPACE_ROLE, nullable=False),
         sa.Column(
             "created_at",
@@ -214,6 +193,7 @@ def upgrade() -> None:
         "workspace_memberships",
         ["user_id", "workspace_id"],
         unique=True,
+        sqlite_where=sa.text("deleted_at IS NULL"),
         postgresql_where=sa.text("deleted_at IS NULL"),
     )
 
@@ -221,18 +201,17 @@ def upgrade() -> None:
         "contents",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("created_by_user_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.Column("type", CONTENT_TYPE, server_default=sa.text("'IMAGE'"), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=True),
         sa.Column(
             "payload",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
@@ -278,20 +257,19 @@ def upgrade() -> None:
         "generations",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("content_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("requested_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("content_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("requested_by_user_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.Column("type", GENERATION_TYPE, server_default=sa.text("'IMAGE'"), nullable=False),
         sa.Column("model", sa.String(length=255), nullable=False),
         sa.Column("prompt", sa.Text(), nullable=False),
         sa.Column(
             "parameters",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
@@ -308,7 +286,7 @@ def upgrade() -> None:
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.CheckConstraint(
-            "char_length(prompt) BETWEEN 1 AND 20000",
+            "length(prompt) BETWEEN 1 AND 20000",
             name="ck_generations_prompt_length",
         ),
         sa.CheckConstraint(
@@ -353,12 +331,11 @@ def upgrade() -> None:
         "generation_jobs",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("generation_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("generation_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "status", GENERATION_JOB_STATUS, server_default=sa.text("'PENDING'"), nullable=False
         ),
@@ -418,6 +395,7 @@ def upgrade() -> None:
         "generation_jobs",
         ["external_id"],
         unique=True,
+        sqlite_where=sa.text("external_id IS NOT NULL"),
         postgresql_where=sa.text("external_id IS NOT NULL"),
     )
 
@@ -425,11 +403,10 @@ def upgrade() -> None:
         "generation_job_status_events",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
-        sa.Column("generation_job_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("generation_job_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("previous_status", GENERATION_JOB_STATUS, nullable=True),
         sa.Column("status", GENERATION_JOB_STATUS, nullable=False),
         sa.Column(
@@ -460,13 +437,12 @@ def upgrade() -> None:
         "images",
         sa.Column(
             "id",
-            postgresql.UUID(as_uuid=True),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Uuid(as_uuid=True),
             nullable=False,
         ),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("content_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("generation_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("content_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("generation_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("version_number", sa.Integer(), nullable=False),
         sa.Column("storage_path", sa.String(length=1024), nullable=False),
         sa.Column("public_url", sa.String(length=2048), nullable=False),
@@ -495,9 +471,7 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("width > 0", name="ck_images_width_positive"),
         sa.CheckConstraint("height > 0", name="ck_images_height_positive"),
-        sa.CheckConstraint(
-            "char_length(prompt) BETWEEN 1 AND 20000", name="ck_images_prompt_length"
-        ),
+        sa.CheckConstraint("length(prompt) BETWEEN 1 AND 20000", name="ck_images_prompt_length"),
         sa.CheckConstraint(
             "deleted_at IS NULL OR deleted_at >= created_at",
             name="ck_images_deleted_after_created",
@@ -533,13 +507,12 @@ def upgrade() -> None:
         "images",
         ["content_id", "version_number"],
         unique=True,
+        sqlite_where=sa.text("deleted_at IS NULL"),
         postgresql_where=sa.text("deleted_at IS NULL"),
     )
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-
     op.drop_index("uq_images_active_content_version", table_name="images")
     op.drop_index("ix_images_workspace_filter", table_name="images")
     op.drop_index("ix_images_content_version", table_name="images")
@@ -581,9 +554,3 @@ def downgrade() -> None:
 
     op.drop_index("ix_users_deleted_at", table_name="users")
     op.drop_table("users")
-
-    postgresql.ENUM(name="generation_job_status").drop(bind, checkfirst=True)
-    postgresql.ENUM(name="generation_type").drop(bind, checkfirst=True)
-    postgresql.ENUM(name="content_type").drop(bind, checkfirst=True)
-    postgresql.ENUM(name="workspace_role").drop(bind, checkfirst=True)
-    postgresql.ENUM(name="global_role").drop(bind, checkfirst=True)

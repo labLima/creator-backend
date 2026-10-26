@@ -2,9 +2,8 @@
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from alembic import op
 
 revision = "0015_pipeline_outbox"
 down_revision: str | Sequence[str] | None = "0014_agent_pipeline_audit"
@@ -15,19 +14,17 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "outbox_events",
-        sa.Column(
-            "id", UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False
-        ),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "workspace_id",
-            UUID(as_uuid=True),
+            sa.Uuid(as_uuid=True),
             sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("aggregate_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("aggregate_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("event_type", sa.String(100), nullable=False),
         sa.Column("event_version", sa.String(32), nullable=False),
-        sa.Column("payload", JSONB, nullable=False),
+        sa.Column("payload", sa.JSON(), nullable=False),
         sa.Column("attempts", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
             "available_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False

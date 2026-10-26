@@ -12,14 +12,12 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
 from creator.infrastructure.db import Base
 
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class Brand(Base):
@@ -34,16 +32,14 @@ class Brand(Base):
         Index("ix_brands_created_by_user_id", "created_by_user_id"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("workspaces.id", ondelete="RESTRICT"),
         nullable=False,
     )
     created_by_user_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("users.id", ondelete="SET NULL"),
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -51,9 +47,9 @@ class Brand(Base):
     brand_voice: Mapped[str | None] = mapped_column(Text)
     metadata_json: Mapped[dict[str, object]] = mapped_column(
         "metadata",
-        JSONB,
+        json_type,
         nullable=False,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'{}'"),
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,

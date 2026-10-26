@@ -15,11 +15,15 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
     op.create_index(
         "ix_contents_workspace_created_id",
         "contents",
         ["workspace_id", "deleted_at", "created_at", "id"],
     )
+    if bind.dialect.name == "sqlite":
+        return
+
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
     op.execute(
         """
@@ -32,5 +36,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP INDEX IF EXISTS ix_contents_search_trgm")
+    bind = op.get_bind()
+    if bind.dialect.name != "sqlite":
+        op.execute("DROP INDEX IF EXISTS ix_contents_search_trgm")
     op.drop_index("ix_contents_workspace_created_id", table_name="contents")

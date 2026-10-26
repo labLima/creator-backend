@@ -8,7 +8,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 revision: str = "0006_core_resource_crud_tables"
 down_revision: str | Sequence[str] | None = "0005_text_content_generation"
@@ -19,8 +18,7 @@ depends_on = None
 def uuid_column() -> sa.Column:
     return sa.Column(
         "id",
-        postgresql.UUID(as_uuid=True),
-        server_default=sa.text("gen_random_uuid()"),
+        sa.Uuid(as_uuid=True),
         nullable=False,
     )
 
@@ -44,18 +42,19 @@ def timestamps() -> list[sa.Column]:
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
     op.create_table(
         "brands",
         uuid_column(),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("created_by_user_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("brand_voice", sa.Text(), nullable=True),
         sa.Column(
             "metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         *timestamps(),
@@ -86,30 +85,30 @@ def upgrade() -> None:
     op.create_table(
         "brand_settings",
         uuid_column(),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("brand_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("brand_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "voice_settings",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
             "visual_settings",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
             "generation_defaults",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
             "metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         *timestamps(),
@@ -137,9 +136,9 @@ def upgrade() -> None:
     op.create_table(
         "projects",
         uuid_column(),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("brand_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("brand_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("created_by_user_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column(
@@ -147,8 +146,8 @@ def upgrade() -> None:
         ),
         sa.Column(
             "metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         *timestamps(),
@@ -184,56 +183,87 @@ def upgrade() -> None:
         "ix_projects_workspace_filter", "projects", ["workspace_id", "deleted_at", "created_at"]
     )
 
-    op.add_column("contents", sa.Column("brand_id", postgresql.UUID(as_uuid=True), nullable=True))
-    op.add_column("contents", sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=True))
-    op.create_foreign_key(
-        "fk_contents_brand_workspace",
-        "contents",
-        "brands",
-        ["brand_id", "workspace_id"],
-        ["id", "workspace_id"],
-        ondelete="RESTRICT",
-    )
-    op.create_foreign_key(
-        "fk_contents_project_workspace",
-        "contents",
-        "projects",
-        ["project_id", "workspace_id"],
-        ["id", "workspace_id"],
-        ondelete="RESTRICT",
-    )
-
-    op.add_column(
-        "generations", sa.Column("brand_id", postgresql.UUID(as_uuid=True), nullable=True)
-    )
-    op.add_column(
-        "generations", sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=True)
-    )
-    op.create_foreign_key(
-        "fk_generations_brand_workspace",
-        "generations",
-        "brands",
-        ["brand_id", "workspace_id"],
-        ["id", "workspace_id"],
-        ondelete="RESTRICT",
-    )
-    op.create_foreign_key(
-        "fk_generations_project_workspace",
-        "generations",
-        "projects",
-        ["project_id", "workspace_id"],
-        ["id", "workspace_id"],
-        ondelete="RESTRICT",
-    )
+    if bind.dialect.name == "sqlite":
+        with op.batch_alter_table("contents", recreate="always") as batch:
+            batch.add_column(sa.Column("brand_id", sa.Uuid(as_uuid=True), nullable=True))
+            batch.add_column(sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=True))
+            batch.create_foreign_key(
+                "fk_contents_brand_workspace",
+                "brands",
+                ["brand_id", "workspace_id"],
+                ["id", "workspace_id"],
+                ondelete="RESTRICT",
+            )
+            batch.create_foreign_key(
+                "fk_contents_project_workspace",
+                "projects",
+                ["project_id", "workspace_id"],
+                ["id", "workspace_id"],
+                ondelete="RESTRICT",
+            )
+        with op.batch_alter_table("generations", recreate="always") as batch:
+            batch.add_column(sa.Column("brand_id", sa.Uuid(as_uuid=True), nullable=True))
+            batch.add_column(sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=True))
+            batch.create_foreign_key(
+                "fk_generations_brand_workspace",
+                "brands",
+                ["brand_id", "workspace_id"],
+                ["id", "workspace_id"],
+                ondelete="RESTRICT",
+            )
+            batch.create_foreign_key(
+                "fk_generations_project_workspace",
+                "projects",
+                ["project_id", "workspace_id"],
+                ["id", "workspace_id"],
+                ondelete="RESTRICT",
+            )
+    else:
+        op.add_column("contents", sa.Column("brand_id", sa.Uuid(as_uuid=True), nullable=True))
+        op.add_column("contents", sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=True))
+        op.create_foreign_key(
+            "fk_contents_brand_workspace",
+            "contents",
+            "brands",
+            ["brand_id", "workspace_id"],
+            ["id", "workspace_id"],
+            ondelete="RESTRICT",
+        )
+        op.create_foreign_key(
+            "fk_contents_project_workspace",
+            "contents",
+            "projects",
+            ["project_id", "workspace_id"],
+            ["id", "workspace_id"],
+            ondelete="RESTRICT",
+        )
+        op.add_column("generations", sa.Column("brand_id", sa.Uuid(as_uuid=True), nullable=True))
+        op.add_column("generations", sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=True))
+        op.create_foreign_key(
+            "fk_generations_brand_workspace",
+            "generations",
+            "brands",
+            ["brand_id", "workspace_id"],
+            ["id", "workspace_id"],
+            ondelete="RESTRICT",
+        )
+        op.create_foreign_key(
+            "fk_generations_project_workspace",
+            "generations",
+            "projects",
+            ["project_id", "workspace_id"],
+            ["id", "workspace_id"],
+            ondelete="RESTRICT",
+        )
 
     op.create_table(
         "assets",
         uuid_column(),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("brand_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("content_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("uploaded_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("workspace_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("brand_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("content_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("uploaded_by_user_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.Column("asset_type", sa.String(length=100), nullable=False),
         sa.Column("storage_path", sa.String(length=1024), nullable=False),
         sa.Column("public_url", sa.String(length=2048), nullable=True),
@@ -242,15 +272,13 @@ def upgrade() -> None:
         sa.Column("checksum", sa.String(length=255), nullable=True),
         sa.Column(
             "metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         *timestamps(),
         sa.CheckConstraint("byte_size >= 0", name="ck_assets_byte_size_non_negative"),
-        sa.CheckConstraint(
-            "char_length(asset_type) BETWEEN 1 AND 100", name="ck_assets_type_length"
-        ),
+        sa.CheckConstraint("length(asset_type) BETWEEN 1 AND 100", name="ck_assets_type_length"),
         sa.CheckConstraint(
             "deleted_at IS NULL OR deleted_at >= created_at",
             name="ck_assets_deleted_after_created",
@@ -297,21 +325,33 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
     op.drop_index("ix_assets_workspace_filter", table_name="assets")
     op.drop_index("ix_assets_project_id", table_name="assets")
     op.drop_index("ix_assets_content_id", table_name="assets")
     op.drop_index("ix_assets_brand_id", table_name="assets")
     op.drop_table("assets")
 
-    op.drop_constraint("fk_generations_project_workspace", "generations", type_="foreignkey")
-    op.drop_constraint("fk_generations_brand_workspace", "generations", type_="foreignkey")
-    op.drop_column("generations", "project_id")
-    op.drop_column("generations", "brand_id")
-
-    op.drop_constraint("fk_contents_project_workspace", "contents", type_="foreignkey")
-    op.drop_constraint("fk_contents_brand_workspace", "contents", type_="foreignkey")
-    op.drop_column("contents", "project_id")
-    op.drop_column("contents", "brand_id")
+    if bind.dialect.name == "sqlite":
+        with op.batch_alter_table("generations", recreate="always") as batch:
+            batch.drop_constraint("fk_generations_project_workspace", type_="foreignkey")
+            batch.drop_constraint("fk_generations_brand_workspace", type_="foreignkey")
+            batch.drop_column("project_id")
+            batch.drop_column("brand_id")
+        with op.batch_alter_table("contents", recreate="always") as batch:
+            batch.drop_constraint("fk_contents_project_workspace", type_="foreignkey")
+            batch.drop_constraint("fk_contents_brand_workspace", type_="foreignkey")
+            batch.drop_column("project_id")
+            batch.drop_column("brand_id")
+    else:
+        op.drop_constraint("fk_generations_project_workspace", "generations", type_="foreignkey")
+        op.drop_constraint("fk_generations_brand_workspace", "generations", type_="foreignkey")
+        op.drop_column("generations", "project_id")
+        op.drop_column("generations", "brand_id")
+        op.drop_constraint("fk_contents_project_workspace", "contents", type_="foreignkey")
+        op.drop_constraint("fk_contents_brand_workspace", "contents", type_="foreignkey")
+        op.drop_column("contents", "project_id")
+        op.drop_column("contents", "brand_id")
 
     op.drop_index("ix_projects_workspace_filter", table_name="projects")
     op.drop_index("ix_projects_created_by_user_id", table_name="projects")

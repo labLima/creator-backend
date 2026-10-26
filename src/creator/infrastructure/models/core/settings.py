@@ -11,14 +11,12 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
 from creator.infrastructure.db import Base
 
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class Settings(Base):
@@ -28,11 +26,9 @@ class Settings(Base):
         Index("ix_settings_user_id", "user_id"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     user_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -54,9 +50,9 @@ class Settings(Base):
         server_default=text("'photographic'"),
     )
     default_preferences: Mapped[dict[str, object]] = mapped_column(
-        JSONB,
+        json_type,
         nullable=False,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'{}'"),
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,

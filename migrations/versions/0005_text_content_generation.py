@@ -15,7 +15,23 @@ branch_labels = None
 depends_on = None
 
 
+def _has_postgresql_enum(bind: sa.Connection, name: str) -> bool:
+    if bind.dialect.name != "postgresql":
+        return False
+    return any(enum["name"] == name for enum in sa.inspect(bind).get_enums())
+
+
 def upgrade() -> None:
+    bind = op.get_bind()
+    if not _has_postgresql_enum(bind, "content_type"):
+        with op.batch_alter_table("contents") as batch:
+            batch.drop_constraint("content_type", type_="check")
+            batch.create_check_constraint("content_type", "type IN ('IMAGE', 'TEXT')")
+        with op.batch_alter_table("generations") as batch:
+            batch.drop_constraint("generation_type", type_="check")
+            batch.create_check_constraint("generation_type", "type IN ('IMAGE', 'TEXT')")
+        return
+
     op.execute(sa.text("ALTER TYPE content_type ADD VALUE IF NOT EXISTS 'TEXT'"))
     op.execute(sa.text("ALTER TYPE generation_type ADD VALUE IF NOT EXISTS 'TEXT'"))
 
@@ -24,6 +40,15 @@ def downgrade() -> None:
     bind = op.get_bind()
     bind.execute(sa.text("DELETE FROM generations WHERE type = 'TEXT'"))
     bind.execute(sa.text("DELETE FROM contents WHERE type = 'TEXT'"))
+
+    if not _has_postgresql_enum(bind, "content_type"):
+        with op.batch_alter_table("contents") as batch:
+            batch.drop_constraint("content_type", type_="check")
+            batch.create_check_constraint("content_type", "type IN ('IMAGE')")
+        with op.batch_alter_table("generations") as batch:
+            batch.drop_constraint("generation_type", type_="check")
+            batch.create_check_constraint("generation_type", "type IN ('IMAGE')")
+        return
 
     bind.execute(sa.text("ALTER TYPE content_type RENAME TO content_type_with_text"))
     bind.execute(sa.text("CREATE TYPE content_type AS ENUM ('IMAGE')"))

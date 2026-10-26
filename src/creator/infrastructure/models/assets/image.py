@@ -13,14 +13,12 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
 from creator.infrastructure.db import Base
 
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class Image(Base):
@@ -47,7 +45,7 @@ class Image(Base):
         ),
         CheckConstraint("width > 0", name="ck_images_width_positive"),
         CheckConstraint("height > 0", name="ck_images_height_positive"),
-        CheckConstraint("char_length(prompt) BETWEEN 1 AND 20000", name="ck_images_prompt_length"),
+        CheckConstraint("length(prompt) BETWEEN 1 AND 20000", name="ck_images_prompt_length"),
         CheckConstraint(
             "deleted_at IS NULL OR deleted_at >= created_at", name="ck_images_deleted_after_created"
         ),
@@ -58,20 +56,19 @@ class Image(Base):
             "content_id",
             "version_number",
             unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
             postgresql_where=text("deleted_at IS NULL"),
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("workspaces.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    content_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    generation_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    content_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    generation_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
     version_number: Mapped[int] = mapped_column(nullable=False)
     storage_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     public_url: Mapped[str] = mapped_column(String(2048), nullable=False)
@@ -82,9 +79,9 @@ class Image(Base):
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[dict[str, object]] = mapped_column(
         "metadata",
-        JSONB,
+        json_type,
         nullable=False,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'{}'"),
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,

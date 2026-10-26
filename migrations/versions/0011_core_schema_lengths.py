@@ -12,6 +12,22 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("users", recreate="always") as batch:
+            batch.alter_column(
+                "email", existing_type=sa.String(length=320), type_=sa.String(length=50)
+            )
+            batch.alter_column(
+                "display_name",
+                existing_type=sa.String(length=255),
+                type_=sa.String(length=50),
+            )
+        with op.batch_alter_table("workspaces", recreate="always") as batch:
+            batch.alter_column(
+                "name", existing_type=sa.String(length=255), type_=sa.String(length=50)
+            )
+        return
+
     op.alter_column(
         "users", "email", existing_type=sa.String(length=320), type_=sa.String(length=50)
     )
@@ -24,6 +40,22 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("workspaces", recreate="always") as batch:
+            batch.alter_column(
+                "name", existing_type=sa.String(length=50), type_=sa.String(length=255)
+            )
+        with op.batch_alter_table("users", recreate="always") as batch:
+            batch.alter_column(
+                "display_name",
+                existing_type=sa.String(length=50),
+                type_=sa.String(length=255),
+            )
+            batch.alter_column(
+                "email", existing_type=sa.String(length=50), type_=sa.String(length=320)
+            )
+        return
+
     op.alter_column(
         "workspaces", "name", existing_type=sa.String(length=50), type_=sa.String(length=255)
     )

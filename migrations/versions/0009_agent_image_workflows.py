@@ -8,7 +8,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "0009_agent_image_workflows"
 down_revision: str | Sequence[str] | None = "0008_content_query_indexes"
@@ -26,7 +25,8 @@ def upgrade() -> None:
         "REJECTED",
         "FAILED",
         name="agent_workflow_status",
-        create_type=False,
+        native_enum=False,
+        create_constraint=True,
     )
     agent_workflow_step_status = sa.Enum(
         "PENDING",
@@ -34,7 +34,8 @@ def upgrade() -> None:
         "COMPLETED",
         "FAILED",
         name="agent_workflow_step_status",
-        create_type=False,
+        native_enum=False,
+        create_constraint=True,
     )
     agent_workflow_step_role = sa.Enum(
         "BUSINESS",
@@ -44,9 +45,12 @@ def upgrade() -> None:
         "REVIEWER",
         "DELIVERY",
         name="agent_workflow_step_role",
-        create_type=False,
+        native_enum=False,
+        create_constraint=True,
     )
-    human_review_mode = sa.Enum("AUTO", "OPTIONAL", name="human_review_mode", create_type=False)
+    human_review_mode = sa.Enum(
+        "AUTO", "OPTIONAL", name="human_review_mode", native_enum=False, create_constraint=True
+    )
     bind = op.get_bind()
     agent_workflow_status.create(bind, checkfirst=True)
     agent_workflow_step_status.create(bind, checkfirst=True)
@@ -55,11 +59,11 @@ def upgrade() -> None:
 
     op.create_table(
         "agent_workflow_runs",
-        sa.Column("id", sa.UUID(), server_default=sa.text("gen_random_uuid()"), nullable=False),
-        sa.Column("workspace_id", sa.UUID(), nullable=False),
-        sa.Column("content_id", sa.UUID(), nullable=False),
-        sa.Column("brand_id", sa.UUID(), nullable=False),
-        sa.Column("requested_by_user_id", sa.UUID(), nullable=True),
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column("content_id", sa.Uuid(), nullable=False),
+        sa.Column("brand_id", sa.Uuid(), nullable=False),
+        sa.Column("requested_by_user_id", sa.Uuid(), nullable=True),
         sa.Column("idempotency_key", sa.String(length=128), nullable=False),
         sa.Column("request_fingerprint", sa.String(length=64), nullable=False),
         sa.Column("status", agent_workflow_status, server_default="PENDING", nullable=False),
@@ -69,14 +73,14 @@ def upgrade() -> None:
         sa.Column("current_step", sa.String(length=64), nullable=True),
         sa.Column(
             "input",
-            JSONB(),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
             "final_image_ids",
-            JSONB(),
-            server_default=sa.text("'[]'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'[]'"),
             nullable=False,
         ),
         sa.Column("failure_code", sa.String(length=100), nullable=True),
@@ -127,23 +131,23 @@ def upgrade() -> None:
 
     op.create_table(
         "agent_workflow_steps",
-        sa.Column("id", sa.UUID(), server_default=sa.text("gen_random_uuid()"), nullable=False),
-        sa.Column("run_id", sa.UUID(), nullable=False),
-        sa.Column("workspace_id", sa.UUID(), nullable=False),
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("run_id", sa.Uuid(), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(), nullable=False),
         sa.Column("sequence_number", sa.Integer(), nullable=False),
         sa.Column("role", agent_workflow_step_role, nullable=False),
         sa.Column("status", agent_workflow_step_status, server_default="PENDING", nullable=False),
         sa.Column("attempt", sa.Integer(), server_default="1", nullable=False),
         sa.Column(
             "input",
-            JSONB(),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column(
             "output",
-            JSONB(),
-            server_default=sa.text("'{}'::jsonb"),
+            sa.JSON(),
+            server_default=sa.text("'{}'"),
             nullable=False,
         ),
         sa.Column("prompt", sa.Text(), nullable=True),

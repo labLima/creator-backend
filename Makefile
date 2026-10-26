@@ -1,22 +1,34 @@
 .PHONY: install format format-check lint typecheck test dependency-audit secrets security check run worker
 
+PYTHON ?= python
+ifeq ($(OS),Windows_NT)
+ifneq ($(wildcard .venv313/Scripts/python.exe),)
+PYTHON := .venv313/Scripts/python.exe
+endif
+endif
+
+RUFF := $(PYTHON) -m ruff
+MYPY := $(PYTHON) -m mypy
+PYTEST := $(PYTHON) -m pytest
+RUFF_TARGETS := src tests migrations
+
 install:
-	python -m pip install -e '.[dev]'
+	$(PYTHON) -m pip install -e '.[dev]'
 
 format:
-	ruff format src tests
+	$(RUFF) format $(RUFF_TARGETS)
 
 format-check:
-	ruff format --check src tests
+	$(RUFF) format --check $(RUFF_TARGETS)
 
 lint:
-	ruff check src tests
+	$(RUFF) check $(RUFF_TARGETS)
 
 typecheck:
-	mypy src
+	$(MYPY) src
 
 test:
-	pytest
+	$(PYTEST)
 
 dependency-audit:
 	pip-audit \

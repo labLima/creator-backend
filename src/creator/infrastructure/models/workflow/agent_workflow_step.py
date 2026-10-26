@@ -11,8 +11,6 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.domain.agent_workflow import (
@@ -26,7 +24,7 @@ from ..enums import (
     agent_workflow_step_role_enum,
     agent_workflow_step_status_enum,
 )
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class AgentWorkflowStep(Base):
@@ -44,11 +42,9 @@ class AgentWorkflowStep(Base):
         Index("ix_agent_workflow_steps_run_sequence", "run_id", "sequence_number"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
-    run_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    run_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    workspace_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
     sequence_number: Mapped[int] = mapped_column(nullable=False)
     role: Mapped[AgentWorkflowStepRole] = mapped_column(
         agent_workflow_step_role_enum, nullable=False
@@ -58,10 +54,10 @@ class AgentWorkflowStep(Base):
     )
     attempt: Mapped[int] = mapped_column(nullable=False, server_default=text("1"))
     input_json: Mapped[dict[str, object]] = mapped_column(
-        "input", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+        "input", json_type, nullable=False, server_default=text("'{}'")
     )
     output_json: Mapped[dict[str, object]] = mapped_column(
-        "output", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+        "output", json_type, nullable=False, server_default=text("'{}'")
     )
     prompt: Mapped[str | None] = mapped_column(Text)
     prompt_template_id: Mapped[str | None] = mapped_column(String(255))
@@ -70,8 +66,8 @@ class AgentWorkflowStep(Base):
     output_hash: Mapped[str | None] = mapped_column(String(64))
     schema_name: Mapped[str | None] = mapped_column(String(100))
     schema_version: Mapped[str | None] = mapped_column(String(32))
-    predecessor_step_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
-    correlation_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    predecessor_step_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    correlation_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     provider: Mapped[str | None] = mapped_column(String(100))
     model: Mapped[str | None] = mapped_column(String(255))
     decision: Mapped[str | None] = mapped_column(String(32))

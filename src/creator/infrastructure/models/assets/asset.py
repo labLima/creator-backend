@@ -13,14 +13,12 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
 from creator.infrastructure.db import Base
 
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class Asset(Base):
@@ -46,7 +44,7 @@ class Asset(Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint("byte_size >= 0", name="ck_assets_byte_size_non_negative"),
-        CheckConstraint("char_length(asset_type) BETWEEN 1 AND 100", name="ck_assets_type_length"),
+        CheckConstraint("length(asset_type) BETWEEN 1 AND 100", name="ck_assets_type_length"),
         CheckConstraint(
             "deleted_at IS NULL OR deleted_at >= created_at", name="ck_assets_deleted_after_created"
         ),
@@ -56,19 +54,17 @@ class Asset(Base):
         Index("ix_assets_content_id", "content_id"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("workspaces.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    brand_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
-    project_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
-    content_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    brand_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    project_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    content_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     uploaded_by_user_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("users.id", ondelete="SET NULL"),
     )
     asset_type: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -79,9 +75,9 @@ class Asset(Base):
     checksum: Mapped[str | None] = mapped_column(String(255))
     metadata_json: Mapped[dict[str, object]] = mapped_column(
         "metadata",
-        JSONB,
+        json_type,
         nullable=False,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'{}'"),
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,
