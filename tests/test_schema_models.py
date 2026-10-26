@@ -55,7 +55,7 @@ def test_pdf_schema_tables_are_registered_in_metadata() -> None:
 def test_core_columns_match_pdf_lengths() -> None:
     users = models.Base.metadata.tables["users"]
     workspaces = models.Base.metadata.tables["workspaces"]
-    assert users.c.email.type.length == 50
+    assert users.c.email.type.length == 320
     assert users.c.display_name.type.length == 50
     assert workspaces.c.name.type.length == 50
 

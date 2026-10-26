@@ -7,7 +7,6 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from creator.api.dependencies import (
-    get_auth_client,
     get_current_user,
     get_generation_queue,
     get_llm_provider,
@@ -19,10 +18,8 @@ from creator.application.image_generation import (
     image_regeneration_request_fingerprint,
 )
 from creator.config import Settings, get_settings
-from creator.domain.auth import AuthSession, AuthSignupResult, Principal
 from creator.domain.exceptions import PersistenceError
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.auth import AuthLoginRejectedError, AuthSignupRejectedError
 from creator.integrations.gemini.exceptions import GeminiTimeoutError
 from creator.main import app, create_app
 from creator.repositories import (
@@ -48,16 +45,14 @@ from creator.repositories import (
 from creator.repositories.common import PageRequest
 from creator.services.storage.provider import StorageUrlError
 
-JWT_SECRET = "test-supabase-jwt-secret-with-32-bytes"
-SUPABASE_URL = "https://creator-test.supabase.co"
+JWT_SECRET = "test-local-auth-jwt-secret-with-32-bytes"
 
 
 def authenticated_app() -> object:
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: Settings(
         auth_required=True,
-        supabase_url=SUPABASE_URL,
-        supabase_jwt_secret=JWT_SECRET,
+        auth_jwt_secret=JWT_SECRET,
         rate_limit_backend="memory",
     )
     return application
@@ -85,46 +80,6 @@ def admin_app() -> object:
         global_role="admin",
     )
     return application
-
-
-class FakeAuthClient:
-    def __init__(self, error: Exception | None = None) -> None:
-        self.error = error
-        self.requests: list[dict[str, str]] = []
-
-    def sign_in_with_password(self, *, email: str, password: str) -> AuthSession:
-        self.requests.append({"email": email, "password": password})
-        if self.error:
-            raise self.error
-        return AuthSession(
-            access_token="access-token",
-            refresh_token="refresh-token",
-            token_type="bearer",
-            expires_in=3600,
-            principal=Principal(
-                subject="principal-123",
-                email=email,
-                role="authenticated",
-            ),
-            provider="supabase",
-            metadata={"aud": "authenticated"},
-        )
-
-    def sign_up_with_password(self, *, email: str, password: str) -> AuthSignupResult:
-        self.requests.append({"email": email, "password": password})
-        if self.error:
-            raise self.error
-        return AuthSignupResult(
-            principal=Principal(
-                subject="principal-123",
-                email=email,
-                role="authenticated",
-            ),
-            session=None,
-            confirmation_required=True,
-            provider="supabase",
-            metadata={"aud": "authenticated"},
-        )
 
 
 class FakeContentRepository:
@@ -832,16 +787,17 @@ def status_record(
     )
 
 
-def supabase_access_token() -> str:
+def local_access_token() -> str:
     return jwt.encode(
         {
-            "sub": "principal-123",
-            "aud": "authenticated",
-            "iss": f"{SUPABASE_URL}/auth/v1",
+            "sub": "00000000-0000-0000-0000-000000000001",
+            "aud": "creator-api",
+            "iss": "creator",
             "exp": datetime.now(UTC) + timedelta(minutes=5),
             "iat": datetime.now(UTC),
-            "role": "authenticated",
-            "session_id": "session-123",
+            "role": "membro",
+            "type": "access",
+            "session_id": "00000000-0000-0000-0000-000000000099",
         },
         JWT_SECRET,
         algorithm="HS256",
@@ -907,7 +863,7 @@ async def test_user_admin_crud_routes_return_envelopes() -> None:
         create_response = await client.post(
             "/api/v1/users",
             json={
-                "external_id": "supabase:new",
+                "external_id": "local:new",
                 "email": "new@example.com",
                 "display_name": "New User",
                 "global_role": "gestor",
@@ -1555,172 +1511,6 @@ async def test_delete_content_is_idempotent_for_accessible_deleted_content() -> 
 
 
 @pytest.mark.anyio
-async def test_login_returns_supabase_session_envelope() -> None:
-    auth_client = FakeAuthClient()
-    application = unauthenticated_app()
-    application.dependency_overrides[get_auth_client] = lambda: auth_client
-
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": "principal@example.com", "password": "correct-password"},
-        )
-
-    assert response.status_code == 200
-    assert response.json()["success"] is True
-    assert response.json()["data"]["access_token"] == "access-token"
-    assert response.json()["data"]["refresh_token"] == "refresh-token"
-    assert response.json()["data"]["principal"] == {
-        "subject": "principal-123",
-        "email": "principal@example.com",
-        "role": "authenticated",
-    }
-    assert auth_client.requests == [
-        {"email": "principal@example.com", "password": "correct-password"}
-    ]
-
-
-@pytest.mark.anyio
-async def test_login_rejects_invalid_credentials_with_structured_error() -> None:
-    application = unauthenticated_app()
-    application.dependency_overrides[get_auth_client] = lambda: FakeAuthClient(
-        AuthLoginRejectedError("rejected")
-    )
-
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": "principal@example.com", "password": "wrong-password"},
-        )
-
-    assert response.status_code == 401
-    assert response.json()["success"] is False
-    assert response.json()["error"]["code"] == "LOGIN_REJECTED"
-    assert response.headers["X-Request-ID"] == response.json()["meta"]["request_id"]
-
-
-@pytest.mark.anyio
-async def test_signup_returns_created_principal_without_session_when_confirmation_is_required() -> (
-    None
-):
-    auth_client = FakeAuthClient()
-    unit_of_work = FakeUnitOfWork()
-    application = unauthenticated_app()
-    application.dependency_overrides[get_auth_client] = lambda: auth_client
-    application.dependency_overrides[get_uow] = lambda: unit_of_work
-
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/auth/signup",
-            json=auth_signup_payload(),
-        )
-
-    assert response.status_code == 200
-    assert response.json()["success"] is True
-    assert response.json()["data"]["principal"] == {
-        "subject": "principal-123",
-        "email": "new-principal@example.com",
-        "role": "authenticated",
-    }
-    assert response.json()["data"]["session"] is None
-    assert response.json()["data"]["workspace"]["id"] == "10000000-0000-0000-0000-000000000001"
-    assert response.json()["data"]["workspace"]["name"] == "Creator Workspace"
-    assert response.json()["data"]["membership"]["role"] == "owner"
-    assert unit_of_work.users.added == [
-        {
-            "external_id": "principal-123",
-            "email": "new-principal@example.com",
-            "display_name": None,
-        }
-    ]
-    assert unit_of_work.workspaces.created == [
-        {
-            "user_id": UUID("00000000-0000-0000-0000-000000000001"),
-            "name": "Creator Workspace",
-            "role": "owner",
-        }
-    ]
-    assert unit_of_work.commits == 1
-    assert response.json()["data"]["confirmation_required"] is True
-    assert auth_client.requests == [
-        {"email": "new-principal@example.com", "password": "correct-password"}
-    ]
-
-
-@pytest.mark.anyio
-async def test_signup_rejects_invalid_request_with_structured_error() -> None:
-    application = unauthenticated_app()
-    application.dependency_overrides[get_uow] = lambda: FakeUnitOfWork()
-    application.dependency_overrides[get_auth_client] = lambda: FakeAuthClient(
-        AuthSignupRejectedError("rejected")
-    )
-
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/auth/signup",
-            json=auth_signup_payload(password="password"),
-        )
-
-    assert response.status_code == 400
-    assert response.json()["success"] is False
-    assert response.json()["error"]["code"] == "SIGNUP_REJECTED"
-
-
-@pytest.mark.anyio
-async def test_signup_rejection_includes_normalized_provider_message() -> None:
-    application = unauthenticated_app()
-    application.dependency_overrides[get_uow] = lambda: FakeUnitOfWork()
-    application.dependency_overrides[get_auth_client] = lambda: FakeAuthClient(
-        AuthSignupRejectedError(
-            "rejected",
-            provider_code="user_already_exists",
-            provider_message="User already registered",
-        )
-    )
-
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/auth/signup",
-            json=auth_signup_payload(password="password"),
-        )
-
-    assert response.status_code == 400
-    assert response.json()["success"] is False
-    assert response.json()["error"] == {
-        "code": "SIGNUP_REJECTED",
-        "message": "User already registered",
-    }
-
-
-@pytest.mark.anyio
-async def test_signup_rolls_back_when_workspace_bootstrap_fails() -> None:
-    application = unauthenticated_app()
-    unit_of_work = FakeUnitOfWork(workspace_create_error=PersistenceError("db failed"))
-    application.dependency_overrides[get_uow] = lambda: unit_of_work
-    application.dependency_overrides[get_auth_client] = lambda: FakeAuthClient()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        response = await client.post("/api/v1/auth/signup", json=auth_signup_payload())
-
-    assert response.status_code == 500
-    assert response.json()["error"]["code"] == "SIGNUP_BOOTSTRAP_FAILED"
-    assert unit_of_work.commits == 0
-    assert unit_of_work.rollbacks == 1
-
-
-@pytest.mark.anyio
 async def test_create_workspace_returns_owner_membership() -> None:
     unit_of_work = FakeUnitOfWork()
     application = authorized_app()
@@ -1786,13 +1576,13 @@ async def test_api_v1_route_requires_auth_when_enabled() -> None:
 
 
 @pytest.mark.anyio
-async def test_api_v1_route_rejects_bearer_token_without_optional_auth_config() -> None:
+async def test_api_v1_route_rejects_bearer_token_without_auth_config() -> None:
     async with AsyncClient(
         transport=ASGITransport(app=unauthenticated_app()), base_url="http://test"
     ) as client:
         response = await client.post(
             "/api/v1/images/generate",
-            headers={"Authorization": f"Bearer {supabase_access_token()}"},
+            headers={"Authorization": f"Bearer {local_access_token()}"},
         )
 
     assert response.status_code == 401
@@ -1801,13 +1591,13 @@ async def test_api_v1_route_rejects_bearer_token_without_optional_auth_config() 
 
 
 @pytest.mark.anyio
-async def test_api_v1_route_accepts_valid_supabase_token_when_enabled() -> None:
+async def test_api_v1_route_accepts_valid_local_token_when_enabled() -> None:
     async with AsyncClient(
         transport=ASGITransport(app=authorized_app()), base_url="http://test"
     ) as client:
         response = await client.post(
             "/api/v1/content/generate",
-            headers={"Authorization": f"Bearer {supabase_access_token()}"},
+            headers={"Authorization": f"Bearer {local_access_token()}"},
         )
 
     assert response.status_code == 422
@@ -2427,12 +2217,12 @@ async def test_swagger_uses_bearer_security_for_protected_routes() -> None:
         response = await client.get("/openapi.json")
 
     openapi_schema = response.json()
-    assert openapi_schema["components"]["securitySchemes"]["SupabaseBearerAuth"] == {
+    assert openapi_schema["components"]["securitySchemes"]["CreatorBearerAuth"] == {
         "type": "http",
         "scheme": "bearer",
     }
     generate_operation = openapi_schema["paths"]["/api/v1/content/generate"]["post"]
-    assert generate_operation["security"] == [{"SupabaseBearerAuth": []}]
+    assert generate_operation["security"] == [{"CreatorBearerAuth": []}]
     assert all(
         parameter["name"] != "authorization"
         for parameter in generate_operation.get("parameters", [])

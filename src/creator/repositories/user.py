@@ -18,6 +18,7 @@ class UserRecord:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
+    password_hash: str | None = None
 
 
 class UserRepository(Protocol):
@@ -28,6 +29,7 @@ class UserRepository(Protocol):
         email: str | None = None,
         display_name: str | None = None,
         global_role: str = "membro",
+        password_hash: str | None = None,
     ) -> UserRecord: ...
 
     def get_by_id(self, user_id: UUID, *, include_deleted: bool = False) -> UserRecord | None: ...
@@ -35,6 +37,8 @@ class UserRepository(Protocol):
     def get_by_external_id(
         self, external_id: str, *, include_deleted: bool = False
     ) -> UserRecord | None: ...
+
+    def get_by_email(self, email: str, *, include_deleted: bool = False) -> UserRecord | None: ...
 
     def list(
         self, *, include_deleted: bool = False, page: PageRequest | None = None

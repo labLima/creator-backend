@@ -1,15 +1,15 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import jwt
 import pytest
 from fastapi import HTTPException
 
-from creator.api import dependencies
 from creator.api.dependencies import get_current_user, get_principal
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.infrastructure import queue as queue_module
-from creator.infrastructure.auth import AccessTokenInvalidError
 from creator.infrastructure.db import get_db
 from creator.infrastructure.queue import get_generation_queue
 from creator.services.agents.factory import UnconfiguredMultiAgentOrchestrator
@@ -25,7 +25,28 @@ def test_settings_are_cached() -> None:
     assert get_settings() is get_settings()
 
 
-def test_required_auth_without_supabase_configuration_fails_closed() -> None:
+SECRET = "test-local-auth-jwt-secret-with-32-bytes"
+
+
+def local_token(*, subject: str = "00000000-0000-0000-0000-000000000001") -> str:
+    now = datetime.now(UTC)
+    return jwt.encode(
+        {
+            "iss": "creator",
+            "aud": "creator-api",
+            "sub": subject,
+            "session_id": "00000000-0000-0000-0000-000000000099",
+            "role": "membro",
+            "type": "access",
+            "iat": int(now.timestamp()),
+            "exp": int((now + timedelta(minutes=5)).timestamp()),
+        },
+        SECRET,
+        algorithm="HS256",
+    )
+
+
+def test_required_auth_without_configuration_fails_closed() -> None:
     with pytest.raises(HTTPException) as error:
         get_principal("Bearer token", Settings(_env_file=None, auth_required=True))
 
@@ -33,7 +54,7 @@ def test_required_auth_without_supabase_configuration_fails_closed() -> None:
     assert error.value.detail["code"] == "AUTHENTICATION_MISCONFIGURED"
 
 
-def test_optional_auth_without_supabase_configuration_returns_none() -> None:
+def test_optional_auth_without_configuration_returns_none() -> None:
     assert get_principal("Bearer token", Settings(_env_file=None, auth_required=False)) is None
 
 
@@ -41,79 +62,84 @@ def test_optional_auth_without_credentials_returns_none() -> None:
     assert get_principal(None, Settings(auth_required=False)) is None
 
 
-def test_principal_is_created_from_auth_verifier(monkeypatch: pytest.MonkeyPatch) -> None:
-    class FakeVerifier:
-        def verify(self, token: str) -> Principal:
-            return Principal(subject=token)
-
-    monkeypatch.setattr(
-        dependencies,
-        "create_auth_token_verifier",
-        lambda settings: FakeVerifier(),
+def test_principal_is_created_from_local_token() -> None:
+    principal = get_principal(
+        f"Bearer {local_token()}",
+        Settings(_env_file=None, auth_required=True, auth_jwt_secret=SECRET),
     )
 
-    assert get_principal("Bearer principal-id", Settings(auth_required=True)) == Principal(
-        subject="principal-id"
-    )
+    assert principal is not None
+    assert principal.subject == "00000000-0000-0000-0000-000000000001"
+    assert principal.session_id == "00000000-0000-0000-0000-000000000099"
 
 
-def test_invalid_bearer_token_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    class FakeVerifier:
-        def verify(self, token: str) -> Principal:
-            raise AccessTokenInvalidError("invalid")
-
-    monkeypatch.setattr(
-        dependencies,
-        "create_auth_token_verifier",
-        lambda settings: FakeVerifier(),
-    )
-
+def test_invalid_bearer_token_is_rejected() -> None:
     with pytest.raises(HTTPException) as error:
-        get_principal("Bearer token", Settings(auth_required=True))
+        get_principal(
+            "Bearer not-a-jwt",
+            Settings(_env_file=None, auth_required=True, auth_jwt_secret=SECRET),
+        )
 
     assert error.value.status_code == 401
 
 
-def test_current_user_creates_missing_user() -> None:
-    created_user = SimpleNamespace(
-        id="user-id",
-        external_id="principal-id",
+def test_current_user_requires_active_session() -> None:
+    user = SimpleNamespace(
+        id="00000000-0000-0000-0000-000000000001",
+        external_id="local:test",
         email="person@example.com",
         display_name="Person",
         deleted_at=None,
     )
 
     class FakeUsers:
-        def get_by_external_id(self, external_id: str, *, include_deleted: bool) -> None:
-            return None
+        def get_by_id(self, user_id: object, *, include_deleted: bool) -> SimpleNamespace:
+            return user
 
-        def add(
-            self,
-            *,
-            external_id: str,
-            email: str | None,
-            display_name: str | None,
-        ) -> SimpleNamespace:
-            assert external_id == "principal-id"
-            assert email == "person@example.com"
-            assert display_name == "Person"
-            return created_user
+    class FakeAuthSessions:
+        def get_by_id(self, session_id: object) -> SimpleNamespace:
+            return SimpleNamespace(
+                revoked_at=None, expires_at=datetime.now(UTC) + timedelta(days=1)
+            )
 
     class FakeUnitOfWork:
         users = FakeUsers()
+        auth_sessions = FakeAuthSessions()
 
-        def commit(self) -> None:
-            self.committed = True
-
-    unit_of_work = FakeUnitOfWork()
     principal = Principal(
-        subject="principal-id",
-        email="person@example.com",
-        claims={"user_metadata": {"display_name": "Person"}},
+        subject="00000000-0000-0000-0000-000000000001",
+        session_id="00000000-0000-0000-0000-000000000099",
     )
 
-    assert get_current_user(principal, unit_of_work) is created_user
-    assert unit_of_work.committed is True
+    assert get_current_user(principal, FakeUnitOfWork()) is user
+
+
+def test_current_user_rejects_revoked_session() -> None:
+    class FakeUsers:
+        def get_by_id(self, user_id: object, *, include_deleted: bool) -> None:
+            return None
+
+    class FakeAuthSessions:
+        def get_by_id(self, session_id: object) -> SimpleNamespace:
+            return SimpleNamespace(
+                revoked_at=datetime.now(UTC),
+                expires_at=datetime.now(UTC) + timedelta(days=1),
+            )
+
+    class FakeUnitOfWork:
+        users = FakeUsers()
+        auth_sessions = FakeAuthSessions()
+
+    with pytest.raises(HTTPException) as error:
+        get_current_user(
+            Principal(
+                subject="00000000-0000-0000-0000-000000000001",
+                session_id="00000000-0000-0000-0000-000000000099",
+            ),
+            FakeUnitOfWork(),
+        )
+
+    assert error.value.status_code == 401
 
 
 def test_current_user_rejects_missing_principal() -> None:

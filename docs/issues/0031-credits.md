@@ -2,9 +2,10 @@
 
 - ADR primária: [`0005-postgresql-sqlalchemy-alembic`](../adr/0005-postgresql-sqlalchemy-alembic.md)
 - ADR relacionada: [`0001-llm-provider`](../adr/0001-llm-provider.md)
-- ADR tracker: [#38](https://github.com/lefilcompany/creator-backend-python/issues/38)
-- GitHub: [#54](https://github.com/lefilcompany/creator-backend-python/issues/54)
+- ADR tracker: [#38](https://github.com/labLima/creator-backend/issues/38)
+- GitHub: [#54](https://github.com/labLima/creator-backend/issues/54)
 - Labels: `backend`, `database`, `architecture`, `priority-high`, `adr-005`
+- Status: reaberta em 2026-10-26; schema entregue, ledger pendente
 
 ## Contexto
 

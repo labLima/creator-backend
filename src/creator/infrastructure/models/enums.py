@@ -39,63 +39,72 @@ class GenerationType(StrEnum):
 global_role_enum = SQLEnum(
     GlobalRole,
     name="global_role",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 workspace_role_enum = SQLEnum(
     WorkspaceRole,
     name="workspace_role",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 content_type_enum = SQLEnum(
     ContentType,
     name="content_type",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 generation_type_enum = SQLEnum(
     GenerationType,
     name="generation_type",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 generation_job_status_enum = SQLEnum(
     GenerationJobStatus,
     name="generation_job_status",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 agent_workflow_status_enum = SQLEnum(
     AgentWorkflowStatus,
     name="agent_workflow_status",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 agent_workflow_step_status_enum = SQLEnum(
     AgentWorkflowStepStatus,
     name="agent_workflow_step_status",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 agent_workflow_step_role_enum = SQLEnum(
     AgentWorkflowStepRole,
     name="agent_workflow_step_role",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )
 human_review_mode_enum = SQLEnum(
     HumanReviewMode,
     name="human_review_mode",
-    native_enum=True,
+    native_enum=False,
+    create_constraint=True,
     values_callable=enum_values,
     validate_strings=True,
 )

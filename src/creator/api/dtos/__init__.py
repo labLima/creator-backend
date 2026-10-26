@@ -1,6 +1,6 @@
 """HTTP DTO facade; definitions live in bounded-context packages."""
 
-from .auth import AuthLoginRequest, AuthSignupRequest
+from .auth import AuthLoginRequest, AuthRefreshRequest, AuthSignupRequest
 from .billing import (
     BillingAccountCreateRequest,
     BillingAccountUpdateRequest,
@@ -104,6 +104,7 @@ __all__ = [
     "BrandAssetCreateRequest",
     "BrandAssetUpdateRequest",
     "AuthLoginRequest",
+    "AuthRefreshRequest",
     "AuthSignupRequest",
     "BillingAccountCreateRequest",
     "BrandCreateRequest",

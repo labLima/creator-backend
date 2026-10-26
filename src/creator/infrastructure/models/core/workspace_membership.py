@@ -9,7 +9,6 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
@@ -19,7 +18,7 @@ from ..enums import (
     WorkspaceRole,
     workspace_role_enum,
 )
-from ..types import timestamp_tz, uuid_pk
+from ..types import timestamp_tz, uuid_default, uuid_pk
 
 
 class WorkspaceMembership(Base):
@@ -36,20 +35,18 @@ class WorkspaceMembership(Base):
             "user_id",
             "workspace_id",
             unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
     )
     user_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )

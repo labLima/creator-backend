@@ -1,8 +1,8 @@
 # ADR-005: PostgreSQL com SQLAlchemy e Alembic
 
-- Status: accepted
+- Status: superseded by [ADR-021](0021-sqlite-default-database.md) for the database engine; SQLAlchemy/Alembic decisions remain
 - Fonte: `adr_creator_python.pdf`, seção 7
-- Tracker: [#38](https://github.com/lefilcompany/creator-backend-python/issues/38)
+- Tracker: [#38](https://github.com/labLima/creator-backend/issues/38)
 
 ## Decisão
 

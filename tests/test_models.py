@@ -104,7 +104,7 @@ def test_settings_and_image_uniqueness_constraints_are_explicit() -> None:
     )
 
     assert version_index.unique is True
-    assert str(version_index.dialect_options["postgresql"]["where"]) == "deleted_at IS NULL"
+    assert str(version_index.dialect_options["sqlite"]["where"]) == "deleted_at IS NULL"
 
 
 def test_credit_ledger_constraints_and_indexes_are_explicit() -> None:

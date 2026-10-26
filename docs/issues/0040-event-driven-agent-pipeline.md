@@ -1,5 +1,7 @@
 # Issue 0040: event-driven agent pipeline
 
+- GitHub: [#107](https://github.com/labLima/creator-backend/issues/107)
+
 - ADR: [`0018-event-driven-agent-pipeline`](../adr/0018-event-driven-agent-pipeline.md)
 - Labels: `agents`, `architecture`, `backend`
 

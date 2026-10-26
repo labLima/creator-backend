@@ -12,8 +12,6 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure import schema_models as _schema_models  # noqa: F401
@@ -23,7 +21,7 @@ from ..enums import (
     ContentType,
     content_type_enum,
 )
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class Content(Base):
@@ -51,20 +49,18 @@ class Content(Base):
         Index("ix_contents_created_by_user_id", "created_by_user_id"),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("workspaces.id", ondelete="RESTRICT"),
         nullable=False,
     )
     created_by_user_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("users.id", ondelete="SET NULL"),
     )
-    brand_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
-    project_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    brand_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    project_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     content_type: Mapped[ContentType] = mapped_column(
         "type",
         content_type_enum,
@@ -73,9 +69,9 @@ class Content(Base):
     )
     title: Mapped[str | None] = mapped_column(String(255))
     payload: Mapped[dict[str, object]] = mapped_column(
-        JSONB,
+        json_type,
         nullable=False,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'{}'"),
     )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,

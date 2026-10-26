@@ -10,8 +10,6 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.domain.generation import GenerationJobStatus
@@ -23,7 +21,7 @@ from ..enums import (
     generation_job_status_enum,
     generation_type_enum,
 )
-from ..types import timestamp_tz, uuid_pk
+from ..types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 
 class GenerationJobStatusEvent(Base):
@@ -38,21 +36,23 @@ class GenerationJobStatusEvent(Base):
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     generation_job_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        uuid_pk,
         ForeignKey("generation_jobs.id", ondelete="CASCADE"),
         nullable=False,
     )
     previous_status: Mapped[GenerationJobStatus | None] = mapped_column(generation_job_status_enum)
     status: Mapped[GenerationJobStatus] = mapped_column(generation_job_status_enum, nullable=False)
-    artifact_type: Mapped[GenerationType] = mapped_column(generation_type_enum, nullable=False)
+    artifact_type: Mapped[GenerationType] = mapped_column(
+        generation_type_enum, nullable=False, server_default=text("'IMAGE'")
+    )
     version: Mapped[int] = mapped_column(nullable=False, server_default=text("1"))
-    correlation_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    sanitized_result: Mapped[dict[str, object] | None] = mapped_column(JSONB)
-    request_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    correlation_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=text("''")
+    )
+    sanitized_result: Mapped[dict[str, object] | None] = mapped_column(json_type)
+    request_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     occurred_at: Mapped[object] = mapped_column(
         timestamp_tz,
         nullable=False,

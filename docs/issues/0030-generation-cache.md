@@ -1,8 +1,8 @@
 # Issue 0030: generation cache
 
 - ADR primária: [`0001-llm-provider`](../adr/0001-llm-provider.md)
-- ADR tracker: [#34](https://github.com/lefilcompany/creator-backend-python/issues/34)
-- GitHub: [#53](https://github.com/lefilcompany/creator-backend-python/issues/53)
+- ADR tracker: [#34](https://github.com/labLima/creator-backend/issues/34)
+- GitHub: [#53](https://github.com/labLima/creator-backend/issues/53)
 - Labels: `backend`, `database`, `architecture`, `adr-001`
 
 ## Contexto

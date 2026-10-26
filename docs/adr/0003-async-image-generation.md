@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Fonte: `adr_creator_python.pdf`, seção 5
-- Tracker: [#36](https://github.com/lefilcompany/creator-backend-python/issues/36)
+- Tracker: [#36](https://github.com/labLima/creator-backend/issues/36)
 
 ## Decisão
 

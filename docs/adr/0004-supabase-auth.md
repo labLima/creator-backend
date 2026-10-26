@@ -1,8 +1,8 @@
 # ADR-004: Autenticação via Supabase Auth
 
-- Status: accepted
+- Status: superseded by [ADR-020](0020-self-hosted-authentication.md)
 - Fonte: `adr_creator_python.pdf`, seção 6
-- Tracker: [#37](https://github.com/lefilcompany/creator-backend-python/issues/37)
+- Tracker: [#37](https://github.com/labLima/creator-backend/issues/37)
 
 ## Decisão
 

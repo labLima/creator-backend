@@ -5,6 +5,9 @@ description = "Exact deterministic placeholders: test JWT fixture, test password
 regexTarget = "match"
 regexes = [
   '''test-supabase-jwt-secret-with-32-bytes''',
+  '''test-local-auth-jwt-secret-with-32-bytes''',
+  '''test-e2e-local-auth-secret-with-32-bytes''',
+  '''ci-test-secret-with-32-bytes''',
   '''correct-password''',
   '''gemini_api_key="secret"''',
   '''POSTGRES_PASSWORD:\s*creator''',
