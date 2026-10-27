@@ -2,7 +2,10 @@ openapi: 3.1.0
 info:
   title: Creator API
   version: 0.1.0
-  description: Contract-first API for Creator, including core Workspace-scoped CRUD resources.
+  description: >-
+    Contract-first API for Creator, including core Workspace-scoped CRUD resources.
+    Every HTTP response includes the X-Request-ID response header; JSON envelopes
+    repeat the same UUID in meta.request_id.
 x-rate-limit:
   applies_to: /api/v1/**
   default_limit: 5
@@ -5307,6 +5310,15 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Unexpected server failure with a safe error envelope.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     LoginRejected:
       description: Creator rejected the email and password credentials.
       content:
@@ -9225,4 +9237,9 @@ components:
               type: string
               format: uuid
   requestBodies: {}
-  headers: {}
+  headers:
+    RequestId:
+      description: Request identifier used to correlate the response and logs.
+      schema:
+        type: string
+        format: uuid

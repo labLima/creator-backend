@@ -324,6 +324,7 @@ def _job_record(row: models.GenerationJob, content_id: UUID) -> GenerationJobRec
         created_at=_datetime(row.created_at),
         updated_at=_datetime(row.updated_at),
         deleted_at=_optional_datetime(row.deleted_at),
+        request_id=row.request_id,
     )
 
 
@@ -1989,6 +1990,7 @@ class SqlAlchemyImageGenerationRepository:
         parameters: JsonObject | None = None,
         external_id: str | None = None,
         max_attempts: int = 1,
+        request_id: UUID | None = None,
     ) -> GenerationJobRecord:
         if requested_by_user_id is None or not _user_has_workspace_role(
             self._session,
@@ -2023,10 +2025,11 @@ class SqlAlchemyImageGenerationRepository:
             generation_id=generation.id,
             external_id=external_id,
             max_attempts=max_attempts,
+            request_id=request_id,
         )
         self._session.add(job)
         flush_or_raise(self._session)
-        self._add_status_event(job.id, None, GenerationJobStatus.PENDING)
+        self._add_status_event(job.id, None, GenerationJobStatus.PENDING, request_id=request_id)
         flush_or_raise(self._session)
         return _job_record(job, content_id)
 
@@ -2517,19 +2520,22 @@ class SqlAlchemyImageGenerationRepository:
         if not can_transition(current, target):
             raise InvalidStateTransitionError(f"Cannot transition {current} to {target}")
         job.status = target
-        self._add_status_event(job.id, current, target)
+        self._add_status_event(job.id, current, target, request_id=job.request_id)
 
     def _add_status_event(
         self,
         job_id: UUID,
         previous_status: GenerationJobStatus | None,
         status: GenerationJobStatus,
+        *,
+        request_id: UUID | None = None,
     ) -> None:
         self._session.add(
             models.GenerationJobStatusEvent(
                 generation_job_id=job_id,
                 previous_status=previous_status,
                 status=status,
+                request_id=request_id,
             )
         )
 

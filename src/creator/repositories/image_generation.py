@@ -29,6 +29,7 @@ class GenerationJobRecord:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
+    request_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +112,7 @@ class ImageGenerationRepository(Protocol):
         parameters: JsonObject | None = None,
         external_id: str | None = None,
         max_attempts: int = 1,
+        request_id: UUID | None = None,
     ) -> GenerationJobRecord: ...
 
     def get_job_for_user(

@@ -63,6 +63,7 @@ class GeminiLLMProvider:
                 logger.info(
                     "gemini_text_generation_success",
                     extra={
+                        "provider": self.provider_name,
                         "model": self.model,
                         "attempt": attempt,
                         "duration_ms": duration_ms,
@@ -77,6 +78,7 @@ class GeminiLLMProvider:
                 logger.warning(
                     "gemini_text_generation_failure",
                     extra={
+                        "provider": self.provider_name,
                         "model": self.model,
                         "attempt": attempt,
                         "duration_ms": duration_ms,

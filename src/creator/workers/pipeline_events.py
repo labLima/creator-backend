@@ -7,6 +7,7 @@ from typing import Any
 from creator.config import get_settings
 from creator.domain.agent_workflow import AgentWorkflowStatus
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
+from creator.infrastructure.observability import correlation_context
 from creator.infrastructure.queue import RqGenerationQueue
 from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from creator.services.agents.event_publisher import OutboxPublisher
@@ -71,13 +72,23 @@ def _consume_stage(
     _consume(
         payload,
         expected_types,
-        lambda event: run_pipeline_stage(
+        lambda event: _run_stage_with_context(event, stage),
+    )
+
+
+def _run_stage_with_context(event: PipelineEvent, stage: str) -> None:
+    request_id = event.request_id or event.correlation_id
+    with correlation_context(
+        request_id=request_id,
+        job_id=event.run_id,
+        correlation_id=event.correlation_id,
+    ):
+        run_pipeline_stage(
             str(event.run_id),
-            str(event.correlation_id),
+            str(request_id),
             stage=stage,
             source_event_id=event.event_id,
-        ),
-    )
+        )
 
 
 def _consume(

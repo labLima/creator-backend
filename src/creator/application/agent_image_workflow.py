@@ -124,6 +124,7 @@ def start_image_workflow(
         workspace_id=run.workspace_id,
         run_id=run.id,
         correlation_id=command.request_id,
+        request_id=command.request_id,
         payload_ref=PipelinePayloadReference(input_ref="AgentWorkflowRun.input"),
     )
     unit_of_work.outbox.add(
@@ -189,6 +190,7 @@ def decide_image_workflow(
             workspace_id=updated.workspace_id,
             run_id=updated.id,
             correlation_id=request_id,
+            request_id=request_id,
             payload_ref=PipelinePayloadReference(
                 feedback_ref="AgentWorkflowRun.input.human_feedback",
                 predecessor_role="REVIEWER",

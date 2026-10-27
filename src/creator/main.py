@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import logging
+import time
 from collections.abc import Mapping
 from typing import Annotated, Any, cast
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
 from creator.api.dependencies import (
     enforce_rate_limit,
@@ -152,6 +154,11 @@ from creator.domain.auth import AuthSession, AuthSignupResult, Principal
 from creator.domain.exceptions import EntityNotFoundError, PersistenceError
 from creator.domain.generation import GenerationJobStatus
 from creator.infrastructure.metrics import MetricsRegistry
+from creator.infrastructure.observability import (
+    configure_logging,
+    correlation_context,
+    resolve_request_id,
+)
 from creator.integrations.gemini.exceptions import (
     GeminiAuthenticationError,
     GeminiBlockedContentError,
@@ -203,6 +210,8 @@ OPENAPI_TAGS = [
     {"name": "Billing", "description": "Billing plan administration endpoints."},
 ]
 
+logger = logging.getLogger(__name__)
+
 
 def _request_id(request: Request | None = None) -> UUID:
     if request is None:
@@ -210,10 +219,7 @@ def _request_id(request: Request | None = None) -> UUID:
     existing = getattr(request.state, "request_id", None)
     if isinstance(existing, UUID):
         return existing
-    try:
-        request_id = UUID(request.headers.get("X-Request-ID", ""))
-    except ValueError:
-        request_id = uuid4()
+    request_id = resolve_request_id(request.headers.get("X-Request-ID"))
     request.state.request_id = request_id
     return request_id
 
@@ -1275,6 +1281,24 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
             },
         )
         responses = components.setdefault("responses", {})
+        headers = components.setdefault("headers", {})
+        headers.setdefault(
+            "RequestId",
+            {
+                "description": "Request identifier used to correlate the response and logs.",
+                "schema": {"type": "string", "format": "uuid"},
+            },
+        )
+        responses.setdefault(
+            "InternalServerError",
+            {
+                "description": "Unexpected server failure with a safe error envelope.",
+                "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}},
+                "content": {
+                    "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+                },
+            },
+        )
         responses.setdefault(
             "RateLimitExceeded",
             {
@@ -1308,19 +1332,27 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
             "/api/v1/images/{id}/regenerate",
         }
         for path, path_item in schema.get("paths", {}).items():
-            if not path.startswith("/api/v1/"):
-                continue
             for operation in path_item.values():
                 if not isinstance(operation, dict) or "responses" not in operation:
                     continue
-                operation["responses"].setdefault(
-                    "429",
-                    {"$ref": "#/components/responses/RateLimitExceeded"},
-                )
-                if path in generation_paths:
+                if path.startswith("/api/v1/"):
                     operation["responses"].setdefault(
-                        "503", {"$ref": "#/components/responses/RateLimiterUnavailable"}
+                        "429",
+                        {"$ref": "#/components/responses/RateLimitExceeded"},
                     )
+                    if path in generation_paths:
+                        operation["responses"].setdefault(
+                            "503", {"$ref": "#/components/responses/RateLimiterUnavailable"}
+                        )
+                operation["responses"].setdefault(
+                    "500", {"$ref": "#/components/responses/InternalServerError"}
+                )
+                for response in operation["responses"].values():
+                    if isinstance(response, dict) and "$ref" not in response:
+                        response.setdefault(
+                            "headers",
+                            {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}},
+                        )
 
         application.openapi_schema = schema
         return schema
@@ -1328,7 +1360,15 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
     application.openapi = custom_openapi  # type: ignore[method-assign]
 
 
+def _normalized_route(request: Request) -> str:
+    route = request.scope.get("route")
+    route_path = getattr(route, "path", None)
+    return route_path if isinstance(route_path, str) else "__unmatched__"
+
+
 def create_app() -> FastAPI:
+    settings = get_settings()
+    configure_logging(settings)
     application = FastAPI(
         title="Creator API",
         version="0.1.0",
@@ -1336,6 +1376,44 @@ def create_app() -> FastAPI:
         dependencies=[Depends(enforce_rate_limit)],
     )
     _install_rate_limit_openapi(application)
+
+    @application.middleware("http")
+    async def observability_middleware(request: Request, call_next: Any) -> Response:
+        request_id = resolve_request_id(request.headers.get("X-Request-ID"))
+        request.state.request_id = request_id
+        registry = getattr(application.state, "metrics_registry", None)
+        if not isinstance(registry, MetricsRegistry):
+            registry = MetricsRegistry()
+            application.state.metrics_registry = registry
+        started_at = time.perf_counter()
+        response: Response | None = None
+        status_code = 500
+        with correlation_context(request_id=request_id):
+            try:
+                response = await call_next(request)
+                status_code = response.status_code
+                return response
+            finally:
+                duration_seconds = time.perf_counter() - started_at
+                route = _normalized_route(request)
+                if request.url.path != "/metrics":
+                    registry.observe_http_request(
+                        method=request.method.upper(),
+                        route=route,
+                        status=status_code,
+                        duration_seconds=duration_seconds,
+                    )
+                logger.info(
+                    "http_request_completed",
+                    extra={
+                        "method": request.method.upper(),
+                        "route": route,
+                        "status": status_code,
+                        "duration_ms": int(duration_seconds * 1000),
+                    },
+                )
+                if response is not None:
+                    response.headers["X-Request-ID"] = str(request_id)
 
     @application.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
@@ -1345,7 +1423,7 @@ def create_app() -> FastAPI:
             message = str(detail.get("message", "Request failed"))
         else:
             code = "HTTP_ERROR"
-            message = str(detail)
+            message = "Request failed"
         return error_response(
             code,
             message,
@@ -1362,6 +1440,19 @@ def create_app() -> FastAPI:
             "VALIDATION_FAILED",
             "Request validation failed",
             status_code=422,
+            request=request,
+        )
+
+    @application.exception_handler(Exception)
+    async def unexpected_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception(
+            "http_unhandled_exception",
+            extra={"exception_type": exc.__class__.__name__, "status": 500},
+        )
+        return error_response(
+            "INTERNAL_ERROR",
+            "Internal server error",
+            status_code=500,
             request=request,
         )
 

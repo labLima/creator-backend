@@ -74,7 +74,12 @@ class RqGenerationQueue:
                 interval=retry_intervals,
             ),
             unique=True,
-            meta={"event_id": str(event_id), "event_type": event.event_type.value},
+            meta={
+                "event_id": str(event_id),
+                "event_type": event.event_type.value,
+                "request_id": str(event.request_id or event.correlation_id),
+                "agent_workflow_run_id": str(event.run_id),
+            },
         )
 
 

@@ -9,6 +9,7 @@ from redis import Redis
 from rq import Queue, Worker
 
 from creator.config import get_settings
+from creator.infrastructure.observability import configure_logging
 from creator.workers.image_generation import recover_stale_processing_jobs
 
 
@@ -21,7 +22,7 @@ def main() -> None:
     subparsers.add_parser("all", help="Run the shared RQ worker and the outbox publisher loop.")
     args = parser.parse_args()
 
-    logging.basicConfig(level=get_settings().log_level)
+    configure_logging(get_settings())
     if args.command == "image-generation":
         run_image_generation_worker()
     elif args.command == "agent-workflow":

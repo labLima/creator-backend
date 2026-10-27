@@ -98,6 +98,7 @@ def submit_image_generation(
             parameters=generation_parameters,
             external_id=external_id,
             max_attempts=settings.image_generation_job_max_attempts,
+            request_id=request_id,
         )
     except ConflictError:
         unit_of_work.rollback()
@@ -187,6 +188,7 @@ def submit_image_regeneration(
             parameters=generation_parameters,
             external_id=external_id,
             max_attempts=settings.image_generation_job_max_attempts,
+            request_id=request_id,
         )
     except ConflictError:
         unit_of_work.rollback()

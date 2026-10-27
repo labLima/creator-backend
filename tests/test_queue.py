@@ -119,6 +119,7 @@ def test_pipeline_events_enqueue_stage_specific_jobs_with_retry(
         workspace_id=uuid4(),
         run_id=uuid4(),
         correlation_id=uuid4(),
+        request_id=uuid4(),
     )
 
     queue.RqGenerationQueue(settings).enqueue_pipeline_event(event_id=event.event_id, event=event)
@@ -127,6 +128,12 @@ def test_pipeline_events_enqueue_stage_specific_jobs_with_retry(
     assert call["f"] == f"creator.workers.pipeline_events.{handler}"
     assert call["job_id"] == f"creator:rq:pipeline-event:{event.event_id}"
     assert call["unique"] is True
+    assert call["meta"] == {
+        "event_id": str(event.event_id),
+        "event_type": event.event_type.value,
+        "request_id": str(event.request_id or event.correlation_id),
+        "agent_workflow_run_id": str(event.run_id),
+    }
     retry = call["retry"]
     assert retry.max == 4
     assert retry.interval == [30, 60, 120, 300]

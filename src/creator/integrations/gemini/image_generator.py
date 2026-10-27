@@ -66,6 +66,7 @@ class GeminiImageGenerator:
                 logger.info(
                     "gemini_image_generation_success",
                     extra={
+                        "provider": "gemini",
                         "model": model,
                         "attempt": attempt,
                         "duration_ms": duration_ms,
@@ -81,6 +82,7 @@ class GeminiImageGenerator:
                 logger.warning(
                     "gemini_image_generation_failure",
                     extra={
+                        "provider": "gemini",
                         "model": model,
                         "attempt": attempt,
                         "duration_ms": duration_ms,

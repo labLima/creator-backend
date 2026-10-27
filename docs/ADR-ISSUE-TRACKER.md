@@ -4,6 +4,10 @@ Este arquivo é o índice versionado da relação entre decisões arquiteturais 
 
 As issues #34 a #43 são trackers de ADR-001..010. As issues #108 a #113 são épicos de fase. As tarefas executáveis incluem #2–#33, #49–#54 e #56–#82. A issue #44 controla a descoberta e a migração do legado.
 
+A implementação de observabilidade e correlação desta entrega estende ADR-006 e
+ADR-008, mantendo o tracker ADR-006 (#39) como decisão primária e exigindo issue
+de implementação vinculada antes do fechamento do tracker.
+
 ## Milestones
 
 | Milestone | Propósito |
@@ -25,9 +29,9 @@ As issues #34 a #43 são trackers de ADR-001..010. As issues #108 a #113 são é
 | [ADR-003](adr/0003-async-image-generation.md) | [#36](https://github.com/labLima/creator-backend/issues/36) | #3, #5, #7, #8, #12, #16, #25, #33, #79 |
 | [ADR-004](adr/0004-supabase-auth.md) | [#37](https://github.com/labLima/creator-backend/issues/37) | #3, #14, #15, #20, #25; substituída por ADR-020 |
 | [ADR-005](adr/0005-postgresql-sqlalchemy-alembic.md) | [#38](https://github.com/labLima/creator-backend/issues/38) | #2, #3, #5, #6, #29, #50, #51, #52, #53, #54 |
-| [ADR-006](adr/0006-versioned-api-envelope.md) | [#39](https://github.com/labLima/creator-backend/issues/39) | #4, #13, #16, #17, #18, #19, #25, #28, #52 |
+| [ADR-006](adr/0006-versioned-api-envelope.md) | [#39](https://github.com/labLima/creator-backend/issues/39) | #4, #13, #16, #17, #18, #19, #25, #28, #52, [0043](issues/0043-observability-correlation.md) |
 | [ADR-007](adr/0007-openapi-first.md) | [#40](https://github.com/labLima/creator-backend/issues/40) | #4, #13, #16, #17, #18, #19, #25, #30, #31, #49, #50, #51, #52, #53, #54, #88 |
-| [ADR-008](adr/0008-api-limits-and-soft-delete.md) | [#41](https://github.com/labLima/creator-backend/issues/41) | #5, #13, #15, #18, #22, #25, #49, #50, #51, #52, #53, #54, [0024](issues/0024-api-rate-limiting.md) |
+| [ADR-008](adr/0008-api-limits-and-soft-delete.md) | [#41](https://github.com/labLima/creator-backend/issues/41) | #5, #13, #15, #18, #22, #25, #49, #50, #51, #52, #53, #54, [0024](issues/0024-api-rate-limiting.md), [0043](issues/0043-observability-correlation.md) |
 | [ADR-009](adr/0009-cloud-run-deployment.md) | [#42](https://github.com/labLima/creator-backend/issues/42) | #3, #7, #24, #30, #31, #32, #87, #90, #91 |
 | [ADR-010](adr/0010-architecture-governance.md) | [#43](https://github.com/labLima/creator-backend/issues/43) | #1, #21, #26, #30, #31, #44, #52, #104, [0025](issues/0025-quality-controls.md), [0042](issues/0042-security-gate-hardening.md) |
 | [ADR-011 Core Resource CRUD](adr/0011-core-resource-crud.md) | [docs/issues/0041](issues/0041-ownership-enforcement.md) | [docs/issues/0041](issues/0041-ownership-enforcement.md), #20 |

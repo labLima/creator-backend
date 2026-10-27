@@ -24,7 +24,12 @@ Limites excedidos retornam `429 RATE_LIMIT_EXCEEDED` no envelope padrão, com `R
 e headers auxiliares de limite/reset. Métricas Prometheus usam somente classe, endpoint
 canônico e resultado como labels; não incluem Principal, Workspace, IP ou request ID.
 
+As métricas HTTP de requests, erros e latência seguem a mesma regra de cardinalidade:
+usam apenas método, rota FastAPI normalizada e status HTTP. Logs operacionais são
+emitidos como JSON em todos os ambientes, com redaction de credenciais, prompts,
+payloads e bytes de imagem.
+
 ## Issues vinculadas
 
-#5, #13, #15, #18, #19, #22, #25 e [rate limiting](../issues/0024-api-rate-limiting.md).
+#5, #13, #15, #18, #19, #22, #25, [rate limiting](../issues/0024-api-rate-limiting.md) e [observabilidade](../issues/0043-observability-correlation.md).
 Consulte o [tracker central](../ADR-ISSUE-TRACKER.md).

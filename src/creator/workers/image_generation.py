@@ -8,6 +8,7 @@ from uuid import UUID
 from creator.application.image_storage import GeneratedImage, persist_generated_image
 from creator.config import get_settings
 from creator.domain.exceptions import InvalidStateTransitionError
+from creator.infrastructure.observability import correlation_context
 from creator.infrastructure.storage import create_storage_provider
 from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from creator.integrations.gemini.exceptions import (
@@ -33,6 +34,11 @@ def run_image_generation(job_id: str, request_id: str | None = None) -> None:
     except ValueError:
         return
     parsed_request_id = _safe_uuid(request_id)
+    with correlation_context(request_id=parsed_request_id, job_id=parsed_job_id):
+        _run_image_generation(parsed_job_id, parsed_request_id)
+
+
+def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -> None:
     started_at = time.perf_counter()
 
     work_item = _claim_work_item(parsed_job_id)

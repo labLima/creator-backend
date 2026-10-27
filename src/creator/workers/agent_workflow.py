@@ -20,6 +20,7 @@ from creator.domain.pipeline_events import (
     PipelineEventType,
     PipelinePayloadReference,
 )
+from creator.infrastructure.observability import correlation_context, current_context
 from creator.infrastructure.storage import create_storage_provider
 from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from creator.repositories import AgentWorkflowRunRecord, ImageRecord, JsonObject, UserRecord
@@ -64,6 +65,21 @@ def run_image_agent_workflow(
     except ValueError:
         return
     try:
+        parsed_request_id = UUID(request_id) if request_id else parsed_run_id
+    except ValueError:
+        parsed_request_id = parsed_run_id
+    with correlation_context(
+        request_id=parsed_request_id,
+        job_id=parsed_run_id,
+        correlation_id=parsed_request_id,
+    ):
+        _run_image_agent_workflow(parsed_run_id, request_id, stage)
+
+
+def _run_image_agent_workflow(
+    parsed_run_id: UUID, request_id: str | None, stage: str | None
+) -> None:
+    try:
         correlation_id = UUID(request_id) if request_id else parsed_run_id
     except ValueError:
         correlation_id = parsed_run_id
@@ -107,6 +123,7 @@ def run_image_agent_workflow(
                 workspace_id=run.workspace_id,
                 run_id=run.id,
                 correlation_id=correlation_id,
+                request_id=correlation_id,
                 payload_ref=PipelinePayloadReference(
                     input_ref="AgentWorkflowRun.input",
                     attempt=min(run.refinement_count + 1, 5),
@@ -602,6 +619,7 @@ def _request_writer_refinement(
                     workspace_id=updated.workspace_id,
                     run_id=updated.id,
                     correlation_id=updated.id,
+                    request_id=current_context().request_id,
                     payload_ref=PipelinePayloadReference(
                         feedback_ref="AgentWorkflowRun.input.human_feedback",
                         predecessor_role="REVIEWER",
@@ -834,6 +852,7 @@ def _stage_event(
         step_id=step_id,
         predecessor_step_id=predecessor_step_id,
         correlation_id=run.id,
+        request_id=current_context().request_id,
         output_hash=output_hash,
         payload_ref=PipelinePayloadReference(
             schema_name=schema_name,
@@ -962,6 +981,7 @@ def _generate_workflow_image(
                 parameters=parameters,
                 external_id=external_id,
                 max_attempts=typed_settings.image_generation_job_max_attempts,
+                request_id=current_context().request_id,
             )
         )
         if existing is None:

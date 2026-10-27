@@ -43,6 +43,7 @@ class PipelineEvent(BaseModel):
     step_id: UUID | None = None
     predecessor_step_id: UUID | None = None
     correlation_id: UUID
+    request_id: UUID | None = None
     input_hash: str | None = Field(default=None, min_length=64, max_length=64)
     output_hash: str | None = Field(default=None, min_length=64, max_length=64)
     payload_ref: PipelinePayloadReference = Field(default_factory=PipelinePayloadReference)

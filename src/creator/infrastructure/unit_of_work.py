@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from collections.abc import Callable, Generator
 from types import TracebackType
 
@@ -133,6 +135,7 @@ from creator.repositories import (
 )
 
 SessionFactory = Callable[[], Session]
+logger = logging.getLogger(__name__)
 
 
 class SqlAlchemyUnitOfWork:
@@ -188,10 +191,12 @@ class SqlAlchemyUnitOfWork:
         self._session_factory = session_factory
         self._session: Session | None = None
         self._committed = False
+        self._started_at = 0.0
 
     def __enter__(self) -> SqlAlchemyUnitOfWork:
         session = self._session_factory()
         self._session = session
+        self._started_at = time.perf_counter()
         self.users = SqlAlchemyUserRepository(session)
         self.auth_sessions = SqlAlchemyAuthSessionRepository(session)
         self.settings = SqlAlchemySettingsRepository(session)
@@ -251,6 +256,13 @@ class SqlAlchemyUnitOfWork:
         try:
             if exc_type is not None or not self._committed:
                 session.rollback()
+                logger.info(
+                    "unit_of_work_rollback",
+                    extra={
+                        "exception_type": exc_type.__name__ if exc_type else None,
+                        "duration_ms": int((time.perf_counter() - self._started_at) * 1000),
+                    },
+                )
         finally:
             session.close()
 
@@ -260,12 +272,24 @@ class SqlAlchemyUnitOfWork:
             session.commit()
         except SQLAlchemyError as error:
             session.rollback()
+            logger.error(
+                "unit_of_work_commit_failed",
+                extra={"exception_type": error.__class__.__name__},
+            )
             raise map_sqlalchemy_error(error) from error
         self._committed = True
+        logger.info(
+            "unit_of_work_commit",
+            extra={"duration_ms": int((time.perf_counter() - self._started_at) * 1000)},
+        )
 
     def rollback(self) -> None:
         self._require_session().rollback()
         self._committed = False
+        logger.info(
+            "unit_of_work_explicit_rollback",
+            extra={"duration_ms": int((time.perf_counter() - self._started_at) * 1000)},
+        )
 
     def _require_session(self) -> Session:
         if self._session is None:

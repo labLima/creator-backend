@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from creator.services.storage.provider import (
 )
 
 UrlOpen = Callable[[Request, float], Any]
+logger = logging.getLogger(__name__)
 
 
 def _urlopen(request: Request, timeout: float) -> Any:
@@ -92,6 +94,14 @@ class SupabaseStorageProvider:
         except (TimeoutError, URLError) as error:
             raise StorageUploadError("Supabase Storage upload failed") from error
 
+        logger.info(
+            "storage_upload_completed",
+            extra={
+                "provider": "supabase",
+                "mime_type": request.mime_type,
+                "size_bytes": len(request.content),
+            },
+        )
         return StoredObject(
             path=request.path,
             url=self.get_url(request.path),
@@ -120,6 +130,7 @@ class SupabaseStorageProvider:
             raise StorageDeleteError("Supabase Storage delete failed") from error
         except (TimeoutError, URLError) as error:
             raise StorageDeleteError("Supabase Storage delete failed") from error
+        logger.info("storage_delete_completed", extra={"provider": "supabase"})
 
     def stat(self, path: str) -> StoredObjectMetadata:
         self._require_settings()
@@ -203,6 +214,10 @@ class SupabaseStorageProvider:
             raise StorageUrlError("Supabase Storage object download failed") from error
         if len(content) > max_bytes:
             raise StorageValidationError("Storage object exceeds processing size limit")
+        logger.info(
+            "storage_download_completed",
+            extra={"provider": "supabase", "size_bytes": len(content)},
+        )
         return content
 
     def get_url(self, path: str) -> str:
@@ -243,6 +258,7 @@ class SupabaseStorageProvider:
         signed_url = payload.get("signedURL") or payload.get("signedUrl")
         if not isinstance(signed_url, str) or not signed_url:
             raise StorageUrlError("Supabase Storage did not return a signed URL")
+        logger.info("storage_signed_url_created", extra={"provider": "supabase"})
         if signed_url.startswith("http"):
             return signed_url
         return f"{self._storage_url}{signed_url}"
@@ -300,6 +316,14 @@ class LocalStorageProvider:
             target.write_bytes(request.content)
         except OSError as error:
             raise StorageUploadError("Local storage upload failed") from error
+        logger.info(
+            "storage_upload_completed",
+            extra={
+                "provider": "local",
+                "mime_type": request.mime_type,
+                "size_bytes": len(request.content),
+            },
+        )
         return StoredObject(
             path=request.path,
             url=target.as_uri(),
@@ -315,6 +339,7 @@ class LocalStorageProvider:
             target.unlink(missing_ok=True)
         except OSError as error:
             raise StorageDeleteError("Local storage delete failed") from error
+        logger.info("storage_delete_completed", extra={"provider": "local"})
 
     def get_url(self, path: str) -> str:
         target = self._target_path(path)
@@ -345,7 +370,12 @@ class LocalStorageProvider:
             raise StorageObjectNotFoundError("Local storage object does not exist")
         if target.stat().st_size > max_bytes:
             raise StorageValidationError("Storage object exceeds processing size limit")
-        return target.read_bytes()
+        content = target.read_bytes()
+        logger.info(
+            "storage_download_completed",
+            extra={"provider": "local", "size_bytes": len(content)},
+        )
+        return content
 
     def _target_path(self, path: str) -> Path:
         validate_upload_request(
