@@ -10,6 +10,10 @@ x-app: &app
     REDIS_URL: "${REDIS_URL:-redis://redis:6379/0}"
     LOCAL_STORAGE_ROOT: "${LOCAL_STORAGE_ROOT:-/app/.local/storage}"
     AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:?AUTH_JWT_SECRET is required}"
+    AUTH_COOKIE_SESSIONS_ENABLED: "${AUTH_COOKIE_SESSIONS_ENABLED:-true}"
+    AUTH_LEGACY_BEARER_ENABLED: "${AUTH_LEGACY_BEARER_ENABLED:-true}"
+    AUTH_TOKEN_BODY_ENABLED: "${AUTH_TOKEN_BODY_ENABLED:-true}"
+    AUTH_CORS_ORIGINS: "${AUTH_CORS_ORIGINS:-[]}"
   volumes:
     - sqlite_data:/data
     - storage_data:/app/.local/storage

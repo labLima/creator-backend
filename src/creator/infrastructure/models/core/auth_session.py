@@ -20,6 +20,7 @@ class AuthSession(Base):
         Index("ix_auth_sessions_user_id", "user_id"),
         Index("ix_auth_sessions_family_id", "family_id"),
         Index("ix_auth_sessions_expires_at", "expires_at"),
+        Index("ix_auth_sessions_absolute_expires_at", "absolute_expires_at"),
     )
 
     id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
@@ -28,9 +29,12 @@ class AuthSession(Base):
     )
     family_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
     refresh_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    previous_refresh_token_hash: Mapped[str | None] = mapped_column(String(64))
     expires_at: Mapped[datetime] = mapped_column(timestamp_tz, nullable=False)
+    absolute_expires_at: Mapped[datetime] = mapped_column(timestamp_tz, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(timestamp_tz)
     replaced_by_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    rotated_at: Mapped[datetime | None] = mapped_column(timestamp_tz)
     user_agent: Mapped[str | None] = mapped_column(String(500))
     ip_address: Mapped[str | None] = mapped_column(String(45))
     created_at: Mapped[datetime] = mapped_column(

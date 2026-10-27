@@ -2212,17 +2212,21 @@ def test_billing_and_workspace_invite_crud_routes_are_documented() -> None:
 
 
 @pytest.mark.anyio
-async def test_swagger_uses_bearer_security_for_protected_routes() -> None:
+async def test_swagger_uses_cookie_security_for_protected_routes() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/openapi.json")
 
     openapi_schema = response.json()
-    assert openapi_schema["components"]["securitySchemes"]["CreatorBearerAuth"] == {
-        "type": "http",
-        "scheme": "bearer",
+    assert openapi_schema["components"]["securitySchemes"]["CreatorSessionCookie"] == {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "creator_access",
+        "description": (
+            "HttpOnly Creator access cookie; mutating requests also require X-CSRF-Token."
+        ),
     }
     generate_operation = openapi_schema["paths"]["/api/v1/content/generate"]["post"]
-    assert generate_operation["security"] == [{"CreatorBearerAuth": []}]
+    assert generate_operation["security"] == [{"CreatorSessionCookie": []}]
     assert all(
         parameter["name"] != "authorization"
         for parameter in generate_operation.get("parameters", [])

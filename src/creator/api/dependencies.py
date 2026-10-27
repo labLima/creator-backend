@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import logging
 from typing import Annotated
 from uuid import UUID
@@ -12,9 +14,11 @@ from creator.application.auth import (
     principal_from_access_token,
     session_is_active,
 )
+from creator.application.auth_ports import AuthTokenServices
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
+from creator.infrastructure.auth import auth_token_services
 from creator.infrastructure.metrics import MetricsRegistry
 from creator.infrastructure.queue import RqGenerationQueue
 from creator.infrastructure.queue import get_generation_queue as get_rq_generation_queue
@@ -30,7 +34,7 @@ from creator.services.ai.factory import create_llm_provider
 from creator.services.ai.provider import LLMProvider
 from creator.services.storage.provider import StorageConfigurationError, StorageProvider
 
-bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorBearerAuth")
+bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorLegacyBearerAuth")
 logger = logging.getLogger(__name__)
 
 
@@ -47,20 +51,48 @@ def _auth_exception(
 
 
 def get_principal(
+    request: Request,
     credentials: Annotated[
         HTTPAuthorizationCredentials | str | None,
         Security(bearer_scheme),
     ] = None,
     settings: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
+    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)] = None,  # type: ignore[assignment]
 ) -> Principal | None:
-    token = _bearer_token(credentials)
+    # Keep the small direct-call API used by legacy unit tests while the HTTP
+    # dependency receives a Request plus Security credentials.  The HTTP path
+    # never enters this branch.
+    if isinstance(credentials, Settings) and not isinstance(request, Request):
+        legacy_credentials = request
+        request = None
+        settings = credentials
+        credentials = legacy_credentials
+    request_obj = request if isinstance(request, Request) else None
+    bearer = _bearer_token(credentials) if settings.auth_legacy_bearer_enabled else None
+    cookie = (
+        request_obj.cookies.get(settings.auth_cookie_access_name)
+        if request_obj is not None and settings.auth_cookie_sessions_enabled
+        else None
+    )
+    if bearer and cookie:
+        # During the one-release migration window an explicit legacy Bearer
+        # credential remains authoritative for clients that still retain a
+        # browser cookie from another session.
+        bearer_principal = _decode_principal(bearer, settings, token_services)
+        if request_obj is not None:
+            request_obj.state.auth_source = "bearer"
+        return bearer_principal
+    token = bearer or cookie
     if token is None:
         if settings.auth_required:
             raise _invalid_auth_exception()
         return None
 
     try:
-        return principal_from_access_token(token, settings)
+        principal = principal_from_access_token(token, settings, token_services=token_services)
+        if request_obj is not None:
+            request_obj.state.auth_source = "bearer" if bearer else "cookie"
+        return principal
     except AuthConfigurationError as error:
         if not settings.auth_required:
             return None
@@ -76,21 +108,43 @@ def get_principal(
 def get_optional_principal(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
+    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)] = None,  # type: ignore[assignment]
 ) -> Principal | None:
     """Validate a supplied token without making authentication mandatory.
 
     The global rate-limit dependency must be able to rate-limit public Auth routes
     by IP before the endpoint's own authentication requirements are evaluated.
     """
-    token = request.headers.get("Authorization")
+    bearer = request.headers.get("Authorization") if settings.auth_legacy_bearer_enabled else None
+    cookie = (
+        request.cookies.get(settings.auth_cookie_access_name)
+        if settings.auth_cookie_sessions_enabled
+        else None
+    )
+    if bearer and cookie:
+        bearer_token = _bearer_token(bearer)
+        if bearer_token is None:
+            return None
+        try:
+            bearer_principal = principal_from_access_token(
+                bearer_token, settings, token_services=token_services
+            )
+        except (AuthConfigurationError, ExpiredTokenError, InvalidTokenError):
+            return None
+        return bearer_principal
+    token = bearer or cookie
     if not token:
         return None
 
-    bearer_token = _bearer_token(token)
+    bearer_token = _bearer_token(token) if bearer else token
     if bearer_token is None:
         return None
     try:
-        return principal_from_access_token(bearer_token, settings)
+        principal = principal_from_access_token(
+            bearer_token, settings, token_services=token_services
+        )
+        request.state.auth_source = "bearer" if bearer else "cookie"
+        return principal
     except AuthConfigurationError as error:
         if not settings.auth_required:
             return None
@@ -100,6 +154,8 @@ def get_optional_principal(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         ) from error
     except (ExpiredTokenError, InvalidTokenError) as error:
+        if not bearer:
+            return None
         raise _invalid_auth_exception() from error
 
 
@@ -125,6 +181,25 @@ def get_current_user(
     existing = unit_of_work.users.get_by_id(user_id, include_deleted=True)
     if existing is None or existing.deleted_at is not None:
         raise _invalid_auth_exception()
+    return existing
+
+
+def get_optional_current_user(
+    principal: Annotated[Principal | None, Depends(get_optional_principal)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> UserRecord | None:
+    if principal is None:
+        return None
+    try:
+        user_id = UUID(principal.subject)
+        session_id = UUID(principal.session_id or "")
+    except ValueError:
+        return None
+    if not session_is_active(unit_of_work=unit_of_work, session_id=session_id):
+        return None
+    existing = unit_of_work.users.get_by_id(user_id, include_deleted=True)
+    if existing is None or existing.deleted_at is not None:
+        return None
     return existing
 
 
@@ -185,6 +260,7 @@ AUTH_RATE_LIMIT_ENDPOINTS = frozenset(
     {
         "POST /api/v1/auth/login",
         "POST /api/v1/auth/signup",
+        "POST /api/v1/auth/refresh",
     }
 )
 ROUTE_ALIASES = {
@@ -260,6 +336,79 @@ def enforce_rate_limit(
         )
 
 
+def enforce_cookie_security(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)],
+) -> None:
+    if request.method.upper() in {"GET", "HEAD", "OPTIONS"} or not request.url.path.startswith(
+        "/api/v1/"
+    ):
+        return
+    if request.url.path in {"/api/v1/auth/login", "/api/v1/auth/signup"}:
+        return
+    if not settings.auth_cookie_sessions_enabled:
+        return
+
+    has_session_cookie = any(
+        request.cookies.get(name)
+        for name in (settings.auth_cookie_access_name, settings.auth_cookie_refresh_name)
+    )
+    if not has_session_cookie:
+        return
+    if settings.auth_legacy_bearer_enabled and request.headers.get("Authorization"):
+        return
+
+    origin = request.headers.get("origin")
+    expected_origin = f"{request.url.scheme}://{request.url.netloc}"
+    allowed_origins = set(settings.auth_cors_origins) or {expected_origin}
+    if origin is None or origin == "null" or origin not in allowed_origins:
+        raise _auth_exception(
+            "ORIGIN_NOT_ALLOWED",
+            "Request origin is not allowed",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+    session_id: UUID | None = None
+    access = request.cookies.get(settings.auth_cookie_access_name)
+    if access:
+        try:
+            session_id = UUID(
+                principal_from_access_token(
+                    access, settings, token_services=token_services
+                ).session_id
+                or ""
+            )
+        except (AuthConfigurationError, ExpiredTokenError, InvalidTokenError, ValueError):
+            session_id = None
+    if session_id is None:
+        refresh = request.cookies.get(settings.auth_cookie_refresh_name)
+        if refresh:
+            record = unit_of_work.auth_sessions.get_by_refresh_hash(_refresh_hash(refresh))
+            session_id = record.id if record is not None else None
+    csrf_cookie = request.cookies.get(settings.auth_cookie_csrf_name)
+    csrf_header = request.headers.get(settings.auth_csrf_header_name)
+    if not csrf_cookie or not csrf_header:
+        raise _auth_exception(
+            "CSRF_TOKEN_MISSING",
+            "CSRF token is required",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    if session_id is None or not hmac.compare_digest(csrf_cookie, csrf_header):
+        raise _auth_exception(
+            "CSRF_TOKEN_INVALID",
+            "CSRF token is invalid",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    if not token_services.csrf.verify(token=csrf_header, session_id=session_id, settings=settings):
+        raise _auth_exception(
+            "CSRF_TOKEN_INVALID",
+            "CSRF token is invalid",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+
 def _invalid_auth_exception() -> HTTPException:
     return _auth_exception("AUTHENTICATION_INVALID", "Authentication failed")
 
@@ -275,6 +424,19 @@ def _bearer_token(credentials: HTTPAuthorizationCredentials | str | None) -> str
     if credentials.scheme.lower() != "bearer" or not credentials.credentials:
         raise _invalid_auth_exception()
     return credentials.credentials
+
+
+def _decode_principal(
+    token: str, settings: Settings, token_services: AuthTokenServices
+) -> Principal:
+    try:
+        return principal_from_access_token(token, settings, token_services=token_services)
+    except (AuthConfigurationError, ExpiredTokenError, InvalidTokenError) as error:
+        raise _invalid_auth_exception() from error
+
+
+def _refresh_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def _display_name_from_claims(principal: Principal) -> str | None:

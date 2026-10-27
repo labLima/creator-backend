@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import hashlib
-import secrets
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
+from typing import cast
 from uuid import UUID, uuid4
 
-import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
+from creator.application.auth_ports import AuthTokenServices, Clock
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
-from creator.domain.auth import AuthSession, AuthSignupResult, Principal
+from creator.domain.auth import AuthSignupResult, IssuedSession, Principal
 from creator.domain.exceptions import PersistenceError
 from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
 
@@ -48,6 +48,10 @@ class RevokedSessionError(AuthError):
     pass
 
 
+class RefreshInProgressError(AuthError):
+    pass
+
+
 @dataclass(frozen=True, slots=True)
 class LocalSignupResult:
     user: UserRecord
@@ -75,51 +79,18 @@ def verify_password(password: str, password_hash: str | None) -> bool:
         return False
 
 
-def _require_secret(settings: Settings) -> str:
-    if not settings.auth_jwt_secret:
-        raise AuthConfigurationError("AUTH_JWT_SECRET is required")
-    return settings.auth_jwt_secret
-
-
-def _access_token(*, user: UserRecord, session_id: UUID, settings: Settings) -> str:
-    now = datetime.now(UTC)
-    payload = {
-        "iss": settings.auth_jwt_issuer,
-        "aud": settings.auth_jwt_audience,
-        "sub": str(user.id),
-        "session_id": str(session_id),
-        "role": user.global_role,
-        "type": "access",
-        "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(seconds=settings.auth_access_token_ttl_seconds)).timestamp()),
-        "jti": uuid4().hex,
-    }
-    return jwt.encode(payload, _require_secret(settings), algorithm="HS256")
-
-
-def principal_from_access_token(token: str, settings: Settings) -> Principal:
+def principal_from_access_token(
+    token: str, settings: Settings, *, token_services: AuthTokenServices | None = None
+) -> Principal:
+    token_services = _resolve_token_services(token_services)
     try:
-        claims = jwt.decode(
-            token,
-            _require_secret(settings),
-            algorithms=["HS256"],
-            audience=settings.auth_jwt_audience,
-            issuer=settings.auth_jwt_issuer,
-            options={"require": ["iss", "aud", "exp", "iat", "sub", "session_id", "type"]},
-        )
-    except jwt.ExpiredSignatureError as error:
-        raise ExpiredTokenError("access token is expired") from error
-    except jwt.InvalidTokenError as error:
-        raise InvalidTokenError("access token is invalid") from error
-    if claims.get("type") != "access":
-        raise InvalidTokenError("access token type is invalid")
-    return Principal(
-        subject=str(claims["sub"]),
-        email=claims.get("email"),
-        role=claims.get("role"),
-        session_id=str(claims["session_id"]),
-        claims=dict(claims),
-    )
+        return token_services.access.principal(token, settings)
+    except AuthConfigurationError:
+        raise
+    except (ExpiredTokenError, InvalidTokenError):
+        raise
+    except ValueError as error:
+        raise AuthConfigurationError("AUTH_JWT_SECRET is required") from error
 
 
 def _refresh_hash(token: str) -> str:
@@ -127,13 +98,25 @@ def _refresh_hash(token: str) -> str:
 
 
 def _session_for(
-    *, user: UserRecord, session_id: UUID, refresh_token: str, settings: Settings
-) -> AuthSession:
-    return AuthSession(
-        access_token=_access_token(user=user, session_id=session_id, settings=settings),
+    *,
+    user: UserRecord,
+    session_id: UUID,
+    refresh_token: str,
+    settings: Settings,
+    token_services: AuthTokenServices,
+    refresh_expires_in: int,
+) -> IssuedSession:
+    return IssuedSession(
+        access_token=token_services.access.issue(
+            user_id=user.id,
+            session_id=session_id,
+            role=user.global_role,
+            settings=settings,
+        ),
         refresh_token=refresh_token,
         token_type="Bearer",
         expires_in=settings.auth_access_token_ttl_seconds,
+        refresh_expires_in=refresh_expires_in,
         principal=Principal(
             subject=str(user.id),
             email=user.email,
@@ -154,7 +137,11 @@ def signup(
     workspace_name: str,
     user_agent: str | None = None,
     ip_address: str | None = None,
+    token_services: AuthTokenServices | None = None,
+    clock: Clock | None = None,
 ) -> LocalSignupResult:
+    token_services = _resolve_token_services(token_services)
+    clock = _resolve_clock(token_services, clock)
     normalized = normalize_email(email)
     if unit_of_work.users.get_by_email(normalized, include_deleted=True) is not None:
         raise EmailAlreadyRegisteredError("email is already registered")
@@ -169,12 +156,14 @@ def signup(
             user_id=user.id,
             name=workspace_name,
         )
-        refresh_token = secrets.token_urlsafe(48)
+        refresh_token = token_services.refresh.generate()
+        now = clock.now()
         session = unit_of_work.auth_sessions.add(
             user_id=user.id,
             family_id=uuid4(),
             refresh_token_hash=_refresh_hash(refresh_token),
-            expires_at=datetime.now(UTC) + timedelta(days=settings.auth_refresh_token_ttl_days),
+            expires_at=now + timedelta(days=settings.auth_refresh_token_ttl_days),
+            absolute_expires_at=now + timedelta(days=settings.auth_session_absolute_ttl_days),
             user_agent=user_agent,
             ip_address=ip_address,
         )
@@ -183,7 +172,12 @@ def signup(
         unit_of_work.rollback()
         raise
     auth_session = _session_for(
-        user=user, session_id=session.id, refresh_token=refresh_token, settings=settings
+        user=user,
+        session_id=session.id,
+        refresh_token=refresh_token,
+        settings=settings,
+        token_services=token_services,
+        refresh_expires_in=max(0, int((session.absolute_expires_at - clock.now()).total_seconds())),
     )
     return LocalSignupResult(
         user=user,
@@ -206,22 +200,33 @@ def login(
     password: str,
     user_agent: str | None = None,
     ip_address: str | None = None,
-) -> AuthSession:
+    token_services: AuthTokenServices | None = None,
+    clock: Clock | None = None,
+) -> IssuedSession:
+    token_services = _resolve_token_services(token_services)
+    clock = _resolve_clock(token_services, clock)
     user = unit_of_work.users.get_by_email(normalize_email(email))
     if user is None or not verify_password(password, user.password_hash):
         raise InvalidCredentialsError("invalid email or password")
-    refresh_token = secrets.token_urlsafe(48)
+    refresh_token = token_services.refresh.generate()
+    now = clock.now()
     session = unit_of_work.auth_sessions.add(
         user_id=user.id,
         family_id=uuid4(),
         refresh_token_hash=_refresh_hash(refresh_token),
-        expires_at=datetime.now(UTC) + timedelta(days=settings.auth_refresh_token_ttl_days),
+        expires_at=now + timedelta(days=settings.auth_refresh_token_ttl_days),
+        absolute_expires_at=now + timedelta(days=settings.auth_session_absolute_ttl_days),
         user_agent=user_agent,
         ip_address=ip_address,
     )
     unit_of_work.commit()
     return _session_for(
-        user=user, session_id=session.id, refresh_token=refresh_token, settings=settings
+        user=user,
+        session_id=session.id,
+        refresh_token=refresh_token,
+        settings=settings,
+        token_services=token_services,
+        refresh_expires_in=max(0, int((session.absolute_expires_at - clock.now()).total_seconds())),
     )
 
 
@@ -232,16 +237,28 @@ def refresh(
     refresh_token: str,
     user_agent: str | None = None,
     ip_address: str | None = None,
-) -> AuthSession:
+    token_services: AuthTokenServices | None = None,
+    clock: Clock | None = None,
+) -> IssuedSession:
+    token_services = _resolve_token_services(token_services)
+    clock = _resolve_clock(token_services, clock)
     record = unit_of_work.auth_sessions.get_by_refresh_hash(_refresh_hash(refresh_token))
     if record is None:
         raise InvalidTokenError("refresh token is invalid")
+    now = clock.now()
     if record.revoked_at is not None:
+        if (
+            record.replaced_by_id is not None
+            and record.rotated_at is not None
+            and now - record.rotated_at
+            <= timedelta(seconds=settings.auth_refresh_rotation_grace_seconds)
+        ):
+            raise RefreshInProgressError("refresh token rotation is already in progress")
         if record.replaced_by_id is not None:
             unit_of_work.auth_sessions.revoke_family(record.family_id)
             unit_of_work.commit()
         raise RevokedSessionError("refresh token was revoked")
-    if record.expires_at <= datetime.now(UTC):
+    if record.expires_at <= now or record.absolute_expires_at <= now:
         unit_of_work.auth_sessions.revoke(record.id)
         unit_of_work.commit()
         raise ExpiredTokenError("refresh token is expired")
@@ -249,30 +266,88 @@ def refresh(
     user = unit_of_work.users.get_by_id(record.user_id)
     if user is None:
         raise InvalidTokenError("refresh token user is invalid")
-    new_token = secrets.token_urlsafe(48)
-    new_session = unit_of_work.auth_sessions.add(
-        user_id=user.id,
-        family_id=record.family_id,
-        refresh_token_hash=_refresh_hash(new_token),
-        expires_at=datetime.now(UTC) + timedelta(days=settings.auth_refresh_token_ttl_days),
+    new_token = token_services.refresh.generate()
+    new_session_id = uuid4()
+    absolute_expires_at = record.absolute_expires_at
+    expires_at = min(
+        now + timedelta(days=settings.auth_refresh_token_ttl_days),
+        absolute_expires_at,
+    )
+    new_session = unit_of_work.auth_sessions.rotate(
+        record.id,
+        new_session_id=new_session_id,
+        new_refresh_token_hash=_refresh_hash(new_token),
+        expires_at=expires_at,
+        absolute_expires_at=absolute_expires_at,
+        now=now,
         user_agent=user_agent,
         ip_address=ip_address,
     )
-    unit_of_work.auth_sessions.revoke(record.id, replaced_by_id=new_session.id)
-    unit_of_work.auth_sessions.touch(new_session.id, at=datetime.now(UTC))
+    if new_session is None:
+        current = unit_of_work.auth_sessions.get_by_id(record.id)
+        if (
+            current is not None
+            and current.replaced_by_id is not None
+            and current.rotated_at is not None
+            and now - current.rotated_at
+            <= timedelta(seconds=settings.auth_refresh_rotation_grace_seconds)
+        ):
+            raise RefreshInProgressError("refresh token rotation is already in progress")
+        unit_of_work.auth_sessions.revoke_family(record.family_id)
+        unit_of_work.commit()
+        raise RevokedSessionError("refresh token was revoked")
+    unit_of_work.auth_sessions.touch(new_session.id, at=now)
     unit_of_work.commit()
     return _session_for(
-        user=user, session_id=new_session.id, refresh_token=new_token, settings=settings
+        user=user,
+        session_id=new_session.id,
+        refresh_token=new_token,
+        settings=settings,
+        token_services=token_services,
+        refresh_expires_in=max(0, int((absolute_expires_at - now).total_seconds())),
     )
 
 
 def logout(*, unit_of_work: UnitOfWork, session_id: UUID) -> None:
-    unit_of_work.auth_sessions.revoke(session_id)
+    record = unit_of_work.auth_sessions.get_by_id(session_id)
+    if record is not None:
+        unit_of_work.auth_sessions.revoke_family(record.family_id)
     unit_of_work.commit()
 
 
-def session_is_active(*, unit_of_work: UnitOfWork, session_id: UUID) -> bool:
+def session_is_active(
+    *, unit_of_work: UnitOfWork, session_id: UUID, clock: Clock | None = None
+) -> bool:
     session = unit_of_work.auth_sessions.get_by_id(session_id)
     if session is None:
         return False
-    return session.revoked_at is None and session.expires_at > datetime.now(UTC)
+    now = _resolve_clock(None, clock).now()
+    absolute_expires_at = getattr(session, "absolute_expires_at", session.expires_at)
+    return session.revoked_at is None and session.expires_at > now and absolute_expires_at > now
+
+
+def _resolve_token_services(
+    token_services: AuthTokenServices | None,
+) -> AuthTokenServices:
+    if token_services is not None:
+        return token_services
+    # Compatibility for direct application-service callers. HTTP composition always
+    # injects this port from infrastructure and never imports the provider here.
+    from creator.infrastructure.auth import auth_token_services
+
+    return auth_token_services()
+
+
+def _resolve_clock(
+    token_services: AuthTokenServices | None,
+    clock: Clock | None,
+) -> Clock:
+    if clock is not None:
+        return clock
+    if token_services is not None:
+        candidate = getattr(token_services, "clock", None)
+        if candidate is not None:
+            return cast(Clock, candidate)
+    from creator.infrastructure.auth.services import SystemClock
+
+    return SystemClock()

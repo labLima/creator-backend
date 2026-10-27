@@ -105,6 +105,18 @@ O contrato HTTP é `docs/openapi.yaml`. O teste `tests/test_openapi_contract.py`
 garante paridade entre o contrato estático e `app.openapi()`; qualquer drift
 falha no CI.
 
+### Migração do SPA para cookies
+
+Use `credentials: "include"` em todas as chamadas à API. O access e o refresh
+ficam em cookies `HttpOnly`; o SPA lê apenas `creator_csrf` e envia seu valor
+no header `X-CSRF-Token` em mutações. Não armazene tokens em `localStorage`.
+
+Coordene um único refresh por vez (single-flight). Em `401`, aguarde o refresh
+compartilhado e repita a requisição uma vez. Em `409 REFRESH_IN_PROGRESS`,
+aguarde o refresh em andamento; falhas posteriores devem limpar o estado local
+e exigir novo login. Durante a janela de migração, o backend pode manter Bearer
+e tokens no corpo; o cutover desliga essas flags.
+
 ## Banco e migrations
 
 O baseline SQLite está em `migrations/versions/0001_sqlite_baseline.py`. As

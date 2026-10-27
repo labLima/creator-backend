@@ -66,7 +66,7 @@ def test_business_routes_require_authenticated_principal() -> None:
         )
 
 
-def test_openapi_declares_bearer_security_for_business_operations() -> None:
+def test_openapi_declares_cookie_security_for_business_operations() -> None:
     document = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
     public_routes = {
         "/api/v1/auth/login",
@@ -79,6 +79,6 @@ def test_openapi_declares_bearer_security_for_business_operations() -> None:
             continue
         for method, operation in operations.items():
             if method in {"get", "post", "put", "patch", "delete"}:
-                assert operation.get("security") == [{"CreatorBearerAuth": []}], (
-                    f"{method.upper()} {path} must declare bearer security"
+                assert operation.get("security") == [{"CreatorSessionCookie": []}], (
+                    f"{method.upper()} {path} must declare cookie security"
                 )

@@ -8,24 +8,22 @@ from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
 from creator.api.dependencies import (
+    enforce_cookie_security,
     enforce_rate_limit,
     get_current_user,
     get_generation_queue,
     get_llm_provider,
     get_metrics_registry,
-    get_principal,
     get_storage_provider,
     get_uow,
 )
 from creator.api.dtos import (
     AssetCreateRequest,
     AssetUpdateRequest,
-    AuthLoginRequest,
-    AuthRefreshRequest,
-    AuthSignupRequest,
     BillingAccountCreateRequest,
     BillingAccountUpdateRequest,
     BillingAddressCreateRequest,
@@ -99,6 +97,7 @@ from creator.api.dtos import (
     WorkspaceInviteUpdateRequest,
     WorkspaceUpdateRequest,
 )
+from creator.api.routes.auth import router as auth_router
 from creator.application.agent_image_workflow import (
     AgentWorkflowDecisionError,
     AgentWorkflowIdempotencyConflictError,
@@ -106,27 +105,6 @@ from creator.application.agent_image_workflow import (
     StartImageWorkflowCommand,
     decide_image_workflow,
     start_image_workflow,
-)
-from creator.application.auth import (
-    AuthConfigurationError,
-    EmailAlreadyRegisteredError,
-    ExpiredTokenError,
-    InvalidCredentialsError,
-    InvalidTokenError,
-    LocalSignupResult,
-    RevokedSessionError,
-)
-from creator.application.auth import (
-    login as login_local,
-)
-from creator.application.auth import (
-    logout as logout_local,
-)
-from creator.application.auth import (
-    refresh as refresh_local,
-)
-from creator.application.auth import (
-    signup as signup_local,
 )
 from creator.application.content_generation import (
     ContentGenerationPersistenceError,
@@ -150,8 +128,8 @@ from creator.application.image_generation import (
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.domain.agent_workflow import WorkflowDecision
-from creator.domain.auth import AuthSession, AuthSignupResult, Principal
-from creator.domain.exceptions import EntityNotFoundError, PersistenceError
+from creator.domain.auth import AuthSignupResult, IssuedSession, Principal
+from creator.domain.exceptions import EntityNotFoundError
 from creator.domain.generation import GenerationJobStatus
 from creator.infrastructure.metrics import MetricsRegistry
 from creator.infrastructure.observability import (
@@ -289,12 +267,16 @@ def not_implemented(request: Request) -> JSONResponse:
     )
 
 
-def _auth_session_data(session: AuthSession) -> dict[str, Any]:
-    return {
-        "access_token": session.access_token,
-        "refresh_token": session.refresh_token,
+def _auth_session_data(
+    session: IssuedSession,
+    *,
+    settings: Settings | None = None,
+    csrf_token: str | None = None,
+) -> dict[str, Any]:
+    data: dict[str, Any] = {
         "token_type": session.token_type,
         "expires_in": session.expires_in,
+        "refresh_expires_in": session.refresh_expires_in,
         "principal": {
             "subject": session.principal.subject,
             "email": session.principal.email,
@@ -303,6 +285,12 @@ def _auth_session_data(session: AuthSession) -> dict[str, Any]:
         "provider": session.provider,
         "metadata": session.metadata,
     }
+    if csrf_token is not None:
+        data["csrf_token"] = csrf_token
+    if settings is None or settings.auth_token_body_enabled:
+        data["access_token"] = session.access_token
+        data["refresh_token"] = session.refresh_token
+    return data
 
 
 def _workspace_data(workspace: WorkspaceRecord) -> dict[str, Any]:
@@ -332,6 +320,8 @@ def _auth_signup_data(
     *,
     workspace: WorkspaceRecord,
     membership: WorkspaceMembershipRecord,
+    settings: Settings | None = None,
+    csrf_token: str | None = None,
 ) -> dict[str, Any]:
     return {
         "principal": {
@@ -339,7 +329,11 @@ def _auth_signup_data(
             "email": result.principal.email,
             "role": result.principal.role,
         },
-        "session": _auth_session_data(result.session) if result.session else None,
+        "session": (
+            _auth_session_data(result.session, settings=settings, csrf_token=csrf_token)
+            if result.session
+            else None
+        ),
         "workspace": _workspace_data(workspace),
         "membership": _workspace_membership_data(membership),
         "confirmation_required": result.confirmation_required,
@@ -1254,6 +1248,7 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
         if application.openapi_schema:
             return application.openapi_schema
 
+        settings = get_settings()
         schema = original_openapi()
         components = schema.setdefault("components", {})
         schemas = components.setdefault("schemas", {})
@@ -1280,6 +1275,16 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 },
             },
         )
+        security_schemes = components.setdefault("securitySchemes", {})
+        security_schemes["CreatorSessionCookie"] = {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": settings.auth_cookie_access_name,
+            "description": (
+                "HttpOnly Creator access cookie; mutating requests also require X-CSRF-Token."
+            ),
+        }
+        security_schemes.pop("CreatorLegacyBearerAuth", None)
         responses = components.setdefault("responses", {})
         headers = components.setdefault("headers", {})
         headers.setdefault(
@@ -1335,6 +1340,11 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
             for operation in path_item.values():
                 if not isinstance(operation, dict) or "responses" not in operation:
                     continue
+                if path.startswith("/api/v1/") and path not in {
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/signup",
+                }:
+                    operation["security"] = [{"CreatorSessionCookie": []}]
                 if path.startswith("/api/v1/"):
                     operation["responses"].setdefault(
                         "429",
@@ -1373,8 +1383,30 @@ def create_app() -> FastAPI:
         title="Creator API",
         version="0.1.0",
         openapi_tags=OPENAPI_TAGS,
-        dependencies=[Depends(enforce_rate_limit)],
+        dependencies=[Depends(enforce_rate_limit), Depends(enforce_cookie_security)],
     )
+    if settings.auth_cors_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.auth_cors_origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                "X-CSRF-Token",
+                "Idempotency-Key",
+                "X-Request-ID",
+            ],
+            expose_headers=[
+                "X-Request-ID",
+                "RateLimit-Limit",
+                "RateLimit-Remaining",
+                "RateLimit-Reset",
+                "Retry-After",
+            ],
+        )
+    application.include_router(auth_router)
     _install_rate_limit_openapi(application)
 
     @application.middleware("http")
@@ -1470,136 +1502,6 @@ def create_app() -> FastAPI:
     ) -> PlainTextResponse:
         # Keep this endpoint outside /api/v1 so observability cannot consume user quota.
         return PlainTextResponse(registry.render(), media_type=registry.content_type)
-
-    @application.post("/api/v1/auth/login", tags=["Auth"])
-    def login_with_password(
-        payload: AuthLoginRequest,
-        request: Request,
-        unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
-        settings: Annotated[Settings, Depends(get_settings)],
-    ) -> JSONResponse:
-        try:
-            session = login_local(
-                unit_of_work=unit_of_work,
-                settings=settings,
-                email=payload.email,
-                password=payload.password,
-                user_agent=request.headers.get("user-agent"),
-                ip_address=request.client.host if request.client else None,
-            )
-        except AuthConfigurationError as error:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "code": "AUTHENTICATION_MISCONFIGURED",
-                    "message": "Authentication is not configured",
-                },
-            ) from error
-        except InvalidCredentialsError as error:
-            raise HTTPException(
-                status_code=401,
-                detail={"code": "LOGIN_REJECTED", "message": "Invalid email or password"},
-            ) from error
-        return success_response(_auth_session_data(session), request)
-
-    @application.post("/api/v1/auth/signup", tags=["Auth"])
-    def signup_with_password(
-        payload: AuthSignupRequest,
-        request: Request,
-        unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
-        settings: Annotated[Settings, Depends(get_settings)],
-    ) -> JSONResponse:
-        try:
-            result: LocalSignupResult = signup_local(
-                unit_of_work=unit_of_work,
-                settings=settings,
-                email=payload.email,
-                password=payload.password,
-                workspace_name=payload.workspace.name,
-                user_agent=request.headers.get("user-agent"),
-                ip_address=request.client.host if request.client else None,
-            )
-        except AuthConfigurationError as error:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "code": "AUTHENTICATION_MISCONFIGURED",
-                    "message": "Authentication is not configured",
-                },
-            ) from error
-        except EmailAlreadyRegisteredError as error:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "code": "EMAIL_ALREADY_REGISTERED",
-                    "message": "Email is already registered",
-                },
-            ) from error
-        except ValueError as error:
-            raise HTTPException(
-                status_code=422,
-                detail={"code": "WEAK_PASSWORD", "message": str(error)},
-            ) from error
-        except PersistenceError as error:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "code": "SIGNUP_BOOTSTRAP_FAILED",
-                    "message": "Signup Workspace could not be created",
-                },
-            ) from error
-        return success_response(
-            _auth_signup_data(
-                result.result, workspace=result.workspace, membership=result.membership
-            ),
-            request,
-            status_code=201,
-        )
-
-    @application.post("/api/v1/auth/refresh", tags=["Auth"])
-    def refresh_session(
-        payload: AuthRefreshRequest,
-        request: Request,
-        unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
-        settings: Annotated[Settings, Depends(get_settings)],
-    ) -> JSONResponse:
-        try:
-            session = refresh_local(
-                unit_of_work=unit_of_work,
-                settings=settings,
-                refresh_token=payload.refresh_token,
-                user_agent=request.headers.get("user-agent"),
-                ip_address=request.client.host if request.client else None,
-            )
-        except AuthConfigurationError as error:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "code": "AUTHENTICATION_MISCONFIGURED",
-                    "message": "Authentication is not configured",
-                },
-            ) from error
-        except (InvalidTokenError, ExpiredTokenError, RevokedSessionError) as error:
-            raise HTTPException(
-                status_code=401,
-                detail={"code": "INVALID_REFRESH_TOKEN", "message": "Refresh token is invalid"},
-            ) from error
-        return success_response(_auth_session_data(session), request)
-
-    @application.post("/api/v1/auth/logout", tags=["Auth"])
-    def logout_session(
-        request: Request,
-        current_user: Annotated[UserRecord, Depends(get_current_user)],
-        principal: Annotated[Principal | None, Depends(get_principal)],
-        unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
-    ) -> JSONResponse:
-        if principal is None or principal.session_id is None:
-            raise HTTPException(
-                status_code=401,
-                detail={"code": "AUTHENTICATION_INVALID", "message": "Authentication failed"},
-            )
-        logout_local(unit_of_work=unit_of_work, session_id=UUID(principal.session_id))
-        return success_response({"logged_out": True}, request)
 
     @application.get("/api/v1/users/me", tags=["Users"])
     def get_my_profile(

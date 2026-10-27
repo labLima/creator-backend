@@ -4,12 +4,14 @@ import argparse
 import logging
 import threading
 import time
+from datetime import UTC, datetime, timedelta
 
 from redis import Redis
 from rq import Queue, Worker
 
 from creator.config import get_settings
 from creator.infrastructure.observability import configure_logging
+from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from creator.workers.image_generation import recover_stale_processing_jobs
 
 
@@ -19,6 +21,7 @@ def main() -> None:
     subparsers.add_parser("image-generation")
     subparsers.add_parser("agent-workflow")
     subparsers.add_parser("pipeline-outbox")
+    subparsers.add_parser("auth-cleanup")
     subparsers.add_parser("all", help="Run the shared RQ worker and the outbox publisher loop.")
     args = parser.parse_args()
 
@@ -29,6 +32,8 @@ def main() -> None:
         run_agent_workflow_worker()
     elif args.command == "pipeline-outbox":
         run_pipeline_outbox_worker()
+    elif args.command == "auth-cleanup":
+        purge_expired_auth_sessions()
     elif args.command == "all":
         run_all_workers()
 
@@ -65,5 +70,25 @@ def run_all_workers() -> None:
     recover_stale_processing_jobs()
     outbox_thread = threading.Thread(target=run_pipeline_outbox_worker, daemon=True)
     outbox_thread.start()
+    auth_cleanup_thread = threading.Thread(target=run_auth_cleanup_worker, daemon=True)
+    auth_cleanup_thread.start()
     queue, connection = _queue_and_connection()
     Worker([queue], connection=connection).work(with_scheduler=True)
+
+
+def purge_expired_auth_sessions() -> int:
+    settings = get_settings()
+    with SqlAlchemyUnitOfWork() as unit_of_work:
+        before = datetime.now(UTC) - timedelta(days=settings.auth_session_retention_days)
+        count = unit_of_work.auth_sessions.purge_expired(before=before)
+        unit_of_work.commit()
+        return count
+
+
+def run_auth_cleanup_worker() -> None:
+    while True:
+        try:
+            purge_expired_auth_sessions()
+        except Exception:
+            logging.getLogger(__name__).exception("auth_session_cleanup_failed")
+        time.sleep(3600)

@@ -13,7 +13,7 @@ from creator.application.auth import (
     EmailAlreadyRegisteredError,
     ExpiredTokenError,
     InvalidCredentialsError,
-    RevokedSessionError,
+    RefreshInProgressError,
     login,
     logout,
     refresh,
@@ -141,19 +141,19 @@ def test_refresh_rotates_and_reuse_revokes_family(uow: SqlAlchemyUnitOfWork) -> 
     )
     assert rotated.refresh_token != original_refresh
 
-    with pytest.raises(RevokedSessionError):
+    with pytest.raises(RefreshInProgressError):
         refresh(
             unit_of_work=uow,
             settings=_settings(),
             refresh_token=original_refresh,
         )
 
-    with pytest.raises(RevokedSessionError):
-        refresh(
-            unit_of_work=uow,
-            settings=_settings(),
-            refresh_token=rotated.refresh_token,
-        )
+    rotated_again = refresh(
+        unit_of_work=uow,
+        settings=_settings(),
+        refresh_token=rotated.refresh_token,
+    )
+    assert rotated_again.refresh_token != rotated.refresh_token
 
 
 def test_logout_revokes_current_session(uow: SqlAlchemyUnitOfWork) -> None:

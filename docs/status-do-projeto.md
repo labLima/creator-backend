@@ -1,6 +1,6 @@
 # Status do projeto Creator
 
-Atualizado em: 2026-10-26
+Atualizado em: 2026-10-27
 
 Este documento é um **snapshot datado**. O estado canônico das issues está no
 GitHub (`labLima/creator-backend`) e no `docs/ADR-ISSUE-TRACKER.md`.
@@ -17,7 +17,8 @@ A branch `dev` é a linha de integração. A `main` é release e está atrás da
 
 - API versionada em `/api/v1`, envelope de sucesso/erro e `request_id`.
 - Autenticação própria: signup, login, refresh rotativo, logout e sessões
-  revogáveis. Supabase Auth foi removido.
+  revogáveis. Cookies HttpOnly, CSRF, Origin e dual-write estão implementados;
+  o cutover final mantém as flags documentadas na ADR-022. Supabase Auth foi removido.
 - Persistência SQLAlchemy com baseline SQLite `0001_sqlite_baseline`, WAL,
   foreign keys e testes de integração em SQLite.
 - CRUD dos recursos centrais, com escopo por Workspace e Soft Delete.

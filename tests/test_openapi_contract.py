@@ -10,7 +10,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_AUTH_PATHS = {
     "/api/v1/auth/login",
     "/api/v1/auth/signup",
-    "/api/v1/auth/refresh",
 }
 HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
 
@@ -28,15 +27,25 @@ def test_static_openapi_matches_application_routes() -> None:
         assert _operations(static["paths"][path]) == _operations(generated_item), path
 
 
-def test_static_openapi_declares_creator_bearer_security() -> None:
+def test_static_openapi_declares_creator_cookie_security() -> None:
     static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
 
-    assert static["components"]["securitySchemes"]["CreatorBearerAuth"]["scheme"] == "bearer"
+    assert static["components"]["securitySchemes"]["CreatorSessionCookie"] == {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "creator_access",
+        "description": (
+            "HttpOnly Creator access cookie; mutating requests also require X-CSRF-Token."
+        ),
+    }
+    assert "CreatorBearerAuth" not in static["components"]["securitySchemes"]
+    assert "AuthRefreshRequest" not in static["components"]["schemas"]
+    assert "requestBody" not in static["paths"]["/api/v1/auth/refresh"]["post"]
     for path, item in static["paths"].items():
         if not path.startswith("/api/v1/") or path in PUBLIC_AUTH_PATHS:
             continue
         for method in _operations(item):
-            assert item[method].get("security") == [{"CreatorBearerAuth": []}], (method, path)
+            assert item[method].get("security") == [{"CreatorSessionCookie": []}], (method, path)
 
 
 def test_workflow_acceptance_does_not_document_redis_availability_errors() -> None:

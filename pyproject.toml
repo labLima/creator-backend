@@ -40,6 +40,7 @@ dev = [
   "mypy>=1.14,<2",
   "pytest>=9.0.3,<10",
   "pytest-cov>=6,<7",
+  "playwright>=1.50,<2",
   "ruff>=0.9,<1",
   "pip-audit>=2.7,<3",
 ]
