@@ -33,8 +33,9 @@ class FakeOutbox:
     def mark_published(self, event_id: object) -> None:
         self.published.append(event_id)
 
-    def mark_failed(self, event_id: object, error: str) -> None:
+    def mark_failed(self, event_id: object, error: str, **kwargs: object) -> bool:
         self.failed.append((event_id, error))
+        return False
 
 
 class FakeUow:

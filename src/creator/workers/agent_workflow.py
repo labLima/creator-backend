@@ -4,7 +4,7 @@ import logging
 import time
 from collections.abc import Mapping
 from typing import cast
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel
 
@@ -15,7 +15,11 @@ from creator.domain.agent_workflow import (
     AgentWorkflowStepRole,
 )
 from creator.domain.auth import Principal, WorkspaceRole
-from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
+from creator.domain.pipeline_events import (
+    PipelineEvent,
+    PipelineEventType,
+    PipelinePayloadReference,
+)
 from creator.infrastructure.storage import create_storage_provider
 from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from creator.repositories import AgentWorkflowRunRecord, ImageRecord, JsonObject, UserRecord
@@ -54,6 +58,71 @@ logger = logging.getLogger(__name__)
 def run_image_agent_workflow(
     run_id: str, request_id: str | None = None, stage: str | None = None
 ) -> None:
+    """Convert legacy monolithic RQ jobs into one canonical durable event."""
+    try:
+        parsed_run_id = UUID(run_id)
+    except ValueError:
+        return
+    try:
+        correlation_id = UUID(request_id) if request_id else parsed_run_id
+    except ValueError:
+        correlation_id = parsed_run_id
+    with SqlAlchemyUnitOfWork() as unit_of_work:
+        run = unit_of_work.agent_workflows.get_internal(parsed_run_id)
+        if run is None or run.status in {
+            AgentWorkflowStatus.COMPLETED,
+            AgentWorkflowStatus.REJECTED,
+            AgentWorkflowStatus.FAILED,
+        }:
+            return
+        requested_stage = (
+            "BUSINESS"
+            if run.status == AgentWorkflowStatus.PENDING
+            else stage or run.current_step or "BUSINESS"
+        )
+        event_type = {
+            "BUSINESS": PipelineEventType.WORKFLOW_STARTED,
+            "PLANNER": PipelineEventType.BUSINESS_COMPLETED,
+            "WRITER": (
+                PipelineEventType.WRITER_REFINEMENT_REQUESTED
+                if run.status == AgentWorkflowStatus.REFINING
+                else PipelineEventType.PLANNER_COMPLETED
+            ),
+            "ARTIST": PipelineEventType.WRITER_COMPLETED,
+            "REVIEWER": PipelineEventType.ARTIST_COMPLETED,
+        }.get(requested_stage, PipelineEventType.WORKFLOW_STARTED)
+        event_id = uuid5(
+            NAMESPACE_URL,
+            (f"creator:workflow:{run.id}:compat:{event_type.value}:{run.refinement_count}"),
+        )
+        if unit_of_work.outbox.exists(event_id):
+            return
+        unit_of_work.outbox.add(
+            workspace_id=run.workspace_id,
+            aggregate_id=run.id,
+            event=PipelineEvent(
+                event_id=event_id,
+                event_type=event_type,
+                event_version="1.0",
+                workspace_id=run.workspace_id,
+                run_id=run.id,
+                correlation_id=correlation_id,
+                payload_ref=PipelinePayloadReference(
+                    input_ref="AgentWorkflowRun.input",
+                    attempt=min(run.refinement_count + 1, 5),
+                ),
+            ),
+        )
+        unit_of_work.commit()
+
+
+def run_pipeline_stage(
+    run_id: str,
+    request_id: str | None,
+    *,
+    stage: str,
+    source_event_id: UUID,
+) -> None:
     try:
         parsed_run_id = UUID(run_id)
     except ValueError:
@@ -79,6 +148,7 @@ def run_image_agent_workflow(
                 },
                 orchestrator=orchestrator,
                 output_model=BusinessOutput,
+                source_event_id=source_event_id,
             )
         else:
             business = cast(BusinessOutput, completed_business)
@@ -118,6 +188,7 @@ def run_image_agent_workflow(
                 },
                 orchestrator=orchestrator,
                 output_model=PlannerOutput,
+                source_event_id=source_event_id,
             )
         planner_envelope = emit(
             role="PLANNER",
@@ -169,14 +240,18 @@ def run_image_agent_workflow(
                     },
                     orchestrator=orchestrator,
                     output_model=WriterOutput,
+                    source_event_id=source_event_id,
+                    stage_item=index,
+                    emit_event=index == len(posts),
+                    event_item_count=len(posts),
                 )
             _advance_stage(run.id, AgentWorkflowStatus.RUNNING, "ARTIST")
             return
         if stage == "ARTIST":
-            _run_artist_stage(run, user, settings)
+            _run_artist_stage(run, user, settings, source_event_id=source_event_id)
             return
         if stage == "REVIEWER":
-            _run_reviewer_stage(run, user, business, settings)
+            _run_reviewer_stage(run, user, business, settings, source_event_id=source_event_id)
             return
         final_image_ids: list[str] = []
         feedback = str(run.input.get("human_feedback", ""))
@@ -221,15 +296,11 @@ def run_image_agent_workflow(
                 "duration_ms": int((time.perf_counter() - started_at) * 1000),
             },
         )
-    except Exception as error:
+    except Exception:
         logger.exception(
             "image_agent_workflow_failed", extra={"run_id": run_id, "request_id": request_id}
         )
-        code = _failure_code(error)
-        if code in {"REVIEW_QUALITY_REJECTED", "REVIEW_SAFETY_REJECTED"}:
-            _reject_workflow(parsed_run_id, code, "Image was rejected by the Reviewer")
-        else:
-            _fail_workflow(parsed_run_id, code, "Image agent workflow failed")
+        raise
 
 
 def _claim_run(
@@ -240,7 +311,7 @@ def _claim_run(
         if run is None:
             return None, None
         allowed_statuses = {AgentWorkflowStatus.PENDING, AgentWorkflowStatus.REFINING}
-        if stage in {"PLANNER", "WRITER"}:
+        if stage in {"PLANNER", "WRITER", "ARTIST", "REVIEWER"}:
             allowed_statuses.add(AgentWorkflowStatus.RUNNING)
         if run.status not in allowed_statuses:
             return None, None
@@ -282,6 +353,8 @@ def _run_artist_stage(
     run: AgentWorkflowRunRecord,
     user: UserRecord,
     settings: object,
+    *,
+    source_event_id: UUID | None = None,
 ) -> None:
     """Consume persisted Writer outputs and persist Artist outputs."""
     from creator.config import Settings
@@ -294,6 +367,7 @@ def _run_artist_stage(
             if step.role == AgentWorkflowStepRole.WRITER
             and step.status.value == "COMPLETED"
             and step.output
+            and getattr(step, "attempt", run.refinement_count + 1) == run.refinement_count + 1
         ]
     if not writer_steps:
         raise RuntimeError("Writer output is missing for Artist stage")
@@ -317,8 +391,42 @@ def _run_artist_stage(
             index=index,
             refinement_count=run.refinement_count,
             settings=typed_settings,
+            source_event_id=source_event_id or run.id,
+            emit_event=index == len(writer_steps),
+            event_item_count=len(writer_steps),
         )
-    _advance_stage(run.id, AgentWorkflowStatus.RUNNING, "REVIEWER")
+    with SqlAlchemyUnitOfWork() as unit_of_work:
+        artist_steps = [
+            step
+            for step in unit_of_work.agent_workflows.list_steps_internal(run.id)
+            if step.role == AgentWorkflowStepRole.ARTIST
+            and step.status.value == "COMPLETED"
+            and step.attempt == run.refinement_count + 1
+        ]
+        if len(artist_steps) < len(writer_steps):
+            raise RuntimeError("Artist stage did not persist every planned item")
+        latest_artist = artist_steps[-1]
+        event = _stage_event(
+            run=run,
+            step_id=latest_artist.id,
+            predecessor_step_id=latest_artist.predecessor_step_id,
+            source_event_id=source_event_id or run.id,
+            event_type=PipelineEventType.ARTIST_COMPLETED,
+            schema_name="ArtistOutput",
+            output_hash=latest_artist.output_hash,
+            item_count=len(writer_steps),
+        )
+        if not unit_of_work.outbox.exists(event.event_id):
+            unit_of_work.outbox.add(
+                workspace_id=run.workspace_id,
+                aggregate_id=run.id,
+                event=event,
+            )
+        unit_of_work.outbox.mark_consumed(source_event_id or run.id)
+        unit_of_work.agent_workflows.transition(
+            run.id, AgentWorkflowStatus.RUNNING, current_step="REVIEWER"
+        )
+        unit_of_work.commit()
 
 
 def _run_reviewer_stage(
@@ -326,6 +434,8 @@ def _run_reviewer_stage(
     user: UserRecord,
     business: BusinessOutput,
     settings: object,
+    *,
+    source_event_id: UUID | None = None,
 ) -> None:
     """Consume persisted Artist references and run Reviewer independently."""
     from creator.config import Settings
@@ -338,6 +448,7 @@ def _run_reviewer_stage(
             if step.role == AgentWorkflowStepRole.ARTIST
             and step.status.value == "COMPLETED"
             and step.output
+            and getattr(step, "attempt", run.refinement_count + 1) == run.refinement_count + 1
         ]
         writer_steps = [
             step
@@ -345,12 +456,21 @@ def _run_reviewer_stage(
             if step.role == AgentWorkflowStepRole.WRITER
             and step.status.value == "COMPLETED"
             and step.output
+            and getattr(step, "attempt", run.refinement_count + 1) == run.refinement_count + 1
+        ]
+        reviewer_steps = [
+            step
+            for step in unit_of_work.agent_workflows.list_steps_internal(run.id)
+            if step.role == AgentWorkflowStepRole.REVIEWER
+            and step.status.value == "COMPLETED"
+            and getattr(step, "source_event_id", None) == (source_event_id or run.id)
         ]
     if not artist_steps or len(writer_steps) < len(artist_steps):
         raise RuntimeError("Artist output is missing for Reviewer stage")
     reviewer = create_image_reviewer(typed_settings)
     storage = create_storage_provider(typed_settings)
     final_image_ids: list[str] = []
+    terminal_persisted = False
     for index, artist_step in enumerate(artist_steps, start=1):
         image_id = UUID(str(artist_step.output["image_id"]))
         with SqlAlchemyUnitOfWork() as unit_of_work:
@@ -359,6 +479,15 @@ def _run_reviewer_stage(
             )
         if image_record is None or image_record.workspace_id != run.workspace_id:
             raise RuntimeError("Reviewer image is outside the workflow Workspace")
+        existing_review = next(
+            (step for step in reviewer_steps if step.predecessor_step_id == artist_step.id),
+            None,
+        )
+        if existing_review is not None:
+            if existing_review.output.get("decision") == "APPROVED":
+                final_image_ids.append(str(image_record.id))
+                continue
+            raise RuntimeError("Persisted Reviewer decision is not resumable")
         image_bytes = storage.download(
             image_record.storage_path, max_bytes=typed_settings.storage_max_object_bytes
         )
@@ -372,17 +501,34 @@ def _run_reviewer_stage(
                 brand_context=business.model_dump(mode="json"),
             )
         )
-        _persist_review_step(run, index, writer, review, predecessor_step_id=artist_step.id)
+        is_terminal_approval = index == len(artist_steps) and review.decision == "APPROVED"
+        terminal_image_ids = (
+            [*final_image_ids, str(image_record.id)] if is_terminal_approval else None
+        )
+        _persist_review_step(
+            run,
+            index,
+            writer,
+            review,
+            predecessor_step_id=artist_step.id,
+            source_event_id=source_event_id or run.id,
+            emit_event=is_terminal_approval,
+            event_item_count=len(artist_steps),
+            terminal_image_ids=terminal_image_ids,
+        )
         if review.safety_issues:
             raise RuntimeError("REVIEW_SAFETY_REJECTED")
         if review.decision == "REJECTED":
             raise RuntimeError("REVIEW_QUALITY_REJECTED")
         if review.decision == "REFINE":
-            _request_writer_refinement(run, review)
+            _request_writer_refinement(run, review, source_event_id=source_event_id or run.id)
             return
         if review.decision != "APPROVED":
             raise RuntimeError("REVIEW_INVALID_DECISION")
         final_image_ids.append(str(image_record.id))
+        terminal_persisted = is_terminal_approval
+    if terminal_persisted:
+        return
     with SqlAlchemyUnitOfWork() as unit_of_work:
         latest = unit_of_work.agent_workflows.get_internal(run.id)
         if latest is None:
@@ -398,10 +544,38 @@ def _run_reviewer_stage(
         unit_of_work.agent_workflows.transition(
             run.id, target, current_step=current_step, final_image_ids=final_image_ids
         )
+        steps = unit_of_work.agent_workflows.list_steps_internal(run.id)
+        latest_review = next(
+            step
+            for step in reversed(steps)
+            if step.role == AgentWorkflowStepRole.REVIEWER and step.status.value == "COMPLETED"
+        )
+        event = _stage_event(
+            run=run,
+            step_id=latest_review.id,
+            predecessor_step_id=latest_review.predecessor_step_id,
+            source_event_id=source_event_id or run.id,
+            event_type=PipelineEventType.REVIEWER_COMPLETED,
+            schema_name="ReviewOutput",
+            output_hash=latest_review.output_hash,
+            item_count=len(final_image_ids),
+        )
+        if not unit_of_work.outbox.exists(event.event_id):
+            unit_of_work.outbox.add(
+                workspace_id=run.workspace_id,
+                aggregate_id=run.id,
+                event=event,
+            )
+        unit_of_work.outbox.mark_consumed(source_event_id or run.id)
         unit_of_work.commit()
 
 
-def _request_writer_refinement(run: AgentWorkflowRunRecord, review: object) -> None:
+def _request_writer_refinement(
+    run: AgentWorkflowRunRecord,
+    review: object,
+    *,
+    source_event_id: UUID | None = None,
+) -> None:
     feedback = "; ".join(getattr(review, "feedback", ())) or "Improve adherence to the review."
     with SqlAlchemyUnitOfWork() as unit_of_work:
         updated_input = dict(run.input)
@@ -419,15 +593,24 @@ def _request_writer_refinement(run: AgentWorkflowRunRecord, review: object) -> N
                 workspace_id=updated.workspace_id,
                 aggregate_id=updated.id,
                 event=PipelineEvent(
-                    event_id=uuid4(),
+                    event_id=uuid5(
+                        NAMESPACE_URL,
+                        f"creator:workflow:{updated.id}:refinement:{updated.refinement_count}",
+                    ),
                     event_type=PipelineEventType.WRITER_REFINEMENT_REQUESTED,
                     event_version="1.0",
                     workspace_id=updated.workspace_id,
                     run_id=updated.id,
                     correlation_id=updated.id,
-                    payload_ref={"feedback": feedback, "precedence": "REVIEWER"},
+                    payload_ref=PipelinePayloadReference(
+                        feedback_ref="AgentWorkflowRun.input.human_feedback",
+                        predecessor_role="REVIEWER",
+                        attempt=updated.refinement_count + 1,
+                    ),
                 ),
             )
+            if source_event_id is not None:
+                outbox.mark_consumed(source_event_id)
         unit_of_work.commit()
 
 
@@ -478,6 +661,10 @@ def _execute_agent_step[OutputModel: BaseModel](
     inputs: Mapping[str, object],
     orchestrator: MultiAgentOrchestrator,
     output_model: type[OutputModel],
+    source_event_id: UUID | None = None,
+    stage_item: int = 0,
+    emit_event: bool = True,
+    event_item_count: int = 1,
 ) -> OutputModel:
     with SqlAlchemyUnitOfWork() as unit_of_work:
         run = unit_of_work.agent_workflows.get_internal(run_id)
@@ -499,6 +686,21 @@ def _execute_agent_step[OutputModel: BaseModel](
                 "Principal is not available for agent execution",
             )
         existing_steps = unit_of_work.agent_workflows.list_steps_internal(run_id)
+        if source_event_id is not None:
+            completed = next(
+                (
+                    candidate
+                    for candidate in reversed(existing_steps)
+                    if candidate.role == role
+                    and candidate.source_event_id == source_event_id
+                    and candidate.stage_item == stage_item
+                    and candidate.status.value == "COMPLETED"
+                    and candidate.output
+                ),
+                None,
+            )
+            if completed is not None:
+                return output_model.model_validate(completed.output)
         if role in {AgentWorkflowStepRole.BUSINESS, AgentWorkflowStepRole.PLANNER}:
             completed = next(
                 (
@@ -523,6 +725,8 @@ def _execute_agent_step[OutputModel: BaseModel](
             role=role,
             attempt=run.refinement_count + 1,
             input=dict(inputs),
+            source_event_id=source_event_id,
+            stage_item=stage_item,
         )
         unit_of_work.commit()
     try:
@@ -559,7 +763,15 @@ def _execute_agent_step[OutputModel: BaseModel](
             unit_of_work.commit()
         raise
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        predecessor = unit_of_work.agent_workflows.list_steps_internal(run_id)
+        persisted_steps = unit_of_work.agent_workflows.list_steps_internal(run_id)
+        predecessor = next(
+            (
+                candidate
+                for candidate in reversed(persisted_steps)
+                if candidate.id != step.id and candidate.status.value == "COMPLETED"
+            ),
+            None,
+        )
         unit_of_work.agent_workflows.complete_step(
             step.id,
             output=result.output.model_dump(mode="json"),
@@ -572,7 +784,7 @@ def _execute_agent_step[OutputModel: BaseModel](
             output_hash=result.output_hash,
             schema_name=result.schema_name,
             schema_version=result.schema_version,
-            predecessor_step_id=predecessor[-1].id if predecessor else None,
+            predecessor_step_id=predecessor.id if predecessor else None,
             correlation_id=run_id,
         )
         event_type = {
@@ -581,26 +793,54 @@ def _execute_agent_step[OutputModel: BaseModel](
             AgentWorkflowStepRole.WRITER: PipelineEventType.WRITER_COMPLETED,
         }.get(role)
         outbox = getattr(unit_of_work, "outbox", None)
-        if event_type is not None and outbox is not None:
+        if emit_event and event_type is not None and outbox is not None:
             outbox.add(
                 workspace_id=run.workspace_id,
                 aggregate_id=run_id,
-                event=PipelineEvent(
-                    event_id=UUID(str(step.id)),
-                    event_type=event_type,
-                    event_version="1.0",
-                    workspace_id=run.workspace_id,
-                    run_id=run_id,
+                event=_stage_event(
+                    run=run,
                     step_id=step.id,
-                    predecessor_step_id=predecessor[-1].id if predecessor else None,
-                    correlation_id=run_id,
-                    input_hash=result.input_hash,
+                    predecessor_step_id=predecessor.id if predecessor else None,
+                    source_event_id=source_event_id or step.id,
+                    event_type=event_type,
+                    schema_name=output_model.__name__,
                     output_hash=result.output_hash,
-                    payload_ref={"step_id": str(step.id), "schema": output_model.__name__},
+                    item_count=event_item_count,
                 ),
             )
+            if source_event_id is not None:
+                outbox.mark_consumed(source_event_id)
         unit_of_work.commit()
     return cast(OutputModel, result.output)
+
+
+def _stage_event(
+    *,
+    run: AgentWorkflowRunRecord,
+    step_id: UUID,
+    predecessor_step_id: UUID | None,
+    source_event_id: UUID,
+    event_type: PipelineEventType,
+    schema_name: str,
+    output_hash: str | None,
+    item_count: int,
+) -> PipelineEvent:
+    return PipelineEvent(
+        event_id=uuid5(source_event_id, event_type.value),
+        event_type=event_type,
+        event_version="1.0",
+        workspace_id=run.workspace_id,
+        run_id=run.id,
+        step_id=step_id,
+        predecessor_step_id=predecessor_step_id,
+        correlation_id=run.id,
+        output_hash=output_hash,
+        payload_ref=PipelinePayloadReference(
+            schema_name=schema_name,
+            item_count=max(item_count, 1),
+            attempt=min(run.refinement_count + 1, 5),
+        ),
+    )
 
 
 def _run_post_until_accepted(
@@ -693,6 +933,9 @@ def _generate_workflow_image(
     refinement_count: int,
     settings: object,
     predecessor_step_id: UUID | None = None,
+    source_event_id: UUID | None = None,
+    emit_event: bool = True,
+    event_item_count: int = 1,
 ) -> tuple[ImageRecord, ImageGenerationResult]:
     from creator.config import Settings
 
@@ -702,18 +945,52 @@ def _generate_workflow_image(
         "item": index,
         "agent_role": "ARTIST",
     }
+    external_id = f"agent-workflow:{run.id}:{index}:{refinement_count}"
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        job = unit_of_work.image_generations.create_image_generation(
-            workspace_id=run.workspace_id,
-            content_id=run.content_id,
-            requested_by_user_id=user.id,
-            model=typed_settings.gemini_image_model,
-            prompt=writer.direction.visual_prompt,
-            parameters=parameters,
-            external_id=f"agent-workflow:{run.id}:{index}:{refinement_count}",
-            max_attempts=typed_settings.image_generation_job_max_attempts,
+        existing = unit_of_work.image_generations.get_status_by_external_id_for_user(
+            user_id=user.id, external_id=external_id
         )
-        unit_of_work.commit()
+        job = (
+            existing.job
+            if existing is not None
+            else unit_of_work.image_generations.create_image_generation(
+                workspace_id=run.workspace_id,
+                content_id=run.content_id,
+                requested_by_user_id=user.id,
+                model=typed_settings.gemini_image_model,
+                prompt=writer.direction.visual_prompt,
+                parameters=parameters,
+                external_id=external_id,
+                max_attempts=typed_settings.image_generation_job_max_attempts,
+            )
+        )
+        if existing is None:
+            unit_of_work.commit()
+    if existing is not None and existing.image is not None:
+        image_record = existing.image
+        _persist_artist_step(
+            run,
+            index,
+            writer,
+            image_record.id,
+            predecessor_step_id=predecessor_step_id,
+            source_event_id=source_event_id,
+            emit_event=emit_event,
+            event_item_count=event_item_count,
+        )
+        stored_bytes = create_storage_provider(typed_settings).download(
+            image_record.storage_path,
+            max_bytes=typed_settings.storage_max_object_bytes,
+        )
+        return image_record, ImageGenerationResult(
+            image_bytes=stored_bytes,
+            mime_type=image_record.mime_type,
+            width=image_record.width,
+            height=image_record.height,
+            model=image_record.model,
+            prompt=image_record.prompt,
+            metadata=image_record.metadata,
+        )
     with SqlAlchemyUnitOfWork() as unit_of_work:
         work_item = unit_of_work.image_generations.claim_pending_by_id(job.id)
         unit_of_work.commit()
@@ -743,7 +1020,14 @@ def _generate_workflow_image(
             ),
         )
     _persist_artist_step(
-        run, index, writer, image_record.id, predecessor_step_id=predecessor_step_id
+        run,
+        index,
+        writer,
+        image_record.id,
+        predecessor_step_id=predecessor_step_id,
+        source_event_id=source_event_id,
+        emit_event=emit_event,
+        event_item_count=event_item_count,
     )
     return image_record, generated
 
@@ -754,6 +1038,9 @@ def _persist_artist_step(
     writer: WriterOutput,
     image_id: UUID,
     predecessor_step_id: UUID | None = None,
+    source_event_id: UUID | None = None,
+    emit_event: bool = True,
+    event_item_count: int = 1,
 ) -> None:
     with SqlAlchemyUnitOfWork() as unit_of_work:
         _execute_artifact_step(
@@ -764,26 +1051,28 @@ def _persist_artist_step(
             {"direction": writer.direction.model_dump(mode="json")},
             {"image_id": str(image_id)},
             predecessor_step_id=predecessor_step_id,
+            source_event_id=source_event_id,
+            stage_item=index,
         )
         step = unit_of_work.agent_workflows.list_steps_internal(run.id)[-1]
         outbox = getattr(unit_of_work, "outbox", None)
-        if outbox is not None:
+        if emit_event and outbox is not None:
             outbox.add(
                 workspace_id=run.workspace_id,
                 aggregate_id=run.id,
-                event=PipelineEvent(
-                    event_id=step.id,
-                    event_type=PipelineEventType.ARTIST_COMPLETED,
-                    event_version="1.0",
-                    workspace_id=run.workspace_id,
-                    run_id=run.id,
+                event=_stage_event(
+                    run=run,
                     step_id=step.id,
                     predecessor_step_id=step.predecessor_step_id,
-                    correlation_id=run.id,
+                    source_event_id=source_event_id or step.id,
+                    event_type=PipelineEventType.ARTIST_COMPLETED,
+                    schema_name="ArtistOutput",
                     output_hash=stable_hash(step.output),
-                    payload_ref={"step_id": str(step.id), "schema": "ArtistOutput"},
+                    item_count=event_item_count,
                 ),
             )
+            if source_event_id is not None:
+                outbox.mark_consumed(source_event_id)
         unit_of_work.commit()
 
 
@@ -793,6 +1082,10 @@ def _persist_review_step(
     writer: WriterOutput,
     review: object,
     predecessor_step_id: UUID | None = None,
+    source_event_id: UUID | None = None,
+    emit_event: bool = True,
+    event_item_count: int = 1,
+    terminal_image_ids: list[str] | None = None,
 ) -> None:
     output = (
         review
@@ -813,25 +1106,42 @@ def _persist_review_step(
             {"prompt": writer.direction.visual_prompt},
             output,
             predecessor_step_id=predecessor_step_id,
+            source_event_id=source_event_id,
+            stage_item=index,
         )
         step = unit_of_work.agent_workflows.list_steps_internal(run.id)[-1]
         outbox = getattr(unit_of_work, "outbox", None)
-        if outbox is not None:
+        if emit_event and outbox is not None:
             outbox.add(
                 workspace_id=run.workspace_id,
                 aggregate_id=run.id,
-                event=PipelineEvent(
-                    event_id=step.id,
-                    event_type=PipelineEventType.REVIEWER_COMPLETED,
-                    event_version="1.0",
-                    workspace_id=run.workspace_id,
-                    run_id=run.id,
+                event=_stage_event(
+                    run=run,
                     step_id=step.id,
                     predecessor_step_id=step.predecessor_step_id,
-                    correlation_id=run.id,
+                    source_event_id=source_event_id or step.id,
+                    event_type=PipelineEventType.REVIEWER_COMPLETED,
+                    schema_name="ReviewOutput",
                     output_hash=stable_hash(step.output),
-                    payload_ref={"step_id": str(step.id), "schema": "ReviewOutput"},
+                    item_count=event_item_count,
                 ),
+            )
+            if source_event_id is not None:
+                outbox.mark_consumed(source_event_id)
+        if terminal_image_ids is not None:
+            target = (
+                AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW
+                if run.human_review.value == "OPTIONAL"
+                else AgentWorkflowStatus.COMPLETED
+            )
+            current_step = (
+                "REVIEWER" if target == AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW else "DELIVERY"
+            )
+            unit_of_work.agent_workflows.transition(
+                run.id,
+                target,
+                current_step=current_step,
+                final_image_ids=terminal_image_ids,
             )
         unit_of_work.commit()
 
@@ -844,6 +1154,8 @@ def _execute_artifact_step(
     input: JsonObject,
     output: JsonObject,
     predecessor_step_id: UUID | None = None,
+    source_event_id: UUID | None = None,
+    stage_item: int = 0,
 ) -> None:
     step = unit_of_work.agent_workflows.add_step(
         run_id=run.id,
@@ -852,6 +1164,8 @@ def _execute_artifact_step(
         role=role,
         attempt=run.refinement_count + 1,
         input=input,
+        source_event_id=source_event_id,
+        stage_item=stage_item,
     )
     unit_of_work.agent_workflows.complete_step(
         step.id,

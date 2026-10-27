@@ -101,7 +101,6 @@ from creator.application.agent_image_workflow import (
     AgentWorkflowDecisionError,
     AgentWorkflowIdempotencyConflictError,
     AgentWorkflowInputError,
-    AgentWorkflowQueueError,
     StartImageWorkflowCommand,
     decide_image_workflow,
     start_image_workflow,
@@ -2618,10 +2617,6 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=422, detail={"code": "WORKFLOW_INPUT_INVALID", "message": str(error)}
             ) from error
-        except AgentWorkflowQueueError as error:
-            raise HTTPException(
-                status_code=503, detail={"code": "QUEUE_ENQUEUE_FAILED", "message": str(error)}
-            ) from error
         return success_response(_agent_workflow_data(run), request, status_code=202)
 
     @application.get("/api/v1/generations/image-workflows/{id}", tags=["Generations"])
@@ -2676,10 +2671,6 @@ def create_app() -> FastAPI:
         except AgentWorkflowDecisionError as error:
             raise HTTPException(
                 status_code=409, detail={"code": "WORKFLOW_DECISION_INVALID", "message": str(error)}
-            ) from error
-        except AgentWorkflowQueueError as error:
-            raise HTTPException(
-                status_code=503, detail={"code": "QUEUE_ENQUEUE_FAILED", "message": str(error)}
             ) from error
         return success_response(_agent_workflow_data(run), request)
 

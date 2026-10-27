@@ -435,6 +435,151 @@ def test_outbox_claim_has_a_single_winner(migrated_engine: Engine) -> None:
     assert second == []
 
 
+def test_outbox_consumer_claim_is_idempotent_and_uses_event_id(
+    migrated_engine: Engine,
+) -> None:
+    with migrated_engine.begin() as connection:
+        ids = seed_user_workspace_content(connection)
+    event = PipelineEvent(
+        event_id=uuid4(),
+        event_type=PipelineEventType.WORKFLOW_STARTED,
+        event_version="1.0",
+        workspace_id=ids["workspace_id"],
+        run_id=uuid4(),
+        correlation_id=uuid4(),
+    )
+    with uow_for_engine(migrated_engine) as unit_of_work:
+        assert (
+            unit_of_work.outbox.add(
+                workspace_id=event.workspace_id,
+                aggregate_id=event.run_id,
+                event=event,
+            )
+            == event.event_id
+        )
+        unit_of_work.commit()
+
+    with uow_for_engine(migrated_engine) as unit_of_work:
+        first = unit_of_work.outbox.claim_for_consumption(event.event_id, lease_seconds=960)
+        unit_of_work.commit()
+    with uow_for_engine(migrated_engine) as unit_of_work:
+        duplicate = unit_of_work.outbox.claim_for_consumption(event.event_id, lease_seconds=960)
+        unit_of_work.commit()
+
+    assert first is not None
+    assert first.consumer_attempts == 1
+    assert duplicate is None
+
+
+def test_outbox_consumer_retries_then_dead_letters_on_fifth_attempt(
+    migrated_engine: Engine,
+) -> None:
+    with migrated_engine.begin() as connection:
+        ids = seed_user_workspace_content(connection)
+    event = PipelineEvent(
+        event_id=uuid4(),
+        event_type=PipelineEventType.WORKFLOW_STARTED,
+        event_version="1.0",
+        workspace_id=ids["workspace_id"],
+        run_id=uuid4(),
+        correlation_id=uuid4(),
+    )
+    with uow_for_engine(migrated_engine) as unit_of_work:
+        unit_of_work.outbox.add(
+            workspace_id=event.workspace_id,
+            aggregate_id=event.run_id,
+            event=event,
+        )
+        unit_of_work.commit()
+
+    dead_lettered = False
+    for attempt in range(1, 6):
+        with uow_for_engine(migrated_engine) as unit_of_work:
+            claim = unit_of_work.outbox.claim_for_consumption(event.event_id, lease_seconds=960)
+            assert claim is not None
+            assert claim.consumer_attempts == attempt
+            dead_lettered = unit_of_work.outbox.mark_consumer_failed(
+                event.event_id,
+                "provider unavailable",
+                max_attempts=5,
+                retry_intervals=(30, 60, 120, 300),
+            )
+            unit_of_work.commit()
+        if attempt < 5:
+            assert not dead_lettered
+            with migrated_engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "UPDATE outbox_events "
+                        "SET consumer_available_at = CURRENT_TIMESTAMP "
+                        "WHERE id = :event_id"
+                    ),
+                    {"event_id": event.event_id.hex},
+                )
+
+    with migrated_engine.begin() as connection:
+        row = connection.execute(
+            text(
+                "SELECT consumer_attempts, dead_letter_phase, dead_letter_reason "
+                "FROM outbox_events WHERE id = :event_id"
+            ),
+            {"event_id": event.event_id.hex},
+        ).one()
+    assert dead_lettered
+    assert row.consumer_attempts == 5
+    assert row.dead_letter_phase == "CONSUME"
+    assert row.dead_letter_reason == "provider unavailable"
+
+
+def test_outbox_next_event_and_consumption_rollback_together(
+    migrated_engine: Engine,
+) -> None:
+    with migrated_engine.begin() as connection:
+        ids = seed_user_workspace_content(connection)
+    source = PipelineEvent(
+        event_id=uuid4(),
+        event_type=PipelineEventType.WORKFLOW_STARTED,
+        event_version="1.0",
+        workspace_id=ids["workspace_id"],
+        run_id=uuid4(),
+        correlation_id=uuid4(),
+    )
+    following = source.model_copy(
+        update={
+            "event_id": uuid4(),
+            "event_type": PipelineEventType.BUSINESS_COMPLETED,
+        }
+    )
+    with uow_for_engine(migrated_engine) as unit_of_work:
+        unit_of_work.outbox.add(
+            workspace_id=source.workspace_id,
+            aggregate_id=source.run_id,
+            event=source,
+        )
+        unit_of_work.commit()
+
+    with uow_for_engine(migrated_engine) as unit_of_work:
+        unit_of_work.outbox.mark_consumed(source.event_id)
+        unit_of_work.outbox.add(
+            workspace_id=following.workspace_id,
+            aggregate_id=following.run_id,
+            event=following,
+        )
+        unit_of_work.rollback()
+
+    with migrated_engine.begin() as connection:
+        source_consumed = connection.execute(
+            text("SELECT consumed_at FROM outbox_events WHERE id = :event_id"),
+            {"event_id": source.event_id.hex},
+        ).scalar_one()
+        following_count = connection.execute(
+            text("SELECT count(*) FROM outbox_events WHERE id = :event_id"),
+            {"event_id": following.event_id.hex},
+        ).scalar_one()
+    assert source_consumed is None
+    assert following_count == 0
+
+
 def test_repositories_create_and_update_user_settings(migrated_engine: Engine) -> None:
     with uow_for_engine(migrated_engine) as unit_of_work:
         user = unit_of_work.users.add(

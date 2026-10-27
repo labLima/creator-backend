@@ -76,3 +76,12 @@ def test_enums_are_string_checks_and_partial_indexes_target_sqlite() -> None:
         if index.name == "uq_workspace_memberships_active_user_workspace"
     )
     assert str(index.dialect_options["sqlite"]["where"]) == "deleted_at IS NULL"
+
+    completed_step_index = next(
+        index
+        for index in Base.metadata.tables["agent_workflow_steps"].indexes
+        if index.name == "uq_agent_workflow_steps_completed_source_role_item"
+    )
+    predicate = "status = 'COMPLETED' AND source_event_id IS NOT NULL"
+    assert str(completed_step_index.dialect_options["sqlite"]["where"]) == predicate
+    assert str(completed_step_index.dialect_options["postgresql"]["where"]) == predicate

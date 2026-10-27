@@ -1555,8 +1555,6 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
-        '503':
-          $ref: '#/components/responses/QueueEnqueueFailed'
   /api/v1/generations/image-workflows/{id}:
     get:
       operationId: getImageAgentWorkflow
@@ -1627,8 +1625,6 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
-        '503':
-          $ref: '#/components/responses/QueueEnqueueFailed'
   /api/v1/images/generate:
     post:
       operationId: generateImage

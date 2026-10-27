@@ -68,6 +68,8 @@ class AgentWorkflowStepRecord:
     schema_version: str | None = None
     predecessor_step_id: UUID | None = None
     correlation_id: UUID | None = None
+    source_event_id: UUID | None = None
+    stage_item: int = 0
 
 
 class AgentWorkflowRepository(Protocol):
@@ -108,6 +110,8 @@ class AgentWorkflowRepository(Protocol):
         role: AgentWorkflowStepRole,
         attempt: int,
         input: JsonObject,
+        source_event_id: UUID | None = None,
+        stage_item: int = 0,
     ) -> AgentWorkflowStepRecord: ...
 
     def complete_step(

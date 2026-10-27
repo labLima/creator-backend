@@ -14,6 +14,12 @@ class OutboxEvent(Base):
     __tablename__ = "outbox_events"
     __table_args__ = (
         Index("ix_outbox_events_dispatch", "published_at", "available_at"),
+        Index(
+            "ix_outbox_events_consume",
+            "consumed_at",
+            "consumer_available_at",
+            "dead_lettered_at",
+        ),
         Index("ix_outbox_events_workspace", "workspace_id", "created_at"),
     )
 
@@ -33,6 +39,17 @@ class OutboxEvent(Base):
     claimed_by: Mapped[str | None] = mapped_column(String(64))
     published_at: Mapped[object | None] = mapped_column(timestamp_tz)
     last_error: Mapped[str | None] = mapped_column(Text)
+    consumer_attempts: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
+    consumer_available_at: Mapped[object] = mapped_column(
+        timestamp_tz, nullable=False, server_default=func.now()
+    )
+    consumer_claimed_at: Mapped[object | None] = mapped_column(timestamp_tz)
+    consumer_claimed_by: Mapped[str | None] = mapped_column(String(64))
+    consumed_at: Mapped[object | None] = mapped_column(timestamp_tz)
+    last_consumer_error: Mapped[str | None] = mapped_column(Text)
+    dead_lettered_at: Mapped[object | None] = mapped_column(timestamp_tz)
+    dead_letter_phase: Mapped[str | None] = mapped_column(String(32))
+    dead_letter_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[object] = mapped_column(
         timestamp_tz, nullable=False, server_default=func.now()
     )

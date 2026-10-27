@@ -254,6 +254,8 @@ def _agent_workflow_step_record(row: models.AgentWorkflowStep) -> AgentWorkflowS
         schema_version=row.schema_version,
         predecessor_step_id=row.predecessor_step_id,
         correlation_id=row.correlation_id,
+        source_event_id=row.source_event_id,
+        stage_item=row.stage_item,
         provider=row.provider,
         model=row.model,
         decision=row.decision,
@@ -1809,6 +1811,8 @@ class SqlAlchemyAgentWorkflowRepository:
         role: AgentWorkflowStepRole,
         attempt: int,
         input: JsonObject,
+        source_event_id: UUID | None = None,
+        stage_item: int = 0,
     ) -> AgentWorkflowStepRecord:
         run = self._session.scalars(
             select(models.AgentWorkflowRun)
@@ -1828,6 +1832,8 @@ class SqlAlchemyAgentWorkflowRepository:
             role=role,
             attempt=attempt,
             input_json=_json(input),
+            source_event_id=source_event_id,
+            stage_item=stage_item,
             status=AgentWorkflowStepStatus.RUNNING,
             started_at=_now(),
         )

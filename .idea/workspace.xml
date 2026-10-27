@@ -4,7 +4,31 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="" />
+    <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/docs/adr/0018-event-driven-agent-pipeline.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/adr/0018-event-driven-agent-pipeline.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/openapi.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docs/openapi.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/application/agent_image_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/application/agent_image_workflow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/domain/pipeline_events.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/domain/pipeline_events.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/dtos.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/dtos.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/models/workflow/agent_workflow_step.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/models/workflow/agent_workflow_step.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/models/workflow/outbox_event.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/models/workflow/outbox_event.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/outbox.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/outbox.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/queue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/queue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/repositories/agent_workflows.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/repositories/agent_workflows.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/repositories/outbox.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/repositories/outbox.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/event_publisher.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/event_publisher.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/workers/pipeline_events.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/pipeline_events.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_workflow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_openapi_contract.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openapi_contract.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_pipeline_event_publisher.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_pipeline_event_publisher.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_pipeline_events.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_pipeline_events.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_portable_schema.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_portable_schema.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_queue.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_queue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_relational_integrity.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_relational_integrity.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

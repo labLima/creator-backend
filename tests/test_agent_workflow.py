@@ -11,7 +11,6 @@ from creator.application.agent_image_workflow import (
     AgentWorkflowDecisionError,
     AgentWorkflowIdempotencyConflictError,
     AgentWorkflowInputError,
-    AgentWorkflowQueueError,
     StartImageWorkflowCommand,
     decide_image_workflow,
     start_image_workflow,
@@ -27,11 +26,11 @@ from creator.domain.agent_workflow import (
     can_transition_agent_workflow_step,
 )
 from creator.domain.auth import Principal, WorkspaceRole
+from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
 from creator.repositories import (
     AgentWorkflowRunRecord,
     AgentWorkflowStepRecord,
     ContentRecord,
-    ImageRecord,
 )
 from creator.services.agents.contracts import (
     AgentExecutionContext,
@@ -42,7 +41,6 @@ from creator.services.agents.contracts import (
 )
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
 from creator.services.agents.runner import StructuredAgentRunner
-from creator.services.ai.image_provider import ImageGenerationResult
 from creator.services.ai.reviewer import UnconfiguredMultimodalImageReviewer
 from creator.services.storage.provider import StorageValidationError
 from creator.workers import agent_workflow as workflow_worker
@@ -103,6 +101,24 @@ class FakeContents:
         )
 
 
+class FakeOutbox:
+    def __init__(self) -> None:
+        self.events: list[PipelineEvent] = []
+        self.consumed: list[UUID] = []
+
+    def add(self, **kwargs: object) -> UUID:
+        event = kwargs["event"]
+        assert isinstance(event, PipelineEvent)
+        self.events.append(event)
+        return event.event_id
+
+    def exists(self, event_id: UUID) -> bool:
+        return any(event.event_id == event_id for event in self.events)
+
+    def mark_consumed(self, event_id: UUID) -> None:
+        self.consumed.append(event_id)
+
+
 class FakeWorkflowRepository:
     def __init__(self, run: AgentWorkflowRunRecord | None = None) -> None:
         self.run = run
@@ -139,6 +155,7 @@ class FakeUow:
         self.brands = type("Brands", (), {"get_for_user": lambda self, **kwargs: brand})()
         self.contents = FakeContents()
         self.agent_workflows = FakeWorkflowRepository(run)
+        self.outbox = FakeOutbox()
         self.commits = 0
 
     def commit(self) -> None:
@@ -202,11 +219,12 @@ def test_start_image_workflow_derives_workspace_and_is_idempotent() -> None:
         command=command,
     )
     assert run.status == AgentWorkflowStatus.PENDING
-    assert queue.calls == [run.id]
+    assert queue.calls == []
+    assert uow.outbox.events[0].event_type == PipelineEventType.WORKFLOW_STARTED
     assert uow.commits == 1
 
 
-def test_start_image_workflow_rejects_conflicts_limits_and_queue_failures() -> None:
+def test_start_image_workflow_rejects_conflicts_and_limits_but_not_queue_failures() -> None:
     user = type("User", (), {"id": USER_ID})()
     command = StartImageWorkflowCommand(
         brand_id=BRAND_ID,
@@ -238,14 +256,14 @@ def test_start_image_workflow_rejects_conflicts_limits_and_queue_failures() -> N
             user=user,
             command=command,
         )
-    with pytest.raises(AgentWorkflowQueueError):
-        start_image_workflow(
-            unit_of_work=FakeUow(),
-            queue=FakeQueue(RuntimeError("redis")),
-            settings=Settings(agent_workflow_max_refinements=3),
-            user=user,
-            command=command,
-        )
+    accepted = start_image_workflow(
+        unit_of_work=FakeUow(),
+        queue=FakeQueue(RuntimeError("redis")),
+        settings=Settings(agent_workflow_max_refinements=3),
+        user=user,
+        command=command,
+    )
+    assert accepted.status == AgentWorkflowStatus.PENDING
 
 
 def test_human_decisions_approve_reject_and_refine() -> None:
@@ -277,7 +295,8 @@ def test_human_decisions_approve_reject_and_refine() -> None:
         refined.agent_workflows.updated_input
         and refined.agent_workflows.updated_input["human_feedback"] == "Use more contrast"
     )
-    assert queue.calls
+    assert queue.calls == []
+    assert refined.outbox.events[-1].event_type == PipelineEventType.WRITER_REFINEMENT_REQUESTED
     rejected = FakeUow(_run())
     decide_image_workflow(
         unit_of_work=rejected,
@@ -445,6 +464,8 @@ class WorkflowRepo:
             created_at=now,
             updated_at=now,
             deleted_at=None,
+            source_event_id=kwargs.get("source_event_id"),
+            stage_item=int(kwargs.get("stage_item", 0)),
         )
         self.steps.append(step)
         return step
@@ -456,6 +477,8 @@ class WorkflowRepo:
                     step,
                     status=AgentWorkflowStepStatus.COMPLETED,
                     output=kwargs.get("output", step.output),
+                    output_hash=kwargs.get("output_hash"),
+                    predecessor_step_id=kwargs.get("predecessor_step_id"),
                 )
                 self.steps[index] = updated
                 return updated
@@ -467,9 +490,11 @@ class WorkflowRepo:
 
 class WorkerUow:
     shared_repo: WorkflowRepo
+    shared_outbox: FakeOutbox
 
     def __init__(self) -> None:
         self.agent_workflows = self.shared_repo
+        self.outbox = self.shared_outbox
         self.users = SimpleNamespace(
             get_by_id=lambda user_id: SimpleNamespace(id=USER_ID, external_id="principal")
         )
@@ -500,81 +525,23 @@ class WorkerUow:
         return None
 
 
-def test_worker_runs_specialists_and_finishes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_legacy_worker_job_is_converted_to_a_canonical_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import creator.workers.agent_workflow as worker
 
     run = replace(_run(AgentWorkflowStatus.PENDING), human_review=HumanReviewMode.AUTO)
     repo = WorkflowRepo(run)
     WorkerUow.shared_repo = repo
-    image_id = UUID("52000000-0000-0000-0000-000000000009")
-    image = ImageRecord(
-        id=image_id,
-        workspace_id=WORKSPACE_ID,
-        content_id=run.content_id,
-        generation_id=uuid4(),
-        version_number=1,
-        storage_path="workflow/image.png",
-        public_url="https://example.com/image.png",
-        mime_type="image/png",
-        width=512,
-        height=512,
-        model="fake-image",
-        prompt="A bright product image",
-        metadata={},
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-        deleted_at=None,
-    )
-
-    class Reviewer:
-        def review(self, request: object) -> object:
-            return SimpleNamespace(decision="APPROVED", score=1.0, feedback=(), safety_issues=())
-
+    WorkerUow.shared_outbox = FakeOutbox()
     monkeypatch.setattr(worker, "SqlAlchemyUnitOfWork", WorkerUow)
-    monkeypatch.setattr(worker, "get_settings", lambda: Settings(gemini_api_key=None))
-    monkeypatch.setattr(
-        worker,
-        "create_multi_agent_orchestrator",
-        lambda settings: SimpleNamespace(
-            execute=lambda context: StructuredAgentRunner(WorkflowLLM()).run(
-                context, contract_for_role(context.role).output_model
-            )
-        ),
-    )
-    monkeypatch.setattr(worker, "create_image_reviewer", lambda settings: Reviewer())
-    monkeypatch.setattr(
-        worker,
-        "create_image_generator",
-        lambda settings: SimpleNamespace(
-            generate=lambda request: ImageGenerationResult(
-                image_bytes=b"image",
-                mime_type="image/png",
-                width=512,
-                height=512,
-                model="fake-image",
-                prompt="A bright product image",
-                metadata={},
-            )
-        ),
-    )
-    monkeypatch.setattr(worker, "create_storage_provider", lambda settings: object())
-    monkeypatch.setattr(worker, "persist_generated_image", lambda **kwargs: image)
-    monkeypatch.setattr(
-        worker,
-        "create_semantic_retriever",
-        lambda settings: SimpleNamespace(search=lambda *args, **kwargs: []),
-    )
 
     worker.run_image_agent_workflow(str(run.id), "request")
+    worker.run_image_agent_workflow(str(run.id), "request")
 
-    assert repo.run.status == AgentWorkflowStatus.COMPLETED
-    assert repo.run.final_image_ids == [str(image_id)]
-    assert [step.role for step in repo.steps] == [
-        AgentWorkflowStepRole.BUSINESS,
-        AgentWorkflowStepRole.PLANNER,
-        AgentWorkflowStepRole.WRITER,
-        AgentWorkflowStepRole.ARTIST,
-        AgentWorkflowStepRole.REVIEWER,
+    assert repo.run.status == AgentWorkflowStatus.PENDING
+    assert [event.event_type for event in WorkerUow.shared_outbox.events] == [
+        PipelineEventType.WORKFLOW_STARTED
     ]
 
 
@@ -586,6 +553,7 @@ def test_worker_stage_checkpoints_resume_from_persisted_outputs(
     run = replace(_run(AgentWorkflowStatus.PENDING), human_review=HumanReviewMode.AUTO)
     repo = WorkflowRepo(run)
     WorkerUow.shared_repo = repo
+    WorkerUow.shared_outbox = FakeOutbox()
     monkeypatch.setattr(worker, "SqlAlchemyUnitOfWork", WorkerUow)
     monkeypatch.setattr(worker, "get_settings", lambda: Settings(gemini_api_key=None))
     monkeypatch.setattr(
@@ -603,11 +571,11 @@ def test_worker_stage_checkpoints_resume_from_persisted_outputs(
         lambda settings: SimpleNamespace(search=lambda *args, **kwargs: []),
     )
 
-    worker.run_image_agent_workflow(str(run.id), "request", stage="BUSINESS")
+    worker.run_pipeline_stage(str(run.id), "request", stage="BUSINESS", source_event_id=uuid4())
     assert repo.run.current_step == "PLANNER"
     assert [step.role for step in repo.steps] == [AgentWorkflowStepRole.BUSINESS]
 
-    worker.run_image_agent_workflow(str(run.id), "request", stage="PLANNER")
+    worker.run_pipeline_stage(str(run.id), "request", stage="PLANNER", source_event_id=uuid4())
     assert repo.run.current_step == "WRITER"
     assert [step.role for step in repo.steps] == [
         AgentWorkflowStepRole.BUSINESS,
@@ -639,9 +607,13 @@ def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None
         output=writer.model_dump(mode="json", by_alias=True),
     )
     image = SimpleNamespace(
-        id=image_id, workspace_id=WORKSPACE_ID, storage_path="image.png", mime_type="image/png"
+        id=image_id,
+        workspace_id=WORKSPACE_ID,
+        storage_path="image.png",
+        mime_type="image/png",
     )
     transitions: list[tuple[object, dict[str, object]]] = []
+    steps = [writer_step, artist_step]
 
     class FakeUow:
         def __enter__(self):
@@ -652,7 +624,7 @@ def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None
 
         class Workflows:
             def list_steps_internal(self, _run_id):
-                return [writer_step, artist_step]
+                return list(steps)
 
             def get_internal(self, _run_id):
                 return SimpleNamespace(human_review=SimpleNamespace(value="AUTO"))
@@ -668,6 +640,7 @@ def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None
 
         agent_workflows = Workflows()
         image_generations = Images()
+        outbox = FakeOutbox()
 
         def commit(self):
             return None
@@ -688,16 +661,44 @@ def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None
         "create_image_reviewer",
         lambda _settings: SimpleNamespace(review=lambda request: review),
     )
-    monkeypatch.setattr(
-        workflow_worker, "_persist_review_step", lambda *args, **kwargs: persisted.append(kwargs)
-    )
+
+    def persist_review(*args: object, **kwargs: object) -> None:
+        persisted.append(kwargs)
+        if kwargs.get("terminal_image_ids"):
+            transitions.append(
+                (
+                    AgentWorkflowStatus.COMPLETED,
+                    {"final_image_ids": kwargs["terminal_image_ids"]},
+                )
+            )
+        steps.append(
+            SimpleNamespace(
+                id=uuid4(),
+                role=AgentWorkflowStepRole.REVIEWER,
+                status=SimpleNamespace(value="COMPLETED"),
+                output={"decision": "APPROVED"},
+                predecessor_step_id=artist_step.id,
+                output_hash="a" * 64,
+                source_event_id=run_id,
+            )
+        )
+
+    monkeypatch.setattr(workflow_worker, "_persist_review_step", persist_review)
 
     workflow_worker._run_reviewer_stage(
-        SimpleNamespace(id=run_id, workspace_id=WORKSPACE_ID),
+        SimpleNamespace(id=run_id, workspace_id=WORKSPACE_ID, refinement_count=0),
         SimpleNamespace(id=USER_ID),
         BusinessOutput(brand_summary="brand", voice="voice", visual_direction="visual"),
         SimpleNamespace(),
     )
 
-    assert persisted == [{"predecessor_step_id": artist_step.id}]
+    assert persisted == [
+        {
+            "predecessor_step_id": artist_step.id,
+            "source_event_id": run_id,
+            "emit_event": True,
+            "event_item_count": 1,
+            "terminal_image_ids": [str(image_id)],
+        }
+    ]
     assert transitions[0][0] == AgentWorkflowStatus.COMPLETED

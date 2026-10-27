@@ -37,3 +37,15 @@ def test_static_openapi_declares_creator_bearer_security() -> None:
             continue
         for method in _operations(item):
             assert item[method].get("security") == [{"CreatorBearerAuth": []}], (method, path)
+
+
+def test_workflow_acceptance_does_not_document_redis_availability_errors() -> None:
+    static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
+    generated = app.openapi()
+    paths = (
+        "/api/v1/generations/image-workflows",
+        "/api/v1/generations/image-workflows/{id}/decision",
+    )
+    for path in paths:
+        assert "503" not in static["paths"][path]["post"]["responses"]
+        assert "503" not in generated["paths"][path]["post"]["responses"]

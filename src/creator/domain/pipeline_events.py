@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,6 +14,20 @@ class PipelineEventType(StrEnum):
     ARTIST_COMPLETED = "ArtistCompleted"
     REVIEWER_COMPLETED = "ReviewerCompleted"
     WRITER_REFINEMENT_REQUESTED = "WriterRefinementRequested"
+
+
+class PipelinePayloadReference(BaseModel):
+    """References required to load stage input from Creator-owned persistence."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_name: str | None = Field(default=None, min_length=1, max_length=100)
+    schema_version: str = Field(default="1.0", pattern=r"^1\.0$")
+    input_ref: str | None = Field(default=None, min_length=1, max_length=255)
+    feedback_ref: str | None = Field(default=None, min_length=1, max_length=255)
+    predecessor_role: str | None = Field(default=None, min_length=1, max_length=32)
+    item_count: int | None = Field(default=None, ge=1, le=20)
+    attempt: int = Field(default=1, ge=1, le=5)
 
 
 class PipelineEvent(BaseModel):
@@ -32,4 +45,4 @@ class PipelineEvent(BaseModel):
     correlation_id: UUID
     input_hash: str | None = Field(default=None, min_length=64, max_length=64)
     output_hash: str | None = Field(default=None, min_length=64, max_length=64)
-    payload_ref: dict[str, Any] = Field(default_factory=dict)
+    payload_ref: PipelinePayloadReference = Field(default_factory=PipelinePayloadReference)

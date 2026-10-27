@@ -17,6 +17,10 @@ class OutboxEventRecord:
     event_version: str
     payload: dict[str, object]
     available_at: datetime
+    attempts: int = 0
+    consumer_attempts: int = 0
+    consumed_at: datetime | None = None
+    dead_lettered_at: datetime | None = None
 
 
 class OutboxRepository(Protocol):
@@ -26,4 +30,30 @@ class OutboxRepository(Protocol):
 
     def mark_published(self, event_id: UUID) -> None: ...
 
-    def mark_failed(self, event_id: UUID, error: str) -> None: ...
+    def mark_failed(
+        self,
+        event_id: UUID,
+        error: str,
+        *,
+        max_attempts: int = 5,
+        retry_intervals: tuple[int, ...] = (30, 60, 120, 300),
+    ) -> bool: ...
+
+    def claim_for_consumption(
+        self, event_id: UUID, *, lease_seconds: int
+    ) -> OutboxEventRecord | None: ...
+
+    def mark_consumed(self, event_id: UUID) -> None: ...
+
+    def mark_consumer_failed(
+        self,
+        event_id: UUID,
+        error: str,
+        *,
+        max_attempts: int = 5,
+        retry_intervals: tuple[int, ...] = (30, 60, 120, 300),
+    ) -> bool: ...
+
+    def dead_letter(self, event_id: UUID, *, phase: str, reason: str) -> None: ...
+
+    def exists(self, event_id: UUID) -> bool: ...

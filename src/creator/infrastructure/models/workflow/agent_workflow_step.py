@@ -40,6 +40,16 @@ class AgentWorkflowStep(Base):
             ondelete="CASCADE",
         ),
         Index("ix_agent_workflow_steps_run_sequence", "run_id", "sequence_number"),
+        Index("ix_agent_workflow_steps_source_event", "source_event_id"),
+        Index(
+            "uq_agent_workflow_steps_completed_source_role_item",
+            "source_event_id",
+            "role",
+            "stage_item",
+            unique=True,
+            sqlite_where=text("status = 'COMPLETED' AND source_event_id IS NOT NULL"),
+            postgresql_where=text("status = 'COMPLETED' AND source_event_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
@@ -68,6 +78,8 @@ class AgentWorkflowStep(Base):
     schema_version: Mapped[str | None] = mapped_column(String(32))
     predecessor_step_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     correlation_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    source_event_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    stage_item: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
     provider: Mapped[str | None] = mapped_column(String(100))
     model: Mapped[str | None] = mapped_column(String(255))
     decision: Mapped[str | None] = mapped_column(String(32))

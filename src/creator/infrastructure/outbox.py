@@ -18,6 +18,7 @@ class SqlAlchemyOutboxRepository:
 
     def add(self, *, workspace_id: UUID, aggregate_id: UUID, event: PipelineEvent) -> UUID:
         row = models.OutboxEvent(
+            id=event.event_id,
             workspace_id=workspace_id,
             aggregate_id=aggregate_id,
             event_type=event.event_type.value,
@@ -36,6 +37,7 @@ class SqlAlchemyOutboxRepository:
             select(models.OutboxEvent.id)
             .where(
                 models.OutboxEvent.published_at.is_(None),
+                models.OutboxEvent.dead_lettered_at.is_(None),
                 models.OutboxEvent.available_at <= now,
                 (models.OutboxEvent.claimed_at.is_(None))
                 | (models.OutboxEvent.claimed_at < stale_before),
@@ -70,13 +72,104 @@ class SqlAlchemyOutboxRepository:
             row.claimed_at = None
             row.claimed_by = None
 
-    def mark_failed(self, event_id: UUID, error: str) -> None:
+    def mark_failed(
+        self,
+        event_id: UUID,
+        error: str,
+        *,
+        max_attempts: int = 5,
+        retry_intervals: tuple[int, ...] = (30, 60, 120, 300),
+    ) -> bool:
+        row = self._session.get(models.OutboxEvent, event_id)
+        if row is None:
+            return False
+        row.last_error = error[:2_000]
+        row.claimed_at = None
+        row.claimed_by = None
+        if row.attempts >= max_attempts:
+            self._set_dead_letter(row, phase="PUBLISH", reason=error)
+            return True
+        delay = retry_intervals[min(max(row.attempts - 1, 0), len(retry_intervals) - 1)]
+        row.available_at = datetime.now(UTC) + timedelta(seconds=delay)
+        return False
+
+    def claim_for_consumption(
+        self, event_id: UUID, *, lease_seconds: int
+    ) -> OutboxEventRecord | None:
+        now = datetime.now(UTC)
+        stale_before = now - timedelta(seconds=lease_seconds)
+        claim_token = uuid4().hex
+        self._session.execute(
+            update(models.OutboxEvent)
+            .where(
+                models.OutboxEvent.id == event_id,
+                models.OutboxEvent.consumed_at.is_(None),
+                models.OutboxEvent.dead_lettered_at.is_(None),
+                (models.OutboxEvent.consumer_claimed_at.is_(None))
+                | (models.OutboxEvent.consumer_claimed_at < stale_before),
+            )
+            .values(
+                consumer_claimed_at=now,
+                consumer_claimed_by=claim_token,
+                consumer_attempts=models.OutboxEvent.consumer_attempts + 1,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        row = self._session.scalars(
+            select(models.OutboxEvent).where(
+                models.OutboxEvent.id == event_id,
+                models.OutboxEvent.consumer_claimed_by == claim_token,
+            )
+        ).one_or_none()
+        return _record(row) if row is not None else None
+
+    def mark_consumed(self, event_id: UUID) -> None:
+        row = self._session.get(models.OutboxEvent, event_id)
+        if row is None or row.dead_lettered_at is not None:
+            return
+        row.consumed_at = datetime.now(UTC)
+        row.consumer_claimed_at = None
+        row.consumer_claimed_by = None
+        row.last_consumer_error = None
+
+    def mark_consumer_failed(
+        self,
+        event_id: UUID,
+        error: str,
+        *,
+        max_attempts: int = 5,
+        retry_intervals: tuple[int, ...] = (30, 60, 120, 300),
+    ) -> bool:
+        row = self._session.get(models.OutboxEvent, event_id)
+        if row is None:
+            return False
+        row.last_consumer_error = error[:2_000]
+        row.consumer_claimed_at = None
+        row.consumer_claimed_by = None
+        if row.consumer_attempts >= max_attempts:
+            self._set_dead_letter(row, phase="CONSUME", reason=error)
+            return True
+        delay = retry_intervals[min(max(row.consumer_attempts - 1, 0), len(retry_intervals) - 1)]
+        row.consumer_available_at = datetime.now(UTC) + timedelta(seconds=delay)
+        return False
+
+    def dead_letter(self, event_id: UUID, *, phase: str, reason: str) -> None:
         row = self._session.get(models.OutboxEvent, event_id)
         if row is not None:
-            row.last_error = error[:2_000]
-            row.claimed_at = None
-            row.claimed_by = None
-            row.available_at = datetime.now(UTC) + timedelta(seconds=60)
+            self._set_dead_letter(row, phase=phase, reason=reason)
+
+    def exists(self, event_id: UUID) -> bool:
+        return self._session.get(models.OutboxEvent, event_id) is not None
+
+    @staticmethod
+    def _set_dead_letter(row: models.OutboxEvent, *, phase: str, reason: str) -> None:
+        row.dead_lettered_at = datetime.now(UTC)
+        row.dead_letter_phase = phase[:32]
+        row.dead_letter_reason = reason[:2_000]
+        row.claimed_at = None
+        row.claimed_by = None
+        row.consumer_claimed_at = None
+        row.consumer_claimed_by = None
 
 
 def _record(row: models.OutboxEvent) -> OutboxEventRecord:
@@ -88,4 +181,8 @@ def _record(row: models.OutboxEvent) -> OutboxEventRecord:
         event_version=row.event_version,
         payload=dict(row.payload),
         available_at=cast(datetime, row.available_at),
+        attempts=row.attempts,
+        consumer_attempts=row.consumer_attempts,
+        consumed_at=cast(datetime | None, row.consumed_at),
+        dead_lettered_at=cast(datetime | None, row.dead_lettered_at),
     )

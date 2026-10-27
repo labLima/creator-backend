@@ -5,13 +5,17 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
 from creator.domain.agent_workflow import AgentWorkflowStatus, HumanReviewMode, WorkflowDecision
 from creator.domain.exceptions import EntityNotFoundError
-from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
+from creator.domain.pipeline_events import (
+    PipelineEvent,
+    PipelineEventType,
+    PipelinePayloadReference,
+)
 from creator.prompts.base import normalize_json_object
 from creator.repositories import AgentWorkflowRunRecord, UserRecord
 
@@ -32,6 +36,10 @@ class AgentWorkflowIdempotencyConflictError(ValueError):
 
 class AgentWorkflowDecisionError(ValueError):
     """Raised when a human decision is invalid for the current run."""
+
+
+class AgentWorkflowQueueError(RuntimeError):
+    """Compatibility error; Outbox-backed workflow acceptance no longer raises it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,40 +117,22 @@ def start_image_workflow(
         human_review=HumanReviewMode(command.human_review),
         max_refinements=max_refinements,
     )
-    outbox = getattr(unit_of_work, "outbox", None)
-    started_event: PipelineEvent | None = None
-    outbox_event_id: UUID | None = None
-    if outbox is not None:
-        started_event = PipelineEvent(
-            event_id=uuid4(),
-            event_type=PipelineEventType.WORKFLOW_STARTED,
-            event_version="1.0",
-            workspace_id=run.workspace_id,
-            run_id=run.id,
-            correlation_id=command.request_id,
-            payload_ref={"input": "AgentWorkflowRun.input", "version": "1.0"},
-        )
-        outbox_event_id = outbox.add(
-            workspace_id=run.workspace_id,
-            aggregate_id=run.id,
-            event=started_event,
-        )
+    started_event = PipelineEvent(
+        event_id=uuid5(NAMESPACE_URL, f"creator:workflow:{run.id}:started"),
+        event_type=PipelineEventType.WORKFLOW_STARTED,
+        event_version="1.0",
+        workspace_id=run.workspace_id,
+        run_id=run.id,
+        correlation_id=command.request_id,
+        payload_ref=PipelinePayloadReference(input_ref="AgentWorkflowRun.input"),
+    )
+    unit_of_work.outbox.add(
+        workspace_id=run.workspace_id,
+        aggregate_id=run.id,
+        event=started_event,
+    )
     unit_of_work.commit()
-    try:
-        if started_event is not None and outbox_event_id is not None:
-            assert outbox is not None
-            queue.enqueue_pipeline_event(event_id=outbox_event_id, event=started_event)
-            outbox.mark_published(outbox_event_id)
-            unit_of_work.commit()
-        else:
-            queue.enqueue_agent_workflow(run_id=run.id, request_id=command.request_id)
-    except Exception as error:
-        raise AgentWorkflowQueueError("Image agent workflow could not be queued") from error
     return run
-
-
-class AgentWorkflowQueueError(RuntimeError):
-    """Raised when a workflow run cannot be submitted to the queue."""
 
 
 def decide_image_workflow(
@@ -186,29 +176,27 @@ def decide_image_workflow(
         current_step="WRITER",
         refinement_count=run.refinement_count + 1,
     )
-    outbox = getattr(unit_of_work, "outbox", None)
-    if outbox is not None:
-        outbox.add(
-            workspace_id=updated.workspace_id,
-            aggregate_id=updated.id,
-            event=PipelineEvent(
-                event_id=uuid4(),
-                event_type=PipelineEventType.WRITER_REFINEMENT_REQUESTED,
-                event_version="1.0",
-                workspace_id=updated.workspace_id,
-                run_id=updated.id,
-                correlation_id=request_id,
-                payload_ref={
-                    "feedback": "AgentWorkflowRun.input.human_feedback",
-                    "precedence": "REVIEWER",
-                },
+    unit_of_work.outbox.add(
+        workspace_id=updated.workspace_id,
+        aggregate_id=updated.id,
+        event=PipelineEvent(
+            event_id=uuid5(
+                NAMESPACE_URL,
+                f"creator:workflow:{updated.id}:refinement:{updated.refinement_count}",
             ),
-        )
+            event_type=PipelineEventType.WRITER_REFINEMENT_REQUESTED,
+            event_version="1.0",
+            workspace_id=updated.workspace_id,
+            run_id=updated.id,
+            correlation_id=request_id,
+            payload_ref=PipelinePayloadReference(
+                feedback_ref="AgentWorkflowRun.input.human_feedback",
+                predecessor_role="REVIEWER",
+                attempt=min(updated.refinement_count + 1, 5),
+            ),
+        ),
+    )
     unit_of_work.commit()
-    try:
-        queue.enqueue_agent_workflow(run_id=run_id, request_id=request_id)
-    except Exception as error:
-        raise AgentWorkflowQueueError("Refined image agent workflow could not be queued") from error
     return updated
 
 
