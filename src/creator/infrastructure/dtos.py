@@ -1449,10 +1449,24 @@ class SqlAlchemyGenerationRepository:
         return cast(models.Generation, row)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, models.Generation)
+        return _scoped_resource_select(user_id, models.Generation).join(
+            models.Content,
+            and_(
+                models.Content.id == models.Generation.content_id,
+                models.Content.workspace_id == models.Generation.workspace_id,
+                models.Content.deleted_at.is_(None),
+            ),
+        )
 
     def _scoped_count(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_count(user_id, models.Generation)
+        return _scoped_resource_count(user_id, models.Generation).join(
+            models.Content,
+            and_(
+                models.Content.id == models.Generation.content_id,
+                models.Content.workspace_id == models.Generation.workspace_id,
+                models.Content.deleted_at.is_(None),
+            ),
+        )
 
 
 class SqlAlchemyAssetRepository:
@@ -2345,6 +2359,15 @@ class SqlAlchemyImageGenerationRepository:
                     and_(
                         models.Generation.id == models.GenerationJob.generation_id,
                         models.Generation.workspace_id == models.GenerationJob.workspace_id,
+                        models.Generation.deleted_at.is_(None),
+                    ),
+                )
+                .join(
+                    models.Content,
+                    and_(
+                        models.Content.id == models.Generation.content_id,
+                        models.Content.workspace_id == models.Generation.workspace_id,
+                        models.Content.deleted_at.is_(None),
                     ),
                 )
                 .join(
@@ -2368,6 +2391,15 @@ class SqlAlchemyImageGenerationRepository:
                 and_(
                     models.Generation.id == models.GenerationJob.generation_id,
                     models.Generation.workspace_id == models.GenerationJob.workspace_id,
+                    models.Generation.deleted_at.is_(None),
+                ),
+            )
+            .join(
+                models.Content,
+                and_(
+                    models.Content.id == models.Generation.content_id,
+                    models.Content.workspace_id == models.Generation.workspace_id,
+                    models.Content.deleted_at.is_(None),
                 ),
             )
             .join(
@@ -2396,6 +2428,14 @@ class SqlAlchemyImageGenerationRepository:
                         models.Generation.id == models.GenerationJob.generation_id,
                         models.Generation.workspace_id == models.GenerationJob.workspace_id,
                         models.Generation.deleted_at.is_(None),
+                    ),
+                )
+                .join(
+                    models.Content,
+                    and_(
+                        models.Content.id == models.Generation.content_id,
+                        models.Content.workspace_id == models.Generation.workspace_id,
+                        models.Content.deleted_at.is_(None),
                     ),
                 )
                 .join(

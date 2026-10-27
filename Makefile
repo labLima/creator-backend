@@ -31,10 +31,10 @@ test:
 	$(PYTEST)
 
 e2e:
-	pytest -m e2e --no-cov
+	$(PYTEST) -m e2e --no-cov
 
 dependency-audit:
-	pip-audit \
+	$(PYTHON) -m pip_audit \
 		--ignore-vuln PYSEC-2026-311 \
 		--ignore-vuln PYSEC-2026-3813 \
 		--ignore-vuln PYSEC-2026-3814 \
