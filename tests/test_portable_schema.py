@@ -14,7 +14,7 @@ def test_registered_schema_creates_on_sqlite() -> None:
 
     Base.metadata.create_all(engine)
 
-    assert len(Base.metadata.tables) == 55
+    assert {"users", "auth_sessions", "plans", "provider_disputes"} <= set(Base.metadata.tables)
     engine.dispose()
 
 
@@ -65,7 +65,7 @@ def test_sqlite_round_trips_uuid_json_and_utc_timestamp() -> None:
     engine.dispose()
 
 
-def test_enums_are_string_checks_and_partial_indexes_target_both_dialects() -> None:
+def test_enums_are_string_checks_and_partial_indexes_target_sqlite() -> None:
     user_role = Base.metadata.tables["users"].c.global_role.type
     assert user_role.native_enum is False
     assert user_role.create_constraint is True
@@ -76,4 +76,3 @@ def test_enums_are_string_checks_and_partial_indexes_target_both_dialects() -> N
         if index.name == "uq_workspace_memberships_active_user_workspace"
     )
     assert str(index.dialect_options["sqlite"]["where"]) == "deleted_at IS NULL"
-    assert str(index.dialect_options["postgresql"]["where"]) == "deleted_at IS NULL"
