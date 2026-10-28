@@ -5,6 +5,7 @@ import binascii
 import hashlib
 import hmac
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
@@ -34,8 +35,11 @@ from creator.infrastructure.auth.jwt_adapter import (
 
 
 class PyJwtAccessTokenCodec:
+    def __init__(self, clock: Clock | None = None) -> None:
+        self._clock = clock or SystemClock()
+
     def issue(self, *, user_id: UUID, session_id: UUID, role: str, settings: Settings) -> str:
-        now = datetime.now(UTC)
+        now = self._clock.now()
         payload = {
             "iss": settings.auth_jwt_issuer,
             "aud": settings.auth_jwt_audience,
@@ -113,11 +117,12 @@ class SignedCsrfTokenService:
         )
 
 
+@dataclass(slots=True)
 class DefaultAuthTokenServices:
-    access: AccessTokenCodec = PyJwtAccessTokenCodec()
-    refresh: RefreshTokenGenerator = SecureRefreshTokenGenerator()
-    csrf: CsrfTokenService = SignedCsrfTokenService()
-    clock: Clock = SystemClock()
+    access: AccessTokenCodec
+    refresh: RefreshTokenGenerator
+    csrf: CsrfTokenService
+    clock: Clock
 
 
 def _secret(settings: Settings) -> str:
@@ -135,4 +140,10 @@ def _sign(value: str, secret: str) -> str:
 
 
 def auth_token_services() -> AuthTokenServices:
-    return DefaultAuthTokenServices()
+    clock = SystemClock()
+    return DefaultAuthTokenServices(
+        access=PyJwtAccessTokenCodec(clock),
+        refresh=SecureRefreshTokenGenerator(),
+        csrf=SignedCsrfTokenService(clock),
+        clock=clock,
+    )

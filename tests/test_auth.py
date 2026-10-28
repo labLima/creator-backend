@@ -17,11 +17,20 @@ from creator.application.auth import (
     RefreshInProgressError,
     login,
     logout,
+    principal_from_access_token,
     refresh,
     session_is_active,
     signup,
 )
+from creator.application.auth_ports import (
+    AccessTokenCodec,
+    Clock,
+    CsrfTokenService,
+    RefreshTokenGenerator,
+)
 from creator.config import Settings
+from creator.domain.auth import Principal
+from creator.infrastructure.auth import auth_token_services
 from creator.infrastructure.database.db import create_database_engine
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -61,13 +70,21 @@ def uow(engine: Engine) -> SqlAlchemyUnitOfWork:
         yield unit_of_work
 
 
-def test_signup_creates_user_workspace_membership_and_session(uow: SqlAlchemyUnitOfWork) -> None:
+@pytest.fixture()
+def token_services():
+    return auth_token_services()
+
+
+def test_signup_creates_user_workspace_membership_and_session(
+    uow: SqlAlchemyUnitOfWork, token_services
+) -> None:
     result = signup(
         unit_of_work=uow,
         settings=_settings(),
         email="Owner@Example.com",
         password="correct-password",
         workspace_name="Creator Workspace",
+        token_services=token_services,
     )
 
     assert result.user.email == "owner@example.com"
@@ -80,13 +97,14 @@ def test_signup_creates_user_workspace_membership_and_session(uow: SqlAlchemyUni
     assert result.result.session.principal.subject == str(result.user.id)
 
 
-def test_signup_rejects_duplicate_email(uow: SqlAlchemyUnitOfWork) -> None:
+def test_signup_rejects_duplicate_email(uow: SqlAlchemyUnitOfWork, token_services) -> None:
     signup(
         unit_of_work=uow,
         settings=_settings(),
         email="owner@example.com",
         password="correct-password",
         workspace_name="Workspace",
+        token_services=token_services,
     )
     with pytest.raises(EmailAlreadyRegisteredError):
         signup(
@@ -95,16 +113,20 @@ def test_signup_rejects_duplicate_email(uow: SqlAlchemyUnitOfWork) -> None:
             email="OWNER@example.com",
             password="correct-password",
             workspace_name="Another Workspace",
+            token_services=token_services,
         )
 
 
-def test_login_rejects_wrong_password_and_accepts_correct_one(uow: SqlAlchemyUnitOfWork) -> None:
+def test_login_rejects_wrong_password_and_accepts_correct_one(
+    uow: SqlAlchemyUnitOfWork, token_services
+) -> None:
     signup(
         unit_of_work=uow,
         settings=_settings(),
         email="owner@example.com",
         password="correct-password",
         workspace_name="Workspace",
+        token_services=token_services,
     )
     with pytest.raises(InvalidCredentialsError):
         login(
@@ -112,6 +134,7 @@ def test_login_rejects_wrong_password_and_accepts_correct_one(uow: SqlAlchemyUni
             settings=_settings(),
             email="owner@example.com",
             password="wrong-password",
+            token_services=token_services,
         )
 
     session = login(
@@ -119,18 +142,22 @@ def test_login_rejects_wrong_password_and_accepts_correct_one(uow: SqlAlchemyUni
         settings=_settings(),
         email="owner@example.com",
         password="correct-password",
+        token_services=token_services,
     )
     assert session.access_token
     assert session.refresh_token
 
 
-def test_refresh_rotates_and_reuse_revokes_family(uow: SqlAlchemyUnitOfWork) -> None:
+def test_refresh_rotates_and_reuse_revokes_family(
+    uow: SqlAlchemyUnitOfWork, token_services
+) -> None:
     result = signup(
         unit_of_work=uow,
         settings=_settings(),
         email="owner@example.com",
         password="correct-password",
         workspace_name="Workspace",
+        token_services=token_services,
     )
     assert result.result.session is not None
     original_refresh = result.result.session.refresh_token
@@ -139,6 +166,7 @@ def test_refresh_rotates_and_reuse_revokes_family(uow: SqlAlchemyUnitOfWork) -> 
         unit_of_work=uow,
         settings=_settings(),
         refresh_token=original_refresh,
+        token_services=token_services,
     )
     assert rotated.refresh_token != original_refresh
 
@@ -147,32 +175,42 @@ def test_refresh_rotates_and_reuse_revokes_family(uow: SqlAlchemyUnitOfWork) -> 
             unit_of_work=uow,
             settings=_settings(),
             refresh_token=original_refresh,
+            token_services=token_services,
         )
 
     rotated_again = refresh(
         unit_of_work=uow,
         settings=_settings(),
         refresh_token=rotated.refresh_token,
+        token_services=token_services,
     )
     assert rotated_again.refresh_token != rotated.refresh_token
 
 
-def test_logout_revokes_current_session(uow: SqlAlchemyUnitOfWork) -> None:
+def test_logout_revokes_current_session(uow: SqlAlchemyUnitOfWork, token_services) -> None:
     result = signup(
         unit_of_work=uow,
         settings=_settings(),
         email="owner@example.com",
         password="correct-password",
         workspace_name="Workspace",
+        token_services=token_services,
     )
     assert result.result.session is not None
     session_id = result.result.session.principal.session_id
     assert session_id is not None
     logout(unit_of_work=uow, session_id=UUID(session_id))
-    assert session_is_active(unit_of_work=uow, session_id=UUID(session_id)) is False
+    assert (
+        session_is_active(
+            unit_of_work=uow,
+            session_id=UUID(session_id),
+            clock=token_services.clock,
+        )
+        is False
+    )
 
 
-def test_expired_refresh_token_is_rejected(uow: SqlAlchemyUnitOfWork) -> None:
+def test_expired_refresh_token_is_rejected(uow: SqlAlchemyUnitOfWork, token_services) -> None:
     class FakeClock:
         current = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -187,6 +225,7 @@ def test_expired_refresh_token_is_rejected(uow: SqlAlchemyUnitOfWork) -> None:
         email="owner@example.com",
         password="correct-password",
         workspace_name="Workspace",
+        token_services=token_services,
         clock=clock,
     )
     assert result.result.session is not None
@@ -196,5 +235,59 @@ def test_expired_refresh_token_is_rejected(uow: SqlAlchemyUnitOfWork) -> None:
             unit_of_work=uow,
             settings=settings,
             refresh_token=result.result.session.refresh_token,
+            token_services=token_services,
             clock=clock,
         )
+
+
+def test_application_auth_accepts_replaceable_token_ports(uow: SqlAlchemyUnitOfWork) -> None:
+    class FakeAccessTokenCodec:
+        def issue(self, *, user_id: UUID, session_id: UUID, role: str, settings: Settings) -> str:
+            return f"fake-access:{user_id}:{session_id}:{role}"
+
+        def principal(self, token: str, settings: Settings) -> Principal:
+            assert token == "fake-token"
+            return Principal(subject="fake-user", session_id="fake-session")
+
+    class FakeRefreshTokenGenerator:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate(self) -> str:
+            self.calls += 1
+            return f"fake-refresh-{self.calls}"
+
+    class FakeCsrfTokenService:
+        def issue(self, *, session_id: UUID, settings: Settings) -> str:
+            return f"fake-csrf-{session_id}"
+
+        def verify(self, *, token: str, session_id: UUID, settings: Settings) -> bool:
+            return token == f"fake-csrf-{session_id}"
+
+    class FakeServices:
+        access: AccessTokenCodec = FakeAccessTokenCodec()
+        refresh: RefreshTokenGenerator = FakeRefreshTokenGenerator()
+        csrf: CsrfTokenService = FakeCsrfTokenService()
+        clock: Clock = type(
+            "FakeClock",
+            (),
+            {"now": lambda self: datetime(2026, 1, 1, tzinfo=UTC)},
+        )()
+
+    services = FakeServices()
+    result = signup(
+        unit_of_work=uow,
+        settings=_settings(),
+        email="owner@example.com",
+        password="correct-password",
+        workspace_name="Workspace",
+        token_services=services,
+    )
+
+    assert result.result.session is not None
+    assert result.result.session.access_token.startswith("fake-access:")
+    assert result.result.session.refresh_token == "fake-refresh-1"
+    assert (
+        principal_from_access_token("fake-token", _settings(), token_services=services).subject
+        == "fake-user"
+    )

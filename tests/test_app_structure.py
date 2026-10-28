@@ -44,6 +44,29 @@ def test_infrastructure_is_split_by_adapter_boundary() -> None:
     } == {"auth", "database", "persistence", "runtime"}
 
 
+def test_application_and_domain_do_not_import_transport_or_infrastructure() -> None:
+    forbidden_modules = {
+        "fastapi",
+        "fastapi_jwt_auth",
+        "jwt",
+        "starlette",
+    }
+    for layer in ("application", "domain"):
+        root = PROJECT_ROOT / "src" / "creator" / layer
+        for path in root.rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    imported = [alias.name.split(".")[0] for alias in node.names]
+                    assert not set(imported) & forbidden_modules, path
+                elif isinstance(node, ast.ImportFrom):
+                    module = (node.module or "").split(".")
+                    assert not set(module[:1]) & forbidden_modules, path
+                    assert module[:2] != ["creator", "infrastructure"], path
+                    imported_names = {alias.name for alias in node.names}
+                    assert not imported_names & {"Request", "Response"}, path
+
+
 def test_compose_runs_migrations_before_api_and_worker() -> None:
     compose = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 

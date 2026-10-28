@@ -10,9 +10,10 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
 from creator.application.auth_ports import AuthTokenServices, Clock
+from creator.application.auth_types import AuthSignupResult, IssuedSession
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
-from creator.domain.auth import AuthSignupResult, IssuedSession, Principal
+from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
 from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
 
@@ -74,15 +75,14 @@ def hash_password(password: str, settings: Settings) -> str:
 
 def verify_password(password: str, password_hash: str | None) -> bool:
     try:
-        return _PASSWORD_HASHER.verify(password_hash or _DUMMY_HASH, password)
+        return bool(_PASSWORD_HASHER.verify(password_hash or _DUMMY_HASH, password))
     except VerifyMismatchError:
         return False
 
 
 def principal_from_access_token(
-    token: str, settings: Settings, *, token_services: AuthTokenServices | None = None
+    token: str, settings: Settings, *, token_services: AuthTokenServices
 ) -> Principal:
-    token_services = _resolve_token_services(token_services)
     try:
         return token_services.access.principal(token, settings)
     except AuthConfigurationError:
@@ -137,10 +137,9 @@ def signup(
     workspace_name: str,
     user_agent: str | None = None,
     ip_address: str | None = None,
-    token_services: AuthTokenServices | None = None,
+    token_services: AuthTokenServices,
     clock: Clock | None = None,
 ) -> LocalSignupResult:
-    token_services = _resolve_token_services(token_services)
     clock = _resolve_clock(token_services, clock)
     normalized = normalize_email(email)
     if unit_of_work.users.get_by_email(normalized, include_deleted=True) is not None:
@@ -200,10 +199,9 @@ def login(
     password: str,
     user_agent: str | None = None,
     ip_address: str | None = None,
-    token_services: AuthTokenServices | None = None,
+    token_services: AuthTokenServices,
     clock: Clock | None = None,
 ) -> IssuedSession:
-    token_services = _resolve_token_services(token_services)
     clock = _resolve_clock(token_services, clock)
     user = unit_of_work.users.get_by_email(normalize_email(email))
     if user is None or not verify_password(password, user.password_hash):
@@ -237,10 +235,9 @@ def refresh(
     refresh_token: str,
     user_agent: str | None = None,
     ip_address: str | None = None,
-    token_services: AuthTokenServices | None = None,
+    token_services: AuthTokenServices,
     clock: Clock | None = None,
 ) -> IssuedSession:
-    token_services = _resolve_token_services(token_services)
     clock = _resolve_clock(token_services, clock)
     record = unit_of_work.auth_sessions.get_by_refresh_hash(_refresh_hash(refresh_token))
     if record is None:
@@ -315,39 +312,22 @@ def logout(*, unit_of_work: UnitOfWork, session_id: UUID) -> None:
     unit_of_work.commit()
 
 
-def session_is_active(
-    *, unit_of_work: UnitOfWork, session_id: UUID, clock: Clock | None = None
-) -> bool:
+def session_is_active(*, unit_of_work: UnitOfWork, session_id: UUID, clock: Clock) -> bool:
     session = unit_of_work.auth_sessions.get_by_id(session_id)
     if session is None:
         return False
-    now = _resolve_clock(None, clock).now()
+    now = clock.now()
     absolute_expires_at = getattr(session, "absolute_expires_at", session.expires_at)
     return session.revoked_at is None and session.expires_at > now and absolute_expires_at > now
 
 
-def _resolve_token_services(
-    token_services: AuthTokenServices | None,
-) -> AuthTokenServices:
-    if token_services is not None:
-        return token_services
-    # Compatibility for direct application-service callers. HTTP composition always
-    # injects this port from infrastructure and never imports the provider here.
-    from creator.infrastructure.auth import auth_token_services
-
-    return auth_token_services()
-
-
 def _resolve_clock(
-    token_services: AuthTokenServices | None,
+    token_services: AuthTokenServices,
     clock: Clock | None,
 ) -> Clock:
     if clock is not None:
         return clock
-    if token_services is not None:
-        candidate = getattr(token_services, "clock", None)
-        if candidate is not None:
-            return cast(Clock, candidate)
-    from creator.infrastructure.auth.services import SystemClock
-
-    return SystemClock()
+    candidate = getattr(token_services, "clock", None)
+    if candidate is None:
+        raise AuthConfigurationError("authentication clock is not configured")
+    return cast(Clock, candidate)

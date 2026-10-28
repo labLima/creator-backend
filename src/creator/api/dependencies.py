@@ -38,6 +38,10 @@ bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorLegacyBearerAut
 logger = logging.getLogger(__name__)
 
 
+def _resolve_token_services(token_services: AuthTokenServices | None) -> AuthTokenServices:
+    return token_services if token_services is not None else auth_token_services()
+
+
 def _auth_exception(
     code: str,
     message: str,
@@ -67,6 +71,7 @@ def get_principal(
         request = None
         settings = credentials
         credentials = legacy_credentials
+    token_services = _resolve_token_services(token_services)
     request_obj = request if isinstance(request, Request) else None
     bearer = _bearer_token(credentials) if settings.auth_legacy_bearer_enabled else None
     cookie = (
@@ -115,6 +120,7 @@ def get_optional_principal(
     The global rate-limit dependency must be able to rate-limit public Auth routes
     by IP before the endpoint's own authentication requirements are evaluated.
     """
+    token_services = _resolve_token_services(token_services)
     bearer = request.headers.get("Authorization") if settings.auth_legacy_bearer_enabled else None
     cookie = (
         request.cookies.get(settings.auth_cookie_access_name)
@@ -168,7 +174,9 @@ def get_uow(
 def get_current_user(
     principal: Annotated[Principal | None, Depends(get_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)] = None,  # type: ignore[assignment]
 ) -> UserRecord:
+    token_services = _resolve_token_services(token_services)
     if principal is None:
         raise _invalid_auth_exception()
     try:
@@ -176,7 +184,9 @@ def get_current_user(
         session_id = UUID(principal.session_id or "")
     except ValueError as error:
         raise _invalid_auth_exception() from error
-    if not session_is_active(unit_of_work=unit_of_work, session_id=session_id):
+    if not session_is_active(
+        unit_of_work=unit_of_work, session_id=session_id, clock=token_services.clock
+    ):
         raise _invalid_auth_exception()
     existing = unit_of_work.users.get_by_id(user_id, include_deleted=True)
     if existing is None or existing.deleted_at is not None:
@@ -187,7 +197,9 @@ def get_current_user(
 def get_optional_current_user(
     principal: Annotated[Principal | None, Depends(get_optional_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)] = None,  # type: ignore[assignment]
 ) -> UserRecord | None:
+    token_services = _resolve_token_services(token_services)
     if principal is None:
         return None
     try:
@@ -195,7 +207,9 @@ def get_optional_current_user(
         session_id = UUID(principal.session_id or "")
     except ValueError:
         return None
-    if not session_is_active(unit_of_work=unit_of_work, session_id=session_id):
+    if not session_is_active(
+        unit_of_work=unit_of_work, session_id=session_id, clock=token_services.clock
+    ):
         return None
     existing = unit_of_work.users.get_by_id(user_id, include_deleted=True)
     if existing is None or existing.deleted_at is not None:

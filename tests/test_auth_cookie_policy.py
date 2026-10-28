@@ -6,10 +6,12 @@ from uuid import uuid4
 import pytest
 from starlette.responses import Response
 
-from creator.api.auth_cookies import set_auth_cookies
+from creator.api.auth import FastApiCookieTransport, clear_auth_cookies, set_auth_cookies
+from creator.application.auth_ports import CookieSpec
+from creator.application.auth_types import IssuedSession
 from creator.auth_cookie_policy import AuthCookiePolicy
 from creator.config import Settings
-from creator.domain.auth import IssuedSession, Principal
+from creator.domain.auth import Principal
 from creator.infrastructure.auth import auth_token_services
 from creator.infrastructure.auth.services import SignedCsrfTokenService
 
@@ -89,12 +91,57 @@ def test_access_cookie_does_not_outlive_remaining_session_ttl() -> None:
     )
     response = Response()
 
-    set_auth_cookies(response, session, csrf_token="csrf", settings=settings)
+    set_auth_cookies(
+        FastApiCookieTransport(response), session, csrf_token="csrf", settings=settings
+    )
 
     access_cookie = next(
         cookie for cookie in response.headers.getlist("set-cookie") if "creator_access=" in cookie
     )
     assert "Max-Age=120" in access_cookie
+
+
+def test_cookie_serialization_uses_transport_port() -> None:
+    class FakeCookieTransport:
+        def __init__(self) -> None:
+            self.cookies: list[CookieSpec] = []
+            self.deleted: list[tuple[str, str]] = []
+
+        def set(self, cookie: CookieSpec) -> None:
+            self.cookies.append(cookie)
+
+        def delete(self, *, name: str, path: str) -> None:
+            self.deleted.append((name, path))
+
+    settings = Settings(_env_file=None, auth_jwt_secret=SECRET)
+    session = IssuedSession(
+        access_token="access",
+        refresh_token="refresh",
+        token_type="Bearer",
+        expires_in=900,
+        refresh_expires_in=3600,
+        principal=Principal(subject=str(uuid4()), session_id=str(uuid4())),
+        provider="local",
+    )
+    transport = FakeCookieTransport()
+
+    set_auth_cookies(transport, session, csrf_token="csrf", settings=settings)
+
+    assert [cookie.name for cookie in transport.cookies] == [
+        "creator_access",
+        "creator_refresh",
+        "creator_csrf",
+    ]
+    assert transport.cookies[0].http_only is True
+    assert transport.cookies[2].http_only is False
+
+    clear_auth_cookies(transport, settings=settings)
+
+    assert transport.deleted == [
+        ("creator_access", "/api/v1"),
+        ("creator_refresh", "/api/v1/auth"),
+        ("creator_csrf", "/"),
+    ]
 
 
 def test_cookie_names_must_not_collide() -> None:
@@ -172,7 +219,7 @@ def test_session_cookies_are_http_only_and_scoped() -> None:
         session_id=uuid4(),
         settings=settings,
     )
-    set_auth_cookies(response, session, csrf_token=csrf, settings=settings)
+    set_auth_cookies(FastApiCookieTransport(response), session, csrf_token=csrf, settings=settings)
     cookies = response.headers.getlist("set-cookie")
     access_cookie = next(cookie for cookie in cookies if "creator_access=access" in cookie)
     refresh_cookie = next(cookie for cookie in cookies if "creator_refresh=refresh" in cookie)

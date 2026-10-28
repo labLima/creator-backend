@@ -36,8 +36,6 @@ def test_all_response_contract_mappers_return_structured_data() -> None:
     for name in mapper_names:
         mapper = getattr(main, name)
         if name in {
-            "_auth_session_data",
-            "_auth_signup_data",
             "_content_detail_data",
             "_content_page_data",
             "_image_generation_status_data",

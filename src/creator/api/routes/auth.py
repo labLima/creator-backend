@@ -8,7 +8,8 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from creator.api.auth_cookies import (
+from creator.api.auth import (
+    FastApiCookieTransport,
     clear_auth_cookies,
     csrf_for_session,
     set_auth_cookies,
@@ -45,9 +46,10 @@ from creator.application.auth import (
     signup as signup_local,
 )
 from creator.application.auth_ports import AuthTokenServices
+from creator.application.auth_types import AuthSignupResult, IssuedSession
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
-from creator.domain.auth import AuthSignupResult, IssuedSession, Principal
+from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
 from creator.infrastructure.auth import auth_token_services
 from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
@@ -176,7 +178,9 @@ def login_with_password(
         ) from error
     csrf_token = csrf_for_session(session, settings=settings, token_services=token_services)
     response = _success(_session_data(session, settings=settings, csrf_token=csrf_token), request)
-    set_auth_cookies(response, session, csrf_token=csrf_token, settings=settings)
+    set_auth_cookies(
+        FastApiCookieTransport(response), session, csrf_token=csrf_token, settings=settings
+    )
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -242,7 +246,12 @@ def signup_with_password(
         status_code=201,
     )
     if result.result.session:
-        set_auth_cookies(response, result.result.session, csrf_token=csrf_token, settings=settings)
+        set_auth_cookies(
+            FastApiCookieTransport(response),
+            result.result.session,
+            csrf_token=csrf_token,
+            settings=settings,
+        )
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -291,7 +300,9 @@ async def refresh_session(
         ) from error
     csrf_token = csrf_for_session(session, settings=settings, token_services=token_services)
     response = _success(_session_data(session, settings=settings, csrf_token=csrf_token), request)
-    set_auth_cookies(response, session, csrf_token=csrf_token, settings=settings)
+    set_auth_cookies(
+        FastApiCookieTransport(response), session, csrf_token=csrf_token, settings=settings
+    )
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -312,7 +323,7 @@ def csrf_token(
         )
     token = token_services.csrf.issue(session_id=UUID(principal.session_id), settings=settings)
     response = _success({"csrf_token": token}, request)
-    set_csrf_cookie(response, token, settings=settings)
+    set_csrf_cookie(FastApiCookieTransport(response), token, settings=settings)
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -343,6 +354,6 @@ def logout_session(
         )
     logout_local(unit_of_work=unit_of_work, session_id=session_id)
     response = _success({"logged_out": True}, request)
-    clear_auth_cookies(response, settings=settings)
+    clear_auth_cookies(FastApiCookieTransport(response), settings=settings)
     response.headers["Cache-Control"] = "no-store"
     return response

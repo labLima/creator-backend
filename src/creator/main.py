@@ -128,7 +128,7 @@ from creator.application.image_generation import (
 from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.domain.agent_workflow import WorkflowDecision
-from creator.domain.auth import AuthSignupResult, IssuedSession, Principal
+from creator.domain.auth import Principal
 from creator.domain.exceptions import EntityNotFoundError
 from creator.domain.generation import GenerationJobStatus
 from creator.infrastructure.runtime.metrics import MetricsRegistry
@@ -267,32 +267,6 @@ def not_implemented(request: Request) -> JSONResponse:
     )
 
 
-def _auth_session_data(
-    session: IssuedSession,
-    *,
-    settings: Settings | None = None,
-    csrf_token: str | None = None,
-) -> dict[str, Any]:
-    data: dict[str, Any] = {
-        "token_type": session.token_type,
-        "expires_in": session.expires_in,
-        "refresh_expires_in": session.refresh_expires_in,
-        "principal": {
-            "subject": session.principal.subject,
-            "email": session.principal.email,
-            "role": session.principal.role,
-        },
-        "provider": session.provider,
-        "metadata": session.metadata,
-    }
-    if csrf_token is not None:
-        data["csrf_token"] = csrf_token
-    if settings is None or settings.auth_token_body_enabled:
-        data["access_token"] = session.access_token
-        data["refresh_token"] = session.refresh_token
-    return data
-
-
 def _workspace_data(workspace: WorkspaceRecord) -> dict[str, Any]:
     return {
         "id": str(workspace.id),
@@ -312,33 +286,6 @@ def _workspace_membership_data(membership: WorkspaceMembershipRecord) -> dict[st
         "created_at": membership.created_at.isoformat(),
         "updated_at": membership.updated_at.isoformat(),
         "deleted_at": membership.deleted_at.isoformat() if membership.deleted_at else None,
-    }
-
-
-def _auth_signup_data(
-    result: AuthSignupResult,
-    *,
-    workspace: WorkspaceRecord,
-    membership: WorkspaceMembershipRecord,
-    settings: Settings | None = None,
-    csrf_token: str | None = None,
-) -> dict[str, Any]:
-    return {
-        "principal": {
-            "subject": result.principal.subject,
-            "email": result.principal.email,
-            "role": result.principal.role,
-        },
-        "session": (
-            _auth_session_data(result.session, settings=settings, csrf_token=csrf_token)
-            if result.session
-            else None
-        ),
-        "workspace": _workspace_data(workspace),
-        "membership": _workspace_membership_data(membership),
-        "confirmation_required": result.confirmation_required,
-        "provider": result.provider,
-        "metadata": result.metadata,
     }
 
 
