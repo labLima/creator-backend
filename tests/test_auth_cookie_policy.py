@@ -107,8 +107,6 @@ def test_session_cookies_are_http_only_and_scoped() -> None:
         "creator_refresh=refresh" in cookie and "Path=/api/v1/auth" in cookie for cookie in cookies
     )
     assert any(
-        "creator_csrf=" in cookie
-        and "Path=/;" in cookie
-        and "HttpOnly" not in cookie
+        "creator_csrf=" in cookie and "Path=/;" in cookie and "HttpOnly" not in cookie
         for cookie in cookies
     )

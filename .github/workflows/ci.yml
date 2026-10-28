@@ -61,7 +61,7 @@ jobs:
         with: { python-version: '3.12' }
       - run: python -m pip install --upgrade pip
       - run: pip install -e '.[dev]'
-      - run: pytest -q --no-cov tests/test_openapi_contract.py tests/test_app_structure.py
+      - run: python -m pytest -q --no-cov tests/test_openapi_contract.py tests/test_app_structure.py
       - run: docker compose config
         env:
           AUTH_JWT_SECRET: ci-test-secret-with-32-bytes

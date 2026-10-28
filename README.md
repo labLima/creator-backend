@@ -78,7 +78,7 @@ make install       # instala dependências de desenvolvimento
 make check         # ruff lint, format check, mypy e pytest
 make security      # pip-audit + gitleaks
 make e2e           # fluxos E2E de auth, Workspace e geração
-make test          # pytest
+make test          # pytest sem os testes marcados como e2e
 make run           # API local
 make worker        # worker local (creator-worker all)
 make dev/start     # Compose: API, worker, Redis, migrations
