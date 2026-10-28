@@ -28,7 +28,7 @@ typecheck:
 	$(MYPY) src
 
 test:
-	$(PYTEST)
+	$(PYTEST) -m "not e2e"
 
 e2e:
 	$(PYTEST) -m e2e --no-cov
