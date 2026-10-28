@@ -1,4 +1,4 @@
-# ADR-022: Autenticação em cookies com fork mantido pelo Creator
+# ADR-022: Autenticação em cookies com adapter interno do Creator
 
 - Status: accepted
 - Fonte: [issue #116](https://github.com/labLima/creator-backend/issues/116), 2026-10-27
@@ -77,31 +77,31 @@ requirements are unsatisfiable
 | --- | --- | --- | --- |
 | `fastapi-jwt-auth==0.5.0` | Reprovada: falha no import e fixa PyJWT 1.x | Possui suporte conceitual | Rejeitada por incompatibilidade e falta de manutenção |
 | `another-fastapi-jwt-auth==0.1.6` | Importou com Pydantic 2.14.1 e PyJWT 2.15.1; `jwt.encode` retornou `str` | Mantém o contrato conceitual | Apenas referência; não é dependência do Creator e não possui ownership do Creator |
-| Adapter interno equivalente | Compatível por definição com as dependências atuais | Pode implementar cookies/CSRF diretamente | Alternativa válida, não escolhida nesta ADR |
-| Fork/vendor Creator-owned | Será validado pelo CI do Creator após o patch | Mantém apenas o transporte de cookies/CSRF | Escolhida, com pin imutável e manutenção explícita |
+| Adapter interno equivalente | Compatível por definição com as dependências atuais | Pode implementar cookies/CSRF diretamente | Escolhida; código e manutenção pertencem ao Creator |
+| Fork/vendor Creator-owned | Exigiria manter um fork e seu patch de segurança | Mantém apenas o transporte de cookies/CSRF | Rejeitada por custo e superfície de manutenção |
 
 O fork de referência declara suporte a Pydantic 2 e PyJWT 2 em seu próprio
 metadata, mas isso não substitui ownership, revisão de segurança ou CI do
-Creator. O Creator mantém a superfície compatível em
-`src/creator/infrastructure/auth/vendor/fastapi_jwt_auth/` e usa somente a
-dependência PyJWT 2.x do projeto. [Metadata do fork de referência](https://pypi.org/project/another-fastapi-jwt-auth/).
+Creator. O Creator implementará somente a superfície necessária em
+`src/creator/infrastructure/auth/jwt_adapter.py`, usando a dependência PyJWT
+2.x do projeto. [Metadata do fork de referência](https://pypi.org/project/another-fastapi-jwt-auth/).
 
 ## Decisão
 
-O Creator manterá um fork/vendor próprio baseado em `fastapi-jwt-auth` 0.5.0,
-com o menor patch necessário para:
+O Creator não adotará `fastapi-jwt-auth` como dependência nem manterá um
+fork/vendor do pacote. O transporte de autenticação usará um adapter interno,
+Creator-owned, com o menor contrato necessário para:
 
-1. substituir a validação incompatível com Pydantic 2;
-2. remover a suposição de bytes no retorno de `jwt.encode` para PyJWT 2;
+1. emitir e validar os claims definidos na ADR-020;
+2. usar o contrato de string de `jwt.encode` do PyJWT 2;
 3. preservar `PyJWT[crypto]>=2.15,<3`;
-4. executar CI em Python 3.12 e 3.13 com `pip-audit`;
-5. preservar a licença MIT e os avisos de copyright do upstream.
+4. manter cookies e CSRF sob as interfaces internas do Creator;
+5. executar CI em Python 3.12 e 3.13 com `pip-audit`.
 
-O pacote ficará confinado à infraestrutura por uma interface interna do Creator.
-`application/` e `domain/` não importarão o pacote vendor, FastAPI, `Request` ou
-`Response`. A interface interna traduzirá a sessão emitida pelo Creator para o
-transporte HTTP, sem delegar à biblioteca a autoridade sobre identidade,
-`Auth Session` ou Workspace.
+O adapter ficará confinado à infraestrutura. `application/` e `domain/` não
+importarão PyJWT, FastAPI, `Request` ou `Response`. A interface interna
+traduzirá a sessão emitida pelo Creator para o transporte HTTP, sem delegar ao
+provider a autoridade sobre identidade, `Auth Session` ou Workspace.
 
 ## Contrato de autenticação
 
@@ -125,8 +125,8 @@ As invariantes são:
 - cookies de sessão são `Secure` fora do ambiente local;
 - access usa `Path=/api/v1` e não define `Domain`;
 - refresh usa caminho restrito ao endpoint de refresh e não define `Domain`;
-- o cookie CSRF é legível pelo SPA, não contém o token de sessão e acompanha o
-  valor no header `X-CSRF-Token`;
+- o cookie CSRF usa `Path=/`, é legível pelo SPA, não contém o token de sessão
+  e acompanha o valor no header `X-CSRF-Token`;
 - toda requisição autenticada por cookie com método `POST`, `PUT`, `PATCH` ou
   `DELETE` exige CSRF válido;
 - o CSRF usa double-submit assinado e vinculado à `Auth Session`;
@@ -148,17 +148,17 @@ A topologia padrão aceita é same-origin. Same-site separado e cross-site são
 perfis opt-in por ambiente; a configuração cross-site rejeita wildcard de origem
 com credenciais.
 
-## Pin, CI e manutenção do fork
+## Dependência, CI e manutenção do adapter
 
-- O consumidor usa o vendor imutável no commit do Creator; não há dependência
-  flutuante nem `PyJWT<2` transitivo.
-- Cada atualização registrará o commit upstream comparado, o diff do patch, a
-  licença, changelog e decisão de segurança.
-- O CI do fork e do consumidor cobrirá Python 3.12 e 3.13, Pydantic 2, PyJWT
-  2.15+, import, assinatura/verificação e emissão de cookies.
+- O consumidor usa somente `PyJWT[crypto]>=2.15,<3`; não há dependência de
+  `fastapi-jwt-auth` nem `PyJWT<2` transitivo.
+- O adapter é código do Creator e suas mudanças seguem revisão de código,
+  testes de segurança e esta ADR; não há commit upstream para pinar.
+- O CI do consumidor cobre Python 3.12 e 3.13, Pydantic 2, PyJWT 2.15+,
+  import do adapter, assinatura/verificação e emissão de cookies.
 - `pip-audit` será obrigatório e qualquer exceção deverá ser limitada, justificada
   e aprovada por segurança.
-- Backend/platform é responsável por acompanhar upstream e vulnerabilidades;
+- Backend/platform é responsável por acompanhar PyJWT e vulnerabilidades;
   arquitetura aprova mudanças no contrato; segurança revisa releases e o gate.
 
 ## Rollback e consequências
@@ -167,8 +167,8 @@ com credenciais.
 - Em rollback, a API desabilita leitura/escrita de cookies, expira cookies
   emitidos e preserva temporariamente Bearer para os clientes existentes.
 - Nenhuma migration de banco é necessária para trocar o transporte.
-- O custo é manter um fork e seus testes. O benefício é compatibilidade com o
-  runtime atual, auditabilidade e separação entre transporte e domínio.
+- O custo é manter um adapter e seus testes. O benefício é compatibilidade com
+  o runtime atual, auditabilidade e separação entre transporte e domínio.
 - A mudança para cookies exige atualização posterior de OpenAPI, CORS, guia do
   SPA e E2E de navegador; todos permanecem fora desta issue.
 
@@ -183,10 +183,10 @@ Critérios de decisão:
 - [x] Reprodução Python 3.12 + Pydantic 2 registrada.
 - [x] Conflito `PyJWT<2` versus `PyJWT>=2.15,<3` registrado.
 - [x] Matriz upstream/fork de referência/adapter interno registrada.
-- [x] Fork/vendor Creator-owned escolhido explicitamente.
+- [x] Adapter interno Creator-owned escolhido explicitamente; fork/vendor rejeitado.
 - [x] Cookies, CSRF, refresh, rotação, revogação, claims, topologias, flags,
       rollback e owners definidos.
-- [x] Pin, licença, CI, `pip-audit` e processo de atualização definidos.
+- [x] Dependência PyJWT, CI, `pip-audit` e processo de atualização definidos.
 - [x] Owner de arquitetura + segurança atribuído e aprovação registrada.
 - [x] Status alterado para `accepted` após a aprovação formal.
 

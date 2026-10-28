@@ -2,7 +2,7 @@
 
 - ADR primária: [ADR-022](../adr/0022-cookie-auth-provider.md)
 - GitHub: [#116](https://github.com/labLima/creator-backend/issues/116)
-- Status: aceita; implementação em andamento
+- Status: aceita; encerrada como não necessária
 - Epic relacionado: [#117](https://github.com/labLima/creator-backend/issues/117)
 
 ## Objetivo
@@ -13,19 +13,22 @@ alterar o modelo de `Auth Session` da ADR-020.
 
 ## Decisão
 
-Usar um fork/vendor Creator-owned baseado em `fastapi-jwt-auth` 0.5.0, corrigido
-para Pydantic 2 e PyJWT 2, confinado atrás de uma interface interna de
-infraestrutura. O fork será pinado por commit/release, manterá MIT, terá CI
-Python 3.12/3.13 e passará por `pip-audit`.
+Usar um adapter interno Creator-owned, confinado atrás de uma interface de
+infraestrutura, sobre a dependência PyJWT 2.x já adotada pelo projeto. Não será
+mantido fork/vendor de `fastapi-jwt-auth` 0.5.0, pois a lib é incompatível com
+Pydantic 2 e fixa PyJWT 1.x.
 
 ## Critérios de aceite
 
 - [x] Reprodução Python 3.12 + Pydantic 2 documentada na ADR.
 - [x] Matriz de compatibilidade documentada.
-- [x] Fork/vendor versus adapter interno decidido.
+- [x] Adapter interno escolhido; fork/vendor rejeitado.
+- [x] `fastapi-jwt-auth` não é dependência do projeto.
+- [x] Adapter confinado a `src/creator/infrastructure/auth/`.
+- [x] `PyJWT[crypto]>=2.15,<3` preservado.
 - [x] Contrato de cookies, CSRF, rotação, revogação, claims, topologias, flags,
       rollback e manutenção documentado.
-- [x] Nenhuma alteração de produção nesta issue.
+- [x] Nenhum fork/vendor de produção é necessário nesta issue.
 - [x] Owner de arquitetura + segurança atribuído.
 - [x] ADR-022 aprovada e marcada como `accepted`.
 

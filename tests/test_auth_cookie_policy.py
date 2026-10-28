@@ -46,6 +46,25 @@ def test_csrf_token_is_signed_and_bound_to_session() -> None:
     assert not services.csrf.verify(token=f"{token}x", session_id=session_id, settings=settings)
 
 
+def test_jwt_adapter_round_trips_pyjwt_two_string_contract() -> None:
+    settings = Settings(_env_file=None, auth_jwt_secret=SECRET)
+    services = auth_token_services()
+    user_id = uuid4()
+    session_id = uuid4()
+
+    token = services.access.issue(
+        user_id=user_id,
+        session_id=session_id,
+        role="owner",
+        settings=settings,
+    )
+
+    assert isinstance(token, str)
+    principal = services.access.principal(token, settings)
+    assert principal.subject == str(user_id)
+    assert principal.session_id == str(session_id)
+
+
 def test_csrf_token_expires_using_the_clock_port() -> None:
     class FakeClock:
         current = datetime(2026, 1, 1, tzinfo=UTC)
@@ -87,4 +106,9 @@ def test_session_cookies_are_http_only_and_scoped() -> None:
     assert any(
         "creator_refresh=refresh" in cookie and "Path=/api/v1/auth" in cookie for cookie in cookies
     )
-    assert any("creator_csrf=" in cookie and "HttpOnly" not in cookie for cookie in cookies)
+    assert any(
+        "creator_csrf=" in cookie
+        and "Path=/;" in cookie
+        and "HttpOnly" not in cookie
+        for cookie in cookies
+    )

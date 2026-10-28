@@ -1,9 +1,4 @@
-"""Small Creator-owned compatibility surface for the patched JWT provider.
-
-The upstream fastapi-jwt-auth 0.5.0 source is not imported by application code.
-This module keeps the provider API behind infrastructure while using the
-project's PyJWT 2.x dependency and its string-returning encode contract.
-"""
+"""Creator-owned JWT adapter over the project's PyJWT 2.x dependency."""
 
 from __future__ import annotations
 

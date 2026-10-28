@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     auth_cookie_csrf_name: str = "creator_csrf"
     auth_cookie_access_path: str = "/api/v1"
     auth_cookie_refresh_path: str = "/api/v1/auth"
-    auth_cookie_csrf_path: str = "/api/v1"
+    auth_cookie_csrf_path: str = "/"
     auth_cookie_same_site: Literal["strict", "lax", "none"] = "strict"
     auth_cookie_secure: bool | None = None
     auth_csrf_header_name: str = "X-CSRF-Token"

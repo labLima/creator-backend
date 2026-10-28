@@ -4,7 +4,7 @@ Use `credentials: "include"` em todas as chamadas à API. O backend define
 `creator_access` e `creator_refresh` como `HttpOnly`; JavaScript não deve tentar
 ler esses cookies nem usar `localStorage` para guardar tokens.
 
-O cookie `creator_csrf` é legível pelo SPA. Envie seu valor em
+O cookie `creator_csrf` é legível pelo SPA e usa `Path=/`. Envie seu valor em
 `X-CSRF-Token` para toda requisição `POST`, `PUT`, `PATCH` ou `DELETE`. Se o
 cookie CSRF não estiver disponível, chame `GET /api/v1/auth/csrf` após
 restaurar a sessão.

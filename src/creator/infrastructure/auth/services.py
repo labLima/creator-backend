@@ -19,16 +19,16 @@ from creator.application.auth_ports import (
 )
 from creator.config import Settings
 from creator.domain.auth import Principal
-from creator.infrastructure.auth.vendor.fastapi_jwt_auth import (
+from creator.infrastructure.auth.jwt_adapter import (
     ExpiredSignatureError,
 )
-from creator.infrastructure.auth.vendor.fastapi_jwt_auth import (
+from creator.infrastructure.auth.jwt_adapter import (
     InvalidTokenError as ProviderInvalidTokenError,
 )
-from creator.infrastructure.auth.vendor.fastapi_jwt_auth import (
+from creator.infrastructure.auth.jwt_adapter import (
     decode as provider_decode,
 )
-from creator.infrastructure.auth.vendor.fastapi_jwt_auth import (
+from creator.infrastructure.auth.jwt_adapter import (
     encode as provider_encode,
 )
 
