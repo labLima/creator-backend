@@ -16,8 +16,8 @@ from creator.api.dependencies import (
 )
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
-from creator.infrastructure.metrics import MetricsRegistry
-from creator.infrastructure.rate_limit import (
+from creator.infrastructure.runtime.metrics import MetricsRegistry
+from creator.infrastructure.runtime.rate_limit import (
     REDIS_SLIDING_WINDOW_SCRIPT,
     InMemoryRateLimitBackend,
     RateLimitBackend,

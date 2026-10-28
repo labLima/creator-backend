@@ -16,8 +16,8 @@ from sqlalchemy.orm import sessionmaker
 from creator.domain.exceptions import EntityNotFoundError
 from creator.domain.generation import GenerationJobStatus
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
-from creator.infrastructure.db import create_database_engine
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.database.db import create_database_engine
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from creator.repositories import GenerationHistoryFilters, ImageMetadata, PageRequest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

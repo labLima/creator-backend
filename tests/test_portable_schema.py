@@ -4,9 +4,9 @@ from uuid import uuid4
 from sqlalchemy import JSON, Uuid, create_engine, select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.db import Base
-from creator.infrastructure.models import GlobalRole, Settings, User
-from creator.infrastructure.models.types import UTCDateTime
+from creator.infrastructure.database.db import Base
+from creator.infrastructure.database.models import GlobalRole, Settings, User
+from creator.infrastructure.database.models.types import UTCDateTime
 
 
 def test_registered_schema_creates_on_sqlite() -> None:

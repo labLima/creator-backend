@@ -25,42 +25,46 @@ def set_auth_cookies(
 ) -> None:
     if not settings.auth_cookie_sessions_enabled:
         return
-    secure = bool(settings.auth_cookie_secure)
-    same_site = settings.auth_cookie_same_site
+    policy = settings.auth_cookie_policy
     response.set_cookie(
-        settings.auth_cookie_access_name,
+        policy.access_name,
         session.access_token,
-        max_age=session.expires_in,
-        httponly=True,
-        secure=secure,
-        samesite=same_site,
-        path=settings.auth_cookie_access_path,
+        max_age=policy.access_max_age(min(session.expires_in, session.refresh_expires_in)),
+        httponly=policy.access_http_only,
+        secure=policy.secure,
+        samesite=policy.access_same_site,
+        path=policy.access_path,
     )
-    refresh_max_age = session.refresh_expires_in
     response.set_cookie(
-        settings.auth_cookie_refresh_name,
+        policy.refresh_name,
         session.refresh_token,
-        max_age=refresh_max_age,
-        httponly=True,
-        secure=secure,
-        samesite="strict" if same_site != "none" else "none",
-        path=settings.auth_cookie_refresh_path,
+        max_age=policy.refresh_max_age(session.refresh_expires_in),
+        httponly=policy.refresh_http_only,
+        secure=policy.secure,
+        samesite=policy.refresh_same_site,
+        path=policy.refresh_path,
     )
+    set_csrf_cookie(response, csrf_token, settings=settings)
+
+
+def set_csrf_cookie(response: Response, token: str, *, settings: Settings) -> None:
+    policy = settings.auth_cookie_policy
     response.set_cookie(
-        settings.auth_cookie_csrf_name,
-        csrf_token,
-        max_age=settings.auth_csrf_ttl_seconds,
-        httponly=False,
-        secure=secure,
-        samesite=same_site,
-        path=settings.auth_cookie_csrf_path,
+        policy.csrf_name,
+        token,
+        max_age=policy.csrf_max_age(),
+        httponly=policy.csrf_http_only,
+        secure=policy.secure,
+        samesite=policy.access_same_site,
+        path=policy.csrf_path,
     )
 
 
 def clear_auth_cookies(response: Response, *, settings: Settings) -> None:
+    policy = settings.auth_cookie_policy
     for name, path in (
-        (settings.auth_cookie_access_name, settings.auth_cookie_access_path),
-        (settings.auth_cookie_refresh_name, settings.auth_cookie_refresh_path),
-        (settings.auth_cookie_csrf_name, settings.auth_cookie_csrf_path),
+        (policy.access_name, policy.access_path),
+        (policy.refresh_name, policy.refresh_path),
+        (policy.csrf_name, policy.csrf_path),
     ):
         response.delete_cookie(name, path=path)

@@ -10,8 +10,8 @@ from httpx import ASGITransport, AsyncClient
 
 from creator.api.dependencies import get_settings
 from creator.config import Settings
-from creator.infrastructure.metrics import MetricsRegistry
-from creator.infrastructure.observability import (
+from creator.infrastructure.runtime.metrics import MetricsRegistry
+from creator.infrastructure.runtime.observability import (
     JsonFormatter,
     correlation_context,
     current_context,

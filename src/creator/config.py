@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from creator.auth_cookie_policy import AuthCookiePolicy
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -36,7 +38,9 @@ class Settings(BaseSettings):
     auth_cookie_access_path: str = "/api/v1"
     auth_cookie_refresh_path: str = "/api/v1/auth"
     auth_cookie_csrf_path: str = "/"
-    auth_cookie_same_site: Literal["strict", "lax", "none"] = "strict"
+    # This controls the access cookie. The refresh cookie is Strict for same-site
+    # deployments and follows None only for the explicit cross-site profile.
+    auth_cookie_same_site: Literal["lax", "none"] = "lax"
     auth_cookie_secure: bool | None = None
     auth_csrf_header_name: str = "X-CSRF-Token"
     auth_csrf_ttl_seconds: int = 900
@@ -78,23 +82,64 @@ class Settings(BaseSettings):
     storage_signed_url_expires_seconds: int = 3600
     local_storage_root: str = ".local/storage"
 
+    @property
+    def auth_cookie_policy(self) -> AuthCookiePolicy:
+        return AuthCookiePolicy.from_settings(self)
+
     @model_validator(mode="after")
     def validate_auth_transport(self) -> "Settings":
+        self.app_env = self.app_env.strip().lower()
+        local_environments = {"local", "test", "development"}
         if self.auth_cookie_secure is None:
-            self.auth_cookie_secure = self.app_env not in {"local", "test", "development"}
+            self.auth_cookie_secure = self.app_env not in local_environments
         if self.auth_cookie_same_site == "none" and not self.auth_cookie_secure:
             raise ValueError("AUTH_COOKIE_SAME_SITE=none requires AUTH_COOKIE_SECURE=true")
         if "*" in self.auth_cors_origins:
             raise ValueError("AUTH_CORS_ORIGINS cannot contain '*' with credentialed cookies")
-        if self.app_env in {"production", "staging"}:
+        cookie_names = {
+            "AUTH_COOKIE_ACCESS_NAME": self.auth_cookie_access_name,
+            "AUTH_COOKIE_REFRESH_NAME": self.auth_cookie_refresh_name,
+            "AUTH_COOKIE_CSRF_NAME": self.auth_cookie_csrf_name,
+        }
+        invalid_name_characters = set('()<>@,;:\\"/[]?={} \t')
+        if any(
+            not name or any(character in invalid_name_characters for character in name)
+            for name in cookie_names.values()
+        ):
+            raise ValueError("AUTH_COOKIE_* names must be valid cookie names")
+        if len(set(cookie_names.values())) != 3:
+            raise ValueError("AUTH_COOKIE_* names must be distinct")
+        for field_name, path in (
+            ("AUTH_COOKIE_ACCESS_PATH", self.auth_cookie_access_path),
+            ("AUTH_COOKIE_REFRESH_PATH", self.auth_cookie_refresh_path),
+            ("AUTH_COOKIE_CSRF_PATH", self.auth_cookie_csrf_path),
+        ):
+            if not path.startswith("/") or ";" in path:
+                raise ValueError(f"{field_name} must be an absolute cookie path")
+        if self.auth_access_token_ttl_seconds <= 0:
+            raise ValueError("AUTH_ACCESS_TOKEN_TTL_SECONDS must be greater than zero")
+        if self.auth_refresh_token_ttl_days <= 0:
+            raise ValueError("AUTH_REFRESH_TOKEN_TTL_DAYS must be greater than zero")
+        if self.auth_csrf_ttl_seconds <= 0:
+            raise ValueError("AUTH_CSRF_TTL_SECONDS must be greater than zero")
+        if self.auth_session_absolute_ttl_days <= 0:
+            raise ValueError("AUTH_SESSION_ABSOLUTE_TTL_DAYS must be greater than zero")
+        if self.app_env not in local_environments:
             if self.rate_limit_backend == "memory":
                 raise ValueError(
                     "The in-memory rate limiter is not allowed outside local environments"
                 )
             if not self.auth_cookie_secure:
                 raise ValueError("AUTH_COOKIE_SECURE must be true outside local development")
-            if not self.auth_jwt_secret or len(self.auth_jwt_secret) < 32:
-                raise ValueError("AUTH_JWT_SECRET must contain at least 32 characters")
+            if (
+                not self.auth_jwt_secret
+                or len(self.auth_jwt_secret) < 32
+                or len(set(self.auth_jwt_secret)) < 8
+                or any(character.isspace() for character in self.auth_jwt_secret)
+            ):
+                raise ValueError(
+                    "AUTH_JWT_SECRET must contain at least 32 characters and sufficient entropy"
+                )
         return self
 
 

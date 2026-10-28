@@ -11,8 +11,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-from creator.infrastructure import models as _models  # noqa: F401
-from creator.infrastructure.db import Base
+from creator.infrastructure.database import models as _models  # noqa: F401
+from creator.infrastructure.database.db import Base
 
 revision = "0001_sqlite_baseline"
 down_revision: str | Sequence[str] | None = None

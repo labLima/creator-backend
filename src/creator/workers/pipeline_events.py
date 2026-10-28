@@ -7,9 +7,9 @@ from typing import Any
 from creator.config import get_settings
 from creator.domain.agent_workflow import AgentWorkflowStatus
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
-from creator.infrastructure.observability import correlation_context
-from creator.infrastructure.queue import RqGenerationQueue
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime.observability import correlation_context
+from creator.infrastructure.runtime.queue import RqGenerationQueue
 from creator.services.agents.event_publisher import OutboxPublisher
 from creator.workers.agent_workflow import run_pipeline_stage
 

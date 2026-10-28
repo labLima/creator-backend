@@ -5,8 +5,8 @@ from creator.api.dtos import (
     NotificationCreateRequest,
     PlanCreateRequest,
 )
-from creator.infrastructure import models
-from creator.infrastructure.schema_manifest import LEGACY_TABLES, PDF_TABLES
+from creator.infrastructure.database import models
+from creator.infrastructure.database.schema_manifest import LEGACY_TABLES, PDF_TABLES
 
 EXPECTED_DIAGRAM_TABLES = {
     "plans",

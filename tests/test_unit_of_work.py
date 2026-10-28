@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from creator.domain.exceptions import ConflictError, PersistenceError
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
 class RecordingSession:

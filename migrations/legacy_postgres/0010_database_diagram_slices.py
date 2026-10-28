@@ -5,7 +5,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-from creator.infrastructure import schema_models
+from creator.infrastructure.database import schema_models
 
 revision: str = "0010_database_diagram_slices"
 down_revision: str | None = "0009_agent_image_workflows"

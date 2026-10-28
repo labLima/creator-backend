@@ -9,9 +9,9 @@ from fastapi import HTTPException
 from creator.api.dependencies import get_current_user, get_principal
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
-from creator.infrastructure import queue as queue_module
-from creator.infrastructure.db import get_db
-from creator.infrastructure.queue import get_generation_queue
+from creator.infrastructure.database.db import get_db
+from creator.infrastructure.runtime import queue as queue_module
+from creator.infrastructure.runtime.queue import get_generation_queue
 from creator.services.agents.factory import UnconfiguredMultiAgentOrchestrator
 from creator.services.ai.factory import UnconfiguredLLMProvider
 from creator.services.retrieval.factory import (

@@ -7,9 +7,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient, Response
 
 from creator.api.dependencies import get_rate_limiter
-from creator.infrastructure.metrics import MetricsRegistry
-from creator.infrastructure.rate_limit import InMemoryRateLimitBackend, RateLimiter
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime.metrics import MetricsRegistry
+from creator.infrastructure.runtime.rate_limit import InMemoryRateLimitBackend, RateLimiter
 from creator.workers import image_generation as image_generation_worker
 from tests.e2e.conftest import FakeGenerationQueue, signup_payload
 

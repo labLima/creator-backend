@@ -1,8 +1,8 @@
 from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint
 
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.db import Base
-from creator.infrastructure.models import (
+from creator.infrastructure.database.db import Base
+from creator.infrastructure.database.models import (
     Asset,
     Brand,
     BrandKnowledgeChunk,

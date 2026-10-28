@@ -6,7 +6,7 @@ import pytest
 
 from creator.config import Settings
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
-from creator.infrastructure import queue
+from creator.infrastructure.runtime import queue
 
 
 class FakeRedis:

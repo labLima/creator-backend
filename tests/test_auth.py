@@ -21,8 +21,8 @@ from creator.application.auth import (
     signup,
 )
 from creator.config import Settings
-from creator.infrastructure.db import create_database_engine
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.database.db import create_database_engine
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SECRET = "test-local-auth-jwt-secret-with-32-bytes"

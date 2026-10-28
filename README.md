@@ -60,6 +60,29 @@ A autenticação é própria do Creator:
 Configure `AUTH_JWT_SECRET` com um valor forte. Em produção, use
 `AUTH_REQUIRED=true` e mantenha o secret em um gestor de secrets.
 
+### Política de cookies
+
+A política de transição é explícita e validada quando `Settings` é carregado:
+
+- `creator_access` e `creator_refresh` são `HttpOnly`; nenhum cookie define
+  `Domain`.
+- O access usa `Path=/api/v1` e `SameSite=Lax`; o refresh usa
+  `Path=/api/v1/auth` e `SameSite=Strict` em deployments same-site.
+- `AUTH_COOKIE_SECURE=false` é somente para desenvolvimento local em HTTP.
+  Produção exige `APP_ENV=production` e `AUTH_COOKIE_SECURE=true`.
+- `AUTH_COOKIE_SAME_SITE=none` é um perfil cross-site opt-in e exige HTTPS e
+  valores exatos em `AUTH_CORS_ORIGINS`; `*` é rejeitado com cookies.
+- O `Max-Age` dos cookies segue o TTL do token e é limitado por
+  `AUTH_SESSION_ABSOLUTE_TTL_DAYS`.
+
+Os valores do `.env.example` são para HTTP local, CORS vazio e flags de
+transição habilitadas. Em produção, use um `AUTH_JWT_SECRET` forte,
+`AUTH_COOKIE_SECURE=true`, uma lista JSON explícita em `AUTH_CORS_ORIGINS`
+quando o SPA estiver em outra origem e desabilite
+`AUTH_TOKEN_BODY_ENABLED`/`AUTH_LEGACY_BEARER_ENABLED` somente após a migração
+dos clientes. Paths e TTLs podem ser ajustados para um reverse proxy pelas
+configurações `AUTH_COOKIE_*` e `AUTH_*TTL*` correspondentes.
+
 ## IA e storage
 
 O provider de IA inicial é Google Gemini, via `google-genai`:
@@ -99,11 +122,22 @@ OpenAPI, `make e2e` e um smoke test dos containers.
 - `src/creator/api`: dependências, DTOs e contratos HTTP.
 - `src/creator/domain`: vocabulário e modelos independentes de vendor.
 - `src/creator/application`: casos de uso.
-- `src/creator/infrastructure`: banco, auth, fila, storage e métricas.
-- `src/creator/repositories`: protocolos e implementações de persistência.
+- `src/creator/infrastructure/auth`: adapter e serviços de autenticação.
+- `src/creator/infrastructure/database`: engine, schema, migrations support e
+  modelos SQLAlchemy.
+- `src/creator/infrastructure/persistence`: Unit of Work e repositórios
+  SQLAlchemy concretos.
+- `src/creator/infrastructure/runtime`: fila, storage, rate limit e
+  observabilidade.
+- `src/creator/repositories`: protocolos e records usados pela aplicação.
 - `src/creator/services`: providers de IA, storage, agentes e retrieval.
 - `src/creator/integrations`: adapters concretos de vendors.
 - `src/creator/workers`: workers RQ.
+
+Dentro de `infrastructure`, a regra é unidirecional: `database` conhece o ORM,
+`persistence` implementa os ports em `repositories`, e `runtime` concentra
+adapters operacionais. O restante da aplicação não deve importar modelos ou
+SQLAlchemy diretamente fora dessas fronteiras.
 - `docs/adr`: decisões arquiteturais; `docs/issues`: issues rastreáveis.
 
 O contrato HTTP é `docs/openapi.yaml`. O teste `tests/test_openapi_contract.py`

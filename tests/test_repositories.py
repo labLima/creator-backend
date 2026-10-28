@@ -14,8 +14,8 @@ from creator.domain.exceptions import (
     InvalidStateTransitionError,
 )
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure import models
-from creator.infrastructure.dtos import (
+from creator.infrastructure.database import models
+from creator.infrastructure.persistence.repositories.core import (
     SqlAlchemyAssetRepository,
     SqlAlchemyBrandRepository,
     SqlAlchemyBrandSettingsRepository,

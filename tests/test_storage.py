@@ -9,7 +9,7 @@ import pytest
 from creator.application.image_storage import GeneratedImage, persist_generated_image
 from creator.config import Settings
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.storage import LocalStorageProvider, SupabaseStorageProvider
+from creator.infrastructure.runtime.storage import LocalStorageProvider, SupabaseStorageProvider
 from creator.repositories import GenerationJobRecord, ImageMetadata, ImageRecord, UserRecord
 from creator.services.storage.provider import (
     StorageObjectNotFoundError,

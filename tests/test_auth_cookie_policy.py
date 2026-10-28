@@ -7,6 +7,7 @@ import pytest
 from starlette.responses import Response
 
 from creator.api.auth_cookies import set_auth_cookies
+from creator.auth_cookie_policy import AuthCookiePolicy
 from creator.config import Settings
 from creator.domain.auth import IssuedSession, Principal
 from creator.infrastructure.auth import auth_token_services
@@ -25,6 +26,10 @@ def test_production_rejects_insecure_cookie_and_weak_secret() -> None:
         )
     with pytest.raises(ValueError, match="AUTH_JWT_SECRET"):
         Settings(_env_file=None, app_env="production", auth_jwt_secret="short")
+    with pytest.raises(ValueError, match="AUTH_COOKIE_SECURE"):
+        Settings(_env_file=None, app_env="prod", auth_jwt_secret=SECRET, auth_cookie_secure=False)
+    with pytest.raises(ValueError, match="AUTH_JWT_SECRET"):
+        Settings(_env_file=None, app_env="prod", auth_jwt_secret="a" * 32)
 
 
 def test_credentialed_cors_rejects_wildcard_and_insecure_none() -> None:
@@ -32,6 +37,72 @@ def test_credentialed_cors_rejects_wildcard_and_insecure_none() -> None:
         Settings(_env_file=None, auth_cors_origins=["*"])
     with pytest.raises(ValueError, match="AUTH_COOKIE_SAME_SITE"):
         Settings(_env_file=None, auth_cookie_same_site="none", auth_cookie_secure=False)
+
+
+def test_default_cookie_policy_is_explicit_and_fastapi_free() -> None:
+    settings = Settings(_env_file=None, auth_jwt_secret=SECRET)
+
+    policy = settings.auth_cookie_policy
+
+    assert isinstance(policy, AuthCookiePolicy)
+    assert (policy.access_name, policy.refresh_name) == ("creator_access", "creator_refresh")
+    assert policy.access_same_site == "lax"
+    assert policy.refresh_same_site == "strict"
+    assert policy.access_http_only is True
+    assert policy.refresh_http_only is True
+    assert policy.csrf_http_only is False
+    assert policy.domain is None
+    assert policy.access_path == "/api/v1"
+    assert policy.refresh_path == "/api/v1/auth"
+    assert policy.csrf_path == "/"
+    assert policy.access_max_age(3600) == 900
+    assert policy.refresh_max_age(60 * 60 * 24 * 90) == 60 * 60 * 24 * 30
+
+
+def test_cookie_policy_caps_all_max_age_values_at_absolute_session_ttl() -> None:
+    settings = Settings(
+        _env_file=None,
+        auth_jwt_secret=SECRET,
+        auth_session_absolute_ttl_days=1,
+        auth_refresh_token_ttl_days=30,
+        auth_csrf_ttl_seconds=3600,
+    )
+
+    policy = settings.auth_cookie_policy
+
+    assert policy.access_max_age(3600 * 24 * 2) == 3600 * 24
+    assert policy.refresh_max_age(3600 * 24 * 2) == 3600 * 24
+    assert policy.csrf_max_age() == 3600
+
+
+def test_access_cookie_does_not_outlive_remaining_session_ttl() -> None:
+    settings = Settings(_env_file=None, auth_jwt_secret=SECRET)
+    session = IssuedSession(
+        access_token="access",
+        refresh_token="refresh",
+        token_type="Bearer",
+        expires_in=900,
+        refresh_expires_in=120,
+        principal=Principal(subject=str(uuid4()), session_id=str(uuid4())),
+        provider="local",
+    )
+    response = Response()
+
+    set_auth_cookies(response, session, csrf_token="csrf", settings=settings)
+
+    access_cookie = next(
+        cookie for cookie in response.headers.getlist("set-cookie") if "creator_access=" in cookie
+    )
+    assert "Max-Age=120" in access_cookie
+
+
+def test_cookie_names_must_not_collide() -> None:
+    with pytest.raises(ValueError, match="names must be distinct"):
+        Settings(
+            _env_file=None,
+            auth_cookie_access_name="same",
+            auth_cookie_refresh_name="same",
+        )
 
 
 def test_csrf_token_is_signed_and_bound_to_session() -> None:
@@ -102,10 +173,21 @@ def test_session_cookies_are_http_only_and_scoped() -> None:
     )
     set_auth_cookies(response, session, csrf_token=csrf, settings=settings)
     cookies = response.headers.getlist("set-cookie")
-    assert any("creator_access=access" in cookie and "HttpOnly" in cookie for cookie in cookies)
+    access_cookie = next(cookie for cookie in cookies if "creator_access=access" in cookie)
+    refresh_cookie = next(cookie for cookie in cookies if "creator_refresh=refresh" in cookie)
+    assert "HttpOnly" in access_cookie
+    assert "SameSite=lax" in access_cookie
+    assert "Max-Age=900" in access_cookie
     assert any(
-        "creator_refresh=refresh" in cookie and "Path=/api/v1/auth" in cookie for cookie in cookies
+        "creator_refresh=refresh" in cookie
+        and "Path=/api/v1/auth" in cookie
+        and "HttpOnly" in cookie
+        and "SameSite=strict" in cookie
+        and "Max-Age=3600" in cookie
+        for cookie in cookies
     )
+    assert "Domain=" not in access_cookie
+    assert "Domain=" not in refresh_cookie
     assert any(
         "creator_csrf=" in cookie and "Path=/;" in cookie and "HttpOnly" not in cookie
         for cookie in cookies

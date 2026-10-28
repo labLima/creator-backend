@@ -19,8 +19,8 @@ from creator.api.dependencies import (
     get_uow,
 )
 from creator.config import Settings
-from creator.infrastructure.db import create_database_engine
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.database.db import create_database_engine
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from creator.main import create_app
 from creator.services.ai.image_provider import ImageGenerationRequest, ImageGenerationResult
 from creator.services.storage.provider import (

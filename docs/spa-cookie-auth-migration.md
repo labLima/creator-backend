@@ -9,6 +9,12 @@ O cookie `creator_csrf` é legível pelo SPA e usa `Path=/`. Envie seu valor em
 cookie CSRF não estiver disponível, chame `GET /api/v1/auth/csrf` após
 restaurar a sessão.
 
+O access usa `HttpOnly`, `Secure` em produção, `SameSite=Lax` e
+`Path=/api/v1`; o refresh usa `HttpOnly`, `Secure` em produção,
+`SameSite=Strict` em same-site e `Path=/api/v1/auth`. Nenhum cookie define
+`Domain`. Os `Max-Age` acompanham os TTLs configurados e nunca ultrapassam
+`AUTH_SESSION_ABSOLUTE_TTL_DAYS`.
+
 Implemente refresh single-flight: a primeira requisição que receber `401`
 inicia `POST /api/v1/auth/refresh`; requisições concorrentes aguardam a mesma
 Promise e não iniciam outra rotação. O refresh não recebe corpo no contrato

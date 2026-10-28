@@ -20,9 +20,9 @@ from creator.domain.pipeline_events import (
     PipelineEventType,
     PipelinePayloadReference,
 )
-from creator.infrastructure.observability import correlation_context, current_context
-from creator.infrastructure.storage import create_storage_provider
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime.observability import correlation_context, current_context
+from creator.infrastructure.runtime.storage import create_storage_provider
 from creator.repositories import AgentWorkflowRunRecord, ImageRecord, JsonObject, UserRecord
 from creator.services.agents.contracts import (
     AgentExecutionContext,

@@ -8,7 +8,12 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from creator.api.auth_cookies import clear_auth_cookies, csrf_for_session, set_auth_cookies
+from creator.api.auth_cookies import (
+    clear_auth_cookies,
+    csrf_for_session,
+    set_auth_cookies,
+    set_csrf_cookie,
+)
 from creator.api.dependencies import (
     get_current_user,
     get_optional_current_user,
@@ -307,15 +312,7 @@ def csrf_token(
         )
     token = token_services.csrf.issue(session_id=UUID(principal.session_id), settings=settings)
     response = _success({"csrf_token": token}, request)
-    response.set_cookie(
-        settings.auth_cookie_csrf_name,
-        token,
-        max_age=settings.auth_csrf_ttl_seconds,
-        httponly=False,
-        secure=bool(settings.auth_cookie_secure),
-        samesite=settings.auth_cookie_same_site,
-        path=settings.auth_cookie_csrf_path,
-    )
+    set_csrf_cookie(response, token, settings=settings)
     response.headers["Cache-Control"] = "no-store"
     return response
 

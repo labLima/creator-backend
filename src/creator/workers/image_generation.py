@@ -8,9 +8,9 @@ from uuid import UUID
 from creator.application.image_storage import GeneratedImage, persist_generated_image
 from creator.config import get_settings
 from creator.domain.exceptions import InvalidStateTransitionError
-from creator.infrastructure.observability import correlation_context
-from creator.infrastructure.storage import create_storage_provider
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime.observability import correlation_context
+from creator.infrastructure.runtime.storage import create_storage_provider
 from creator.integrations.gemini.exceptions import (
     GeminiAuthenticationError,
     GeminiBlockedContentError,

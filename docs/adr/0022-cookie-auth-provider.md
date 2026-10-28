@@ -117,8 +117,12 @@ provider a autoridade sobre identidade, `Auth Session` ou Workspace.
 
 ### Cookies e CSRF
 
-Os nomes concretos (`creator_access`, `creator_refresh` e `creator_csrf`) ficam
-sob o namespace do Creator e serão fixados pela issue de política de cookies.
+Os nomes concretos são `creator_access`, `creator_refresh` e `creator_csrf`, sob
+o namespace do Creator. A política operacional é resolvida em Settings e não
+define `Domain`: access usa `Path=/api/v1` e `SameSite=Lax`, refresh usa
+`Path=/api/v1/auth` e `SameSite=Strict` no perfil same-site. O perfil
+cross-site é opt-in com `AUTH_COOKIE_SAME_SITE=none`, `Secure=true` e allowlist
+exata de CORS.
 As invariantes são:
 
 - access e refresh são `HttpOnly`;
@@ -140,7 +144,7 @@ e as restrições de [`HttpOnly`, `Secure` e `SameSite`](https://developer.mozil
 
 | Topologia | Perfil inicial | Requisitos obrigatórios |
 | --- | --- | --- |
-| Same-origin | Padrão de produção do Creator; `SameSite=Strict` | Proxy mantém SPA e API sob a mesma origem; sem CORS de credenciais |
+| Same-origin | Padrão de produção do Creator; access `Lax`, refresh `Strict` | Proxy mantém SPA e API sob a mesma origem; sem CORS de credenciais |
 | Same-site | Permitida quando SPA e API compartilham o site | `credentials` explícito, `SameSite` compatível e Origin validado |
 | Cross-site | Permitida somente por decisão de frontend/produto | `SameSite=None`, `Secure`, CORS com allowlist exata, `allow_credentials=true` e sem wildcard |
 

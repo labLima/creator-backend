@@ -131,8 +131,8 @@ from creator.domain.agent_workflow import WorkflowDecision
 from creator.domain.auth import AuthSignupResult, IssuedSession, Principal
 from creator.domain.exceptions import EntityNotFoundError
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.metrics import MetricsRegistry
-from creator.infrastructure.observability import (
+from creator.infrastructure.runtime.metrics import MetricsRegistry
+from creator.infrastructure.runtime.observability import (
     configure_logging,
     correlation_context,
     resolve_request_id,

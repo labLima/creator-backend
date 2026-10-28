@@ -13,6 +13,12 @@ def test_executable_app_modules_are_importable() -> None:
         "creator.config",
         "creator.domain",
         "creator.infrastructure",
+        "creator.infrastructure.auth",
+        "creator.infrastructure.database",
+        "creator.infrastructure.database.models",
+        "creator.infrastructure.persistence",
+        "creator.infrastructure.persistence.repositories",
+        "creator.infrastructure.runtime",
         "creator.integrations",
         "creator.repositories",
         "creator.services",
@@ -25,6 +31,17 @@ def test_container_image_includes_alembic_artifacts() -> None:
 
     assert "COPY alembic.ini ./" in dockerfile
     assert "COPY migrations ./migrations" in dockerfile
+
+
+def test_infrastructure_is_split_by_adapter_boundary() -> None:
+    infrastructure = PROJECT_ROOT / "src" / "creator" / "infrastructure"
+
+    assert {path.name for path in infrastructure.iterdir() if path.is_file()} == {"__init__.py"}
+    assert {
+        path.name
+        for path in infrastructure.iterdir()
+        if path.is_dir() and path.name != "__pycache__"
+    } == {"auth", "database", "persistence", "runtime"}
 
 
 def test_compose_runs_migrations_before_api_and_worker() -> None:

@@ -10,8 +10,8 @@ from redis import Redis
 from rq import Queue, Worker
 
 from creator.config import get_settings
-from creator.infrastructure.observability import configure_logging
-from creator.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime.observability import configure_logging
 from creator.workers.image_generation import recover_stale_processing_jobs
 
 
