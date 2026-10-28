@@ -125,12 +125,32 @@ def test_browser_cookie_auth_csrf_and_multiple_tabs(browser_server: str) -> None
         )
         assert refresh == 200
 
-        logout = page.evaluate(
+        stale_logout = page.evaluate(
             """async (csrf) => (await fetch('/api/v1/auth/logout', {
                 method: 'POST', credentials: 'include',
                 headers: {'X-CSRF-Token': csrf},
             })).status""",
             csrf,
         )
+        assert stale_logout == 403
+
+        refreshed_csrf = page.evaluate(
+            """document.cookie.split('; ').find(value => value.startsWith('creator_csrf='))
+                .split('=').slice(1).join('=')"""
+        )
+        assert refreshed_csrf != csrf
+        logout = page.evaluate(
+            """async (csrf) => (await fetch('/api/v1/auth/logout', {
+                method: 'POST', credentials: 'include',
+                headers: {'X-CSRF-Token': csrf},
+            })).status""",
+            refreshed_csrf,
+        )
         assert logout == 200
+        assert (
+            second_page.evaluate(
+                """async () => (await fetch('/api/v1/users/me', {credentials: 'include'})).status"""
+            )
+            == 401
+        )
         browser.close()

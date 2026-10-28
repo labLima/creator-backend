@@ -14,6 +14,11 @@ curl http://localhost:8000/health
 `make dev/start` constrói a imagem, aplica as migrations e sobe API, worker e
 Redis. O banco SQLite fica em um volume nomeado; o storage local também.
 
+Se um `.env` antigo ainda definir `DATABASE_URL` para PostgreSQL, comente essa
+linha para usar o SQLite padrão do Compose (`/data/creator.db`). Uma variável
+`DATABASE_URL` definida no shell também prevalece sobre o `.env`. O SQLite é
+um banco novo; dados antigos de PostgreSQL exigem backup e migração explícita.
+
 ```bash
 make dev/stop          # para os serviços sem remover volumes
 make dev/clean CONFIRM=yes  # remove containers, volumes e imagens do projeto
