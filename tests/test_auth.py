@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
@@ -172,17 +173,28 @@ def test_logout_revokes_current_session(uow: SqlAlchemyUnitOfWork) -> None:
 
 
 def test_expired_refresh_token_is_rejected(uow: SqlAlchemyUnitOfWork) -> None:
+    class FakeClock:
+        current = datetime(2026, 1, 1, tzinfo=UTC)
+
+        def now(self) -> datetime:
+            return self.current
+
+    clock = FakeClock()
+    settings = _settings(auth_refresh_token_ttl_days=1)
     result = signup(
         unit_of_work=uow,
-        settings=_settings(auth_refresh_token_ttl_days=-1),
+        settings=settings,
         email="owner@example.com",
         password="correct-password",
         workspace_name="Workspace",
+        clock=clock,
     )
     assert result.result.session is not None
+    clock.current += timedelta(days=1, seconds=1)
     with pytest.raises(ExpiredTokenError):
         refresh(
             unit_of_work=uow,
-            settings=_settings(auth_refresh_token_ttl_days=-1),
+            settings=settings,
             refresh_token=result.result.session.refresh_token,
+            clock=clock,
         )

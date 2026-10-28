@@ -63,6 +63,7 @@ def test_cookie_policy_caps_all_max_age_values_at_absolute_session_ttl() -> None
     settings = Settings(
         _env_file=None,
         auth_jwt_secret=SECRET,
+        auth_access_token_ttl_seconds=3600 * 24 * 2,
         auth_session_absolute_ttl_days=1,
         auth_refresh_token_ttl_days=30,
         auth_csrf_ttl_seconds=3600,
