@@ -83,7 +83,9 @@ def test_browser_cookie_auth_csrf_and_multiple_tabs(browser_server: str) -> None
         assert "creator_refresh" not in page.evaluate("document.cookie")
         assert "creator_csrf=" in page.evaluate("document.cookie")
 
-        cookies = context.cookies(browser_server)
+        # Passing the origin URL makes Playwright filter cookies by that URL's
+        # path (`/`), hiding the scoped session cookies from this inspection.
+        cookies = context.cookies()
         access_cookie = next(cookie for cookie in cookies if cookie["name"] == "creator_access")
         refresh_cookie = next(cookie for cookie in cookies if cookie["name"] == "creator_refresh")
         assert access_cookie["httpOnly"] is True
