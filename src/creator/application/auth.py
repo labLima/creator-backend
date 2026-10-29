@@ -142,13 +142,14 @@ def signup(
 ) -> LocalSignupResult:
     clock = _resolve_clock(token_services, clock)
     normalized = normalize_email(email)
+    password_hash = hash_password(password, settings)
     if unit_of_work.users.get_by_email(normalized, include_deleted=True) is not None:
         raise EmailAlreadyRegisteredError("email is already registered")
     try:
         user = unit_of_work.users.add(
             external_id=f"local:{uuid4().hex}",
             email=normalized,
-            password_hash=hash_password(password, settings),
+            password_hash=password_hash,
             display_name=None,
         )
         workspace = unit_of_work.workspaces.create_for_user(
@@ -157,12 +158,17 @@ def signup(
         )
         refresh_token = token_services.refresh.generate()
         now = clock.now()
+        absolute_expires_at = now + timedelta(days=settings.auth_session_absolute_ttl_days)
+        expires_at = min(
+            now + timedelta(days=settings.auth_refresh_token_ttl_days),
+            absolute_expires_at,
+        )
         session = unit_of_work.auth_sessions.add(
             user_id=user.id,
             family_id=uuid4(),
             refresh_token_hash=_refresh_hash(refresh_token),
-            expires_at=now + timedelta(days=settings.auth_refresh_token_ttl_days),
-            absolute_expires_at=now + timedelta(days=settings.auth_session_absolute_ttl_days),
+            expires_at=expires_at,
+            absolute_expires_at=absolute_expires_at,
             user_agent=user_agent,
             ip_address=ip_address,
         )
@@ -176,7 +182,7 @@ def signup(
         refresh_token=refresh_token,
         settings=settings,
         token_services=token_services,
-        refresh_expires_in=max(0, int((session.absolute_expires_at - clock.now()).total_seconds())),
+        refresh_expires_in=max(0, int((session.expires_at - clock.now()).total_seconds())),
     )
     return LocalSignupResult(
         user=user,
@@ -204,16 +210,23 @@ def login(
 ) -> IssuedSession:
     clock = _resolve_clock(token_services, clock)
     user = unit_of_work.users.get_by_email(normalize_email(email))
+    # End the read transaction before the deliberately expensive password check.
+    unit_of_work.rollback()
     if user is None or not verify_password(password, user.password_hash):
         raise InvalidCredentialsError("invalid email or password")
     refresh_token = token_services.refresh.generate()
     now = clock.now()
+    absolute_expires_at = now + timedelta(days=settings.auth_session_absolute_ttl_days)
+    expires_at = min(
+        now + timedelta(days=settings.auth_refresh_token_ttl_days),
+        absolute_expires_at,
+    )
     session = unit_of_work.auth_sessions.add(
         user_id=user.id,
         family_id=uuid4(),
         refresh_token_hash=_refresh_hash(refresh_token),
-        expires_at=now + timedelta(days=settings.auth_refresh_token_ttl_days),
-        absolute_expires_at=now + timedelta(days=settings.auth_session_absolute_ttl_days),
+        expires_at=expires_at,
+        absolute_expires_at=absolute_expires_at,
         user_agent=user_agent,
         ip_address=ip_address,
     )
@@ -224,7 +237,7 @@ def login(
         refresh_token=refresh_token,
         settings=settings,
         token_services=token_services,
-        refresh_expires_in=max(0, int((session.absolute_expires_at - clock.now()).total_seconds())),
+        refresh_expires_in=max(0, int((session.expires_at - clock.now()).total_seconds())),
     )
 
 
@@ -301,7 +314,7 @@ def refresh(
         refresh_token=new_token,
         settings=settings,
         token_services=token_services,
-        refresh_expires_in=max(0, int((absolute_expires_at - now).total_seconds())),
+        refresh_expires_in=max(0, int((new_session.expires_at - now).total_seconds())),
     )
 
 

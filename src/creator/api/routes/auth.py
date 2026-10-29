@@ -338,15 +338,24 @@ def logout_session(
 ) -> JSONResponse:
     session_id: UUID | None = None
     if principal is not None and principal.session_id is not None:
-        session_id = UUID(principal.session_id)
-    elif current_user is None:
+        if current_user is not None:
+            session_id = UUID(principal.session_id)
+    if session_id is None:
         refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
         if refresh_token:
             record = unit_of_work.auth_sessions.get_by_refresh_hash(
                 hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
             )
-            if record is not None and record.expires_at > datetime.now(UTC):
+            now = datetime.now(UTC)
+            if (
+                record is not None
+                and record.revoked_at is None
+                and record.expires_at > now
+                and record.absolute_expires_at > now
+            ):
                 session_id = record.id
+    if session_id is None and principal is not None and principal.session_id is not None:
+        session_id = UUID(principal.session_id)
     if session_id is None:
         raise HTTPException(
             status_code=401,

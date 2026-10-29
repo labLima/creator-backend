@@ -122,6 +122,8 @@ class SqlAlchemyAuthSessionRepository:
             .values(revoked_at=now, replaced_by_id=new_session_id, rotated_at=now)
         )
         if getattr(result, "rowcount", 0) != 1:
+            # Bulk UPDATE may leave the identity map with the pre-CAS state.
+            self._session.expire(row)
             return None
         successor = models.AuthSession(
             id=new_session_id,
@@ -143,6 +145,7 @@ class SqlAlchemyAuthSessionRepository:
             delete(models.AuthSession).where(
                 or_(
                     models.AuthSession.absolute_expires_at < before,
+                    models.AuthSession.expires_at < before,
                     and_(
                         models.AuthSession.revoked_at.is_not(None),
                         models.AuthSession.revoked_at < before,
