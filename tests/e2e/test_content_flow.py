@@ -14,6 +14,7 @@ async def _signup(client: AsyncClient, email: str) -> tuple[str, str]:
     )
     assert response.status_code == 201, response.text
     data = response.json()["data"]
+    client.cookies.clear()
     return data["session"]["access_token"], data["workspace"]["id"]
 
 

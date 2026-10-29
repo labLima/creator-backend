@@ -40,7 +40,7 @@ def test_infrastructure_is_split_by_adapter_boundary() -> None:
     assert {
         path.name
         for path in infrastructure.iterdir()
-        if path.is_dir() and path.name != "__pycache__"
+        if path.is_dir() and path.name != "__pycache__" and any(path.rglob("*.py"))
     } == {"auth", "database", "persistence", "runtime"}
 
 
@@ -111,7 +111,6 @@ def test_openapi_declares_cookie_security_for_business_operations() -> None:
     public_routes = {
         "/api/v1/auth/login",
         "/api/v1/auth/signup",
-        "/api/v1/auth/refresh",
     }
 
     for path, operations in document["paths"].items():
@@ -119,6 +118,17 @@ def test_openapi_declares_cookie_security_for_business_operations() -> None:
             continue
         for method, operation in operations.items():
             if method in {"get", "post", "put", "patch", "delete"}:
-                assert operation.get("security") == [{"CreatorSessionCookie": []}], (
+                if path == "/api/v1/auth/refresh":
+                    expected_security = [{"CreatorRefreshCookie": []}]
+                elif path == "/api/v1/auth/csrf":
+                    expected_security = [
+                        {"CreatorSessionCookie": []},
+                        {"CreatorRefreshCookie": []},
+                        {"CreatorLegacyBearerAuth": []},
+                    ]
+                else:
+                    expected_security = [{"CreatorSessionCookie": []}]
+                    expected_security.append({"CreatorLegacyBearerAuth": []})
+                assert operation.get("security") == expected_security, (
                     f"{method.upper()} {path} must declare cookie security"
                 )

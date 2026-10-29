@@ -79,35 +79,49 @@ def get_principal(
         if request_obj is not None and settings.auth_cookie_sessions_enabled
         else None
     )
-    if bearer and cookie:
-        # During the one-release migration window an explicit legacy Bearer
-        # credential remains authoritative for clients that still retain a
-        # browser cookie from another session.
-        bearer_principal = _decode_principal(bearer, settings, token_services)
-        if request_obj is not None:
-            request_obj.state.auth_source = "bearer"
-        return bearer_principal
-    token = bearer or cookie
-    if token is None:
+    if bearer is None and cookie is None:
         if settings.auth_required:
             raise _invalid_auth_exception()
         return None
 
-    try:
-        principal = principal_from_access_token(token, settings, token_services=token_services)
-        if request_obj is not None:
-            request_obj.state.auth_source = "bearer" if bearer else "cookie"
-        return principal
-    except AuthConfigurationError as error:
-        if not settings.auth_required:
-            return None
-        raise _auth_exception(
-            "AUTHENTICATION_MISCONFIGURED",
-            "Authentication is not configured",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        ) from error
-    except (ExpiredTokenError, InvalidTokenError) as error:
-        raise _invalid_auth_exception() from error
+    bearer_principal: Principal | None = None
+    if bearer is not None:
+        bearer_principal = _decode_principal(bearer, settings, token_services)
+
+    cookie_principal: Principal | None = None
+    if cookie is not None:
+        try:
+            cookie_principal = principal_from_access_token(
+                cookie, settings, token_services=token_services
+            )
+        except (ExpiredTokenError, InvalidTokenError) as error:
+            # An invalid lower-priority cookie cannot replace a supplied Bearer.
+            if bearer is None:
+                raise _invalid_auth_exception() from error
+        except AuthConfigurationError as error:
+            if bearer_principal is None:
+                if not settings.auth_required:
+                    return None
+                raise _auth_exception(
+                    "AUTHENTICATION_MISCONFIGURED",
+                    "Authentication is not configured",
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                ) from error
+
+    if bearer_principal is not None and cookie_principal is not None:
+        if bearer_principal.subject != cookie_principal.subject:
+            raise _ambiguous_auth_exception()
+        principal: Principal | None = bearer_principal
+    else:
+        principal = bearer_principal or cookie_principal
+
+    if principal is None:
+        if settings.auth_required:
+            raise _invalid_auth_exception()
+        return None
+    if request_obj is not None:
+        request_obj.state.auth_source = "bearer" if bearer_principal is not None else "cookie"
+    return principal
 
 
 def get_optional_principal(
@@ -127,42 +141,26 @@ def get_optional_principal(
         if settings.auth_cookie_sessions_enabled
         else None
     )
-    if bearer and cookie:
-        bearer_token = _bearer_token(bearer)
-        if bearer_token is None:
-            return None
-        try:
-            bearer_principal = principal_from_access_token(
-                bearer_token, settings, token_services=token_services
-            )
-        except (AuthConfigurationError, ExpiredTokenError, InvalidTokenError):
-            return None
-        return bearer_principal
-    token = bearer or cookie
-    if not token:
+    try:
+        bearer_token = _bearer_token(bearer) if bearer else None
+    except HTTPException:
+        return None
+    if bearer_token is None and not cookie:
         return None
 
-    bearer_token = _bearer_token(token) if bearer else token
-    if bearer_token is None:
+    bearer_principal = _optional_decode_principal(bearer_token, settings, token_services)
+    if bearer_token is not None and bearer_principal is None:
         return None
-    try:
-        principal = principal_from_access_token(
-            bearer_token, settings, token_services=token_services
-        )
-        request.state.auth_source = "bearer" if bearer else "cookie"
-        return principal
-    except AuthConfigurationError as error:
-        if not settings.auth_required:
-            return None
-        raise _auth_exception(
-            "AUTHENTICATION_MISCONFIGURED",
-            "Authentication is not configured",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        ) from error
-    except (ExpiredTokenError, InvalidTokenError) as error:
-        if not bearer:
-            return None
-        raise _invalid_auth_exception() from error
+
+    cookie_principal = _optional_decode_principal(cookie, settings, token_services)
+    if bearer_principal is not None and cookie_principal is not None:
+        if bearer_principal.subject != cookie_principal.subject:
+            raise _ambiguous_auth_exception()
+
+    principal = bearer_principal or cookie_principal
+    if principal is not None:
+        request.state.auth_source = "bearer" if bearer_principal is not None else "cookie"
+    return principal
 
 
 def get_uow(
@@ -371,8 +369,13 @@ def enforce_cookie_security(
     )
     if not has_session_cookie:
         return
-    if settings.auth_legacy_bearer_enabled and request.headers.get("Authorization"):
-        return
+    if settings.auth_legacy_bearer_enabled:
+        try:
+            bearer_token = _bearer_token(request.headers.get("Authorization"))
+        except HTTPException:
+            bearer_token = None
+        if _optional_decode_principal(bearer_token, settings, token_services) is not None:
+            return
 
     origin = request.headers.get("origin")
     expected_origin = f"{request.url.scheme}://{request.url.netloc}"
@@ -427,6 +430,13 @@ def _invalid_auth_exception() -> HTTPException:
     return _auth_exception("AUTHENTICATION_INVALID", "Authentication failed")
 
 
+def _ambiguous_auth_exception() -> HTTPException:
+    return _auth_exception(
+        "AUTH_AMBIGUOUS",
+        "Bearer and cookie credentials identify different Principals",
+    )
+
+
 def _bearer_token(credentials: HTTPAuthorizationCredentials | str | None) -> str | None:
     if credentials is None:
         return None
@@ -442,11 +452,30 @@ def _bearer_token(credentials: HTTPAuthorizationCredentials | str | None) -> str
 
 def _decode_principal(
     token: str, settings: Settings, token_services: AuthTokenServices
-) -> Principal:
+) -> Principal | None:
     try:
         return principal_from_access_token(token, settings, token_services=token_services)
-    except (AuthConfigurationError, ExpiredTokenError, InvalidTokenError) as error:
+    except AuthConfigurationError as error:
+        if not settings.auth_required:
+            return None
+        raise _auth_exception(
+            "AUTHENTICATION_MISCONFIGURED",
+            "Authentication is not configured",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        ) from error
+    except (ExpiredTokenError, InvalidTokenError) as error:
         raise _invalid_auth_exception() from error
+
+
+def _optional_decode_principal(
+    token: str | None, settings: Settings, token_services: AuthTokenServices
+) -> Principal | None:
+    if not token:
+        return None
+    try:
+        return principal_from_access_token(token, settings, token_services=token_services)
+    except (AuthConfigurationError, ExpiredTokenError, InvalidTokenError):
+        return None
 
 
 def _refresh_hash(token: str) -> str:

@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
+import creator.main as main_module
+from creator.config import Settings
 from creator.main import app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -38,14 +41,73 @@ def test_static_openapi_declares_creator_cookie_security() -> None:
             "HttpOnly Creator access cookie; mutating requests also require X-CSRF-Token."
         ),
     }
-    assert "CreatorBearerAuth" not in static["components"]["securitySchemes"]
+    assert static["components"]["securitySchemes"]["CreatorLegacyBearerAuth"] == {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Legacy Bearer accepted only when AUTH_LEGACY_BEARER_ENABLED=true.",
+    }
+    assert static["components"]["securitySchemes"]["CreatorRefreshCookie"] == {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "creator_refresh",
+        "description": "HttpOnly Creator refresh cookie used only for session rotation.",
+    }
     assert "AuthRefreshRequest" not in static["components"]["schemas"]
     assert "requestBody" not in static["paths"]["/api/v1/auth/refresh"]["post"]
+    assert static["paths"]["/api/v1/auth/refresh"]["post"]["responses"]["401"]["x-error-codes"] == [
+        "INVALID_REFRESH_TOKEN"
+    ]
+    assert static["paths"]["/api/v1/auth/refresh"]["post"]["responses"]["409"]["$ref"] == (
+        "#/components/responses/RefreshInProgress"
+    )
+    assert static["components"]["responses"]["RefreshInProgress"]["x-error-codes"] == [
+        "REFRESH_IN_PROGRESS"
+    ]
+    assert static["components"]["responses"]["CsrfRejected"]["x-error-codes"] == [
+        "CSRF_TOKEN_MISSING",
+        "CSRF_TOKEN_INVALID",
+        "ORIGIN_NOT_ALLOWED",
+    ]
+    csrf_cache_control = static["paths"]["/api/v1/auth/csrf"]["get"]["responses"]["200"]["headers"][
+        "Cache-Control"
+    ]
+    assert csrf_cache_control == {"$ref": "#/components/headers/NoStore"}
+    for path, item in static["paths"].items():
+        if not path.startswith("/api/v1/"):
+            continue
+        for method in _operations(item):
+            unauthorized = item[method]["responses"]["401"]
+            if path == "/api/v1/auth/refresh":
+                assert unauthorized["x-error-codes"] == ["INVALID_REFRESH_TOKEN"]
+            else:
+                assert "AUTH_AMBIGUOUS" in unauthorized["x-error-codes"], (method, path)
+
     for path, item in static["paths"].items():
         if not path.startswith("/api/v1/") or path in PUBLIC_AUTH_PATHS:
             continue
         for method in _operations(item):
-            assert item[method].get("security") == [{"CreatorSessionCookie": []}], (method, path)
+            if path == "/api/v1/auth/refresh":
+                expected_security = [{"CreatorRefreshCookie": []}]
+            elif path == "/api/v1/auth/csrf":
+                expected_security = [
+                    {"CreatorSessionCookie": []},
+                    {"CreatorRefreshCookie": []},
+                    {"CreatorLegacyBearerAuth": []},
+                ]
+            else:
+                expected_security = [
+                    {"CreatorSessionCookie": []},
+                    {"CreatorLegacyBearerAuth": []},
+                ]
+            assert item[method].get("security") == expected_security, (method, path)
+
+    assert (
+        "AUTH_AMBIGUOUS"
+        in static["paths"]["/api/v1/auth/login"]["post"]["responses"]["401"]["x-error-codes"]
+    )
+    assert static["paths"]["/api/v1/auth/refresh"]["post"]["security"] == [
+        {"CreatorRefreshCookie": []}
+    ]
 
 
 def test_auth_openapi_documents_cookie_headers_and_optional_legacy_tokens() -> None:
@@ -78,6 +140,70 @@ def test_auth_openapi_documents_cookie_headers_and_optional_legacy_tokens() -> N
     assert (
         static["components"]["headers"]["NoStore"] == generated["components"]["headers"]["NoStore"]
     )
+
+    assert (
+        "AUTH_LEGACY_BEARER_ENABLED=true"
+        in generated["components"]["securitySchemes"]["CreatorLegacyBearerAuth"]["description"]
+    )
+    assert "AUTH_AMBIGUOUS" in generated["components"]["responses"]["Unauthorized"]["x-error-codes"]
+    for path, item in generated["paths"].items():
+        if not path.startswith("/api/v1/"):
+            continue
+        for method in _operations(item):
+            if path == "/api/v1/auth/refresh":
+                assert item[method]["responses"]["401"]["x-error-codes"] == [
+                    "INVALID_REFRESH_TOKEN"
+                ]
+            else:
+                assert "AUTH_AMBIGUOUS" in item[method]["responses"]["401"]["x-error-codes"]
+    assert generated["paths"]["/api/v1/users/me"]["get"]["security"] == [
+        {"CreatorSessionCookie": []},
+        {"CreatorLegacyBearerAuth": []},
+    ]
+    assert generated["paths"]["/api/v1/auth/refresh"]["post"]["security"] == [
+        {"CreatorRefreshCookie": []}
+    ]
+    assert generated["paths"]["/api/v1/auth/csrf"]["get"]["security"] == [
+        {"CreatorSessionCookie": []},
+        {"CreatorRefreshCookie": []},
+        {"CreatorLegacyBearerAuth": []},
+    ]
+    assert generated["paths"]["/api/v1/auth/refresh"]["post"]["responses"]["401"][
+        "x-error-codes"
+    ] == ["INVALID_REFRESH_TOKEN"]
+    assert generated["paths"]["/api/v1/auth/refresh"]["post"]["responses"]["403"][
+        "x-error-codes"
+    ] == ["CSRF_TOKEN_MISSING", "CSRF_TOKEN_INVALID", "ORIGIN_NOT_ALLOWED"]
+    assert generated["paths"]["/api/v1/auth/refresh"]["post"]["responses"]["409"][
+        "x-error-codes"
+    ] == ["REFRESH_IN_PROGRESS"]
+    assert generated["components"]["responses"]["CsrfRejected"]["x-error-codes"] == [
+        "CSRF_TOKEN_MISSING",
+        "CSRF_TOKEN_INVALID",
+        "ORIGIN_NOT_ALLOWED",
+    ]
+    assert generated["paths"]["/api/v1/auth/csrf"]["get"]["responses"]["200"]["headers"][
+        "Cache-Control"
+    ] == {"$ref": "#/components/headers/NoStore"}
+
+
+def test_generated_openapi_removes_bearer_when_legacy_flag_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        main_module,
+        "get_settings",
+        lambda: Settings(_env_file=None, auth_legacy_bearer_enabled=False),
+    )
+
+    schema = main_module.create_app().openapi()
+
+    assert "CreatorLegacyBearerAuth" not in schema["components"]["securitySchemes"]
+    assert "CreatorRefreshCookie" in schema["components"]["securitySchemes"]
+    assert schema["paths"]["/api/v1/users/me"]["get"]["security"] == [{"CreatorSessionCookie": []}]
+    assert schema["paths"]["/api/v1/auth/refresh"]["post"]["security"] == [
+        {"CreatorRefreshCookie": []}
+    ]
 
 
 def test_workflow_acceptance_does_not_document_redis_availability_errors() -> None:

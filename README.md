@@ -83,6 +83,12 @@ quando o SPA estiver em outra origem e desabilite
 dos clientes. Paths e TTLs podem ser ajustados para um reverse proxy pelas
 configurações `AUTH_COOKIE_*` e `AUTH_*TTL*` correspondentes.
 
+`AUTH_LEGACY_BEARER_ENABLED=true` mantém a aceitação do header `Authorization:
+Bearer` durante a transição. Quando Bearer e cookie válidos chegam juntos,
+Bearer tem precedência; se os tokens identificarem `sub` diferentes, a API
+responde `401 AUTH_AMBIGUOUS`. Após migrar os clientes, defina a flag como
+`false` para aceitar somente cookies.
+
 ## IA e storage
 
 O provider de IA inicial é Google Gemini, via `google-genai`:

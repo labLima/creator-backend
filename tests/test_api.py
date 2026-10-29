@@ -1,15 +1,20 @@
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 from uuid import UUID
 
 import jwt
 import pytest
+from fastapi import Depends, HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from creator.api.dependencies import (
+    AUTH_RATE_LIMIT_ENDPOINTS,
     get_current_user,
     get_generation_queue,
     get_llm_provider,
+    get_principal,
+    get_rate_limiter,
     get_storage_provider,
     get_uow,
 )
@@ -18,8 +23,10 @@ from creator.application.image_generation import (
     image_regeneration_request_fingerprint,
 )
 from creator.config import Settings, get_settings
+from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
 from creator.domain.generation import GenerationJobStatus
+from creator.infrastructure.runtime.rate_limit import RateLimitDecision
 from creator.integrations.gemini.exceptions import GeminiTimeoutError
 from creator.main import app, create_app
 from creator.repositories import (
@@ -71,6 +78,14 @@ def authorized_app() -> object:
     application = authenticated_app()
     application.dependency_overrides[get_current_user] = lambda: user_record()
     return application
+
+
+def require_test_principal(
+    principal: Annotated[Principal | None, Depends(get_principal)],
+) -> UserRecord:
+    if principal is None:
+        raise HTTPException(status_code=401)
+    return user_record()
 
 
 def admin_app() -> object:
@@ -787,10 +802,10 @@ def status_record(
     )
 
 
-def local_access_token() -> str:
+def local_access_token(subject: str = "00000000-0000-0000-0000-000000000001") -> str:
     return jwt.encode(
         {
-            "sub": "00000000-0000-0000-0000-000000000001",
+            "sub": subject,
             "aud": "creator-api",
             "iss": "creator",
             "exp": datetime.now(UTC) + timedelta(minutes=5),
@@ -1605,6 +1620,122 @@ async def test_api_v1_route_accepts_valid_local_token_when_enabled() -> None:
 
 
 @pytest.mark.anyio
+async def test_users_me_accepts_cookie_and_rejects_invalid_cookie() -> None:
+    application = authorized_app()
+    application.dependency_overrides[get_current_user] = require_test_principal
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        cookie_response = await client.get(
+            "/api/v1/users/me",
+            cookies={"creator_access": local_access_token()},
+        )
+        invalid_cookie_response = await client.get(
+            "/api/v1/users/me",
+            cookies={"creator_access": "not-a-jwt"},
+        )
+        no_cookie_response = await client.get("/api/v1/users/me")
+
+    assert cookie_response.status_code == 200
+    assert invalid_cookie_response.status_code == 401
+    assert invalid_cookie_response.json()["error"]["code"] == "AUTHENTICATION_INVALID"
+    assert no_cookie_response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_users_me_accepts_legacy_bearer_only_while_flag_is_enabled() -> None:
+    application = authorized_app()
+    application.dependency_overrides[get_current_user] = require_test_principal
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        enabled = await client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {local_access_token()}"},
+        )
+
+    application = authenticated_app()
+    application.dependency_overrides[get_settings] = lambda: Settings(
+        _env_file=None,
+        auth_required=True,
+        auth_jwt_secret=JWT_SECRET,
+        auth_legacy_bearer_enabled=False,
+        rate_limit_backend="memory",
+    )
+    application.dependency_overrides[get_current_user] = require_test_principal
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        disabled = await client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {local_access_token()}"},
+        )
+
+    assert enabled.status_code == 200
+    assert disabled.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_different_valid_cookie_and_bearer_subjects_are_ambiguous() -> None:
+    application = authorized_app()
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {local_access_token()}"},
+            cookies={"creator_access": local_access_token("00000000-0000-0000-0000-000000000002")},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_AMBIGUOUS"
+
+
+@pytest.mark.anyio
+async def test_cookie_authentication_keeps_principal_rate_limit_identity() -> None:
+    class RecordingLimiter:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, str]] = []
+
+        def check(self, **kwargs: str) -> RateLimitDecision:
+            self.calls.append(kwargs)
+            return RateLimitDecision(True, 1, 4, 1)
+
+    limiter = RecordingLimiter()
+    application = authorized_app()
+    application.dependency_overrides[get_rate_limiter] = lambda: limiter
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/api/v1/users/me",
+            cookies={"creator_access": local_access_token()},
+        )
+        bearer_precedence = await client.get(
+            "/api/v1/users/me",
+            headers={
+                "Authorization": (
+                    "Bearer " + local_access_token("00000000-0000-0000-0000-000000000002")
+                )
+            },
+            cookies={"creator_access": "expired-or-invalid-cookie"},
+        )
+        matching_credentials = await client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {local_access_token()}"},
+            cookies={"creator_access": local_access_token()},
+        )
+
+    assert response.status_code == 200
+    assert bearer_precedence.status_code == 200
+    assert matching_credentials.status_code == 200
+    assert limiter.calls[0]["identity"] == "principal:00000000-0000-0000-0000-000000000001"
+    assert limiter.calls[1]["identity"] == "principal:00000000-0000-0000-0000-000000000002"
+    assert limiter.calls[2]["identity"] == "principal:00000000-0000-0000-0000-000000000001"
+    assert "POST /api/v1/auth/refresh" in AUTH_RATE_LIMIT_ENDPOINTS
+
+
+@pytest.mark.anyio
 async def test_generate_image_returns_accepted_job_and_enqueues_work() -> None:
     content_id = UUID("20000000-0000-0000-0000-000000000001")
     unit_of_work = FakeUnitOfWork(content=content_record(content_id))
@@ -2226,7 +2357,10 @@ async def test_swagger_uses_cookie_security_for_protected_routes() -> None:
         ),
     }
     generate_operation = openapi_schema["paths"]["/api/v1/content/generate"]["post"]
-    assert generate_operation["security"] == [{"CreatorSessionCookie": []}]
+    assert generate_operation["security"] == [
+        {"CreatorSessionCookie": []},
+        {"CreatorLegacyBearerAuth": []},
+    ]
     assert all(
         parameter["name"] != "authorization"
         for parameter in generate_operation.get("parameters", [])

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
@@ -16,10 +15,8 @@ from creator.api.auth import (
     set_csrf_cookie,
 )
 from creator.api.dependencies import (
-    get_current_user,
     get_optional_current_user,
     get_optional_principal,
-    get_principal,
     get_uow,
 )
 from creator.api.dtos import AuthLoginRequest, AuthSignupRequest
@@ -33,6 +30,7 @@ from creator.application.auth import (
     LocalSignupResult,
     RefreshInProgressError,
     RevokedSessionError,
+    session_is_active,
 )
 from creator.application.auth import (
     login as login_local,
@@ -261,20 +259,13 @@ def signup_with_password(
 
 
 @router.post("/refresh")
-async def refresh_session(
+def refresh_session(
     request: Request,
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     settings: Annotated[Settings, Depends(get_settings)],
     token_services: Annotated[AuthTokenServices, Depends(auth_token_services)],
 ) -> JSONResponse:
     refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
-    if not refresh_token and settings.auth_token_body_enabled:
-        try:
-            body = await request.json()
-        except ValueError:
-            body = {}
-        if isinstance(body, dict) and isinstance(body.get("refresh_token"), str):
-            refresh_token = body["refresh_token"]
     try:
         session = refresh_local(
             unit_of_work=unit_of_work,
@@ -314,18 +305,39 @@ async def refresh_session(
 @router.get("/csrf")
 def csrf_token(
     request: Request,
-    current_user: Annotated[UserRecord, Depends(get_current_user)],
-    principal: Annotated[Principal | None, Depends(get_principal)],
+    principal: Annotated[Principal | None, Depends(get_optional_principal)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     settings: Annotated[Settings, Depends(get_settings)],
     token_services: Annotated[AuthTokenServices, Depends(auth_token_services)],
 ) -> JSONResponse:
-    del current_user
-    if principal is None or principal.session_id is None:
+    session_id: UUID | None = None
+    if principal is not None and principal.session_id is not None:
+        try:
+            candidate = UUID(principal.session_id)
+        except ValueError:
+            candidate = None
+        if candidate is not None and session_is_active(
+            unit_of_work=unit_of_work, session_id=candidate, clock=token_services.clock
+        ):
+            session_id = candidate
+
+    if session_id is None:
+        refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
+        if refresh_token:
+            record = unit_of_work.auth_sessions.get_by_refresh_hash(
+                hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
+            )
+            if record is not None and session_is_active(
+                unit_of_work=unit_of_work, session_id=record.id, clock=token_services.clock
+            ):
+                session_id = record.id
+
+    if session_id is None:
         raise HTTPException(
             status_code=401,
             detail={"code": "AUTHENTICATION_INVALID", "message": "Authentication failed"},
         )
-    token = token_services.csrf.issue(session_id=UUID(principal.session_id), settings=settings)
+    token = token_services.csrf.issue(session_id=session_id, settings=settings)
     response = _success({"csrf_token": token}, request)
     set_csrf_cookie(FastApiCookieTransport(response), token, settings=settings)
     response.headers["Cache-Control"] = "no-store"
@@ -350,22 +362,12 @@ def logout_session(
             record = unit_of_work.auth_sessions.get_by_refresh_hash(
                 hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
             )
-            now = datetime.now(UTC)
-            if (
-                record is not None
-                and record.revoked_at is None
-                and record.expires_at > now
-                and record.absolute_expires_at > now
-            ):
+            if record is not None:
                 session_id = record.id
     if session_id is None and principal is not None and principal.session_id is not None:
         session_id = UUID(principal.session_id)
-    if session_id is None:
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "AUTHENTICATION_INVALID", "message": "Authentication failed"},
-        )
-    logout_local(unit_of_work=unit_of_work, session_id=session_id)
+    if session_id is not None:
+        logout_local(unit_of_work=unit_of_work, session_id=session_id)
     response = _success({"logged_out": True}, request)
     clear_auth_cookies(FastApiCookieTransport(response), settings=settings)
     response.headers["Cache-Control"] = "no-store"

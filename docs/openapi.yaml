@@ -116,6 +116,7 @@ paths:
                 $ref: '#/components/schemas/AuthLoginResponse'
         '401':
           $ref: '#/components/responses/LoginRejected'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
@@ -186,6 +187,12 @@ paths:
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
   /api/v1/auth/csrf:
     get:
       operationId: csrfToken
@@ -193,11 +200,16 @@ paths:
       - Auth
       security:
       - CreatorSessionCookie: []
+      - CreatorRefreshCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: CSRF token for the current Auth Session.
           headers:
             Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Set-Cookie:
+              description: The rehydrated readable creator_csrf cookie.
               schema:
                 type: string
           content:
@@ -206,6 +218,7 @@ paths:
                 $ref: '#/components/schemas/CsrfTokenResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/users/me:
     get:
       operationId: getMyProfile
@@ -213,11 +226,13 @@ paths:
       - Users
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Current authenticated User.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/settings:
     get:
       operationId: getMySettings
@@ -225,6 +240,7 @@ paths:
       - Settings
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Current authenticated user's Settings, created with defaults on first access.
@@ -234,12 +250,14 @@ paths:
                 $ref: '#/components/schemas/SettingsResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     patch:
       operationId: updateMySettings
       tags:
       - Settings
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -255,6 +273,7 @@ paths:
                 $ref: '#/components/schemas/SettingsResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '422':
           $ref: '#/components/responses/ValidationFailed'
   /api/v1/users:
@@ -264,22 +283,30 @@ paths:
       - Users
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated Users visible to an admin.
         '403':
           $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createUser
       tags:
       - Users
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '201':
           description: User created by an admin.
         '403':
           $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/users/{id}:
     get:
       operationId: getUser
@@ -287,6 +314,7 @@ paths:
       - Users
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -296,12 +324,16 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateUser
       tags:
       - Users
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -311,12 +343,16 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteUser
       tags:
       - Users
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -326,6 +362,9 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/workspaces:
     get:
       operationId: listWorkspaces
@@ -333,15 +372,20 @@ paths:
       - Workspaces
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated Workspaces visible by Membership.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createWorkspace
       tags:
       - Workspaces
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -357,6 +401,7 @@ paths:
                 $ref: '#/components/schemas/WorkspaceCreateResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '500':
@@ -368,6 +413,7 @@ paths:
       - Workspaces
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -375,12 +421,16 @@ paths:
           description: Workspace detail.
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateWorkspace
       tags:
       - Workspaces
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -388,12 +438,16 @@ paths:
           description: Workspace updated by admin or owner Membership.
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteWorkspace
       tags:
       - Workspaces
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -405,6 +459,7 @@ paths:
                 $ref: '#/components/schemas/WorkspaceDeleteResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/WorkspaceNotFound'
         '422':
@@ -418,20 +473,28 @@ paths:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated Brands visible by Workspace Membership.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createBrand
       tags:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '201':
           description: Brand created in a writable Workspace.
         '403':
           $ref: '#/components/responses/WorkspaceAccessDenied'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/brands/{id}:
     get:
       operationId: getBrand
@@ -439,6 +502,7 @@ paths:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -446,12 +510,16 @@ paths:
           description: Brand detail.
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateBrand
       tags:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -459,12 +527,16 @@ paths:
           description: Brand updated in a writable Workspace.
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteBrand
       tags:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -472,6 +544,9 @@ paths:
           description: Brand soft-deleted in a writable Workspace.
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/brands/{id}/settings:
     get:
       operationId: getBrandSettings
@@ -479,38 +554,54 @@ paths:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Brand Settings detail.
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: upsertBrandSettings
       tags:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Brand Settings upserted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     patch:
       operationId: updateBrandSettings
       tags:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Brand Settings updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteBrandSettings
       tags:
       - Brands
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Brand Settings soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/campaigns:
     get:
       operationId: listCampaigns
@@ -518,6 +609,7 @@ paths:
       - Campaigns
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: workspace_id
         in: query
@@ -530,12 +622,14 @@ paths:
           description: Paginated Workspace-scoped Campaigns.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createCampaign
       tags:
       - Campaigns
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -547,6 +641,7 @@ paths:
           description: Campaign created.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '422':
           $ref: '#/components/responses/ValidationFailed'
   /api/v1/campaigns/{id}:
@@ -556,6 +651,7 @@ paths:
       - Campaigns
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -563,6 +659,7 @@ paths:
           description: Campaign detail.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -571,6 +668,7 @@ paths:
       - Campaigns
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -584,6 +682,7 @@ paths:
           description: Campaign updated.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
@@ -592,6 +691,7 @@ paths:
       - Campaigns
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -599,6 +699,7 @@ paths:
           description: Campaign soft-deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/personas:
@@ -608,6 +709,7 @@ paths:
       - Personas
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: brand_id
         in: query
@@ -620,6 +722,7 @@ paths:
           description: Paginated brand personas.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Personas
@@ -627,6 +730,7 @@ paths:
       operationId: create_persona_api_v1_personas_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -647,6 +751,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/personas/{id}:
     get:
       operationId: getPersona
@@ -654,6 +761,7 @@ paths:
       - Personas
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -661,6 +769,7 @@ paths:
           description: Persona detail.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -669,6 +778,7 @@ paths:
       - Personas
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -682,6 +792,7 @@ paths:
           description: Persona updated.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
@@ -690,6 +801,7 @@ paths:
       - Personas
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -697,6 +809,7 @@ paths:
           description: Persona soft-deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/planning:
@@ -706,6 +819,7 @@ paths:
       - Planning
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: campaign_id
         in: query
@@ -718,6 +832,7 @@ paths:
           description: Paginated campaign planning records.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Planning
@@ -725,6 +840,7 @@ paths:
       operationId: create_planning_api_v1_planning_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -745,6 +861,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/planning/{id}:
     get:
       operationId: getPlanning
@@ -752,6 +871,7 @@ paths:
       - Planning
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -759,6 +879,7 @@ paths:
           description: Planning detail.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -767,6 +888,7 @@ paths:
       - Planning
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -780,6 +902,7 @@ paths:
           description: Planning updated.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
@@ -788,6 +911,7 @@ paths:
       - Planning
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -795,6 +919,7 @@ paths:
           description: Planning soft-deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/post-structures:
@@ -804,6 +929,7 @@ paths:
       - Post Structures
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: workspace_id
         in: query
@@ -816,12 +942,14 @@ paths:
           description: Paginated Workspace-scoped Post Structures.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createPostStructure
       tags:
       - Post Structures
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -833,6 +961,7 @@ paths:
           description: Post Structure created.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '422':
           $ref: '#/components/responses/ValidationFailed'
   /api/v1/post-structures/{id}:
@@ -842,6 +971,7 @@ paths:
       - Post Structures
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -849,6 +979,7 @@ paths:
           description: Post Structure detail.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -857,6 +988,7 @@ paths:
       - Post Structures
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -870,6 +1002,7 @@ paths:
           description: Post Structure updated.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
@@ -878,6 +1011,7 @@ paths:
       - Post Structures
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -885,6 +1019,7 @@ paths:
           description: Post Structure soft-deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/projects:
@@ -894,18 +1029,26 @@ paths:
       - Projects
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated Projects visible by Workspace Membership.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createProject
       tags:
       - Projects
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '201':
           description: Project created in a writable Workspace.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/projects/{id}:
     get:
       operationId: getProject
@@ -913,27 +1056,39 @@ paths:
       - Projects
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Project detail.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateProject
       tags:
       - Projects
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Project updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteProject
       tags:
       - Projects
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Project soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/contents:
     get:
       operationId: listContents
@@ -941,15 +1096,20 @@ paths:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated Content visible by Workspace Membership.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createContent
       tags:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: planning_id
         in: query
@@ -1000,6 +1160,9 @@ paths:
       responses:
         '201':
           description: Content created in a writable Workspace.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/contents/{id}:
     get:
       operationId: getContentCanonical
@@ -1007,15 +1170,20 @@ paths:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Content detail.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateContent
       tags:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1046,15 +1214,22 @@ paths:
       responses:
         '200':
           description: Content updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteContentCanonical
       tags:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Content soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/generations:
     get:
       operationId: listGenerations
@@ -1062,18 +1237,26 @@ paths:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated Generations visible by Workspace Membership.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createGeneration
       tags:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '201':
           description: Generation created in a writable Workspace.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/generations/{id}:
     get:
       operationId: getGeneration
@@ -1081,27 +1264,39 @@ paths:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Generation detail.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateGeneration
       tags:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Generation updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteGeneration
       tags:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Generation soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/brand-assets:
     get:
       operationId: listBrandAssets
@@ -1109,6 +1304,7 @@ paths:
       - Brand Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: brand_id
         in: query
@@ -1121,12 +1317,14 @@ paths:
           description: Paginated brand assets.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createBrandAsset
       tags:
       - Brand Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1138,6 +1336,7 @@ paths:
           description: Brand asset created.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/brand-assets/{id}:
     get:
       operationId: getBrandAsset
@@ -1145,6 +1344,7 @@ paths:
       - Brand Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1152,6 +1352,7 @@ paths:
           description: Brand asset detail.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     put:
@@ -1160,6 +1361,7 @@ paths:
       - Brand Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -1173,6 +1375,7 @@ paths:
           description: Brand asset updated.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
@@ -1181,6 +1384,7 @@ paths:
       - Brand Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1188,6 +1392,7 @@ paths:
           description: Brand asset soft-deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/generated-images/{id}:
@@ -1197,6 +1402,7 @@ paths:
       - Images
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1204,6 +1410,7 @@ paths:
           description: Generated image detail.
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/plan-items:
@@ -1213,6 +1420,7 @@ paths:
       - Billing
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: plan_id
         in: query
@@ -1222,12 +1430,16 @@ paths:
       responses:
         '200':
           description: Plan items.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createPlanItem
       tags:
       - Billing
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1237,6 +1449,9 @@ paths:
       responses:
         '201':
           description: Plan item created.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/plan-items/{id}:
     get:
       operationId: getPlanItem
@@ -1244,17 +1459,22 @@ paths:
       - Billing
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
           description: Plan item detail.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updatePlanItem
       tags:
       - Billing
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -1266,17 +1486,24 @@ paths:
       responses:
         '200':
           description: Plan item updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deletePlanItem
       tags:
       - Billing
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
           description: Plan item soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/notifications:
     get:
       operationId: listNotifications
@@ -1284,6 +1511,7 @@ paths:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: workspace_id
         in: query
@@ -1293,12 +1521,16 @@ paths:
       responses:
         '200':
           description: Notifications.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createNotification
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1308,6 +1540,9 @@ paths:
       responses:
         '201':
           description: Notification created.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/notifications/{id}:
     get:
       operationId: getNotification
@@ -1315,17 +1550,22 @@ paths:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
           description: Notification detail.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateNotification
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -1337,17 +1577,24 @@ paths:
       responses:
         '200':
           description: Notification updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteNotification
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
           description: Notification soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/user-devices:
     get:
       operationId: listUserDevices
@@ -1355,15 +1602,20 @@ paths:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: User devices.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createUserDevice
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1373,6 +1625,9 @@ paths:
       responses:
         '201':
           description: User device created.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/user-devices/{id}:
     get:
       operationId: getUserDevice
@@ -1380,17 +1635,22 @@ paths:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
           description: User device detail.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateUserDevice
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -1402,17 +1662,24 @@ paths:
       responses:
         '200':
           description: User device updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteUserDevice
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
           description: User device soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/notification-preferences:
     get:
       operationId: listNotificationPreferences
@@ -1420,15 +1687,20 @@ paths:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Notification preferences.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createNotificationPreference
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1438,6 +1710,9 @@ paths:
       responses:
         '201':
           description: Notification preference created.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/notification-preferences/{id}:
     get:
       operationId: listAssets
@@ -1445,15 +1720,20 @@ paths:
       - Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated Assets visible by Workspace Membership.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateNotificationPreference
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -1465,17 +1745,24 @@ paths:
       responses:
         '200':
           description: Notification preference updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteNotificationPreference
       tags:
       - Notifications
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
           description: Notification preference soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/assets:
     get:
       operationId: listAssets
@@ -1483,18 +1770,26 @@ paths:
       - Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Paginated assets.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       operationId: createAsset
       tags:
       - Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '201':
           description: Asset created.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/assets/{id}:
     get:
       operationId: getAsset
@@ -1502,27 +1797,39 @@ paths:
       - Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Asset detail.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       operationId: updateAsset
       tags:
       - Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Asset metadata updated.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       operationId: deleteAsset
       tags:
       - Assets
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       responses:
         '200':
           description: Asset soft-deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/content/generate:
     post:
       operationId: generateContent
@@ -1530,6 +1837,7 @@ paths:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1545,6 +1853,7 @@ paths:
                 $ref: '#/components/schemas/GeneratedContentResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '403':
           $ref: '#/components/responses/WorkspaceAccessDenied'
         '422':
@@ -1566,6 +1875,7 @@ paths:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -1581,6 +1891,7 @@ paths:
                 $ref: '#/components/schemas/ImprovedContentResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '403':
           $ref: '#/components/responses/WorkspaceAccessDenied'
         '404':
@@ -1604,6 +1915,7 @@ paths:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1621,6 +1933,7 @@ paths:
                 $ref: '#/components/schemas/ImageWorkflowResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -1634,6 +1947,7 @@ paths:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1645,6 +1959,7 @@ paths:
                 $ref: '#/components/schemas/ImageWorkflowResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/generations/image-workflows/{id}/steps:
@@ -1654,6 +1969,7 @@ paths:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1665,6 +1981,7 @@ paths:
                 $ref: '#/components/schemas/ImageWorkflowStepsResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/generations/image-workflows/{id}/decision:
@@ -1674,6 +1991,7 @@ paths:
       - Generations
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       requestBody:
@@ -1691,6 +2009,7 @@ paths:
                 $ref: '#/components/schemas/ImageWorkflowResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -1704,6 +2023,7 @@ paths:
       - Images
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1721,6 +2041,7 @@ paths:
                 $ref: '#/components/schemas/ImageGenerationStatusResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -1738,6 +2059,7 @@ paths:
       - Images
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1749,6 +2071,7 @@ paths:
                 $ref: '#/components/schemas/ImageGenerationStatusResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -1762,6 +2085,7 @@ paths:
       - Images
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -1780,6 +2104,7 @@ paths:
                 $ref: '#/components/schemas/ImageGenerationStatusResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -1797,6 +2122,7 @@ paths:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: page
         in: query
@@ -1846,6 +2172,7 @@ paths:
                 $ref: '#/components/schemas/ContentPageResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '500':
@@ -1857,6 +2184,7 @@ paths:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1868,6 +2196,7 @@ paths:
                 $ref: '#/components/schemas/ContentDetailResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
@@ -1880,6 +2209,7 @@ paths:
       - Contents
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1891,6 +2221,7 @@ paths:
                 $ref: '#/components/schemas/ContentDeleteResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
@@ -1904,17 +2235,26 @@ paths:
       summary: Refresh a Creator session
       operationId: refreshSession
       security:
-      - CreatorSessionCookie: []
+      - CreatorRefreshCookie: []
       responses:
         '200':
           description: Rotated local auth session.
+          headers:
+            Set-Cookie:
+              description: New Creator access, refresh and CSRF cookies.
+              schema:
+                type: string
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthLoginResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [INVALID_REFRESH_TOKEN]
         '403':
+          x-error-codes: [CSRF_TOKEN_MISSING, CSRF_TOKEN_INVALID, ORIGIN_NOT_ALLOWED]
           $ref: '#/components/responses/CsrfRejected'
         '409':
           $ref: '#/components/responses/RefreshInProgress'
@@ -1931,18 +2271,28 @@ paths:
       responses:
         '200':
           description: Session revoked.
+          headers:
+            Set-Cookie:
+              description: Clears the Creator access, refresh and CSRF cookies.
+              schema:
+                type: string
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessEnvelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
         '403':
+          x-error-codes: [CSRF_TOKEN_MISSING, CSRF_TOKEN_INVALID, ORIGIN_NOT_ALLOWED]
           $ref: '#/components/responses/CsrfRejected'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/subscription-history:
     get:
       tags:
@@ -1957,8 +2307,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -1986,8 +2340,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/subscription-history/{id}:
     get:
       tags:
@@ -1996,6 +2354,7 @@ paths:
       operationId: get_subscription_history_api_v1_subscription_history__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2018,6 +2377,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -2025,6 +2387,7 @@ paths:
       operationId: update_subscription_history_api_v1_subscription_history__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2055,6 +2418,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -2062,6 +2428,7 @@ paths:
       operationId: delete_subscription_history_api_v1_subscription_history__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2084,6 +2451,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/brand-colors:
     get:
       tags:
@@ -2092,6 +2462,7 @@ paths:
       operationId: list_brand_colors_api_v1_brand_colors_get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: brand_id
         in: query
@@ -2116,6 +2487,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Brands
@@ -2123,6 +2497,7 @@ paths:
       operationId: create_brand_color_api_v1_brand_colors_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -2143,6 +2518,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/brand-colors/{id}:
     get:
       tags:
@@ -2151,6 +2529,7 @@ paths:
       operationId: get_brand_color_api_v1_brand_colors__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2173,6 +2552,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Brands
@@ -2180,6 +2562,7 @@ paths:
       operationId: update_brand_color_api_v1_brand_colors__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2208,6 +2591,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Brands
@@ -2215,6 +2601,7 @@ paths:
       operationId: delete_brand_color_api_v1_brand_colors__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2237,6 +2624,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/design-structures:
     get:
       tags:
@@ -2251,8 +2641,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Post Structures
@@ -2278,8 +2672,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/design-structures/{id}:
     get:
       tags:
@@ -2288,6 +2686,7 @@ paths:
       operationId: get_design_structure_api_v1_design_structures__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2310,6 +2709,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Post Structures
@@ -2317,6 +2719,7 @@ paths:
       operationId: update_design_structure_api_v1_design_structures__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2347,6 +2750,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Post Structures
@@ -2354,6 +2760,7 @@ paths:
       operationId: delete_design_structure_api_v1_design_structures__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2376,6 +2783,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/workspace-credit-transactions:
     get:
       tags:
@@ -2384,6 +2794,7 @@ paths:
       operationId: list_workspace_credit_transactions_api_v1_workspace_credit_transactions_get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: workspace_id
         in: query
@@ -2408,6 +2819,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Workspaces
@@ -2415,6 +2829,7 @@ paths:
       operationId: create_workspace_credit_transaction_api_v1_workspace_credit_transactions_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -2435,6 +2850,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/workspace-credit-transactions/{id}:
     get:
       tags:
@@ -2443,6 +2861,7 @@ paths:
       operationId: get_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2465,6 +2884,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Workspaces
@@ -2472,6 +2894,7 @@ paths:
       operationId: delete_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2494,6 +2917,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/workspace-invites:
     get:
       tags:
@@ -2502,6 +2928,7 @@ paths:
       operationId: list_workspace_invites_api_v1_workspace_invites_get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: workspace_id
         in: query
@@ -2526,6 +2953,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Workspaces
@@ -2533,6 +2963,7 @@ paths:
       operationId: create_workspace_invite_api_v1_workspace_invites_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -2553,6 +2984,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/workspace-invites/{id}:
     get:
       tags:
@@ -2561,6 +2995,7 @@ paths:
       operationId: get_workspace_invite_api_v1_workspace_invites__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2583,6 +3018,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Workspaces
@@ -2590,6 +3028,7 @@ paths:
       operationId: update_workspace_invite_api_v1_workspace_invites__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2618,6 +3057,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Workspaces
@@ -2625,6 +3067,7 @@ paths:
       operationId: delete_workspace_invite_api_v1_workspace_invites__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2647,6 +3090,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/billing-addresses:
     get:
       tags:
@@ -2655,6 +3101,7 @@ paths:
       operationId: list_billing_addresses_api_v1_billing_addresses_get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: billing_account_id
         in: query
@@ -2679,6 +3126,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Billing
@@ -2686,6 +3136,7 @@ paths:
       operationId: create_billing_address_api_v1_billing_addresses_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -2706,6 +3157,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/billing-addresses/{id}:
     get:
       tags:
@@ -2714,6 +3168,7 @@ paths:
       operationId: get_billing_address_api_v1_billing_addresses__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2736,6 +3191,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -2743,6 +3201,7 @@ paths:
       operationId: update_billing_address_api_v1_billing_addresses__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2771,6 +3230,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -2778,6 +3240,7 @@ paths:
       operationId: delete_billing_address_api_v1_billing_addresses__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2800,6 +3263,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/billing-payment-methods:
     get:
       tags:
@@ -2808,6 +3274,7 @@ paths:
       operationId: list_payment_methods_api_v1_billing_payment_methods_get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: billing_account_id
         in: query
@@ -2832,6 +3299,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Billing
@@ -2839,6 +3309,7 @@ paths:
       operationId: create_payment_method_api_v1_billing_payment_methods_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -2859,6 +3330,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/billing-payment-methods/{id}:
     get:
       tags:
@@ -2867,6 +3341,7 @@ paths:
       operationId: get_payment_method_api_v1_billing_payment_methods__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2889,6 +3364,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -2896,6 +3374,7 @@ paths:
       operationId: update_payment_method_api_v1_billing_payment_methods__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2924,6 +3403,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -2931,6 +3413,7 @@ paths:
       operationId: delete_payment_method_api_v1_billing_payment_methods__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -2953,6 +3436,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/billing-accounts:
     get:
       tags:
@@ -2967,8 +3453,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -2994,8 +3484,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/billing-accounts/{id}:
     get:
       tags:
@@ -3004,6 +3498,7 @@ paths:
       operationId: get_billing_account_api_v1_billing_accounts__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3026,6 +3521,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -3033,6 +3531,7 @@ paths:
       operationId: update_billing_account_api_v1_billing_accounts__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3061,6 +3560,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3068,6 +3570,7 @@ paths:
       operationId: delete_billing_account_api_v1_billing_accounts__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3090,6 +3593,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/subscriptions:
     get:
       tags:
@@ -3104,8 +3610,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -3131,8 +3641,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/subscriptions/{id}:
     get:
       tags:
@@ -3141,6 +3655,7 @@ paths:
       operationId: get_subscription_api_v1_subscriptions__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3163,6 +3678,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -3170,6 +3688,7 @@ paths:
       operationId: update_subscription_api_v1_subscriptions__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3198,6 +3717,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3205,6 +3727,7 @@ paths:
       operationId: delete_subscription_api_v1_subscriptions__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3227,6 +3750,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/invoices:
     get:
       tags:
@@ -3241,8 +3767,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -3268,8 +3798,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/invoices/{id}:
     get:
       tags:
@@ -3278,6 +3812,7 @@ paths:
       operationId: get_invoice_api_v1_invoices__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3300,6 +3835,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -3307,6 +3845,7 @@ paths:
       operationId: update_invoice_api_v1_invoices__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3335,6 +3874,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3342,6 +3884,7 @@ paths:
       operationId: delete_invoice_api_v1_invoices__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3364,6 +3907,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/charges:
     get:
       tags:
@@ -3378,8 +3924,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -3405,8 +3955,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/charges/{id}:
     get:
       tags:
@@ -3415,6 +3969,7 @@ paths:
       operationId: get_charge_api_v1_charges__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3437,6 +3992,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -3444,6 +4002,7 @@ paths:
       operationId: update_charge_api_v1_charges__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3472,6 +4031,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3479,6 +4041,7 @@ paths:
       operationId: delete_charge_api_v1_charges__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3501,6 +4064,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/orders:
     get:
       tags:
@@ -3515,8 +4081,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -3542,8 +4112,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/orders/{id}:
     get:
       tags:
@@ -3552,6 +4126,7 @@ paths:
       operationId: get_order_api_v1_orders__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3574,6 +4149,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -3581,6 +4159,7 @@ paths:
       operationId: update_order_api_v1_orders__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3609,6 +4188,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3616,6 +4198,7 @@ paths:
       operationId: delete_order_api_v1_orders__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3638,6 +4221,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/coupon-redemptions:
     get:
       tags:
@@ -3652,8 +4238,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -3679,8 +4269,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/coupon-redemptions/{id}:
     get:
       tags:
@@ -3689,6 +4283,7 @@ paths:
       operationId: get_coupon_redemption_api_v1_coupon_redemptions__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3711,6 +4306,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -3718,6 +4316,7 @@ paths:
       operationId: update_coupon_redemption_api_v1_coupon_redemptions__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3746,6 +4345,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3753,6 +4355,7 @@ paths:
       operationId: delete_coupon_redemption_api_v1_coupon_redemptions__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3775,6 +4378,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/provider-customers:
     get:
       tags:
@@ -3789,8 +4395,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -3816,8 +4426,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/provider-customers/{id}:
     get:
       tags:
@@ -3826,6 +4440,7 @@ paths:
       operationId: get_provider_customer_api_v1_provider_customers__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3848,6 +4463,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3855,6 +4473,7 @@ paths:
       operationId: delete_provider_customer_api_v1_provider_customers__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3877,6 +4496,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -3884,6 +4506,7 @@ paths:
       operationId: update_provider_customer_api_v1_provider_customers__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3914,6 +4537,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/provider-subscriptions:
     get:
       tags:
@@ -3928,8 +4554,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -3955,8 +4585,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/provider-subscriptions/{id}:
     get:
       tags:
@@ -3965,6 +4599,7 @@ paths:
       operationId: get_provider_subscription_api_v1_provider_subscriptions__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -3987,6 +4622,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -3994,6 +4632,7 @@ paths:
       operationId: delete_provider_subscription_api_v1_provider_subscriptions__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4016,6 +4655,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4023,6 +4665,7 @@ paths:
       operationId: update_provider_subscription_api_v1_provider_subscriptions__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4053,6 +4696,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/provider-webhook-events:
     get:
       tags:
@@ -4067,8 +4713,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -4096,8 +4746,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/provider-webhook-events/{id}:
     get:
       tags:
@@ -4106,6 +4760,7 @@ paths:
       operationId: get_provider_webhook_event_api_v1_provider_webhook_events__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4128,6 +4783,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4135,6 +4793,7 @@ paths:
       operationId: update_provider_webhook_event_api_v1_provider_webhook_events__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4165,6 +4824,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -4172,6 +4834,7 @@ paths:
       operationId: delete_provider_webhook_event_api_v1_provider_webhook_events__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4194,6 +4857,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/provider-idempotency-keys:
     get:
       tags:
@@ -4208,8 +4874,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -4237,8 +4907,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/provider-idempotency-keys/{id}:
     get:
       tags:
@@ -4247,6 +4921,7 @@ paths:
       operationId: get_provider_idempotency_key_api_v1_provider_idempotency_keys__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4269,6 +4944,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4276,6 +4954,7 @@ paths:
       operationId: update_provider_idempotency_key_api_v1_provider_idempotency_keys__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4306,6 +4985,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -4313,6 +4995,7 @@ paths:
       operationId: delete_provider_idempotency_key_api_v1_provider_idempotency_keys__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4335,6 +5018,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/refunds:
     get:
       tags:
@@ -4349,8 +5035,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -4376,8 +5066,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/refunds/{id}:
     get:
       tags:
@@ -4386,6 +5080,7 @@ paths:
       operationId: get_refund_api_v1_refunds__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4408,6 +5103,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4415,6 +5113,7 @@ paths:
       operationId: update_refund_api_v1_refunds__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4443,6 +5142,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -4450,6 +5152,7 @@ paths:
       operationId: delete_refund_api_v1_refunds__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4472,6 +5175,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/provider-disputes:
     get:
       tags:
@@ -4486,8 +5192,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -4513,8 +5223,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/provider-disputes/{id}:
     get:
       tags:
@@ -4523,6 +5237,7 @@ paths:
       operationId: get_provider_dispute_api_v1_provider_disputes__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4545,6 +5260,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4552,6 +5270,7 @@ paths:
       operationId: update_provider_dispute_api_v1_provider_disputes__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4580,6 +5299,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -4587,6 +5309,7 @@ paths:
       operationId: delete_provider_dispute_api_v1_provider_disputes__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4609,6 +5332,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/coupons:
     get:
       tags:
@@ -4623,8 +5349,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -4650,8 +5380,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/coupons/{id}:
     get:
       tags:
@@ -4660,6 +5394,7 @@ paths:
       operationId: get_coupon_api_v1_coupons__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4682,6 +5417,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4689,6 +5427,7 @@ paths:
       operationId: update_coupon_api_v1_coupons__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4717,6 +5456,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -4724,6 +5466,7 @@ paths:
       operationId: delete_coupon_api_v1_coupons__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4746,6 +5489,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/credit-packages:
     get:
       tags:
@@ -4760,8 +5506,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -4787,8 +5537,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/credit-packages/{id}:
     get:
       tags:
@@ -4797,6 +5551,7 @@ paths:
       operationId: get_credit_package_api_v1_credit_packages__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4819,6 +5574,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4826,6 +5584,7 @@ paths:
       operationId: update_credit_package_api_v1_credit_packages__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4854,6 +5613,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -4861,6 +5623,7 @@ paths:
       operationId: delete_credit_package_api_v1_credit_packages__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4883,6 +5646,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/plans:
     get:
       tags:
@@ -4897,8 +5663,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Billing
@@ -4924,8 +5694,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/plans/{id}:
     get:
       tags:
@@ -4934,6 +5708,7 @@ paths:
       operationId: get_plan_api_v1_plans__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4956,6 +5731,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Billing
@@ -4963,6 +5741,7 @@ paths:
       operationId: update_plan_api_v1_plans__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -4991,6 +5770,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Billing
@@ -4998,6 +5780,7 @@ paths:
       operationId: delete_plan_api_v1_plans__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -5020,6 +5803,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/notification-recipients:
     get:
       tags:
@@ -5034,8 +5820,12 @@ paths:
               schema: {}
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
     post:
       tags:
       - Notifications
@@ -5063,8 +5853,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
   /api/v1/notification-recipients/{id}:
     get:
       tags:
@@ -5073,6 +5867,7 @@ paths:
       operationId: get_notification_recipient_api_v1_notification_recipients__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -5095,6 +5890,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Notifications
@@ -5102,6 +5900,7 @@ paths:
       operationId: update_notification_recipient_api_v1_notification_recipients__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -5132,6 +5931,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Notifications
@@ -5139,6 +5941,7 @@ paths:
       operationId: delete_notification_recipient_api_v1_notification_recipients__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -5161,6 +5964,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/workspace-invite-usages:
     get:
       tags:
@@ -5169,6 +5975,7 @@ paths:
       operationId: list_workspace_invite_usages_api_v1_workspace_invite_usages_get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: workspace_id
         in: query
@@ -5193,6 +6000,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     post:
       tags:
       - Workspaces
@@ -5200,6 +6010,7 @@ paths:
       operationId: create_workspace_invite_usage_api_v1_workspace_invite_usages_post
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       requestBody:
         required: true
         content:
@@ -5222,6 +6033,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
   /api/v1/workspace-invite-usages/{id}:
     get:
       tags:
@@ -5230,6 +6044,7 @@ paths:
       operationId: get_workspace_invite_usage_api_v1_workspace_invite_usages__id__get
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -5252,6 +6067,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     put:
       tags:
       - Workspaces
@@ -5259,6 +6077,7 @@ paths:
       operationId: update_workspace_invite_usage_api_v1_workspace_invite_usages__id__put
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -5289,6 +6108,9 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
     delete:
       tags:
       - Workspaces
@@ -5296,6 +6118,7 @@ paths:
       operationId: delete_workspace_invite_usage_api_v1_workspace_invite_usages__id__delete
       security:
       - CreatorSessionCookie: []
+      - CreatorLegacyBearerAuth: []
       parameters:
       - name: id
         in: path
@@ -5318,13 +6141,25 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
 components:
   securitySchemes:
+    CreatorLegacyBearerAuth:
+      type: http
+      scheme: bearer
+      description: Legacy Bearer accepted only when AUTH_LEGACY_BEARER_ENABLED=true.
     CreatorSessionCookie:
       type: apiKey
       in: cookie
       name: creator_access
       description: HttpOnly Creator access cookie; mutating requests also require X-CSRF-Token.
+    CreatorRefreshCookie:
+      type: apiKey
+      in: cookie
+      name: creator_refresh
+      description: HttpOnly Creator refresh cookie used only for session rotation.
   parameters:
     ResourceId:
       name: id
@@ -5391,7 +6226,8 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     LoginRejected:
-      description: Creator rejected the email and password credentials.
+      description: Creator rejected the email and password credentials or the supplied Bearer and cookie credentials are ambiguous (AUTH_AMBIGUOUS).
+      x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       content:
         application/json:
           schema:
@@ -5427,7 +6263,8 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     Unauthorized:
-      description: Missing, malformed, expired, or invalid Creator access token.
+      description: Missing, malformed, expired, or invalid Creator access token, or Bearer and cookie credentials identify different Principals (AUTH_AMBIGUOUS).
+      x-error-codes: [AUTHENTICATION_INVALID, AUTH_AMBIGUOUS]
       content:
         application/json:
           schema:
@@ -5552,12 +6389,14 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+      x-error-codes: [CSRF_TOKEN_MISSING, CSRF_TOKEN_INVALID, ORIGIN_NOT_ALLOWED]
     RefreshInProgress:
       description: A concurrent request is already rotating this Auth Session.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+      x-error-codes: [REFRESH_IN_PROGRESS]
   schemas:
     AuthLoginRequest:
       type: object

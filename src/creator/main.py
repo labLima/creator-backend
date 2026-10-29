@@ -1160,7 +1160,22 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 "HttpOnly Creator access cookie; mutating requests also require X-CSRF-Token."
             ),
         }
-        security_schemes.pop("CreatorLegacyBearerAuth", None)
+        security_schemes["CreatorRefreshCookie"] = {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": settings.auth_cookie_refresh_name,
+            "description": "HttpOnly Creator refresh cookie used only for session rotation.",
+        }
+        if settings.auth_legacy_bearer_enabled:
+            security_schemes["CreatorLegacyBearerAuth"] = {
+                "type": "http",
+                "scheme": "bearer",
+                "description": (
+                    "Legacy Bearer accepted only when AUTH_LEGACY_BEARER_ENABLED=true."
+                ),
+            }
+        else:
+            security_schemes.pop("CreatorLegacyBearerAuth", None)
         responses = components.setdefault("responses", {})
         headers = components.setdefault("headers", {})
         headers.setdefault(
@@ -1212,6 +1227,47 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 },
             },
         )
+        responses.setdefault(
+            "Unauthorized",
+            {
+                "description": (
+                    "Authentication failed because credentials are missing, invalid, expired, "
+                    "or because the Bearer and cookie credentials identify different Principals "
+                    "(AUTH_AMBIGUOUS)."
+                ),
+                "content": {
+                    "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+                },
+                "x-error-codes": ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"],
+            },
+        )
+        responses.setdefault(
+            "LoginRejected",
+            {
+                "description": (
+                    "Creator rejected the email and password credentials or the supplied "
+                    "Bearer and cookie credentials are ambiguous (AUTH_AMBIGUOUS)."
+                ),
+                "content": {
+                    "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+                },
+                "x-error-codes": ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"],
+            },
+        )
+        responses.setdefault(
+            "CsrfRejected",
+            {
+                "description": "CSRF token is missing or invalid, or the Origin is not allowed.",
+                "content": {
+                    "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+                },
+                "x-error-codes": [
+                    "CSRF_TOKEN_MISSING",
+                    "CSRF_TOKEN_INVALID",
+                    "ORIGIN_NOT_ALLOWED",
+                ],
+            },
+        )
 
         generation_paths = {
             "/api/v1/content/generate",
@@ -1220,15 +1276,40 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
             "/api/v1/images/{id}/regenerate",
         }
         for path, path_item in schema.get("paths", {}).items():
-            for operation in path_item.values():
+            for _method, operation in path_item.items():
                 if not isinstance(operation, dict) or "responses" not in operation:
                     continue
                 if path.startswith("/api/v1/") and path not in {
                     "/api/v1/auth/login",
                     "/api/v1/auth/signup",
                 }:
-                    operation["security"] = [{"CreatorSessionCookie": []}]
+                    if path == "/api/v1/auth/refresh":
+                        operation["security"] = [{"CreatorRefreshCookie": []}]
+                    elif path == "/api/v1/auth/csrf":
+                        operation["security"] = [
+                            {"CreatorSessionCookie": []},
+                            {"CreatorRefreshCookie": []},
+                        ]
+                        if settings.auth_legacy_bearer_enabled:
+                            operation["security"].append({"CreatorLegacyBearerAuth": []})
+                    else:
+                        operation["security"] = [{"CreatorSessionCookie": []}]
+                        if settings.auth_legacy_bearer_enabled:
+                            operation["security"].append({"CreatorLegacyBearerAuth": []})
+                if path.startswith("/api/v1/") and "401" in operation["responses"]:
+                    operation["responses"]["401"].setdefault(
+                        "x-error-codes", ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"]
+                    )
                 if path.startswith("/api/v1/"):
+                    operation["responses"].setdefault(
+                        "401",
+                        {
+                            "$ref": "#/components/responses/Unauthorized",
+                            "x-error-codes": ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"],
+                        },
+                    )
+                    if path == "/api/v1/auth/refresh":
+                        operation["responses"]["401"]["x-error-codes"] = ["INVALID_REFRESH_TOKEN"]
                     operation["responses"].setdefault(
                         "429",
                         {"$ref": "#/components/responses/RateLimitExceeded"},
@@ -1237,6 +1318,46 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                         operation["responses"].setdefault(
                             "503", {"$ref": "#/components/responses/RateLimiterUnavailable"}
                         )
+                if (
+                    path in {"/api/v1/auth/refresh", "/api/v1/auth/logout"}
+                    and _method.lower() == "post"
+                ):
+                    operation["responses"].setdefault(
+                        "403",
+                        {
+                            "$ref": "#/components/responses/CsrfRejected",
+                            "x-error-codes": [
+                                "CSRF_TOKEN_MISSING",
+                                "CSRF_TOKEN_INVALID",
+                                "ORIGIN_NOT_ALLOWED",
+                            ],
+                        },
+                    )
+                if path == "/api/v1/auth/refresh" and _method.lower() == "post":
+                    operation["responses"].setdefault(
+                        "409",
+                        {
+                            "$ref": "#/components/responses/RefreshInProgress",
+                            "x-error-codes": ["REFRESH_IN_PROGRESS"],
+                        },
+                    )
+                if (
+                    path
+                    in {
+                        "/api/v1/auth/csrf",
+                        "/api/v1/auth/refresh",
+                        "/api/v1/auth/logout",
+                    }
+                    and "200" in operation["responses"]
+                ):
+                    success = operation["responses"]["200"]
+                    response_headers = success.setdefault("headers", {})
+                    response_headers["Cache-Control"] = {"$ref": "#/components/headers/NoStore"}
+                    if path in {"/api/v1/auth/refresh", "/api/v1/auth/logout"}:
+                        response_headers["Set-Cookie"] = {
+                            "description": "Creator session cookies are set or cleared.",
+                            "schema": {"type": "string"},
+                        }
                 operation["responses"].setdefault(
                     "500", {"$ref": "#/components/responses/InternalServerError"}
                 )
