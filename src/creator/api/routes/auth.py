@@ -23,6 +23,7 @@ from creator.api.dependencies import (
     get_uow,
 )
 from creator.api.dtos import AuthLoginRequest, AuthSignupRequest
+from creator.api.responses import success_response
 from creator.application.auth import (
     AuthConfigurationError,
     EmailAlreadyRegisteredError,
@@ -177,11 +178,14 @@ def login_with_password(
             detail={"code": "LOGIN_REJECTED", "message": "Invalid email or password"},
         ) from error
     csrf_token = csrf_for_session(session, settings=settings, token_services=token_services)
-    response = _success(_session_data(session, settings=settings, csrf_token=csrf_token), request)
+    response = success_response(
+        _session_data(session, settings=settings, csrf_token=csrf_token),
+        request,
+        headers={"Cache-Control": "no-store"},
+    )
     set_auth_cookies(
         FastApiCookieTransport(response), session, csrf_token=csrf_token, settings=settings
     )
-    response.headers["Cache-Control"] = "no-store"
     return response
 
 
@@ -234,7 +238,7 @@ def signup_with_password(
         if result.result.session
         else ""
     )
-    response = _success(
+    response = success_response(
         _signup_data(
             result.result,
             workspace=result.workspace,
@@ -244,6 +248,7 @@ def signup_with_password(
         ),
         request,
         status_code=201,
+        headers={"Cache-Control": "no-store"},
     )
     if result.result.session:
         set_auth_cookies(
@@ -252,7 +257,6 @@ def signup_with_password(
             csrf_token=csrf_token,
             settings=settings,
         )
-    response.headers["Cache-Control"] = "no-store"
     return response
 
 

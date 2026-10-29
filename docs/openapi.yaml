@@ -101,16 +101,43 @@ paths:
       responses:
         '200':
           description: Local auth session for a Creator Principal.
+          headers:
+            Set-Cookie:
+              description: >-
+                Separate Set-Cookie headers for creator_access, creator_refresh and
+                creator_csrf are emitted when cookie sessions are enabled.
+              schema:
+                type: string
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthLoginResponse'
         '401':
           $ref: '#/components/responses/LoginRejected'
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+        '422':
+          description: The login request failed validation.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/AuthRateLimited'
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
         '500':
           $ref: '#/components/responses/AuthMisconfigured'
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
   /api/v1/auth/signup:
     post:
       operationId: signupWithPassword
@@ -125,18 +152,40 @@ paths:
       responses:
         '201':
           description: Local auth signup result for a Creator Principal.
+          headers:
+            Set-Cookie:
+              description: >-
+                Separate Set-Cookie headers for creator_access, creator_refresh and
+                creator_csrf are emitted when a session is created and cookie sessions
+                are enabled.
+              schema:
+                type: string
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthSignupResponse'
         '409':
           $ref: '#/components/responses/EmailAlreadyRegistered'
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
         '422':
           $ref: '#/components/responses/WeakPassword'
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
         '429':
           $ref: '#/components/responses/AuthRateLimited'
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
         '500':
           $ref: '#/components/responses/SignupFailed'
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
   /api/v1/auth/csrf:
     get:
       operationId: csrfToken
@@ -5590,6 +5639,18 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        access_token:
+          type: string
+          deprecated: true
+          description: >-
+            Legacy transition field, returned only while AUTH_TOKEN_BODY_ENABLED=true.
+            Prefer the HttpOnly creator_access cookie.
+        refresh_token:
+          type: string
+          deprecated: true
+          description: >-
+            Legacy transition field, returned only while AUTH_TOKEN_BODY_ENABLED=true.
+            Prefer the HttpOnly creator_refresh cookie.
     AuthLoginResponse:
       type: object
       required:
@@ -9275,3 +9336,8 @@ components:
       schema:
         type: string
         format: uuid
+    NoStore:
+      description: Prevents caches from storing authentication responses.
+      schema:
+        type: string
+        const: no-store

@@ -5,28 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/ADR-ISSUE-TRACKER.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/ADR-ISSUE-TRACKER.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/openapi.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docs/openapi.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/status-do-projeto.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/status-do-projeto.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/api/dependencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/api/dependencies.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/application/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/application/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/domain/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/domain/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/auth_session_repositories.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/auth_session_repositories.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/models/core/auth_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/models/core/auth_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/api/routes/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/api/routes/auth.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/repositories/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/repositories/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workers/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/cli.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/e2e/test_auth_flow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_auth_flow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_api.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_api.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_app_structure.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_app_structure.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_auth.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/test_openapi_contract.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openapi_contract.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

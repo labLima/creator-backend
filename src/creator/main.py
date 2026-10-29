@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Mapping
 from typing import Annotated, Any, cast
 from uuid import UUID, uuid4
 
@@ -97,6 +96,7 @@ from creator.api.dtos import (
     WorkspaceInviteUpdateRequest,
     WorkspaceUpdateRequest,
 )
+from creator.api.responses import error_response, not_implemented, request_id_for, success_response
 from creator.api.routes.auth import router as auth_router
 from creator.application.agent_image_workflow import (
     AgentWorkflowDecisionError,
@@ -191,80 +191,9 @@ OPENAPI_TAGS = [
 logger = logging.getLogger(__name__)
 
 
-def _request_id(request: Request | None = None) -> UUID:
-    if request is None:
-        return uuid4()
-    existing = getattr(request.state, "request_id", None)
-    if isinstance(existing, UUID):
-        return existing
-    request_id = resolve_request_id(request.headers.get("X-Request-ID"))
-    request.state.request_id = request_id
-    return request_id
-
-
 def _require_global_billing_admin(user: UserRecord) -> None:
     if user.global_role not in {"admin", "gestor"}:
         raise HTTPException(status_code=403, detail="Billing administration required")
-
-
-def _json_response(
-    payload: dict[str, Any],
-    request_id: UUID,
-    status_code: int,
-    headers: Mapping[str, str] | None = None,
-) -> JSONResponse:
-    response_headers = {"X-Request-ID": str(request_id)}
-    if headers:
-        response_headers.update(headers)
-    return JSONResponse(
-        status_code=status_code,
-        content=payload,
-        headers=response_headers,
-    )
-
-
-def success_response(
-    data: dict[str, Any],
-    request: Request | None = None,
-    *,
-    status_code: int = 200,
-) -> JSONResponse:
-    request_id = _request_id(request)
-    return _json_response(
-        {"success": True, "data": data, "meta": {"request_id": str(request_id)}},
-        request_id,
-        status_code,
-    )
-
-
-def error_response(
-    code: str,
-    message: str,
-    *,
-    status_code: int,
-    request: Request | None = None,
-    headers: Mapping[str, str] | None = None,
-) -> JSONResponse:
-    request_id = _request_id(request)
-    return _json_response(
-        {
-            "success": False,
-            "error": {"code": code, "message": message},
-            "meta": {"request_id": str(request_id)},
-        },
-        request_id,
-        status_code,
-        headers,
-    )
-
-
-def not_implemented(request: Request) -> JSONResponse:
-    return error_response(
-        "NOT_IMPLEMENTED",
-        "Endpoint reserved by contract.",
-        status_code=501,
-        request=request,
-    )
 
 
 def _workspace_data(workspace: WorkspaceRecord) -> dict[str, Any]:
@@ -1241,6 +1170,13 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 "schema": {"type": "string", "format": "uuid"},
             },
         )
+        headers.setdefault(
+            "NoStore",
+            {
+                "description": "Prevents caches from storing authentication responses.",
+                "schema": {"type": "string", "const": "no-store"},
+            },
+        )
         responses.setdefault(
             "InternalServerError",
             {
@@ -1310,6 +1246,128 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                             "headers",
                             {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}},
                         )
+
+        schemas = components.setdefault("schemas", {})
+        schemas["AuthPrincipal"] = {
+            "type": "object",
+            "required": ["subject"],
+            "properties": {
+                "subject": {"type": "string", "minLength": 1},
+                "email": {"type": ["string", "null"], "format": "email"},
+                "role": {"type": ["string", "null"]},
+            },
+        }
+        schemas["AuthSession"] = {
+            "type": "object",
+            "required": [
+                "token_type",
+                "expires_in",
+                "refresh_expires_in",
+                "csrf_token",
+                "principal",
+                "provider",
+                "metadata",
+            ],
+            "properties": {
+                "token_type": {"type": "string"},
+                "expires_in": {"type": "integer", "minimum": 1},
+                "refresh_expires_in": {"type": "integer", "minimum": 1},
+                "csrf_token": {"type": "string", "readOnly": True},
+                "principal": {"$ref": "#/components/schemas/AuthPrincipal"},
+                "provider": {"type": "string", "const": "local"},
+                "metadata": {"type": "object", "additionalProperties": True},
+                "access_token": {
+                    "type": "string",
+                    "deprecated": True,
+                    "description": (
+                        "Legacy transition field, returned only while "
+                        "AUTH_TOKEN_BODY_ENABLED=true. Prefer the HttpOnly creator_access cookie."
+                    ),
+                },
+                "refresh_token": {
+                    "type": "string",
+                    "deprecated": True,
+                    "description": (
+                        "Legacy transition field, returned only while "
+                        "AUTH_TOKEN_BODY_ENABLED=true. Prefer the HttpOnly creator_refresh cookie."
+                    ),
+                },
+            },
+        }
+        schemas["AuthLoginResponse"] = {
+            "type": "object",
+            "required": ["success", "data", "meta"],
+            "properties": {
+                "success": {"const": True},
+                "data": {"$ref": "#/components/schemas/AuthSession"},
+                "meta": {
+                    "type": "object",
+                    "required": ["request_id"],
+                    "properties": {"request_id": {"type": "string", "format": "uuid"}},
+                },
+            },
+        }
+        schemas["AuthSignupResult"] = {
+            "type": "object",
+            "required": [
+                "principal",
+                "session",
+                "workspace",
+                "membership",
+                "confirmation_required",
+                "provider",
+                "metadata",
+            ],
+            "properties": {
+                "principal": {"$ref": "#/components/schemas/AuthPrincipal"},
+                "session": {
+                    "anyOf": [
+                        {"$ref": "#/components/schemas/AuthSession"},
+                        {"type": "null"},
+                    ]
+                },
+                "workspace": {"type": "object", "additionalProperties": True},
+                "membership": {"type": "object", "additionalProperties": True},
+                "confirmation_required": {"type": "boolean"},
+                "provider": {"type": "string", "const": "local"},
+                "metadata": {"type": "object", "additionalProperties": True},
+            },
+        }
+        schemas["AuthSignupResponse"] = {
+            "type": "object",
+            "required": ["success", "data", "meta"],
+            "properties": {
+                "success": {"const": True},
+                "data": {"$ref": "#/components/schemas/AuthSignupResult"},
+                "meta": {
+                    "type": "object",
+                    "required": ["request_id"],
+                    "properties": {"request_id": {"type": "string", "format": "uuid"}},
+                },
+            },
+        }
+
+        for path, status_code, response_schema in (
+            ("/api/v1/auth/login", "200", "AuthLoginResponse"),
+            ("/api/v1/auth/signup", "201", "AuthSignupResponse"),
+        ):
+            operation_responses = schema["paths"][path]["post"]["responses"]
+            success = operation_responses[status_code]
+            success.setdefault("content", {}).setdefault("application/json", {})["schema"] = {
+                "$ref": f"#/components/schemas/{response_schema}"
+            }
+            success.setdefault("headers", {})["Set-Cookie"] = {
+                "description": (
+                    "Separate Set-Cookie headers for creator_access, creator_refresh and "
+                    "creator_csrf are emitted when cookie sessions are enabled."
+                ),
+                "schema": {"type": "string"},
+            }
+            for response in operation_responses.values():
+                if isinstance(response, dict):
+                    response.setdefault("headers", {})["Cache-Control"] = {
+                        "$ref": "#/components/headers/NoStore"
+                    }
 
         application.openapi_schema = schema
         return schema
@@ -1393,6 +1451,11 @@ def create_app() -> FastAPI:
                 )
                 if response is not None:
                     response.headers["X-Request-ID"] = str(request_id)
+                    if request.url.path in {
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/signup",
+                    }:
+                        response.headers["Cache-Control"] = "no-store"
 
     @application.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
@@ -2542,7 +2605,7 @@ def create_app() -> FastAPI:
                     max_refinements=payload.max_refinements,
                     extensions=payload.extensions,
                     idempotency_key=idempotency_key,
-                    request_id=_request_id(request),
+                    request_id=request_id_for(request),
                 ),
             )
         except EntityNotFoundError as error:
@@ -2602,7 +2665,7 @@ def create_app() -> FastAPI:
                 queue=queue,
                 run_id=workflow_id,
                 user=current_user,
-                request_id=_request_id(request),
+                request_id=request_id_for(request),
                 decision=WorkflowDecision(payload.decision),
                 feedback=payload.feedback,
             )
@@ -5367,7 +5430,7 @@ def create_app() -> FastAPI:
         queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
     ) -> JSONResponse:
         try:
-            request_id = _request_id(request)
+            request_id = request_id_for(request)
             status = submit_image_generation(
                 unit_of_work=unit_of_work,
                 queue=queue,
@@ -5416,7 +5479,7 @@ def create_app() -> FastAPI:
         queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
     ) -> JSONResponse:
         try:
-            request_id = _request_id(request)
+            request_id = request_id_for(request)
             status = submit_image_regeneration(
                 unit_of_work=unit_of_work,
                 queue=queue,

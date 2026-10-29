@@ -48,6 +48,38 @@ def test_static_openapi_declares_creator_cookie_security() -> None:
             assert item[method].get("security") == [{"CreatorSessionCookie": []}], (method, path)
 
 
+def test_auth_openapi_documents_cookie_headers_and_optional_legacy_tokens() -> None:
+    static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
+    generated = app.openapi()
+    static_session = static["components"]["schemas"]["AuthSession"]
+    generated_session = generated["components"]["schemas"]["AuthSession"]
+
+    for token_name in ("access_token", "refresh_token"):
+        assert token_name not in static_session["required"]
+        assert token_name not in generated_session["required"]
+        assert static_session["properties"][token_name]["deprecated"] is True
+        assert generated_session["properties"][token_name]["deprecated"] is True
+
+    for path, success_code in (
+        ("/api/v1/auth/login", "200"),
+        ("/api/v1/auth/signup", "201"),
+    ):
+        static_responses = static["paths"][path]["post"]["responses"]
+        generated_responses = generated["paths"][path]["post"]["responses"]
+        static_success_headers = static_responses[success_code]["headers"]
+        generated_success_headers = generated_responses[success_code]["headers"]
+        assert {"Set-Cookie", "Cache-Control"} <= set(static_success_headers)
+        assert {"Set-Cookie", "Cache-Control"} <= set(generated_success_headers)
+        for status_code, response in static_responses.items():
+            assert "Cache-Control" in response["headers"], (path, status_code)
+        for response in generated_responses.values():
+            assert "Cache-Control" in response["headers"]
+
+    assert (
+        static["components"]["headers"]["NoStore"] == generated["components"]["headers"]["NoStore"]
+    )
+
+
 def test_workflow_acceptance_does_not_document_redis_availability_errors() -> None:
     static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
     generated = app.openapi()
