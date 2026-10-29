@@ -1,10 +1,42 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from creator.auth_cookie_policy import AuthCookiePolicy
+
+
+def _is_exact_http_origin(value: str) -> bool:
+    if (
+        not value
+        or value == "null"
+        or "*" in value
+        or any(character.isspace() for character in value)
+    ):
+        return False
+    if any(delimiter in value for delimiter in ("?", "#")):
+        return False
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    return bool(
+        parsed.scheme in {"http", "https"}
+        and parsed.netloc
+        and parsed.hostname
+        and parsed.username is None
+        and parsed.password is None
+        and "%" not in parsed.netloc
+        and "\\" not in parsed.netloc
+        and not parsed.path
+        and not parsed.query
+        and not parsed.fragment
+        and not parsed.netloc.endswith(":")
+        and (port is None or 1 <= port <= 65535)
+    )
 
 
 class Settings(BaseSettings):
@@ -94,8 +126,10 @@ class Settings(BaseSettings):
             self.auth_cookie_secure = self.app_env not in local_environments
         if self.auth_cookie_same_site == "none" and not self.auth_cookie_secure:
             raise ValueError("AUTH_COOKIE_SAME_SITE=none requires AUTH_COOKIE_SECURE=true")
-        if "*" in self.auth_cors_origins:
-            raise ValueError("AUTH_CORS_ORIGINS cannot contain '*' with credentialed cookies")
+        if any(not _is_exact_http_origin(origin) for origin in self.auth_cors_origins):
+            raise ValueError(
+                "AUTH_CORS_ORIGINS must contain exact HTTP(S) origins without wildcards"
+            )
         cookie_names = {
             "AUTH_COOKIE_ACCESS_NAME": self.auth_cookie_access_name,
             "AUTH_COOKIE_REFRESH_NAME": self.auth_cookie_refresh_name,

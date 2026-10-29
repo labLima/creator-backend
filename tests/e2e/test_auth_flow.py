@@ -296,6 +296,37 @@ async def test_cookie_mutations_enforce_csrf_origin_and_bearer_exemption(
 
 
 @pytest.mark.anyio
+async def test_cookie_mutations_accept_configured_cross_origin_and_reject_others(
+    e2e: tuple[object, object],
+) -> None:
+    application, _ = e2e
+    settings = application.state.e2e_settings
+    settings.auth_cors_origins = ["https://app.example.com"]
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        signup = await client.post(
+            "/api/v1/auth/signup", json=signup_payload("csrf-cross-origin@example.com")
+        )
+        assert signup.status_code == 201, signup.text
+        csrf = client.cookies.get("creator_csrf")
+        assert csrf is not None
+
+        rejected = await client.post(
+            "/api/v1/auth/logout",
+            headers={"Origin": "https://evil.example.com", "X-CSRF-Token": csrf},
+        )
+        assert rejected.status_code == 403
+        assert rejected.json()["error"]["code"] == "ORIGIN_NOT_ALLOWED"
+
+        allowed = await client.post(
+            "/api/v1/auth/logout",
+            headers={"Origin": "https://app.example.com", "X-CSRF-Token": csrf},
+        )
+        assert allowed.status_code == 200, allowed.text
+
+
+@pytest.mark.anyio
 async def test_csrf_token_from_another_auth_session_is_rejected(
     e2e: tuple[object, object],
 ) -> None:
