@@ -109,6 +109,6 @@ original.
 - [x] `tests/test_schema_inventory.py` verde (51 tabelas, DDL byte a byte)
 - [x] `tests/test_module_boundaries.py` verde
 - [x] `make check`, `make e2e`, `make migrate-check` verdes
+- [x] ORM migrado para `modules/*/adapters/tables.py` (51 tabelas, DDL idêntico)
+- [x] `SqlAlchemyUnitOfWork` herda `UnitOfWork`; `mypy --strict` verifica paridade
 - [ ] Consolidação dos repositórios por agregado (47 → ~30)
-- [ ] Migração de `infrastructure/database/models` e `schema_models` para
-      `modules/*/adapters/tables.py`

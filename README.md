@@ -120,6 +120,17 @@ make dev/stop      # para sem remover volumes
 make dev/clean     # remove containers/volumes/imagens do projeto (CONFIRM=yes)
 ```
 
+`make security` exige `pip-audit` e `gitleaks` no `PATH`. O `gitleaks` não é
+distribuído via PyPI; instale o binário antes de rodar o gate:
+
+```bash
+curl -sSL -o gitleaks.tar.gz \
+  https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.30.1_linux_x64.tar.gz
+tar -xzf gitleaks.tar.gz gitleaks
+install -m 0755 gitleaks ~/.local/bin/gitleaks
+gitleaks version
+```
+
 O CI executa `make check`, `make dependency-audit`, Gitleaks, paridade do
 OpenAPI, `make e2e` e um smoke test dos containers.
 

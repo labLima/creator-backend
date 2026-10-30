@@ -141,12 +141,13 @@ from creator.repositories import (
     WorkspaceInviteUsageRepository,
     WorkspaceRepository,
 )
+from creator.uow import UnitOfWork
 
 SessionFactory = Callable[[], Session]
 logger = logging.getLogger(__name__)
 
 
-class SqlAlchemyUnitOfWork:
+class SqlAlchemyUnitOfWork(UnitOfWork):
     users: UserRepository
     auth_sessions: AuthSessionRepository
     settings: SettingsRepository
