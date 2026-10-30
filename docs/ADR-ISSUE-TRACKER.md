@@ -48,6 +48,7 @@ de implementação vinculada antes do fechamento do tracker.
 | [ADR-021](adr/0021-sqlite-default-database.md) | [#97](https://github.com/labLima/creator-backend/issues/97) | [#98](https://github.com/labLima/creator-backend/issues/98), [#99](https://github.com/labLima/creator-backend/issues/99), [#100](https://github.com/labLima/creator-backend/issues/100), [#101](https://github.com/labLima/creator-backend/issues/101), [#102](https://github.com/labLima/creator-backend/issues/102) |
 | [ADR-022](adr/0022-cookie-auth-provider.md) | [#116](https://github.com/labLima/creator-backend/issues/116) | [0044](issues/0044-cookie-auth-provider.md) encerrada como não necessária; #118–#128 |
 | [ADR-023](adr/0023-estrutura-modular-por-capacidade.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) |
+| [ADR-024](adr/0024-estrutura-plana-por-capacidade.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md) |
 
 ## Regras de atualização
 

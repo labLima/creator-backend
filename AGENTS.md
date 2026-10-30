@@ -33,8 +33,8 @@ Build Creator as a multi-tenant, contract-first Python backend. Preserve the dom
 
 ## Architecture guardrails
 
-- New HTTP routes belong in `src/creator/modules/<entity>/router.py` and must be registered in `src/creator/api/router.py`, never in `main.py`.
-- ORM models live only in `modules/<entity>/adapters/tables.py`. `router.py`, `schemas.py`, `service.py` and `ports.py` must never import `sqlalchemy` or `creator.infrastructure`.
+- New HTTP routes belong in `src/creator/<entity>/router.py` and must be registered in `src/creator/api/router.py`, never in `main.py`.
+- ORM models live only in `<entity>/models.py` and repositories in `<entity>/repository.py`. `router.py`, `schemas.py`, `service.py` and `ports.py` must never import `sqlalchemy` or `creator.infrastructure`.
 - Capabilities integrate only through `creator/uow.py` and another module's `ports.py`/`schemas.py`. Importing another module's `service.py`, `router.py` or `adapters/` is forbidden and tested by `tests/test_module_boundaries.py`.
 - SQLAlchemy stays in infrastructure; application code depends on repositories and Unit of Work.
 - SQLite is the default database. Use portable SQLAlchemy types; do not add PostgreSQL-only constructs to models or migrations.
