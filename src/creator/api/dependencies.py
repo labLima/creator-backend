@@ -38,6 +38,15 @@ bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorLegacyBearerAut
 logger = logging.getLogger(__name__)
 
 
+def get_auth_token_services() -> AuthTokenServices:
+    """Bind the auth token adapter behind an HTTP dependency.
+
+    Module routers depend on this, never on `creator.infrastructure`,
+    so the adapter stays replaceable at the composition boundary.
+    """
+    return auth_token_services()
+
+
 def _resolve_token_services(token_services: AuthTokenServices | None) -> AuthTokenServices:
     return token_services if token_services is not None else auth_token_services()
 

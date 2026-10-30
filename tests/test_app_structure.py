@@ -8,8 +8,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_executable_app_modules_are_importable() -> None:
-    for module_name in [
+    module_names = [
         "creator.api",
+        "creator.api.router",
+        "creator.api.errors",
+        "creator.api.serializers",
+        "creator.api.openapi",
+        "creator.core.pagination",
         "creator.config",
         "creator.domain",
         "creator.infrastructure",
@@ -22,7 +27,14 @@ def test_executable_app_modules_are_importable() -> None:
         "creator.integrations",
         "creator.repositories",
         "creator.services",
-    ]:
+        "creator.uow",
+    ]
+    module_names.extend(
+        f"creator.modules.{path.name}"
+        for path in sorted((PROJECT_ROOT / "src/creator/modules").iterdir())
+        if path.is_dir() and path.name != "__pycache__"
+    )
+    for module_name in module_names:
         assert importlib.import_module(module_name)
 
 
@@ -51,9 +63,21 @@ def test_application_and_domain_do_not_import_transport_or_infrastructure() -> N
         "jwt",
         "starlette",
     }
-    for layer in ("application", "domain"):
-        root = PROJECT_ROOT / "src" / "creator" / layer
+    scanned = 0
+    roots = [
+        PROJECT_ROOT / "src" / "creator" / "domain",
+        PROJECT_ROOT / "src" / "creator" / "core",
+    ]
+    roots.extend(
+        path
+        for path in (PROJECT_ROOT / "src/creator/modules").glob("*")
+        if path.is_dir() and path.name != "__pycache__"
+    )
+    for root in roots:
         for path in root.rglob("*.py"):
+            if "router.py" in path.parts or "adapters" in path.parts:
+                continue
+            scanned += 1
             tree = ast.parse(path.read_text(encoding="utf-8"))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
@@ -66,6 +90,8 @@ def test_application_and_domain_do_not_import_transport_or_infrastructure() -> N
                     imported_names = {alias.name for alias in node.names}
                     assert not imported_names & {"Request", "Response"}, path
 
+    assert scanned >= 30, f"boundary scan only inspected {scanned} files (vacuous?)"
+
 
 def test_compose_runs_migrations_before_api_and_worker() -> None:
     compose = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
@@ -77,50 +103,56 @@ def test_compose_runs_migrations_before_api_and_worker() -> None:
 
 
 def test_business_routes_require_authenticated_principal() -> None:
-    """Every protected `/api/v1` handler must depend on `current_user`.
+    """Every `/api/v1` route except the public auth trio resolves a Principal.
 
-    Scans routers, not just `main.py`: after the modular extraction a
-    main.py-only scan would find zero handlers and pass vacuously.
+    Runtime introspection instead of a source scan: routers use prefixes and are
+    nested (FastAPI 0.162 keeps them inside `_IncludedRouter`), so an AST scan
+    misses `/api/v1/auth/*` and can silently pass on zero handlers.
     """
-    router_files = [
-        PROJECT_ROOT / "src/creator/main.py",
-        PROJECT_ROOT / "src/creator/api/system.py",
-        *sorted((PROJECT_ROOT / "src/creator/modules").glob("*/router.py")),
-    ]
-    public_routes = {
-        "/api/v1/auth/login",
-        "/api/v1/auth/signup",
-        "/api/v1/auth/refresh",
+    from fastapi.routing import APIRoute
+
+    from creator.main import app
+
+    app.openapi()  # force lazy router expansion so nested routes are materialised
+
+    def walk(router: object) -> list[APIRoute]:
+        found: list[APIRoute] = []
+        for route in getattr(router, "routes", []):
+            if isinstance(route, APIRoute):
+                found.append(route)
+                continue
+            nested = getattr(route, "original_router", None)
+            if nested is not None:
+                found.extend(walk(nested))
+        return found
+
+    def dependency_names(route: APIRoute) -> set[str]:
+        names: set[str] = set()
+        stack = [route.dependant]
+        while stack:
+            dependant = stack.pop()
+            if dependant.call is not None:
+                names.add(getattr(dependant.call, "__name__", str(dependant.call)))
+            stack.extend(dependant.dependencies)
+        return names
+
+    principal_resolvers = {
+        "get_principal",
+        "get_optional_principal",
+        "get_current_user",
+        "get_optional_current_user",
     }
-    protected = 0
+    public = {"/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/refresh"}
 
-    for path in router_files:
-        if not path.exists():
-            continue
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            route_paths = {
-                decorator.args[0].value
-                for decorator in node.decorator_list
-                if isinstance(decorator, ast.Call)
-                and isinstance(decorator.func, ast.Attribute)
-                and decorator.func.attr in {"get", "post", "put", "patch", "delete"}
-                and decorator.args
-                and isinstance(decorator.args[0], ast.Constant)
-                and isinstance(decorator.args[0].value, str)
-                and decorator.args[0].value.startswith("/api/v1/")
-            }
-            if not route_paths or route_paths & public_routes:
-                continue
-            protected += 1
-            argument_names = {argument.arg for argument in node.args.args + node.args.kwonlyargs}
-            assert "current_user" in argument_names, (
-                f"Protected route handler {node.name} must depend on current_user"
-            )
+    routes = [route for route in walk(app) if route.path_format.startswith("/api/v1/")]
+    unauthenticated = [
+        route.path_format
+        for route in routes
+        if route.path_format not in public and not dependency_names(route) & principal_resolvers
+    ]
 
-    assert protected >= 200, f"scan found only {protected} protected handlers (vacuous?)"
+    assert len(routes) == 224, f"expected 224 /api/v1 operations, found {len(routes)}"
+    assert not unauthenticated, f"routes without a Principal dependency: {unauthenticated}"
 
 
 def test_openapi_declares_cookie_security_for_business_operations() -> None:

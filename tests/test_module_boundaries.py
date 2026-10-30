@@ -115,16 +115,77 @@ def test_modules_never_import_the_application_entrypoint() -> None:
     assert not violations, "\n".join(violations)
 
 
-def test_capability_import_graph_is_acyclic() -> None:
+def _resolved_imports(path: Path) -> list[tuple[int, str, tuple[str, ...]]]:
+    """Return `(lineno, absolute_module, imported_names)` for every import.
+
+    `ast.ImportFrom.module` drops the leading dots, so `from ..billing.service
+    import X` inside `modules/generation/router.py` is recorded as
+    `billing.service`. Every rule above then skips it because `len(parts) < 3`
+    and the entrypoint rule misses it because it is not literally
+    `creator.main`. Re-anchoring the level against the file's own package
+    closes that hole: a single relative import otherwise bypasses the
+    cross-capability rule, the acyclicity rule and the entrypoint rule at once.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    package = list(path.parent.relative_to(MODULES_ROOT.parent.parent).parts)
+    resolved: list[tuple[int, str, tuple[str, ...]]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            resolved.extend((node.lineno, alias.name, ()) for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            base = package[: len(package) - (node.level - 1)] if node.level else []
+            module = ".".join([*base, node.module]) if node.module else ".".join(base)
+            resolved.append((node.lineno, module, tuple(alias.name for alias in node.names)))
+    return resolved
+
+
+def test_relative_and_aliased_imports_respect_capability_boundaries() -> None:
+    violations: list[str] = []
     graph: dict[str, set[str]] = {}
     for path in _python_files():
         source = path.parent.name
         graph.setdefault(source, set())
-        for _, module in _imports(path):
+        for lineno, module, names in _resolved_imports(path):
+            where = f"{path.relative_to(PROJECT_ROOT)}:{lineno}"
             parts = module.split(".")
-            if len(parts) >= 3 and parts[:2] == ["creator", "modules"] and parts[2] != source:
-                graph[source].add(parts[2])
+            # A package import (`from creator.modules.billing import service`)
+            # names a submodule; the bare package is not itself a violation.
+            candidates = [module] if len(parts) >= 4 else []
+            if len(parts) == 3 and parts[:2] == ["creator", "modules"]:
+                candidates = [f"{module}.{name}" for name in names]
+            for candidate in [module, *candidates]:
+                candidate_root = candidate.split(".")[0]
+                if path.name in PURE_KINDS and candidate_root in FORBIDDEN_THIRD_PARTY:
+                    violations.append(f"{where} imports {candidate}")
+                if "adapters" not in path.parts and candidate.startswith("creator.infrastructure"):
+                    violations.append(f"{where} imports infrastructure ({candidate})")
+            for candidate in [module, *(f"{module}.{name}" for name in names)]:
+                if candidate in {"creator.main", "creator.api.router"}:
+                    violations.append(f"{where} imports the application entrypoint ({candidate})")
+            if len(parts) < 3 or parts[:2] != ["creator", "modules"]:
+                continue
+            target = parts[2]
+            if target == source:
+                continue
+            graph[source].add(target)
+            for candidate in candidates:
+                kind_parts = candidate.split(".")
+                kind = kind_parts[3] if len(kind_parts) > 3 else "__init__"
+                if path.name == "__init__.py" and kind == "__init__":
+                    # A package's own `__init__` is its public surface; only
+                    # explicitly named submodules are subject to the kind rule.
+                    continue
+                if f"{kind}.py" not in SHARED_KINDS:
+                    violations.append(
+                        f"{where} -> {candidate} ({path.name} may not import {kind}.py of {target})"
+                    )
 
+    assert not violations, "\n".join(violations)
+
+    _assert_acyclic(graph)
+
+
+def _assert_acyclic(graph: dict[str, set[str]]) -> None:
     visiting: set[str] = set()
     visited: set[str] = set()
 
@@ -141,3 +202,16 @@ def test_capability_import_graph_is_acyclic() -> None:
 
     for node in sorted(graph):
         visit(node, ())
+
+
+def test_capability_import_graph_is_acyclic() -> None:
+    graph: dict[str, set[str]] = {}
+    for path in _python_files():
+        source = path.parent.name
+        graph.setdefault(source, set())
+        for _, module in _imports(path):
+            parts = module.split(".")
+            if len(parts) >= 3 and parts[:2] == ["creator", "modules"] and parts[2] != source:
+                graph[source].add(parts[2])
+
+    _assert_acyclic(graph)

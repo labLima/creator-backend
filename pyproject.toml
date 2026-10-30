@@ -67,7 +67,7 @@ markers = [
   "e2e: end-to-end API flows",
   "integration: database-backed integration tests",
 ]
-addopts = "--no-header --cov=creator.modules --cov=creator.domain --cov=creator.core --cov=creator.api --cov=creator.uow --cov-report=term-missing --cov-fail-under=80 -p no:cacheprovider"
+addopts = "--no-header --cov=creator.modules --cov=creator.domain --cov=creator.core --cov=creator.api --cov=creator.uow --cov=creator.repositories --cov=creator.services --cov-report=term-missing --cov-fail-under=80 -p no:cacheprovider"
 tmp_path_retention_policy = "none"
 
 [tool.coverage.run]

@@ -12,7 +12,13 @@ from creator.uow import UnitOfWork
 
 def require_global_billing_admin(user: UserRecord) -> None:
     if user.global_role not in {"admin", "gestor"}:
-        raise HTTPException(status_code=403, detail="Billing administration required")
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "BILLING_ADMIN_REQUIRED",
+                "message": "Billing administration role is required",
+            },
+        )
 
 
 def require_admin(user: UserRecord) -> None:

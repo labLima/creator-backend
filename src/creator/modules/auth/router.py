@@ -15,6 +15,7 @@ from creator.api.auth import (
     set_csrf_cookie,
 )
 from creator.api.dependencies import (
+    get_auth_token_services,
     get_optional_current_user,
     get_optional_principal,
     get_uow,
@@ -23,7 +24,6 @@ from creator.api.responses import success_response
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
-from creator.infrastructure.auth import auth_token_services
 from creator.modules.auth.ports import AuthTokenServices
 from creator.modules.auth.schemas import AuthLoginRequest, AuthSignupRequest
 from creator.modules.auth.service import (
@@ -150,7 +150,7 @@ def login_with_password(
     request: Request,
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     settings: Annotated[Settings, Depends(get_settings)],
-    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)],
+    token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
     try:
         session = login_local(
@@ -193,7 +193,7 @@ def signup_with_password(
     request: Request,
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     settings: Annotated[Settings, Depends(get_settings)],
-    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)],
+    token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
     try:
         result: LocalSignupResult = signup_local(
@@ -263,7 +263,7 @@ def refresh_session(
     request: Request,
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     settings: Annotated[Settings, Depends(get_settings)],
-    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)],
+    token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
     refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
     try:
@@ -308,7 +308,7 @@ def csrf_token(
     principal: Annotated[Principal | None, Depends(get_optional_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     settings: Annotated[Settings, Depends(get_settings)],
-    token_services: Annotated[AuthTokenServices, Depends(auth_token_services)],
+    token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
     session_id: UUID | None = None
     if principal is not None and principal.session_id is not None:
@@ -355,7 +355,13 @@ def logout_session(
     session_id: UUID | None = None
     if principal is not None and principal.session_id is not None:
         if current_user is not None:
-            session_id = UUID(principal.session_id)
+            try:
+                session_id = UUID(principal.session_id)
+            except ValueError as error:
+                raise HTTPException(
+                    status_code=401,
+                    detail={"code": "AUTHENTICATION_INVALID", "message": "Invalid session"},
+                ) from error
     if session_id is None:
         refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
         if refresh_token:
@@ -365,7 +371,13 @@ def logout_session(
             if record is not None:
                 session_id = record.id
     if session_id is None and principal is not None and principal.session_id is not None:
-        session_id = UUID(principal.session_id)
+        try:
+            session_id = UUID(principal.session_id)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=401,
+                detail={"code": "AUTHENTICATION_INVALID", "message": "Invalid session"},
+            ) from error
     if session_id is not None:
         logout_local(unit_of_work=unit_of_work, session_id=session_id)
     response = _success({"logged_out": True}, request)
