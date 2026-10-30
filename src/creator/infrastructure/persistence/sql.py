@@ -112,3 +112,26 @@ def paginate(
     ).all()
     total: int = session.execute(count_statement).scalar_one()
     return list(rows), total
+
+
+ROLE_RANK = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
+
+
+def user_has_workspace_role(
+    session: Session,
+    *,
+    user_id: UUID,
+    workspace_id: UUID,
+    minimum_role: str = "viewer",
+) -> bool:
+    minimum_rank = ROLE_RANK[minimum_role]
+    row = session.scalars(
+        select(workspace_tables.WorkspaceMembership).where(
+            workspace_tables.WorkspaceMembership.user_id == user_id,
+            workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
+            workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+        )
+    ).one_or_none()
+    if row is None:
+        return False
+    return ROLE_RANK[enum_value(row.role)] >= minimum_rank
