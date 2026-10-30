@@ -1,4 +1,4 @@
-.PHONY: install format format-check lint typecheck test e2e dependency-audit secrets security check ci run worker dev/start dev/stop dev/clean dev/logs
+.PHONY: install format format-check lint typecheck test e2e migrate-check dependency-audit secrets security check ci run worker dev/start dev/stop dev/clean dev/logs snapshot-contract
 
 PYTHON ?= python
 ifeq ($(OS),Windows_NT)
@@ -30,6 +30,16 @@ typecheck:
 test:
 	$(PYTEST) -m "not e2e"
 
+migrate-check:
+	@mkdir -p .local/db
+	@rm -f .local/db/alembic-check.db
+	DATABASE_URL=sqlite+pysqlite:///$(CURDIR)/.local/db/alembic-check.db $(PYTHON) -m alembic upgrade head
+	DATABASE_URL=sqlite+pysqlite:///$(CURDIR)/.local/db/alembic-check.db $(PYTHON) -m alembic check
+	@rm -f .local/db/alembic-check.db
+
+snapshot-contract:
+	$(PYTHON) scripts/snapshot_contract.py
+
 e2e:
 	$(PYTEST) -m e2e --no-cov
 
@@ -45,7 +55,7 @@ secrets:
 
 security: dependency-audit secrets
 
-check: lint format-check typecheck test
+check: lint format-check typecheck test migrate-check
 
 ci: check security e2e
 
