@@ -190,7 +190,9 @@ def test_auth_openapi_documents_cookie_headers_and_optional_legacy_tokens() -> N
 def test_generated_openapi_removes_bearer_when_legacy_flag_is_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    disabled = lambda: Settings(_env_file=None, auth_legacy_bearer_enabled=False)
+    def disabled() -> Settings:
+        return Settings(_env_file=None, auth_legacy_bearer_enabled=False)
+
     monkeypatch.setattr(main_module, "get_settings", disabled)
     monkeypatch.setattr("creator.api.openapi.get_settings", disabled)
 

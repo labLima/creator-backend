@@ -35,6 +35,7 @@ from creator.modules.project.router import router as project_router
 from creator.modules.refund.router import router as refund_router
 from creator.modules.subscription.router import router as subscription_router
 from creator.modules.user.router import router as user_router
+from creator.modules.workflow.router import router as workflow_router
 from creator.modules.workspace.router import router as workspace_router
 
 api_router = APIRouter()
@@ -49,6 +50,7 @@ api_router.include_router(persona_router)
 api_router.include_router(planning_router)
 api_router.include_router(post_structure_router)
 api_router.include_router(content_router)
+api_router.include_router(workflow_router)
 api_router.include_router(generation_router)
 api_router.include_router(subscription_router)
 api_router.include_router(design_structure_router)
