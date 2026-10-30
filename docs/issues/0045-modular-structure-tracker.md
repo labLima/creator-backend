@@ -38,3 +38,4 @@ mantendo o contrato HTTP congelado.
 - `src/creator/modules/`: 27 capacidades
 - `tests/contracts/route_table.json`: 227 operações
 - `tests/contracts/schema_tables.json`: 51 tabelas
+- Backlog de segurança pré-existente exposto pela movimentação: [0046](0046-security-backlog-after-modularization.md)
