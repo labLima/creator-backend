@@ -10,16 +10,14 @@ from sqlalchemy.orm import Session
 
 from creator.billing_account import models as billing_account_tables
 from creator.coupon import models as coupon_tables
+from creator.coupon.ports import CouponRedemptionRecord, CouponRedemptionRepository
 from creator.credit import models as credit_tables
-from creator.order import models as order_tables
-from creator.repositories.commerce import (
-    CouponRedemptionRecord,
-    CouponRedemptionRepository,
-    OrderRecord,
-    OrderRepository,
+from creator.credit.ports import (
     WorkspaceCreditTransactionRecord,
     WorkspaceCreditTransactionRepository,
 )
+from creator.order import models as order_tables
+from creator.repositories.commerce import OrderRecord, OrderRepository
 from creator.workspace import models as workspace_tables
 
 

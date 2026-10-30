@@ -8,13 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from creator.coupon import models as coupon_tables
+from creator.coupon.ports import CouponRecord, CouponRepository
 from creator.credit_package import models as credit_package_tables
-from creator.repositories.catalog import (
-    CouponRecord,
-    CouponRepository,
-    CreditPackageRecord,
-    CreditPackageRepository,
-)
+from creator.credit_package.ports import CreditPackageRecord, CreditPackageRepository
 
 
 class SqlAlchemyCouponRepository(CouponRepository):

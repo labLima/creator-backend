@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from creator.billing_account import models as billing_account_tables
 from creator.plan import models as plan_tables
-from creator.repositories.billing import BillingAccountRecord, PlanItemRecord, PlanRecord
+from creator.plan.ports import PlanItemRecord, PlanRecord
+from creator.repositories.billing import BillingAccountRecord
 
 
 def _plan(row: plan_tables.Plan) -> PlanRecord:
