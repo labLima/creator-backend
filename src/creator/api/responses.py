@@ -85,12 +85,3 @@ def error_response(
         status_code,
         headers,
     )
-
-
-def not_implemented(request: Request) -> JSONResponse:
-    return error_response(
-        "NOT_IMPLEMENTED",
-        "Endpoint reserved by contract.",
-        status_code=501,
-        request=request,
-    )

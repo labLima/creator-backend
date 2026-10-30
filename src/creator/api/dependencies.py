@@ -480,14 +480,3 @@ def _optional_decode_principal(
 
 def _refresh_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-def _display_name_from_claims(principal: Principal) -> str | None:
-    user_metadata = principal.claims.get("user_metadata")
-    if not isinstance(user_metadata, dict):
-        return None
-    for key in ("display_name", "full_name", "name"):
-        value = user_metadata.get(key)
-        if isinstance(value, str) and value:
-            return value
-    return None

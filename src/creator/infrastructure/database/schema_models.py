@@ -25,13 +25,6 @@ from creator.infrastructure.database.models.types import (
 timestamp = timestamp_tz
 
 
-class WorkspaceMembersRole(StrEnum):
-    OWNER = "OWNER"
-    MANAGER = "MANAGER"
-    EDITOR = "EDITOR"
-    VIEWER = "VIEWER"
-
-
 class InviteType(StrEnum):
     EMAIL = "EMAIL"
     LINK = "LINK"
