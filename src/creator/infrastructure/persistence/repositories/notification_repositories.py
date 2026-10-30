@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from creator.notification import models as notification_tables
-from creator.repositories.notifications import (
+from creator.notification.ports import (
     NotificationPreferenceRecord,
     NotificationRecipientRecord,
     NotificationRecipientRepository,

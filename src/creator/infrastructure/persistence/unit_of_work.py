@@ -121,6 +121,12 @@ from creator.infrastructure.persistence.repositories.workspace_invite_repositori
     SqlAlchemyWorkspaceInviteRepository,
 )
 from creator.invoice.ports import InvoiceRepository
+from creator.notification.ports import (
+    NotificationPreferenceRepository,
+    NotificationRecipientRepository,
+    NotificationRepository,
+    UserDeviceRepository,
+)
 from creator.order.ports import OrderRepository
 from creator.payment_method.ports import BillingPaymentMethodRepository
 from creator.persona.ports import PersonaRepository
@@ -129,12 +135,6 @@ from creator.planning.ports import PlanningRepository
 from creator.post_structure.ports import PostStructureRepository
 from creator.refund.ports import RefundRepository
 from creator.repositories.core import ProjectRepository
-from creator.repositories.notifications import (
-    NotificationPreferenceRepository,
-    NotificationRecipientRepository,
-    NotificationRepository,
-    UserDeviceRepository,
-)
 from creator.subscription.ports import SubscriptionHistoryRepository, SubscriptionRepository
 from creator.uow import UnitOfWork
 from creator.user.ports import SettingsRepository, UserRepository
