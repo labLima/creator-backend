@@ -83,3 +83,24 @@ vira um balde global.
 
 - Dependências (`pip-audit`) e varredura de segredos (`gitleaks`) precisam ser
   executadas no CI: o ambiente local não tinha `gitleaks`.
+
+## Itens adicionados pela auditoria do cutover de cookies (PR #129)
+
+Todos pré-existentes ao merge; nenhum é regressão da resolução de conflitos.
+
+- **S8 — Amplificação de banco sem autenticação (baixo).** `/api/v1/auth/csrf` e mutações com
+  cookie de refresh sem access válido fazem duas consultas por requisição e não entram no
+  rate limit. Correção: incluir `/auth/csrf` em `AUTH_RATE_LIMIT_ENDPOINTS` e identidade por IP.
+- **S9 — Configuração de lockout morta (baixo).** `auth_login_max_attempts` e
+  `auth_login_lockout_seconds` não têm nenhum consumidor; não há bloqueio por conta.
+  Correção: implementar o contador ou remover as configurações.
+- **S10 — Origem auto-referencial sem `AUTH_CORS_ORIGINS` (baixo).** Com a lista vazia, a
+  checagem de Origin compara com o próprio `Host`. Não é bypass de CSRF (cookies são
+  host-only), mas depende de proxy. Correção: exigir lista não vazia fora de local.
+- **S11 — Redaction sem chaves de cookie (informativo).** `_SENSITIVE_KEYS` não cobre
+  `cookie`, `set-cookie`, `csrf_token`. Nenhum call site loga cookies hoje. Correção: ampliar
+  o conjunto e testar.
+- **S12 — `token_type: "Bearer"` em contrato cookie-only (informativo).** Muda o contrato;
+  exige atualizar `docs/openapi.yaml` antes.
+- **S13 — `compare_digest` com header não-ASCII retorna 500 (informativo).** Correção:
+  comparar bytes ou rejeitar com 403.
