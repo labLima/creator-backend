@@ -22,13 +22,13 @@ from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.runtime.rate_limit import RateLimitDecision
-from creator.integrations.gemini.exceptions import GeminiTimeoutError
-from creator.main import app, create_app
-from creator.modules.generation.service import (
+from creator.generation.service import (
     image_generation_request_fingerprint,
     image_regeneration_request_fingerprint,
 )
+from creator.infrastructure.runtime.rate_limit import RateLimitDecision
+from creator.integrations.gemini.exceptions import GeminiTimeoutError
+from creator.main import app, create_app
 from creator.repositories import (
     AssetRecord,
     BrandRecord,

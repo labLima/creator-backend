@@ -7,8 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.notification.adapters import tables as notification_tables
-from creator.modules.workspace.adapters import tables as workspace_tables
+from creator.notification import models as notification_tables
 from creator.repositories.notifications import (
     NotificationPreferenceRecord,
     NotificationRecipientRecord,
@@ -16,6 +15,7 @@ from creator.repositories.notifications import (
     NotificationRecord,
     UserDeviceRecord,
 )
+from creator.workspace import models as workspace_tables
 
 
 class SqlAlchemyNotificationRecipientRepository(NotificationRecipientRepository):

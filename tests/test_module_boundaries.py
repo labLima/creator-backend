@@ -1,8 +1,8 @@
 """Enforce the import direction that keeps capabilities independent.
 
-The refactor is only durable if the boundary is machine-checked. Today the
-rules below are true by construction; without this test the next shortcut
-(`from creator.modules.billing.service import ...`) re-couples everything.
+Layout: `src/creator/<capability>/` with a fixed file vocabulary. The rules
+below are the only thing preventing `billing/router.py` from importing
+`plan/service.py` and re-coupling the codebase the refactor just separated.
 """
 
 from __future__ import annotations
@@ -11,123 +11,56 @@ import ast
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MODULES_ROOT = PROJECT_ROOT / "src" / "creator" / "modules"
+CREATOR_ROOT = PROJECT_ROOT / "src" / "creator"
 
-# Files that may never touch persistence or transport infrastructure.
+
+# A capability is any directory that exposes HTTP routes.
+def _capabilities() -> list[Path]:
+    return sorted(
+        path
+        for path in CREATOR_ROOT.iterdir()
+        if path.is_dir()
+        and path.name not in {"__pycache__", "api"}
+        and (path / "router.py").exists()
+    )
+
+
+# Files that must never touch persistence or transport internals.
 PURE_KINDS = {
     "schemas.py",
     "service.py",
     "ports.py",
-    "types.py",
+    "policy.py",
+    "exceptions.py",
     "generation_service.py",
     "improvement_service.py",
     "storage_service.py",
-    "exceptions.py",
-    "policy.py",
 }
 
+# Files allowed to import SQLAlchemy and `creator.infrastructure`.
+SQL_KINDS = {"models.py", "repository.py"}
+
 # Cross-capability imports are only legal for these file kinds.
-SHARED_KINDS = {"schemas.py", "ports.py", "types.py", "exceptions.py"}
+SHARED_KINDS = {"schemas.py", "ports.py", "exceptions.py", "models.py"}
 
-FORBIDDEN_THIRD_PARTY = {"sqlalchemy", "fastapi", "starlette"}
-
-PACKAGE_ROOTS = {"creator"}
+FORBIDDEN_THIRD_PARTY = {"sqlalchemy", "fastapi", "starlette", "jwt"}
 
 
 def _python_files() -> list[Path]:
-    return sorted(path for path in MODULES_ROOT.rglob("*.py") if "__pycache__" not in path.parts)
-
-
-def _imports(path: Path) -> list[tuple[int, str]]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    found: list[tuple[int, str]] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                found.append((node.lineno, alias.name))
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            found.append((node.lineno, node.module))
-    return found
-
-
-def test_modules_directory_matches_expected_capabilities() -> None:
-    discovered = {
-        path.name for path in MODULES_ROOT.iterdir() if path.is_dir() and path.name != "__pycache__"
-    }
-
-    assert len(discovered) == 27, sorted(discovered)
-    assert {"auth", "user", "workspace", "brand", "generation", "billing_provider"} <= discovered
-
-
-def test_pure_files_do_not_import_persistence_or_transport() -> None:
-    scanned = 0
-    for path in _python_files():
-        if path.name not in PURE_KINDS:
-            continue
-        scanned += 1
-        for lineno, module in _imports(path):
-            root = module.split(".")[0]
-            assert root not in FORBIDDEN_THIRD_PARTY, (
-                f"{path.relative_to(PROJECT_ROOT)}:{lineno} imports {module}"
-            )
-            if module.startswith("creator.infrastructure"):
-                raise AssertionError(
-                    f"{path.relative_to(PROJECT_ROOT)}:{lineno} imports infrastructure"
-                )
-
-    assert scanned >= 30, f"boundary scan only inspected {scanned} files (vacuous?)"
-
-
-def test_cross_capability_imports_use_shared_kinds_only() -> None:
-    violations: list[str] = []
-    for path in _python_files():
-        if path.name == "__init__.py":
-            continue
-        source_module = path.parent.name
-        for lineno, module in _imports(path):
-            parts = module.split(".")
-            if len(parts) < 3 or parts[:2] != ["creator", "modules"]:
-                continue
-            target_module = parts[2]
-            if target_module == source_module:
-                continue
-            target_kind = parts[3] if len(parts) > 3 else "__init__"
-            if path.name in SHARED_KINDS and f"{target_kind}.py" in SHARED_KINDS:
-                continue
-            if path.name not in SHARED_KINDS and f"{target_kind}.py" in SHARED_KINDS:
-                continue
-            violations.append(
-                f"{path.relative_to(PROJECT_ROOT)}:{lineno} -> {module} "
-                f"({path.name} may not import {target_kind}.py of {target_module})"
-            )
-
-    assert not violations, "\n".join(violations)
-
-
-def test_modules_never_import_the_application_entrypoint() -> None:
-    violations = [
-        f"{path.relative_to(PROJECT_ROOT)}:{lineno}"
-        for path in _python_files()
-        for lineno, module in _imports(path)
-        if module in {"creator.main", "creator.api.router"}
-    ]
-
-    assert not violations, "\n".join(violations)
+    files: list[Path] = []
+    for capability in _capabilities():
+        files.extend(path for path in capability.rglob("*.py") if "__pycache__" not in path.parts)
+    return sorted(files)
 
 
 def _resolved_imports(path: Path) -> list[tuple[int, str, tuple[str, ...]]]:
-    """Return `(lineno, absolute_module, imported_names)` for every import.
+    """Return `(lineno, absolute_module, imported_names)`.
 
-    `ast.ImportFrom.module` drops the leading dots, so `from ..billing.service
-    import X` inside `modules/generation/router.py` is recorded as
-    `billing.service`. Every rule above then skips it because `len(parts) < 3`
-    and the entrypoint rule misses it because it is not literally
-    `creator.main`. Re-anchoring the level against the file's own package
-    closes that hole: a single relative import otherwise bypasses the
-    cross-capability rule, the acyclicity rule and the entrypoint rule at once.
+    `ast.ImportFrom.module` drops the leading dots, so a relative import would
+    otherwise bypass every rule. Re-anchor against `src/creator`.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
-    package = list(path.parent.relative_to(MODULES_ROOT.parent.parent).parts)
+    package = list(path.parent.relative_to(CREATOR_ROOT).parts)
     resolved: list[tuple[int, str, tuple[str, ...]]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -139,50 +72,98 @@ def _resolved_imports(path: Path) -> list[tuple[int, str, tuple[str, ...]]]:
     return resolved
 
 
-def test_relative_and_aliased_imports_respect_capability_boundaries() -> None:
-    violations: list[str] = []
-    graph: dict[str, set[str]] = {}
+def _capability_of(module: str) -> str | None:
+    parts = module.split(".")
+    if len(parts) < 2 or parts[0] != "creator":
+        return None
+    if parts[1] == "api":
+        return None
+    candidate = CREATOR_ROOT / parts[1]
+    if candidate.is_dir() and (candidate / "router.py").exists():
+        return parts[1]
+    return None
+
+
+def test_capability_set_is_exact() -> None:
+    names = {path.name for path in _capabilities()}
+
+    assert len(names) == 27, sorted(names)
+    assert {"auth", "user", "workspace", "brand", "generation", "billing_provider"} <= names
+
+
+def test_pure_files_do_not_import_persistence_or_transport() -> None:
+    scanned = 0
     for path in _python_files():
-        source = path.parent.name
-        graph.setdefault(source, set())
-        for lineno, module, names in _resolved_imports(path):
-            where = f"{path.relative_to(PROJECT_ROOT)}:{lineno}"
-            parts = module.split(".")
-            # A package import (`from creator.modules.billing import service`)
-            # names a submodule; the bare package is not itself a violation.
-            candidates = [module] if len(parts) >= 4 else []
-            if len(parts) == 3 and parts[:2] == ["creator", "modules"]:
-                candidates = [f"{module}.{name}" for name in names]
-            for candidate in [module, *candidates]:
-                candidate_root = candidate.split(".")[0]
-                if path.name in PURE_KINDS and candidate_root in FORBIDDEN_THIRD_PARTY:
-                    violations.append(f"{where} imports {candidate}")
-                if "adapters" not in path.parts and candidate.startswith("creator.infrastructure"):
-                    violations.append(f"{where} imports infrastructure ({candidate})")
-            for candidate in [module, *(f"{module}.{name}" for name in names)]:
-                if candidate in {"creator.main", "creator.api.router"}:
-                    violations.append(f"{where} imports the application entrypoint ({candidate})")
-            if len(parts) < 3 or parts[:2] != ["creator", "modules"]:
-                continue
-            target = parts[2]
-            if target == source:
-                continue
-            graph[source].add(target)
-            for candidate in candidates:
-                kind_parts = candidate.split(".")
-                kind = kind_parts[3] if len(kind_parts) > 3 else "__init__"
-                if path.name == "__init__.py" and kind == "__init__":
-                    # A package's own `__init__` is its public surface; only
-                    # explicitly named submodules are subject to the kind rule.
-                    continue
-                if f"{kind}.py" not in SHARED_KINDS:
-                    violations.append(
-                        f"{where} -> {candidate} ({path.name} may not import {kind}.py of {target})"
-                    )
+        if path.name not in PURE_KINDS:
+            continue
+        scanned += 1
+        for lineno, module, _ in _resolved_imports(path):
+            root = module.split(".")[0]
+            assert root not in FORBIDDEN_THIRD_PARTY, (
+                f"{path.relative_to(PROJECT_ROOT)}:{lineno} imports {module}"
+            )
+            assert not module.startswith("creator.infrastructure"), (
+                f"{path.relative_to(PROJECT_ROOT)}:{lineno} imports infrastructure"
+            )
+
+    assert scanned >= 30, f"boundary scan only inspected {scanned} files (vacuous?)"
+
+
+def test_only_models_and_repository_touch_infrastructure() -> None:
+    violations: list[str] = []
+    for path in _python_files():
+        if path.name in SQL_KINDS:
+            continue
+        for lineno, module, _ in _resolved_imports(path):
+            if module.startswith("creator.infrastructure"):
+                violations.append(f"{path.relative_to(PROJECT_ROOT)}:{lineno} -> {module}")
 
     assert not violations, "\n".join(violations)
 
-    _assert_acyclic(graph)
+
+def test_cross_capability_imports_use_shared_kinds_only() -> None:
+    violations: list[str] = []
+    for path in _python_files():
+        if path.name == "__init__.py":
+            continue
+        source = path.parent.name
+        for lineno, module, names in _resolved_imports(path):
+            target = _capability_of(module)
+            candidates = [module]
+            if target is None:
+                for name in names:
+                    nested = f"{module}.{name}"
+                    if _capability_of(nested) is not None:
+                        candidates.append(nested)
+                        target = target or _capability_of(nested)
+            if target is None or target == source:
+                continue
+            for candidate in candidates:
+                parts = candidate.split(".")
+                kind = f"{parts[2]}.py" if len(parts) > 2 and parts[1] == target else "__init__"
+                # Any file may consume another capability's shared vocabulary
+                # (`ports`, `schemas`, `exceptions`, `models`); behaviour is
+                # never shared.
+                if kind in SHARED_KINDS:
+                    continue
+                violations.append(
+                    f"{path.relative_to(PROJECT_ROOT)}:{lineno} -> {candidate} "
+                    f"({path.name} may not import {kind} of {target})"
+                )
+
+    assert not violations, "\n".join(violations)
+
+
+def test_capabilities_never_import_the_application_entrypoint() -> None:
+    violations = [
+        f"{path.relative_to(PROJECT_ROOT)}:{lineno}"
+        for path in _python_files()
+        for lineno, module, names in _resolved_imports(path)
+        if module in {"creator.main", "creator.api.router"}
+        or (module == "creator" and {"main", "api"} & set(names))
+    ]
+
+    assert not violations, "\n".join(violations)
 
 
 def _assert_acyclic(graph: dict[str, set[str]]) -> None:
@@ -209,9 +190,14 @@ def test_capability_import_graph_is_acyclic() -> None:
     for path in _python_files():
         source = path.parent.name
         graph.setdefault(source, set())
-        for _, module in _imports(path):
-            parts = module.split(".")
-            if len(parts) >= 3 and parts[:2] == ["creator", "modules"] and parts[2] != source:
-                graph[source].add(parts[2])
+        for _, module, names in _resolved_imports(path):
+            target = _capability_of(module)
+            if target is None:
+                for name in names:
+                    target = _capability_of(f"{module}.{name}")
+                    if target:
+                        break
+            if target and target != source:
+                graph[source].add(target)
 
     _assert_acyclic(graph)

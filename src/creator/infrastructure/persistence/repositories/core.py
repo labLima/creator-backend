@@ -9,6 +9,9 @@ from sqlalchemy import cast as sql_cast
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from creator.asset import models as asset_tables
+from creator.brand import models as brand_tables
+from creator.content import models as content_tables
 from creator.domain.agent_workflow import (
     AgentWorkflowStatus,
     AgentWorkflowStepRole,
@@ -25,20 +28,14 @@ from creator.domain.exceptions import (
     PersistenceError,
 )
 from creator.domain.generation import GenerationJobStatus, can_transition
+from creator.generation import models as generation_tables
 from creator.infrastructure.database.enums import (
     ContentType,
     GenerationType,
     GlobalRole,
     WorkspaceRole,
 )
-from creator.modules.asset.adapters import tables as asset_tables
-from creator.modules.brand.adapters import tables as brand_tables
-from creator.modules.content.adapters import tables as content_tables
-from creator.modules.generation.adapters import tables as generation_tables
-from creator.modules.project.adapters import tables as project_tables
-from creator.modules.user.adapters import tables as user_tables
-from creator.modules.workflow.adapters import tables as workflow_tables
-from creator.modules.workspace.adapters import tables as workspace_tables
+from creator.project import models as project_tables
 from creator.repositories import (
     AgentWorkflowRunRecord,
     AgentWorkflowStepRecord,
@@ -66,6 +63,9 @@ from creator.repositories import (
     WorkspaceMembershipRecord,
     WorkspaceRecord,
 )
+from creator.user import models as user_tables
+from creator.workflow import models as workflow_tables
+from creator.workspace import models as workspace_tables
 
 
 def _now() -> datetime:

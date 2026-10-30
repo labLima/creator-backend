@@ -9,8 +9,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.billing_account.adapters import tables as billing_account_tables
-from creator.modules.payment_method.adapters import tables as payment_method_tables
+from creator.billing_account import models as billing_account_tables
+from creator.payment_method import models as payment_method_tables
 from creator.repositories.billing import (
     BillingAddressRecord,
     BillingAddressRepository,

@@ -7,13 +7,12 @@ from uuid import UUID
 from sqlalchemy import Select, asc, desc, func, select
 from sqlalchemy.orm import Session
 
-from creator.modules.brand.adapters import tables as brand_tables
-from creator.modules.campaign.adapters import tables as campaign_tables
-from creator.modules.generation.adapters import tables as generation_tables
-from creator.modules.persona.adapters import tables as persona_tables
-from creator.modules.planning.adapters import tables as planning_tables
-from creator.modules.post_structure.adapters import tables as post_structure_tables
-from creator.modules.workspace.adapters import tables as workspace_tables
+from creator.brand import models as brand_tables
+from creator.campaign import models as campaign_tables
+from creator.generation import models as generation_tables
+from creator.persona import models as persona_tables
+from creator.planning import models as planning_tables
+from creator.post_structure import models as post_structure_tables
 from creator.repositories import (
     BrandAssetRecord,
     CampaignRecord,
@@ -24,6 +23,7 @@ from creator.repositories import (
     PlanningRecord,
     PostStructureRecord,
 )
+from creator.workspace import models as workspace_tables
 
 
 def _record(row: campaign_tables.Campaign) -> CampaignRecord:

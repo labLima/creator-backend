@@ -30,9 +30,11 @@ def test_executable_app_modules_are_importable() -> None:
         "creator.uow",
     ]
     module_names.extend(
-        f"creator.modules.{path.name}"
-        for path in sorted((PROJECT_ROOT / "src/creator/modules").iterdir())
-        if path.is_dir() and path.name != "__pycache__"
+        f"creator.{path.name}"
+        for path in sorted((PROJECT_ROOT / "src/creator").iterdir())
+        if path.is_dir()
+        and path.name not in {"__pycache__", "api"}
+        and (path / "router.py").exists()
     )
     for module_name in module_names:
         assert importlib.import_module(module_name)
@@ -70,12 +72,14 @@ def test_application_and_domain_do_not_import_transport_or_infrastructure() -> N
     ]
     roots.extend(
         path
-        for path in (PROJECT_ROOT / "src/creator/modules").glob("*")
-        if path.is_dir() and path.name != "__pycache__"
+        for path in (PROJECT_ROOT / "src/creator").iterdir()
+        if path.is_dir()
+        and path.name not in {"__pycache__", "api"}
+        and (path / "router.py").exists()
     )
     for root in roots:
         for path in root.rglob("*.py"):
-            if "router.py" in path.parts or "adapters" in path.parts:
+            if path.name in {"router.py", "models.py", "repository.py"}:
                 continue
             scanned += 1
             tree = ast.parse(path.read_text(encoding="utf-8"))

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.enums import GlobalRole
 from creator.infrastructure.database.types import UTCDateTime
-from creator.modules.user.adapters.tables import Settings, User
+from creator.user.models import Settings, User
 
 
 def test_registered_schema_creates_on_sqlite() -> None:

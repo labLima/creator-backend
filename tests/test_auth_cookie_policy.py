@@ -7,13 +7,13 @@ import pytest
 from starlette.responses import Response
 
 from creator.api.auth import FastApiCookieTransport, clear_auth_cookies, set_auth_cookies
+from creator.auth.ports import CookieSpec
+from creator.auth.types import IssuedSession
 from creator.auth_cookie_policy import AuthCookiePolicy
 from creator.config import Settings
 from creator.domain.auth import Principal
 from creator.infrastructure.auth import auth_token_services
 from creator.infrastructure.auth.services import SignedCsrfTokenService
-from creator.modules.auth.ports import CookieSpec
-from creator.modules.auth.types import IssuedSession
 
 SECRET = "test-cookie-policy-secret-with-at-least-32-bytes"
 

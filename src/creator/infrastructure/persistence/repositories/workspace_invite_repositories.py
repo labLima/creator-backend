@@ -6,8 +6,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories.workspace import WorkspaceInviteRecord, WorkspaceInviteRepository
+from creator.workspace import models as workspace_tables
 
 
 def _record(row: workspace_tables.WorkspaceInvite) -> WorkspaceInviteRecord:

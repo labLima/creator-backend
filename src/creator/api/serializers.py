@@ -10,7 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from creator.api.responses import page_payload
-from creator.modules.content.improvement_service import (
+from creator.content.improvement_service import (
     ImprovedContentPreview,
 )
 from creator.repositories import (

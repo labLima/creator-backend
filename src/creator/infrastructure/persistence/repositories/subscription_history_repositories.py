@@ -7,12 +7,12 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.billing_account.adapters import tables as billing_account_tables
-from creator.modules.subscription.adapters import tables as subscription_tables
+from creator.billing_account import models as billing_account_tables
 from creator.repositories.subscription_history import (
     SubscriptionHistoryRecord,
     SubscriptionHistoryRepository,
 )
+from creator.subscription import models as subscription_tables
 
 
 class SqlAlchemySubscriptionHistoryRepository(SubscriptionHistoryRepository):

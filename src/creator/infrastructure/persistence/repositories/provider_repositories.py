@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.billing_account.adapters import tables as billing_account_tables
-from creator.modules.billing_provider.adapters import tables as billing_provider_tables
-from creator.modules.refund.adapters import tables as refund_tables
+from creator.billing_account import models as billing_account_tables
+from creator.billing_provider import models as billing_provider_tables
+from creator.refund import models as refund_tables
 from creator.repositories.provider import (
     ProviderDisputeRecord,
     ProviderDisputeRepository,

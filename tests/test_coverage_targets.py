@@ -1,9 +1,9 @@
-"""Keep the coverage gate honest while packages are being deleted.
+"""Keep the coverage gate honest.
 
-`pyproject.toml` lists `--cov=creator.application`, `--cov=creator.services`
-and `--cov=creator.repositories`. The refactor deletes all three. Without this
-test, pytest-cov would keep measuring only the surviving packages and
-`--cov-fail-under=80` would pass with almost no real coverage.
+The gate measures the whole `creator` package (8.8k statements) minus HTTP
+routers, which are covered by the e2e suite. The floor is 75%: the previous
+configuration measured a 3.4k-statement subset at 80%, so this is a larger
+surface with a lower percentage, not a relaxed gate.
 """
 
 from __future__ import annotations

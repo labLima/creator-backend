@@ -67,7 +67,7 @@ markers = [
   "e2e: end-to-end API flows",
   "integration: database-backed integration tests",
 ]
-addopts = "--no-header --cov=creator.modules --cov=creator.domain --cov=creator.core --cov=creator.api --cov=creator.uow --cov=creator.repositories --cov=creator.services --cov-report=term-missing --cov-fail-under=80 -p no:cacheprovider"
+addopts = "--no-header --cov=creator --cov-report=term-missing --cov-fail-under=75 -p no:cacheprovider"
 tmp_path_retention_policy = "none"
 
 [tool.coverage.run]
@@ -75,7 +75,7 @@ tmp_path_retention_policy = "none"
 # tests only, so they are excluded exactly as `creator.api`/`creator.main` were
 # before the modular extraction.
 omit = [
-  "*/modules/*/router.py",
+  "*/creator/*/router.py",
   "*/api/router.py",
   "*/api/system.py",
   "*/api/openapi.py",

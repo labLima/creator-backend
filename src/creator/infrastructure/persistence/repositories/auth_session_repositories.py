@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.orm import Session
 
-from creator.modules.auth.adapters import tables as auth_tables
+from creator.auth import models as auth_tables
 from creator.repositories.auth import AuthSessionRecord
 
 

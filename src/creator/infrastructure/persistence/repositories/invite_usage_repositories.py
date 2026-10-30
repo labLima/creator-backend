@@ -7,11 +7,11 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories.invite_usage import (
     WorkspaceInviteUsageRecord,
     WorkspaceInviteUsageRepository,
 )
+from creator.workspace import models as workspace_tables
 
 
 class SqlAlchemyWorkspaceInviteUsageRepository(WorkspaceInviteUsageRepository):

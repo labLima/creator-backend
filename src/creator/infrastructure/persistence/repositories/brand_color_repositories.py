@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.brand.adapters import tables as brand_tables
-from creator.modules.workspace.adapters import tables as workspace_tables
+from creator.brand import models as brand_tables
 from creator.repositories.brand_color import BrandColorRecord, BrandColorRepository
+from creator.workspace import models as workspace_tables
 
 
 class SqlAlchemyBrandColorRepository(BrandColorRepository):

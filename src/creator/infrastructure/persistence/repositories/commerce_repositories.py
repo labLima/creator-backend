@@ -8,11 +8,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.billing_account.adapters import tables as billing_account_tables
-from creator.modules.coupon.adapters import tables as coupon_tables
-from creator.modules.credit.adapters import tables as credit_tables
-from creator.modules.order.adapters import tables as order_tables
-from creator.modules.workspace.adapters import tables as workspace_tables
+from creator.billing_account import models as billing_account_tables
+from creator.coupon import models as coupon_tables
+from creator.credit import models as credit_tables
+from creator.order import models as order_tables
 from creator.repositories.commerce import (
     CouponRedemptionRecord,
     CouponRedemptionRepository,
@@ -21,6 +20,7 @@ from creator.repositories.commerce import (
     WorkspaceCreditTransactionRecord,
     WorkspaceCreditTransactionRepository,
 )
+from creator.workspace import models as workspace_tables
 
 
 class SqlAlchemyOrderRepository(OrderRepository):

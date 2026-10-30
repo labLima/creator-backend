@@ -7,8 +7,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.coupon.adapters import tables as coupon_tables
-from creator.modules.credit_package.adapters import tables as credit_package_tables
+from creator.coupon import models as coupon_tables
+from creator.credit_package import models as credit_package_tables
 from creator.repositories.catalog import (
     CouponRecord,
     CouponRepository,

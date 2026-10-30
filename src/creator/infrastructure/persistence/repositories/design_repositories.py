@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.design_structure.adapters import tables as design_structure_tables
-from creator.modules.post_structure.adapters import tables as post_structure_tables
+from creator.design_structure import models as design_structure_tables
+from creator.post_structure import models as post_structure_tables
 from creator.repositories.design import DesignStructureRecord, DesignStructureRepository
 
 

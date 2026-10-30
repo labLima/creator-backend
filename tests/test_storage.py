@@ -8,8 +8,8 @@ import pytest
 
 from creator.config import Settings
 from creator.domain.generation import GenerationJobStatus
+from creator.generation.storage_service import GeneratedImage, persist_generated_image
 from creator.infrastructure.runtime.storage import LocalStorageProvider, SupabaseStorageProvider
-from creator.modules.generation.storage_service import GeneratedImage, persist_generated_image
 from creator.repositories import GenerationJobRecord, ImageMetadata, ImageRecord, UserRecord
 from creator.services.storage.provider import (
     StorageObjectNotFoundError,

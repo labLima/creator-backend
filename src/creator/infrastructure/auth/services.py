@@ -10,6 +10,14 @@ from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
+from creator.auth.ports import (
+    AccessTokenCodec,
+    AuthTokenServices,
+    Clock,
+    CsrfTokenService,
+    RefreshTokenGenerator,
+)
+from creator.auth.service import ExpiredTokenError, InvalidTokenError
 from creator.config import Settings
 from creator.domain.auth import Principal
 from creator.infrastructure.auth.jwt_adapter import (
@@ -24,14 +32,6 @@ from creator.infrastructure.auth.jwt_adapter import (
 from creator.infrastructure.auth.jwt_adapter import (
     encode as provider_encode,
 )
-from creator.modules.auth.ports import (
-    AccessTokenCodec,
-    AuthTokenServices,
-    Clock,
-    CsrfTokenService,
-    RefreshTokenGenerator,
-)
-from creator.modules.auth.service import ExpiredTokenError, InvalidTokenError
 
 
 class PyJwtAccessTokenCodec:

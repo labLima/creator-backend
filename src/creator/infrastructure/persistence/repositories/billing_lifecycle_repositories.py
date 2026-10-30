@@ -6,10 +6,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.modules.billing_account.adapters import tables as billing_account_tables
-from creator.modules.charge.adapters import tables as charge_tables
-from creator.modules.invoice.adapters import tables as invoice_tables
-from creator.modules.subscription.adapters import tables as subscription_tables
+from creator.billing_account import models as billing_account_tables
+from creator.charge import models as charge_tables
+from creator.invoice import models as invoice_tables
 from creator.repositories.billing import (
     ChargeRecord,
     ChargeRepository,
@@ -18,6 +17,7 @@ from creator.repositories.billing import (
     SubscriptionRecord,
     SubscriptionRepository,
 )
+from creator.subscription import models as subscription_tables
 
 
 def _subscription(row: subscription_tables.Subscription) -> SubscriptionRecord:
