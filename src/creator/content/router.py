@@ -44,6 +44,7 @@ from creator.content.improvement_service import (
     ImproveContentCommand,
     improve_content,
 )
+from creator.content.ports import ContentFilters
 from creator.content.schemas import (
     ContentCreateRequest,
     ContentUpdateRequest,
@@ -61,7 +62,6 @@ from creator.integrations.gemini.exceptions import (
     GeminiTimeoutError,
     GeminiTransientError,
 )
-from creator.repositories.content import ContentFilters
 from creator.services.ai.provider import LLMProvider, ProviderNotConfiguredError
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord

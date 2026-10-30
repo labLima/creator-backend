@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from creator.config import Settings
+from creator.content.ports import ContentRecord
 from creator.domain.agent_workflow import (
     AgentWorkflowStatus,
     AgentWorkflowStepRole,
@@ -19,8 +20,6 @@ from creator.domain.agent_workflow import (
 )
 from creator.domain.auth import Principal, WorkspaceRole
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
-from creator.repositories.agent_workflows import AgentWorkflowRunRecord, AgentWorkflowStepRecord
-from creator.repositories.content import ContentRecord
 from creator.services.agents.contracts import (
     AgentExecutionContext,
     BusinessOutput,
@@ -33,6 +32,7 @@ from creator.services.agents.runner import StructuredAgentRunner
 from creator.services.ai.reviewer import UnconfiguredMultimodalImageReviewer
 from creator.services.storage.provider import StorageValidationError
 from creator.workers import agent_workflow as workflow_worker
+from creator.workflow.ports import AgentWorkflowRunRecord, AgentWorkflowStepRecord
 from creator.workflow.service import (
     AgentWorkflowDecisionError,
     AgentWorkflowIdempotencyConflictError,

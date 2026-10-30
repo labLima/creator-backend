@@ -9,6 +9,7 @@ from uuid import UUID
 
 from creator.brand.ports import BrandAssetRecord, BrandAssetRepository
 from creator.core.pagination import Page, PageRequest
+from creator.generation.ports import GeneratedImageRecord, GeneratedImageRepository
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,25 +115,6 @@ class PersonaRepository(Protocol):
     def list_for_user(
         self, *, user_id: UUID, brand_id: UUID | None = None, page: PageRequest | None = None
     ) -> Page[PersonaRecord]: ...
-
-
-@dataclass(frozen=True, slots=True)
-class GeneratedImageRecord:
-    id: UUID
-    workspace_id: UUID
-    design_structure_id: UUID
-    signed_url: str | None
-    size: str | None
-    resolution: str | None
-    image_ratio: str | None
-    status: str | None
-    created_at: datetime
-    updated_at: datetime
-    deleted_at: datetime | None
-
-
-class GeneratedImageRepository(Protocol):
-    def get_for_user(self, *, user_id: UUID, image_id: UUID) -> GeneratedImageRecord | None: ...
 
 
 @dataclass(frozen=True, slots=True)

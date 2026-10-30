@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from creator.asset import models as asset_tables
 from creator.brand import models as brand_tables
 from creator.content import models as content_tables
+from creator.content.ports import ContentFilters, ImageMetadata
 from creator.core.pagination import PageRequest
 from creator.domain.exceptions import (
     ConflictError,
@@ -19,6 +20,7 @@ from creator.domain.exceptions import (
 )
 from creator.domain.generation import GenerationJobStatus
 from creator.generation import models as generation_tables
+from creator.generation.ports import GenerationHistoryFilters
 from creator.infrastructure.database.enums import GlobalRole
 from creator.infrastructure.persistence.repositories.core import (
     SqlAlchemyAssetRepository,
@@ -34,8 +36,6 @@ from creator.infrastructure.persistence.repositories.core import (
     flush_or_raise,
 )
 from creator.project import models as project_tables
-from creator.repositories.content import ContentFilters
-from creator.repositories.image_generation import GenerationHistoryFilters, ImageMetadata
 from creator.user import models as user_tables
 from creator.workspace import models as workspace_tables
 

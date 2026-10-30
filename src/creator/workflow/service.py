@@ -16,9 +16,9 @@ from creator.domain.pipeline_events import (
     PipelinePayloadReference,
 )
 from creator.prompts.base import normalize_json_object
-from creator.repositories.agent_workflows import AgentWorkflowRunRecord
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
+from creator.workflow.ports import AgentWorkflowRunRecord
 
 
 class AgentWorkflowQueue(Protocol):

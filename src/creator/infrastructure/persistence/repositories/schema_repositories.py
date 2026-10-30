@@ -12,12 +12,12 @@ from creator.brand.ports import BrandAssetRecord
 from creator.campaign import models as campaign_tables
 from creator.core.pagination import Page, PageRequest
 from creator.generation import models as generation_tables
+from creator.generation.ports import GeneratedImageRecord
 from creator.persona import models as persona_tables
 from creator.planning import models as planning_tables
 from creator.post_structure import models as post_structure_tables
 from creator.repositories.schema import (
     CampaignRecord,
-    GeneratedImageRecord,
     PersonaRecord,
     PlanningRecord,
     PostStructureRecord,

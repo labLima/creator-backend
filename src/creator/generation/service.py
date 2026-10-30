@@ -6,15 +6,14 @@ from typing import cast
 from uuid import UUID
 
 from creator.config import Settings
+from creator.content.ports import ContentRecord
 from creator.domain.exceptions import ConflictError, EntityNotFoundError
-from creator.generation.ports import GenerationQueue
+from creator.generation.ports import GenerationQueue, ImageGenerationStatusRecord
 from creator.prompts import (
     RenderedPrompt,
     build_advertising_image_prompt,
     generation_parameters_with_prompt_template,
 )
-from creator.repositories.content import ContentRecord
-from creator.repositories.image_generation import ImageGenerationStatusRecord
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 

@@ -8,8 +8,8 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from creator.domain.pipeline_events import PipelineEvent
-from creator.repositories.outbox import OutboxEventRecord
 from creator.workflow import models as workflow_tables
+from creator.workflow.ports import OutboxEventRecord
 
 
 class SqlAlchemyOutboxRepository:

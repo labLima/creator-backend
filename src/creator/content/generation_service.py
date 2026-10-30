@@ -5,12 +5,12 @@ from typing import cast
 from uuid import UUID
 
 from creator.config import Settings
+from creator.content.ports import GeneratedTextContentRecord
 from creator.domain.exceptions import DomainError, PersistenceError
 from creator.prompts import (
     build_content_generation_prompt,
     generation_parameters_with_prompt_template,
 )
-from creator.repositories.content import GeneratedTextContentRecord
 from creator.services.ai.provider import LLMProvider
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord

@@ -10,14 +10,15 @@ from typing import Any
 from uuid import UUID
 
 from creator.api.responses import page_payload
+from creator.asset.ports import AssetRecord
 from creator.brand.ports import BrandRecord, BrandSettingsRecord
 from creator.content.improvement_service import (
     ImprovedContentPreview,
 )
+from creator.content.ports import ContentDetailRecord, ContentRecord, ImageRecord
 from creator.core.pagination import Page
-from creator.repositories.content import ContentDetailRecord, ContentRecord
-from creator.repositories.core import AssetRecord, GenerationRecord, ProjectRecord
-from creator.repositories.image_generation import ImageGenerationStatusRecord, ImageRecord
+from creator.generation.ports import GenerationRecord, ImageGenerationStatusRecord
+from creator.repositories.core import ProjectRecord
 from creator.user.ports import SettingsRecord, UserRecord
 from creator.workspace.ports import WorkspaceMembershipRecord, WorkspaceRecord
 

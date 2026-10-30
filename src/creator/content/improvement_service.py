@@ -7,9 +7,9 @@ from uuid import UUID
 
 from creator.config import Settings
 from creator.content.generation_service import WorkspaceAccessDeniedError
+from creator.content.ports import ContentRecord
 from creator.domain.exceptions import DomainError, EntityNotFoundError
 from creator.prompts import build_text_improvement_prompt, prompt_template_metadata
-from creator.repositories.content import ContentRecord
 from creator.services.ai.provider import LLMProvider
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord

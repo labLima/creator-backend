@@ -8,6 +8,7 @@ from types import TracebackType
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from creator.asset.ports import AssetRepository
 from creator.auth.ports import AuthSessionRepository
 from creator.brand.ports import (
     BrandAssetRepository,
@@ -15,7 +16,13 @@ from creator.brand.ports import (
     BrandRepository,
     BrandSettingsRepository,
 )
+from creator.content.ports import ContentRepository
 from creator.domain.exceptions import PersistenceError
+from creator.generation.ports import (
+    GeneratedImageRepository,
+    GenerationRepository,
+    ImageGenerationRepository,
+)
 from creator.infrastructure.database.db import SessionLocal
 from creator.infrastructure.persistence.repositories.auth_session_repositories import (
     SqlAlchemyAuthSessionRepository,
@@ -99,7 +106,6 @@ from creator.infrastructure.persistence.repositories.subscription_history_reposi
 from creator.infrastructure.persistence.repositories.workspace_invite_repositories import (
     SqlAlchemyWorkspaceInviteRepository,
 )
-from creator.repositories.agent_workflows import AgentWorkflowRepository
 from creator.repositories.billing import (
     BillingAccountRepository,
     BillingAddressRepository,
@@ -116,17 +122,14 @@ from creator.repositories.commerce import (
     OrderRepository,
     WorkspaceCreditTransactionRepository,
 )
-from creator.repositories.content import ContentRepository
-from creator.repositories.core import AssetRepository, GenerationRepository, ProjectRepository
+from creator.repositories.core import ProjectRepository
 from creator.repositories.design import DesignStructureRepository
-from creator.repositories.image_generation import ImageGenerationRepository
 from creator.repositories.notifications import (
     NotificationPreferenceRepository,
     NotificationRecipientRepository,
     NotificationRepository,
     UserDeviceRepository,
 )
-from creator.repositories.outbox import OutboxRepository
 from creator.repositories.provider import ProviderDisputeRepository, RefundRepository
 from creator.repositories.provider_audit import (
     ProviderIdempotencyKeyRepository,
@@ -138,7 +141,6 @@ from creator.repositories.provider_sync import (
 )
 from creator.repositories.schema import (
     CampaignRepository,
-    GeneratedImageRepository,
     PersonaRepository,
     PlanningRepository,
     PostStructureRepository,
@@ -146,6 +148,7 @@ from creator.repositories.schema import (
 from creator.repositories.subscription_history import SubscriptionHistoryRepository
 from creator.uow import UnitOfWork
 from creator.user.ports import SettingsRepository, UserRepository
+from creator.workflow.ports import AgentWorkflowRepository, OutboxRepository
 from creator.workspace.ports import (
     WorkspaceInviteRepository,
     WorkspaceInviteUsageRepository,

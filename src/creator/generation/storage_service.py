@@ -3,7 +3,8 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
-from creator.repositories.image_generation import GenerationJobRecord, ImageMetadata, ImageRecord
+from creator.content.ports import ImageMetadata, ImageRecord
+from creator.generation.ports import GenerationJobRecord
 from creator.services.storage.provider import (
     StorageError,
     StorageObjectNotFoundError,

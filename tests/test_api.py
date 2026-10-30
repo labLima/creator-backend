@@ -18,12 +18,25 @@ from creator.api.dependencies import (
     get_storage_provider,
     get_uow,
 )
+from creator.asset.ports import AssetRecord
 from creator.brand.ports import BrandRecord, BrandSettingsRecord
 from creator.config import Settings, get_settings
+from creator.content.ports import (
+    ContentDetailRecord,
+    ContentFilters,
+    ContentRecord,
+    GeneratedTextContentRecord,
+    ImageRecord,
+)
 from creator.core.pagination import Page, PageRequest
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
 from creator.domain.generation import GenerationJobStatus
+from creator.generation.ports import (
+    GenerationJobRecord,
+    GenerationRecord,
+    ImageGenerationStatusRecord,
+)
 from creator.generation.service import (
     image_generation_request_fingerprint,
     image_regeneration_request_fingerprint,
@@ -31,18 +44,7 @@ from creator.generation.service import (
 from creator.infrastructure.runtime.rate_limit import RateLimitDecision
 from creator.integrations.gemini.exceptions import GeminiTimeoutError
 from creator.main import app, create_app
-from creator.repositories.content import (
-    ContentDetailRecord,
-    ContentFilters,
-    ContentRecord,
-    GeneratedTextContentRecord,
-)
-from creator.repositories.core import AssetRecord, GenerationRecord, ProjectRecord
-from creator.repositories.image_generation import (
-    GenerationJobRecord,
-    ImageGenerationStatusRecord,
-    ImageRecord,
-)
+from creator.repositories.core import ProjectRecord
 from creator.services.storage.provider import StorageUrlError
 from creator.user.ports import SettingsRecord, UserRecord
 from creator.workspace.ports import (

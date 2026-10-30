@@ -7,12 +7,12 @@ import pytest
 
 from creator.config import Settings
 from creator.domain.generation import GenerationJobStatus
+from creator.generation.ports import GenerationJobRecord, ImageGenerationWorkItem
 from creator.integrations.gemini.exceptions import GeminiBlockedContentError, GeminiTimeoutError
 from creator.integrations.gemini.image_generator import (
     GeminiImageGenerationRequest,
     GeminiImageGenerationResult,
 )
-from creator.repositories.image_generation import GenerationJobRecord, ImageGenerationWorkItem
 from creator.services.storage.provider import StorageValidationError
 from creator.user.ports import UserRecord
 from creator.workers import image_generation
