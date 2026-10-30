@@ -1,3 +1,5 @@
+"""Repository ports."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -45,17 +47,13 @@ from creator.generation.ports import (
     ImageGenerationStatusRecord,
     ImageGenerationWorkItem,
 )
-from creator.infrastructure.database.enums import (
-    ContentType,
-    GenerationType,
-    GlobalRole,
-    WorkspaceRole,
-)
+from creator.infrastructure.database.enums import ContentType, GenerationType, WorkspaceRole
 from creator.infrastructure.persistence import sql
 from creator.project import models as project_tables
 from creator.project.ports import ProjectRecord
 from creator.user import models as user_tables
 from creator.user.ports import SettingsRecord, UserRecord
+from creator.user.repository import SqlAlchemyUserRepository
 from creator.workflow import models as workflow_tables
 from creator.workflow.ports import AgentWorkflowRunRecord, AgentWorkflowStepRecord
 from creator.workspace import models as workspace_tables
@@ -65,8 +63,6 @@ from creator.workspace.ports import (
     WorkspaceRecord,
 )
 
-# Compatibility aliases: `core.py` still refers to the helpers by their
-# historical private names; new code calls `creator.infrastructure.persistence.sql`.
 _now = sql.now
 _enum_value = sql.enum_value
 _datetime = sql.as_datetime
@@ -77,20 +73,7 @@ _scoped_resource_select = sql.scoped_resource_select
 _scoped_resource_count = sql.scoped_resource_count
 flush_or_raise = sql.flush_or_raise
 map_sqlalchemy_error = sql.map_sqlalchemy_error
-
-
-def _user_record(row: user_tables.User) -> UserRecord:
-    return UserRecord(
-        id=row.id,
-        external_id=row.external_id,
-        email=row.email,
-        display_name=row.display_name,
-        global_role=_enum_value(row.global_role),
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
-        password_hash=row.password_hash,
-    )
+ROLE_RANK = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
 
 
 def _settings_record(row: user_tables.Settings) -> SettingsRecord:
@@ -108,16 +91,6 @@ def _settings_record(row: user_tables.Settings) -> SettingsRecord:
     )
 
 
-def _workspace_record(row: workspace_tables.Workspace) -> WorkspaceRecord:
-    return WorkspaceRecord(
-        id=row.id,
-        name=row.name,
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
-    )
-
-
 def _workspace_membership_record(
     row: workspace_tables.WorkspaceMembership,
 ) -> WorkspaceMembershipRecord:
@@ -126,6 +99,16 @@ def _workspace_membership_record(
         workspace_id=row.workspace_id,
         user_id=row.user_id,
         role=_enum_value(row.role),
+        created_at=_datetime(row.created_at),
+        updated_at=_datetime(row.updated_at),
+        deleted_at=_optional_datetime(row.deleted_at),
+    )
+
+
+def _workspace_record(row: workspace_tables.Workspace) -> WorkspaceRecord:
+    return WorkspaceRecord(
+        id=row.id,
+        name=row.name,
         created_at=_datetime(row.created_at),
         updated_at=_datetime(row.updated_at),
         deleted_at=_optional_datetime(row.deleted_at),
@@ -144,6 +127,20 @@ def _brand_record(row: brand_tables.Brand) -> BrandRecord:
         created_at=_datetime(row.created_at),
         updated_at=_datetime(row.updated_at),
         deleted_at=_optional_datetime(row.deleted_at),
+    )
+
+
+def _user_has_workspace_role(
+    session: Session,
+    *,
+    user_id: UUID,
+    workspace_id: UUID,
+    minimum_role: str = "viewer",
+) -> bool:
+    return SqlAlchemyWorkspaceRepository(session).user_has_workspace_role(
+        user_id=user_id,
+        workspace_id=workspace_id,
+        minimum_role=minimum_role,
     )
 
 
@@ -179,6 +176,27 @@ def _content_record(row: content_tables.Content) -> ContentRecord:
     )
 
 
+def _image_record(row: content_tables.Image) -> ImageRecord:
+    return ImageRecord(
+        id=row.id,
+        workspace_id=row.workspace_id,
+        content_id=row.content_id,
+        generation_id=row.generation_id,
+        version_number=row.version_number,
+        storage_path=row.storage_path,
+        public_url=row.public_url,
+        mime_type=row.mime_type,
+        width=row.width,
+        height=row.height,
+        model=row.model,
+        prompt=row.prompt,
+        metadata=_json(row.metadata_json),
+        created_at=_datetime(row.created_at),
+        updated_at=_datetime(row.updated_at),
+        deleted_at=_optional_datetime(row.deleted_at),
+    )
+
+
 def _generation_record(row: generation_tables.Generation) -> GenerationRecord:
     return GenerationRecord(
         id=row.id,
@@ -191,6 +209,42 @@ def _generation_record(row: generation_tables.Generation) -> GenerationRecord:
         model=row.model,
         prompt=row.prompt,
         parameters=_json(row.parameters),
+        created_at=_datetime(row.created_at),
+        updated_at=_datetime(row.updated_at),
+        deleted_at=_optional_datetime(row.deleted_at),
+    )
+
+
+def _asset_record(row: asset_tables.Asset) -> AssetRecord:
+    return AssetRecord(
+        id=row.id,
+        workspace_id=row.workspace_id,
+        brand_id=row.brand_id,
+        project_id=row.project_id,
+        content_id=row.content_id,
+        uploaded_by_user_id=row.uploaded_by_user_id,
+        asset_type=row.asset_type,
+        storage_path=row.storage_path,
+        public_url=row.public_url,
+        mime_type=row.mime_type,
+        byte_size=row.byte_size,
+        checksum=row.checksum,
+        metadata=_json(row.metadata_json),
+        created_at=_datetime(row.created_at),
+        updated_at=_datetime(row.updated_at),
+        deleted_at=_optional_datetime(row.deleted_at),
+    )
+
+
+def _brand_settings_record(row: brand_tables.BrandSettings) -> BrandSettingsRecord:
+    return BrandSettingsRecord(
+        id=row.id,
+        workspace_id=row.workspace_id,
+        brand_id=row.brand_id,
+        voice_settings=_json(row.voice_settings),
+        visual_settings=_json(row.visual_settings),
+        generation_defaults=_json(row.generation_defaults),
+        metadata=_json(row.metadata_json),
         created_at=_datetime(row.created_at),
         updated_at=_datetime(row.updated_at),
         deleted_at=_optional_datetime(row.deleted_at),
@@ -257,42 +311,6 @@ def _agent_workflow_step_record(row: workflow_tables.AgentWorkflowStep) -> Agent
     )
 
 
-def _asset_record(row: asset_tables.Asset) -> AssetRecord:
-    return AssetRecord(
-        id=row.id,
-        workspace_id=row.workspace_id,
-        brand_id=row.brand_id,
-        project_id=row.project_id,
-        content_id=row.content_id,
-        uploaded_by_user_id=row.uploaded_by_user_id,
-        asset_type=row.asset_type,
-        storage_path=row.storage_path,
-        public_url=row.public_url,
-        mime_type=row.mime_type,
-        byte_size=row.byte_size,
-        checksum=row.checksum,
-        metadata=_json(row.metadata_json),
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
-    )
-
-
-def _brand_settings_record(row: brand_tables.BrandSettings) -> BrandSettingsRecord:
-    return BrandSettingsRecord(
-        id=row.id,
-        workspace_id=row.workspace_id,
-        brand_id=row.brand_id,
-        voice_settings=_json(row.voice_settings),
-        visual_settings=_json(row.visual_settings),
-        generation_defaults=_json(row.generation_defaults),
-        metadata=_json(row.metadata_json),
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
-    )
-
-
 def _job_record(row: generation_tables.GenerationJob, content_id: UUID) -> GenerationJobRecord:
     return GenerationJobRecord(
         id=row.id,
@@ -316,27 +334,6 @@ def _job_record(row: generation_tables.GenerationJob, content_id: UUID) -> Gener
     )
 
 
-def _image_record(row: content_tables.Image) -> ImageRecord:
-    return ImageRecord(
-        id=row.id,
-        workspace_id=row.workspace_id,
-        content_id=row.content_id,
-        generation_id=row.generation_id,
-        version_number=row.version_number,
-        storage_path=row.storage_path,
-        public_url=row.public_url,
-        mime_type=row.mime_type,
-        width=row.width,
-        height=row.height,
-        model=row.model,
-        prompt=row.prompt,
-        metadata=_json(row.metadata_json),
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
-    )
-
-
 def _image_generation_status_record(
     job: generation_tables.GenerationJob,
     content_id: UUID,
@@ -350,128 +347,18 @@ def _image_generation_status_record(
     )
 
 
-class SqlAlchemyUserRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def add(
-        self,
-        *,
-        external_id: str,
-        email: str | None = None,
-        display_name: str | None = None,
-        global_role: str = "membro",
-        password_hash: str | None = None,
-    ) -> UserRecord:
-        row = user_tables.User(
-            external_id=external_id,
-            email=email,
-            display_name=display_name,
-            global_role=global_role,
-            password_hash=password_hash,
-        )
-        self._session.add(row)
-        flush_or_raise(self._session)
-        return _user_record(row)
-
-    def get_by_id(self, user_id: UUID, *, include_deleted: bool = False) -> UserRecord | None:
-        statement = select(user_tables.User).where(user_tables.User.id == user_id)
-        if not include_deleted:
-            statement = statement.where(user_tables.User.deleted_at.is_(None))
-        row = self._session.scalars(statement).one_or_none()
-        return _user_record(row) if row else None
-
-    def get_by_external_id(
-        self, external_id: str, *, include_deleted: bool = False
-    ) -> UserRecord | None:
-        statement = select(user_tables.User).where(user_tables.User.external_id == external_id)
-        if not include_deleted:
-            statement = statement.where(user_tables.User.deleted_at.is_(None))
-        row = self._session.scalars(statement).one_or_none()
-        return _user_record(row) if row else None
-
-    def get_by_email(self, email: str, *, include_deleted: bool = False) -> UserRecord | None:
-        statement = select(user_tables.User).where(
-            func.lower(user_tables.User.email) == email.lower()
-        )
-        if not include_deleted:
-            statement = statement.where(user_tables.User.deleted_at.is_(None))
-        row = self._session.scalars(statement).one_or_none()
-        return _user_record(row) if row else None
-
-    def list(
-        self,
-        *,
-        include_deleted: bool = False,
-        page: PageRequest | None = None,
-    ) -> Page[UserRecord]:
-        page = page or PageRequest()
-        statement = select(user_tables.User)
-        count_statement = select(func.count()).select_from(user_tables.User)
-        if not include_deleted:
-            statement = statement.where(user_tables.User.deleted_at.is_(None))
-            count_statement = count_statement.where(user_tables.User.deleted_at.is_(None))
-        rows, total = _page(
-            self._session,
-            statement,
-            count_statement,
-            user_tables.User.created_at,
-            page,
-        )
-        return Page(
-            items=[_user_record(row) for row in rows],
-            total=total,
-            page=page.page,
-            limit=page.limit,
-        )
-
-    def update_profile(
-        self,
-        user_id: UUID,
-        *,
-        email: str | None = None,
-        display_name: str | None = None,
-    ) -> UserRecord:
-        row = self._session.get(user_tables.User, user_id)
-        if row is None or row.deleted_at is not None:
-            raise EntityNotFoundError("User not found")
-        if email is not None:
-            row.email = email
-        if display_name is not None:
-            row.display_name = display_name
-        row.updated_at = _now()
-        flush_or_raise(self._session)
-        return _user_record(row)
-
-    def update(
-        self,
-        user_id: UUID,
-        *,
-        email: str | None = None,
-        display_name: str | None = None,
-        global_role: str | None = None,
-    ) -> UserRecord:
-        row = self._session.get(user_tables.User, user_id)
-        if row is None or row.deleted_at is not None:
-            raise EntityNotFoundError("User not found")
-        if email is not None:
-            row.email = email
-        if display_name is not None:
-            row.display_name = display_name
-        if global_role is not None:
-            row.global_role = GlobalRole(global_role)
-        row.updated_at = _now()
-        flush_or_raise(self._session)
-        return _user_record(row)
-
-    def soft_delete(self, user_id: UUID) -> None:
-        row = self._session.get(user_tables.User, user_id)
-        if row is None or row.deleted_at is not None:
-            raise EntityNotFoundError("User not found")
-        timestamp = _now()
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
-        flush_or_raise(self._session)
+def _user_record(row: user_tables.User) -> UserRecord:
+    return UserRecord(
+        id=row.id,
+        external_id=row.external_id,
+        email=row.email,
+        display_name=row.display_name,
+        global_role=_enum_value(row.global_role),
+        created_at=_datetime(row.created_at),
+        updated_at=_datetime(row.updated_at),
+        deleted_at=_optional_datetime(row.deleted_at),
+        password_hash=row.password_hash,
+    )
 
 
 class SqlAlchemySettingsRepository:
@@ -554,9 +441,6 @@ class SqlAlchemySettingsRepository:
         row.updated_at = _now()
         flush_or_raise(self._session)
         return _settings_record(row)
-
-
-ROLE_RANK = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
 
 
 class SqlAlchemyWorkspaceRepository:
@@ -737,20 +621,6 @@ class SqlAlchemyWorkspaceRepository:
             )
             .where(workspace_tables.WorkspaceMembership.deleted_at.is_(None))
         )
-
-
-def _user_has_workspace_role(
-    session: Session,
-    *,
-    user_id: UUID,
-    workspace_id: UUID,
-    minimum_role: str = "viewer",
-) -> bool:
-    return SqlAlchemyWorkspaceRepository(session).user_has_workspace_role(
-        user_id=user_id,
-        workspace_id=workspace_id,
-        minimum_role=minimum_role,
-    )
 
 
 class SqlAlchemyBrandRepository:
@@ -2602,3 +2472,18 @@ class SqlAlchemyImageGenerationRepository:
             )
         ).scalar_one()
         return max(int(completed_version), int(reserved_version))
+
+
+__all__ = [
+    "SqlAlchemyAgentWorkflowRepository",
+    "SqlAlchemyAssetRepository",
+    "SqlAlchemyBrandRepository",
+    "SqlAlchemyBrandSettingsRepository",
+    "SqlAlchemyContentRepository",
+    "SqlAlchemyGenerationRepository",
+    "SqlAlchemyImageGenerationRepository",
+    "SqlAlchemyProjectRepository",
+    "SqlAlchemySettingsRepository",
+    "SqlAlchemyUserRepository",
+    "SqlAlchemyWorkspaceRepository",
+]
