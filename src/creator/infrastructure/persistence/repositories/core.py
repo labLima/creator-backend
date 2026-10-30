@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 from creator.asset import models as asset_tables
 from creator.asset.ports import AssetRecord
 from creator.brand import models as brand_tables
-from creator.brand.ports import BrandRecord, BrandSettingsRecord
+from creator.brand.ports import BrandSettingsRecord
+from creator.brand.repository import SqlAlchemyBrandRepository
 from creator.content import models as content_tables
 from creator.content.ports import (
     ContentDetailRecord,
@@ -68,14 +69,15 @@ map_sqlalchemy_error = sql.map_sqlalchemy_error
 ROLE_RANK = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
 
 
-def _brand_record(row: brand_tables.Brand) -> BrandRecord:
-    return BrandRecord(
+def _project_record(row: project_tables.Project) -> ProjectRecord:
+    return ProjectRecord(
         id=row.id,
         workspace_id=row.workspace_id,
+        brand_id=row.brand_id,
         created_by_user_id=row.created_by_user_id,
         name=row.name,
         description=row.description,
-        brand_voice=row.brand_voice,
+        status=row.status,
         metadata=_json(row.metadata_json),
         created_at=_datetime(row.created_at),
         updated_at=_datetime(row.updated_at),
@@ -94,22 +96,6 @@ def _user_has_workspace_role(
         user_id=user_id,
         workspace_id=workspace_id,
         minimum_role=minimum_role,
-    )
-
-
-def _project_record(row: project_tables.Project) -> ProjectRecord:
-    return ProjectRecord(
-        id=row.id,
-        workspace_id=row.workspace_id,
-        brand_id=row.brand_id,
-        created_by_user_id=row.created_by_user_id,
-        name=row.name,
-        description=row.description,
-        status=row.status,
-        metadata=_json(row.metadata_json),
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
     )
 
 
@@ -312,128 +298,6 @@ def _user_record(row: user_tables.User) -> UserRecord:
         deleted_at=_optional_datetime(row.deleted_at),
         password_hash=row.password_hash,
     )
-
-
-class SqlAlchemyBrandRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def add(
-        self,
-        *,
-        workspace_id: UUID,
-        created_by_user_id: UUID | None,
-        name: str,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
-    ) -> BrandRecord:
-        if created_by_user_id is not None and not _user_has_workspace_role(
-            self._session,
-            user_id=created_by_user_id,
-            workspace_id=workspace_id,
-            minimum_role="editor",
-        ):
-            raise EntityNotFoundError("Workspace not found")
-        row = brand_tables.Brand(
-            workspace_id=workspace_id,
-            created_by_user_id=created_by_user_id,
-            name=name,
-            description=description,
-            brand_voice=brand_voice,
-            metadata_json=_json(metadata),
-        )
-        self._session.add(row)
-        flush_or_raise(self._session)
-        return _brand_record(row)
-
-    def get_for_user(
-        self,
-        *,
-        user_id: UUID,
-        brand_id: UUID,
-        include_deleted: bool = False,
-    ) -> BrandRecord | None:
-        statement = self._scoped_select(user_id).where(brand_tables.Brand.id == brand_id)
-        if not include_deleted:
-            statement = statement.where(brand_tables.Brand.deleted_at.is_(None))
-        row = self._session.scalars(statement).one_or_none()
-        return _brand_record(row) if row else None
-
-    def list_for_user(
-        self,
-        *,
-        user_id: UUID,
-        workspace_id: UUID | None = None,
-        page: PageRequest | None = None,
-    ) -> Page[BrandRecord]:
-        page = page or PageRequest()
-        statement = self._scoped_select(user_id).where(brand_tables.Brand.deleted_at.is_(None))
-        count_statement = self._scoped_count(user_id).where(brand_tables.Brand.deleted_at.is_(None))
-        if workspace_id is not None:
-            statement = statement.where(brand_tables.Brand.workspace_id == workspace_id)
-            count_statement = count_statement.where(brand_tables.Brand.workspace_id == workspace_id)
-        rows, total = _page(
-            self._session, statement, count_statement, brand_tables.Brand.created_at, page
-        )
-        return Page(
-            items=[_brand_record(row) for row in rows],
-            total=total,
-            page=page.page,
-            limit=page.limit,
-        )
-
-    def update(
-        self,
-        *,
-        user_id: UUID,
-        brand_id: UUID,
-        name: str | None = None,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
-    ) -> BrandRecord:
-        row = self._writable_brand(user_id=user_id, brand_id=brand_id)
-        if name is not None:
-            row.name = name
-        if description is not None:
-            row.description = description
-        if brand_voice is not None:
-            row.brand_voice = brand_voice
-        if metadata is not None:
-            row.metadata_json = _json(metadata)
-        row.updated_at = _now()
-        flush_or_raise(self._session)
-        return _brand_record(row)
-
-    def soft_delete(self, *, user_id: UUID, brand_id: UUID) -> None:
-        row = self._writable_brand(user_id=user_id, brand_id=brand_id)
-        timestamp = _now()
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
-        flush_or_raise(self._session)
-
-    def _writable_brand(self, *, user_id: UUID, brand_id: UUID) -> brand_tables.Brand:
-        row = self._session.scalars(
-            self._scoped_select(user_id).where(
-                brand_tables.Brand.id == brand_id,
-                brand_tables.Brand.deleted_at.is_(None),
-            )
-        ).one_or_none()
-        if row is None or not _user_has_workspace_role(
-            self._session,
-            user_id=user_id,
-            workspace_id=row.workspace_id,
-            minimum_role="editor",
-        ):
-            raise EntityNotFoundError("Brand not found")
-        return cast(brand_tables.Brand, row)
-
-    def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, brand_tables.Brand)
-
-    def _scoped_count(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_count(user_id, brand_tables.Brand)
 
 
 class SqlAlchemyProjectRepository:
