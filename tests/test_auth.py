@@ -21,6 +21,7 @@ from creator.auth.ports import (
     CsrfTokenService,
     RefreshTokenGenerator,
 )
+from creator.auth.repository import SqlAlchemyAuthSessionRepository
 from creator.auth.service import (
     EmailAlreadyRegisteredError,
     ExpiredTokenError,
@@ -38,9 +39,6 @@ from creator.config import Settings
 from creator.domain.auth import Principal
 from creator.infrastructure.auth import auth_token_services
 from creator.infrastructure.database.db import create_database_engine
-from creator.infrastructure.persistence.repositories.auth_session_repositories import (
-    SqlAlchemyAuthSessionRepository,
-)
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

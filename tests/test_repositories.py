@@ -9,9 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from creator.asset import models as asset_tables
+from creator.asset.repository import SqlAlchemyAssetRepository
 from creator.brand import models as brand_tables
+from creator.brand.repository import SqlAlchemyBrandRepository, SqlAlchemyBrandSettingsRepository
 from creator.content import models as content_tables
 from creator.content.ports import ContentFilters, ImageMetadata
+from creator.content.repository import SqlAlchemyContentRepository
 from creator.core.pagination import PageRequest
 from creator.domain.exceptions import (
     ConflictError,
@@ -21,23 +24,18 @@ from creator.domain.exceptions import (
 from creator.domain.generation import GenerationJobStatus
 from creator.generation import models as generation_tables
 from creator.generation.ports import GenerationHistoryFilters
-from creator.infrastructure.database.enums import GlobalRole
-from creator.infrastructure.persistence.repositories.core import (
-    SqlAlchemyAssetRepository,
-    SqlAlchemyBrandRepository,
-    SqlAlchemyBrandSettingsRepository,
-    SqlAlchemyContentRepository,
+from creator.generation.repository import (
     SqlAlchemyGenerationRepository,
     SqlAlchemyImageGenerationRepository,
-    SqlAlchemyProjectRepository,
-    SqlAlchemySettingsRepository,
-    SqlAlchemyUserRepository,
-    SqlAlchemyWorkspaceRepository,
-    flush_or_raise,
 )
+from creator.infrastructure.database.enums import GlobalRole
+from creator.infrastructure.persistence.sql import flush_or_raise
 from creator.project import models as project_tables
+from creator.project.repository import SqlAlchemyProjectRepository
 from creator.user import models as user_tables
+from creator.user.repository import SqlAlchemySettingsRepository, SqlAlchemyUserRepository
 from creator.workspace import models as workspace_tables
+from creator.workspace.repository import SqlAlchemyWorkspaceRepository
 
 NOW = datetime(2026, 8, 28, tzinfo=UTC)
 

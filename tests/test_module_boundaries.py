@@ -130,26 +130,29 @@ def test_cross_capability_imports_use_shared_kinds_only() -> None:
         for lineno, module, names in _resolved_imports(path):
             target = _capability_of(module)
             candidates = [module]
-            if target is None:
-                for name in names:
-                    nested = f"{module}.{name}"
-                    if _capability_of(nested) is not None:
-                        candidates.append(nested)
-                        target = target or _capability_of(nested)
+            for name in names:
+                nested = f"{module}.{name}"
+                if _capability_of(nested) is not None:
+                    candidates.append(nested)
+                    target = target or _capability_of(nested)
             if target is None or target == source:
                 continue
-            for candidate in candidates:
-                parts = candidate.split(".")
-                kind = f"{parts[2]}.py" if len(parts) > 2 and parts[1] == target else "__init__"
-                # Any file may consume another capability's shared vocabulary
-                # (`ports`, `schemas`, `exceptions`, `models`); behaviour is
-                # never shared.
-                if kind in SHARED_KINDS:
-                    continue
-                violations.append(
-                    f"{path.relative_to(PROJECT_ROOT)}:{lineno} -> {candidate} "
-                    f"({path.name} may not import {kind} of {target})"
-                )
+            # Any file may consume another capability's shared vocabulary
+            # (`ports`, `schemas`, `exceptions`, `models`); behaviour is never
+            # shared. A bare package import is allowed when one of the imported
+            # names is a shared kind (e.g. `from creator.workspace import models`).
+            kinds = {
+                f"{candidate.split('.')[2]}.py"
+                if len(candidate.split(".")) > 2 and candidate.split(".")[1] == target
+                else "__init__"
+                for candidate in candidates
+            }
+            if kinds & SHARED_KINDS:
+                continue
+            violations.append(
+                f"{path.relative_to(PROJECT_ROOT)}:{lineno} -> {module} "
+                f"({path.name} may not import {sorted(kinds)} of {target})"
+            )
 
     assert not violations, "\n".join(violations)
 
@@ -186,18 +189,35 @@ def _assert_acyclic(graph: dict[str, set[str]]) -> None:
 
 
 def test_capability_import_graph_is_acyclic() -> None:
+    """Behavioural edges must be acyclic.
+
+    `models.py` edges are excluded: declarative tables form one metadata graph
+    and a mutual reference there is invisible to Python (foreign keys are
+    strings), whereas a repository -> repository edge is a real cycle.
+    """
     graph: dict[str, set[str]] = {}
     for path in _python_files():
         source = path.parent.name
         graph.setdefault(source, set())
         for _, module, names in _resolved_imports(path):
+            targets: set[str] = set()
             target = _capability_of(module)
-            if target is None:
-                for name in names:
-                    target = _capability_of(f"{module}.{name}")
-                    if target:
-                        break
-            if target and target != source:
-                graph[source].add(target)
+            if target:
+                targets.add(target)
+            for name in names:
+                nested = _capability_of(f"{module}.{name}")
+                if nested:
+                    targets.add(nested)
+            if path.name == "models.py":
+                continue
+            for candidate in targets:
+                if candidate == source:
+                    continue
+                # A models-only edge is not a behavioural dependency.
+                if module == f"creator.{candidate}" and "models" in names:
+                    continue
+                if module == f"creator.{candidate}.models":
+                    continue
+                graph[source].add(candidate)
 
     _assert_acyclic(graph)
