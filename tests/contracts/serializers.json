@@ -1,0 +1,146 @@
+{
+  "_agent_workflow_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"completed_at\": \"2026-01-01T12:30:00+00:00\", \"content_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"current_step\": \"fixture-current_step\", \"failure_code\": \"fixture-failure_code\", \"failure_message\": \"fixture-failure_message\", \"final_image_ids\": \"fixture-final_image_ids\", \"human_review\": \"fixture\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"input\": \"fixture-input\", \"max_refinements\": \"fixture-max_refinements\", \"refinement_count\": \"fixture-refinement_count\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_agent_workflow_step_data": {
+    "full": "{\"attempt\": \"fixture-attempt\", \"completed_at\": \"2026-01-01T12:30:00+00:00\", \"decision\": \"fixture-decision\", \"error_code\": \"fixture-error_code\", \"error_message\": \"fixture-error_message\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"input\": \"fixture-input\", \"input_hash\": \"fixture-input_hash\", \"model\": \"fixture-model\", \"output\": \"fixture-output\", \"prompt\": \"fixture-prompt\", \"prompt_template_id\": \"11111111-1111-1111-1111-111111111111\", \"prompt_template_version\": \"fixture-prompt_template_version\", \"provider\": \"fixture\", \"role\": \"fixture\", \"run_id\": \"11111111-1111-1111-1111-111111111111\", \"sequence_number\": \"fixture-sequence_number\", \"started_at\": \"2026-01-01T12:30:00+00:00\", \"status\": \"fixture\"}"
+  },
+  "_asset_data": {
+    "full": "{\"asset_type\": \"fixture-asset_type\", \"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"byte_size\": \"fixture-byte_size\", \"checksum\": \"fixture-checksum\", \"content_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"mime_type\": \"fixture-mime_type\", \"project_id\": \"11111111-1111-1111-1111-111111111111\", \"public_url\": \"fixture-public_url\", \"storage_path\": \"fixture-storage_path\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"uploaded_by_user_id\": \"11111111-1111-1111-1111-111111111111\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_billing_account_data": {
+    "full": "{\"company_name\": \"fixture-company_name\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"delinquent\": true, \"document\": \"fixture-document\", \"document_type\": \"fixture-document_type\", \"email\": \"fixture-email\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"name\": \"fixture-name\", \"payer_type\": \"fixture-payer_type\", \"phone\": \"fixture-phone\", \"provider\": \"fixture\", \"provider_customer_code\": \"fixture-provider_customer_code\", \"provider_customer_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"user_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_billing_address_data": {
+    "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"city\": \"fixture-city\", \"complement\": \"fixture-complement\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"neighborhood\": \"fixture-neighborhood\", \"number\": \"fixture-number\", \"state\": \"fixture-state\", \"street\": \"fixture-street\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"zip_code\": \"fixture-zip_code\"}"
+  },
+  "_brand_asset_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"description\": \"fixture-description\", \"file_name\": \"fixture-file_name\", \"file_url\": \"fixture-file_url\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"type\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_brand_color_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"color_name\": \"fixture-color_name\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"hex_code\": \"fixture-hex_code\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"order\": \"fixture-order\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_brand_data": {
+    "full": "{\"brand_voice\": \"fixture-brand_voice\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by_user_id\": \"11111111-1111-1111-1111-111111111111\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"description\": \"fixture-description\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"name\": \"fixture-name\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_brand_settings_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"generation_defaults\": \"fixture-generation_defaults\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"visual_settings\": \"fixture-visual_settings\", \"voice_settings\": \"fixture-voice_settings\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_campaign_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"description\": \"fixture-description\", \"end_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"name\": \"fixture-name\", \"objectives\": {\"fixture\": true}, \"start_at\": \"2026-01-01T12:30:00+00:00\", \"target_audience\": \"fixture-target_audience\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"voice\": \"fixture-voice\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_charge_data": {
+    "full": "{\"amount_cents\": 1, \"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"currency\": \"fixture-currency\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"invoice_id\": \"11111111-1111-1111-1111-111111111111\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_content_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by_user_id\": \"11111111-1111-1111-1111-111111111111\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"payload\": {\"fixture\": true}, \"project_id\": \"11111111-1111-1111-1111-111111111111\", \"title\": \"fixture-title\", \"type\": \"fixture-content_type\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_coupon_data": {
+    "full": "{\"applies_to\": \"fixture-applies_to\", \"code\": \"fixture-code\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"credits_amount\": \"fixture-credits_amount\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"discount_percent\": \"fixture-discount_percent\", \"expires_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"internal_note\": \"fixture-internal_note\", \"is_active\": true, \"max_redemptions\": \"fixture-max_redemptions\", \"min_purchase_cents\": \"fixture-min_purchase_cents\", \"once_per_workspace\": \"fixture-once_per_workspace\", \"redemptions_count\": \"fixture-redemptions_count\", \"type\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_coupon_redemption_data": {
+    "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"coupon_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"credits_applied\": \"fixture-credits_applied\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"discount_amount_cents\": \"fixture-discount_amount_cents\", \"discount_percent_applied\": \"fixture-discount_percent_applied\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"order_id\": \"11111111-1111-1111-1111-111111111111\", \"status\": \"fixture\", \"subscription_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_credit_package_data": {
+    "full": "{\"code\": \"fixture-code\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"credits_amount\": \"fixture-credits_amount\", \"currency\": \"fixture-currency\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"is_active\": true, \"name\": \"fixture-name\", \"price_cents\": 1, \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_design_structure_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"post_structure_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_generated_image_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"design_structure_id\": \"11111111-1111-1111-1111-111111111111\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"image_ratio\": \"fixture-image_ratio\", \"resolution\": \"fixture-resolution\", \"signed_url\": \"fixture-signed_url\", \"size\": \"fixture-size\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_generation_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"content_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"model\": \"fixture-model\", \"parameters\": \"fixture-parameters\", \"project_id\": \"11111111-1111-1111-1111-111111111111\", \"prompt\": \"fixture-prompt\", \"requested_by_user_id\": \"11111111-1111-1111-1111-111111111111\", \"type\": \"fixture-generation_type\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_image_data": {
+    "full": "{\"content_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"generation_id\": \"11111111-1111-1111-1111-111111111111\", \"height\": \"fixture-height\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"mime_type\": \"fixture-mime_type\", \"model\": \"fixture-model\", \"prompt\": \"fixture-prompt\", \"public_url\": \"fixture-public_url\", \"storage_path\": \"fixture-storage_path\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"version_number\": \"fixture-version_number\", \"width\": \"fixture-width\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_improved_content_data": {
+    "full": "{\"content_id\": \"11111111-1111-1111-1111-111111111111\", \"justification\": \"fixture-justification\", \"objective\": \"fixture-objective\", \"original_text\": \"fixture-original_text\", \"persistence\": \"fixture-persistence\", \"prompt_template\": \"fixture-prompt_template\", \"text\": \"fixture-text\"}"
+  },
+  "_invoice_data": {
+    "full": "{\"amount_cents\": 1, \"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"billing_at\": \"2026-01-01T12:30:00+00:00\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"currency\": \"fixture-currency\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"due_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"status\": \"fixture\", \"subscription_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_notification_data": {
+    "full": "{\"body\": \"fixture-body\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"payload\": {\"fixture\": true}, \"resource_id\": \"11111111-1111-1111-1111-111111111111\", \"resource_type\": \"fixture-resource_type\", \"title\": \"fixture-title\", \"type\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_notification_preference_data": {
+    "full": "{\"channel\": \"fixture\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"is_enabled\": true, \"type\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"user_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_notification_recipient_data": {
+    "full": "{\"attempts\": 1, \"channel\": \"fixture\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"notification_id\": \"11111111-1111-1111-1111-111111111111\", \"read_at\": \"2026-01-01T12:30:00+00:00\", \"sent_at\": \"2026-01-01T12:30:00+00:00\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"user_id\": \"11111111-1111-1111-1111-111111111111\", \"workspace_member_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_order_data": {
+    "full": "{\"amount_cents\": 1, \"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"closed\": true, \"created_at\": \"2026-01-01T12:30:00+00:00\", \"credit_package_id\": \"11111111-1111-1111-1111-111111111111\", \"currency\": \"fixture-currency\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"discount_cents\": \"fixture-discount_cents\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"status\": \"fixture\", \"subtotal_cents\": \"fixture-subtotal_cents\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_payment_method_data": {
+    "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"card_brand\": \"fixture-card_brand\", \"card_last_four\": \"fixture-card_last_four\", \"card_status\": \"fixture-card_status\", \"card_type\": \"fixture-card_type\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"exp_month\": \"fixture-exp_month\", \"exp_year\": \"fixture-exp_year\", \"holder_document\": \"fixture-holder_document\", \"holder_name\": \"fixture-holder_name\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"is_default\": \"fixture-is_default\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_persona_data": {
+    "full": "{\"age\": \"fixture-age\", \"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"challenge\": \"fixture-challenge\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"gender\": \"fixture-gender\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"interest\": \"fixture-interest\", \"journey\": \"fixture-journey\", \"main_goal\": \"fixture-main_goal\", \"name\": \"fixture-name\", \"routine\": \"fixture-routine\", \"trigger\": \"fixture-trigger\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_plan_data": {
+    "full": "{\"code\": \"fixture-code\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"description\": \"fixture-description\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"is_active\": true, \"metadata\": {\"fixture\": true}, \"name\": \"fixture-name\", \"type\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_plan_item_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"cycles\": 1, \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"description\": \"fixture-description\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"name\": \"fixture-name\", \"plan_id\": \"11111111-1111-1111-1111-111111111111\", \"price_brackets\": {\"fixture\": true}, \"price_cents\": 1, \"pricing_scheme_type\": \"fixture-pricing_scheme_type\", \"quantity\": 1, \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_planning_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"campaign_id\": \"11111111-1111-1111-1111-111111111111\", \"carousel_amount\": \"fixture-carousel_amount\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"end_period\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"info\": {\"fixture\": true}, \"persona_id\": \"11111111-1111-1111-1111-111111111111\", \"special_dates\": \"fixture-special_dates\", \"start_period\": \"2026-01-01T12:30:00+00:00\", \"static_amount\": \"fixture-static_amount\", \"stories_amount\": \"fixture-stories_amount\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_post_structure_data": {
+    "full": "{\"art_guiding\": \"fixture-art_guiding\", \"big_idea\": \"fixture-big_idea\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"format\": \"fixture-format\", \"headline\": \"fixture-headline\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"image_cta\": \"fixture-image_cta\", \"main_message\": \"fixture-main_message\", \"objective\": \"fixture-objective\", \"planning_id\": \"11111111-1111-1111-1111-111111111111\", \"ratio\": \"fixture-ratio\", \"resolution\": \"fixture-resolution\", \"status\": \"fixture\", \"title\": \"fixture-title\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_project_data": {
+    "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by_user_id\": \"11111111-1111-1111-1111-111111111111\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"description\": \"fixture-description\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"name\": \"fixture-name\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_provider_customer_data": {
+    "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"provider\": \"fixture\", \"provider_code\": \"fixture-provider_code\", \"provider_customer_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_provider_dispute_data": {
+    "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"charge_id\": \"11111111-1111-1111-1111-111111111111\", \"code\": \"fixture-code\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deadline_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"opened_at\": \"2026-01-01T12:30:00+00:00\", \"payload\": {\"fixture\": true}, \"reason\": \"fixture-reason\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_provider_idempotency_key_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"idempotency_key\": \"fixture-idempotency_key\", \"provider\": \"fixture\", \"request_hash\": \"fixture-request_hash\", \"resource_id\": \"11111111-1111-1111-1111-111111111111\", \"resource_type\": \"fixture-resource_type\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_provider_subscription_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"payload\": {\"fixture\": true}, \"provider\": \"fixture\", \"provider_status\": \"fixture-provider_status\", \"provider_subscription_id\": \"11111111-1111-1111-1111-111111111111\", \"subscription_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_provider_webhook_event_data": {
+    "full": "{\"account_id\": \"11111111-1111-1111-1111-111111111111\", \"attempts\": 1, \"dedupe_key\": \"fixture-dedupe_key\", \"event_type\": \"fixture-event_type\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"last_error\": \"fixture-last_error\", \"payload\": {\"fixture\": true}, \"processed_at\": \"2026-01-01T12:30:00+00:00\", \"provider\": \"fixture\", \"provider_event_id\": \"11111111-1111-1111-1111-111111111111\", \"received_at\": \"2026-01-01T12:30:00+00:00\", \"resource_id\": \"11111111-1111-1111-1111-111111111111\", \"resource_type\": \"fixture-resource_type\", \"signature_verified\": true, \"status\": \"fixture\"}"
+  },
+  "_refund_data": {
+    "full": "{\"amount_cents\": 1, \"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"currency\": \"fixture-currency\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"invoice_id\": \"11111111-1111-1111-1111-111111111111\", \"reason\": \"fixture-reason\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_settings_data": {
+    "full": "{\"brand_name\": \"fixture-brand_name\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"default_preferences\": \"fixture-default_preferences\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"segment\": \"fixture-segment\", \"tone\": \"fixture-tone\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"user_id\": \"11111111-1111-1111-1111-111111111111\", \"visual_style\": \"fixture-visual_style\", \"voice\": \"fixture-voice\"}"
+  },
+  "_subscription_data": {
+    "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"billing_day\": \"fixture-billing_day\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"payment_method\": \"fixture-payment_method\", \"plan_id\": \"11111111-1111-1111-1111-111111111111\", \"start_at\": \"2026-01-01T12:30:00+00:00\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_subscription_history_data": {
+    "full": "{\"change_type\": \"fixture-change_type\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"plan_id\": \"11111111-1111-1111-1111-111111111111\", \"previous_plan_id\": \"11111111-1111-1111-1111-111111111111\", \"previous_status\": \"fixture-previous_status\", \"reason\": \"fixture-reason\", \"status\": \"fixture\", \"subscription_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_user_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"display_name\": \"fixture-display_name\", \"email\": \"fixture-email\", \"external_id\": \"11111111-1111-1111-1111-111111111111\", \"global_role\": \"fixture-global_role\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_user_device_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"fcm_token\": \"fixture-fcm_token\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"is_active\": true, \"last_seen_at\": \"2026-01-01T12:30:00+00:00\", \"platform\": \"fixture-platform\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"user_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_workspace_credit_transaction_data": {
+    "full": "{\"amount\": 1, \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"reference_id\": \"11111111-1111-1111-1111-111111111111\", \"reference_type\": \"fixture-reference_type\", \"transaction_type\": \"fixture-transaction_type\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_workspace_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"name\": \"fixture-name\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
+  },
+  "_workspace_invite_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by\": \"fixture-created_by\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"email\": \"fixture-email\", \"expires_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"is_active\": true, \"last_used_at\": \"2026-01-01T12:30:00+00:00\", \"max_uses\": \"fixture-max_uses\", \"revoked_at\": \"2026-01-01T12:30:00+00:00\", \"role\": \"fixture\", \"status\": \"fixture\", \"type\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"uses_count\": \"fixture-uses_count\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_workspace_invite_usage_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"invite_id\": \"11111111-1111-1111-1111-111111111111\", \"member_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"used_at\": \"2026-01-01T12:30:00+00:00\", \"user_id\": \"11111111-1111-1111-1111-111111111111\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  },
+  "_workspace_membership_data": {
+    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"role\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"user_id\": \"11111111-1111-1111-1111-111111111111\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
+  }
+}

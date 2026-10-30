@@ -5,7 +5,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-from creator.infrastructure.database import schema_models
+from creator.infrastructure.database import metadata  # noqa: F401
 
 revision: str = "0010_database_diagram_slices"
 down_revision: str | None = "0009_agent_image_workflows"
@@ -15,7 +15,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    tables = schema_models.Base.metadata.tables
+    tables = metadata.Base.metadata.tables
     for table_name in (
         "plans",
         "plan_items",

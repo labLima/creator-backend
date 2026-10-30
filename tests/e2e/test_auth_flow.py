@@ -7,10 +7,10 @@ import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from creator.api.routes import auth as auth_routes
-from creator.application.auth import RefreshInProgressError
+from creator.auth import router as auth_routes
+from creator.auth.ports import AuthSessionRecord
+from creator.auth.service import RefreshInProgressError
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
-from creator.repositories.auth import AuthSessionRecord
 from tests.e2e.conftest import SECRET, signup_payload
 
 pytestmark = pytest.mark.e2e

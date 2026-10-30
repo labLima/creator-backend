@@ -1,0 +1,1818 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/assets",
+    "operation_id": "list_assets_api_v1_assets_get",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/assets",
+    "operation_id": "create_asset_api_v1_assets_post",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/assets/{id}",
+    "operation_id": "delete_asset_api_v1_assets__id__delete",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assets/{id}",
+    "operation_id": "get_asset_api_v1_assets__id__get",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/assets/{id}",
+    "operation_id": "update_asset_api_v1_assets__id__put",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/csrf",
+    "operation_id": "csrf_token_api_v1_auth_csrf_get",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "operation_id": "login_with_password_api_v1_auth_login_post",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "operation_id": "logout_session_api_v1_auth_logout_post",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/refresh",
+    "operation_id": "refresh_session_api_v1_auth_refresh_post",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/signup",
+    "operation_id": "signup_with_password_api_v1_auth_signup_post",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing-accounts",
+    "operation_id": "list_billing_accounts_api_v1_billing_accounts_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing-accounts",
+    "operation_id": "create_billing_account_api_v1_billing_accounts_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/billing-accounts/{id}",
+    "operation_id": "delete_billing_account_api_v1_billing_accounts__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing-accounts/{id}",
+    "operation_id": "get_billing_account_api_v1_billing_accounts__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/billing-accounts/{id}",
+    "operation_id": "update_billing_account_api_v1_billing_accounts__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing-addresses",
+    "operation_id": "list_billing_addresses_api_v1_billing_addresses_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing-addresses",
+    "operation_id": "create_billing_address_api_v1_billing_addresses_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/billing-addresses/{id}",
+    "operation_id": "delete_billing_address_api_v1_billing_addresses__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing-addresses/{id}",
+    "operation_id": "get_billing_address_api_v1_billing_addresses__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/billing-addresses/{id}",
+    "operation_id": "update_billing_address_api_v1_billing_addresses__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing-payment-methods",
+    "operation_id": "list_payment_methods_api_v1_billing_payment_methods_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing-payment-methods",
+    "operation_id": "create_payment_method_api_v1_billing_payment_methods_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/billing-payment-methods/{id}",
+    "operation_id": "delete_payment_method_api_v1_billing_payment_methods__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing-payment-methods/{id}",
+    "operation_id": "get_payment_method_api_v1_billing_payment_methods__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/billing-payment-methods/{id}",
+    "operation_id": "update_payment_method_api_v1_billing_payment_methods__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/brand-assets",
+    "operation_id": "list_brand_assets_api_v1_brand_assets_get",
+    "tags": [
+      "Brand Assets"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/brand-assets",
+    "operation_id": "create_brand_asset_api_v1_brand_assets_post",
+    "tags": [
+      "Brand Assets"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/brand-assets/{id}",
+    "operation_id": "delete_brand_asset_api_v1_brand_assets__id__delete",
+    "tags": [
+      "Brand Assets"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/brand-assets/{id}",
+    "operation_id": "get_brand_asset_api_v1_brand_assets__id__get",
+    "tags": [
+      "Brand Assets"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/brand-assets/{id}",
+    "operation_id": "update_brand_asset_api_v1_brand_assets__id__put",
+    "tags": [
+      "Brand Assets"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/brand-colors",
+    "operation_id": "list_brand_colors_api_v1_brand_colors_get",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/brand-colors",
+    "operation_id": "create_brand_color_api_v1_brand_colors_post",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/brand-colors/{id}",
+    "operation_id": "delete_brand_color_api_v1_brand_colors__id__delete",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/brand-colors/{id}",
+    "operation_id": "get_brand_color_api_v1_brand_colors__id__get",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/brand-colors/{id}",
+    "operation_id": "update_brand_color_api_v1_brand_colors__id__put",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/brands",
+    "operation_id": "list_brands_api_v1_brands_get",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/brands",
+    "operation_id": "create_brand_api_v1_brands_post",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/brands/{id}",
+    "operation_id": "delete_brand_api_v1_brands__id__delete",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/brands/{id}",
+    "operation_id": "get_brand_api_v1_brands__id__get",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/brands/{id}",
+    "operation_id": "update_brand_api_v1_brands__id__put",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/brands/{id}/settings",
+    "operation_id": "delete_brand_settings_api_v1_brands__id__settings_delete",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/brands/{id}/settings",
+    "operation_id": "get_brand_settings_api_v1_brands__id__settings_get",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/brands/{id}/settings",
+    "operation_id": "update_brand_settings_api_v1_brands__id__settings_patch",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/brands/{id}/settings",
+    "operation_id": "upsert_brand_settings_api_v1_brands__id__settings_put",
+    "tags": [
+      "Brands"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/campaigns",
+    "operation_id": "list_campaigns_api_v1_campaigns_get",
+    "tags": [
+      "Campaigns"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/campaigns",
+    "operation_id": "create_campaign_api_v1_campaigns_post",
+    "tags": [
+      "Campaigns"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/campaigns/{id}",
+    "operation_id": "delete_campaign_api_v1_campaigns__id__delete",
+    "tags": [
+      "Campaigns"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/campaigns/{id}",
+    "operation_id": "get_campaign_api_v1_campaigns__id__get",
+    "tags": [
+      "Campaigns"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/campaigns/{id}",
+    "operation_id": "update_campaign_api_v1_campaigns__id__put",
+    "tags": [
+      "Campaigns"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/charges",
+    "operation_id": "list_charges_api_v1_charges_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/charges",
+    "operation_id": "create_charge_api_v1_charges_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/charges/{id}",
+    "operation_id": "delete_charge_api_v1_charges__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/charges/{id}",
+    "operation_id": "get_charge_api_v1_charges__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/charges/{id}",
+    "operation_id": "update_charge_api_v1_charges__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/content",
+    "operation_id": "list_content_api_v1_content_get",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/content/generate",
+    "operation_id": "generate_text_content_api_v1_content_generate_post",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/content/improve",
+    "operation_id": "improve_text_content_api_v1_content_improve_post",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/content/{id}",
+    "operation_id": "delete_content_api_v1_content__id__delete",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/content/{id}",
+    "operation_id": "get_content_api_v1_content__id__get",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/contents",
+    "operation_id": "list_content_api_v1_contents_get",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/contents",
+    "operation_id": "create_content_api_v1_contents_post",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/contents/{id}",
+    "operation_id": "delete_content_api_v1_contents__id__delete",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/contents/{id}",
+    "operation_id": "get_content_api_v1_contents__id__get",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/contents/{id}",
+    "operation_id": "update_content_api_v1_contents__id__put",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/coupon-redemptions",
+    "operation_id": "list_coupon_redemptions_api_v1_coupon_redemptions_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/coupon-redemptions",
+    "operation_id": "create_coupon_redemption_api_v1_coupon_redemptions_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/coupon-redemptions/{id}",
+    "operation_id": "delete_coupon_redemption_api_v1_coupon_redemptions__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/coupon-redemptions/{id}",
+    "operation_id": "get_coupon_redemption_api_v1_coupon_redemptions__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/coupon-redemptions/{id}",
+    "operation_id": "update_coupon_redemption_api_v1_coupon_redemptions__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/coupons",
+    "operation_id": "list_coupons_api_v1_coupons_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/coupons",
+    "operation_id": "create_coupon_api_v1_coupons_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/coupons/{id}",
+    "operation_id": "delete_coupon_api_v1_coupons__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/coupons/{id}",
+    "operation_id": "get_coupon_api_v1_coupons__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/coupons/{id}",
+    "operation_id": "update_coupon_api_v1_coupons__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/credit-packages",
+    "operation_id": "list_credit_packages_api_v1_credit_packages_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/credit-packages",
+    "operation_id": "create_credit_package_api_v1_credit_packages_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/credit-packages/{id}",
+    "operation_id": "delete_credit_package_api_v1_credit_packages__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/credit-packages/{id}",
+    "operation_id": "get_credit_package_api_v1_credit_packages__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/credit-packages/{id}",
+    "operation_id": "update_credit_package_api_v1_credit_packages__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/design-structures",
+    "operation_id": "list_design_structures_api_v1_design_structures_get",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/design-structures",
+    "operation_id": "create_design_structure_api_v1_design_structures_post",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/design-structures/{id}",
+    "operation_id": "delete_design_structure_api_v1_design_structures__id__delete",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/design-structures/{id}",
+    "operation_id": "get_design_structure_api_v1_design_structures__id__get",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/design-structures/{id}",
+    "operation_id": "update_design_structure_api_v1_design_structures__id__put",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/generated-images/{id}",
+    "operation_id": "get_generated_image_api_v1_generated_images__id__get",
+    "tags": [
+      "Images"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/generations",
+    "operation_id": "list_generations_api_v1_generations_get",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/generations",
+    "operation_id": "create_generation_api_v1_generations_post",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/generations/image-workflows",
+    "operation_id": "create_image_workflow_api_v1_generations_image_workflows_post",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/generations/image-workflows/{id}",
+    "operation_id": "get_image_workflow_api_v1_generations_image_workflows__id__get",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/generations/image-workflows/{id}/decision",
+    "operation_id": "decide_image_workflow_route_api_v1_generations_image_workflows__id__decision_post",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/generations/image-workflows/{id}/steps",
+    "operation_id": "list_image_workflow_steps_api_v1_generations_image_workflows__id__steps_get",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/generations/{id}",
+    "operation_id": "delete_generation_api_v1_generations__id__delete",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/generations/{id}",
+    "operation_id": "get_generation_api_v1_generations__id__get",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/generations/{id}",
+    "operation_id": "update_generation_api_v1_generations__id__put",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/images/generate",
+    "operation_id": "generate_image_api_v1_images_generate_post",
+    "tags": [
+      "Images"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/images/{id}",
+    "operation_id": "get_image_api_v1_images__id__get",
+    "tags": [
+      "Images"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/images/{id}/regenerate",
+    "operation_id": "regenerate_image_api_v1_images__id__regenerate_post",
+    "tags": [
+      "Images"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invoices",
+    "operation_id": "list_invoices_api_v1_invoices_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invoices",
+    "operation_id": "create_invoice_api_v1_invoices_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/invoices/{id}",
+    "operation_id": "delete_invoice_api_v1_invoices__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invoices/{id}",
+    "operation_id": "get_invoice_api_v1_invoices__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/invoices/{id}",
+    "operation_id": "update_invoice_api_v1_invoices__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notification-preferences",
+    "operation_id": "list_notification_preferences_api_v1_notification_preferences_get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notification-preferences",
+    "operation_id": "create_notification_preference_api_v1_notification_preferences_post",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/notification-preferences/{id}",
+    "operation_id": "delete_notification_preference_api_v1_notification_preferences__id__delete",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notification-preferences/{id}",
+    "operation_id": "get_notification_preference_api_v1_notification_preferences__id__get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notification-preferences/{id}",
+    "operation_id": "update_notification_preference_api_v1_notification_preferences__id__put",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notification-recipients",
+    "operation_id": "list_notification_recipients_api_v1_notification_recipients_get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notification-recipients",
+    "operation_id": "create_notification_recipient_api_v1_notification_recipients_post",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/notification-recipients/{id}",
+    "operation_id": "delete_notification_recipient_api_v1_notification_recipients__id__delete",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notification-recipients/{id}",
+    "operation_id": "get_notification_recipient_api_v1_notification_recipients__id__get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notification-recipients/{id}",
+    "operation_id": "update_notification_recipient_api_v1_notification_recipients__id__put",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "operation_id": "list_notifications_api_v1_notifications_get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications",
+    "operation_id": "create_notification_api_v1_notifications_post",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/notifications/{id}",
+    "operation_id": "delete_notification_api_v1_notifications__id__delete",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications/{id}",
+    "operation_id": "get_notification_api_v1_notifications__id__get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notifications/{id}",
+    "operation_id": "update_notification_api_v1_notifications__id__put",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/orders",
+    "operation_id": "list_orders_api_v1_orders_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/orders",
+    "operation_id": "create_order_api_v1_orders_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/orders/{id}",
+    "operation_id": "delete_order_api_v1_orders__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/orders/{id}",
+    "operation_id": "get_order_api_v1_orders__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/orders/{id}",
+    "operation_id": "update_order_api_v1_orders__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/personas",
+    "operation_id": "list_personas_api_v1_personas_get",
+    "tags": [
+      "Personas"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/personas",
+    "operation_id": "create_persona_api_v1_personas_post",
+    "tags": [
+      "Personas"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/personas/{id}",
+    "operation_id": "delete_persona_api_v1_personas__id__delete",
+    "tags": [
+      "Personas"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/personas/{id}",
+    "operation_id": "get_persona_api_v1_personas__id__get",
+    "tags": [
+      "Personas"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/personas/{id}",
+    "operation_id": "update_persona_api_v1_personas__id__put",
+    "tags": [
+      "Personas"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/plan-items",
+    "operation_id": "list_plan_items_api_v1_plan_items_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plan-items",
+    "operation_id": "create_plan_item_api_v1_plan_items_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/plan-items/{id}",
+    "operation_id": "delete_plan_item_api_v1_plan_items__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/plan-items/{id}",
+    "operation_id": "get_plan_item_api_v1_plan_items__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/plan-items/{id}",
+    "operation_id": "update_plan_item_api_v1_plan_items__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/planning",
+    "operation_id": "list_planning_api_v1_planning_get",
+    "tags": [
+      "Planning"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/planning",
+    "operation_id": "create_planning_api_v1_planning_post",
+    "tags": [
+      "Planning"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/planning/{id}",
+    "operation_id": "delete_planning_api_v1_planning__id__delete",
+    "tags": [
+      "Planning"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/planning/{id}",
+    "operation_id": "get_planning_api_v1_planning__id__get",
+    "tags": [
+      "Planning"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/planning/{id}",
+    "operation_id": "update_planning_api_v1_planning__id__put",
+    "tags": [
+      "Planning"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/plans",
+    "operation_id": "list_plans_api_v1_plans_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plans",
+    "operation_id": "create_plan_api_v1_plans_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/plans/{id}",
+    "operation_id": "delete_plan_api_v1_plans__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/plans/{id}",
+    "operation_id": "get_plan_api_v1_plans__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/plans/{id}",
+    "operation_id": "update_plan_api_v1_plans__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/post-structures",
+    "operation_id": "list_post_structures_api_v1_post_structures_get",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/post-structures",
+    "operation_id": "create_post_structure_api_v1_post_structures_post",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/post-structures/{id}",
+    "operation_id": "delete_post_structure_api_v1_post_structures__id__delete",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/post-structures/{id}",
+    "operation_id": "get_post_structure_api_v1_post_structures__id__get",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/post-structures/{id}",
+    "operation_id": "update_post_structure_api_v1_post_structures__id__put",
+    "tags": [
+      "Post Structures"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/projects",
+    "operation_id": "list_projects_api_v1_projects_get",
+    "tags": [
+      "Projects"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/projects",
+    "operation_id": "create_project_api_v1_projects_post",
+    "tags": [
+      "Projects"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/projects/{id}",
+    "operation_id": "delete_project_api_v1_projects__id__delete",
+    "tags": [
+      "Projects"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/projects/{id}",
+    "operation_id": "get_project_api_v1_projects__id__get",
+    "tags": [
+      "Projects"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/projects/{id}",
+    "operation_id": "update_project_api_v1_projects__id__put",
+    "tags": [
+      "Projects"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-customers",
+    "operation_id": "list_provider_customers_api_v1_provider_customers_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/provider-customers",
+    "operation_id": "create_provider_customer_api_v1_provider_customers_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/provider-customers/{id}",
+    "operation_id": "delete_provider_customer_api_v1_provider_customers__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-customers/{id}",
+    "operation_id": "get_provider_customer_api_v1_provider_customers__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/provider-customers/{id}",
+    "operation_id": "update_provider_customer_api_v1_provider_customers__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-disputes",
+    "operation_id": "list_provider_disputes_api_v1_provider_disputes_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/provider-disputes",
+    "operation_id": "create_provider_dispute_api_v1_provider_disputes_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/provider-disputes/{id}",
+    "operation_id": "delete_provider_dispute_api_v1_provider_disputes__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-disputes/{id}",
+    "operation_id": "get_provider_dispute_api_v1_provider_disputes__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/provider-disputes/{id}",
+    "operation_id": "update_provider_dispute_api_v1_provider_disputes__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-idempotency-keys",
+    "operation_id": "list_provider_idempotency_keys_api_v1_provider_idempotency_keys_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/provider-idempotency-keys",
+    "operation_id": "create_provider_idempotency_key_api_v1_provider_idempotency_keys_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/provider-idempotency-keys/{id}",
+    "operation_id": "delete_provider_idempotency_key_api_v1_provider_idempotency_keys__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-idempotency-keys/{id}",
+    "operation_id": "get_provider_idempotency_key_api_v1_provider_idempotency_keys__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/provider-idempotency-keys/{id}",
+    "operation_id": "update_provider_idempotency_key_api_v1_provider_idempotency_keys__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-subscriptions",
+    "operation_id": "list_provider_subscriptions_api_v1_provider_subscriptions_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/provider-subscriptions",
+    "operation_id": "create_provider_subscription_api_v1_provider_subscriptions_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/provider-subscriptions/{id}",
+    "operation_id": "delete_provider_subscription_api_v1_provider_subscriptions__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-subscriptions/{id}",
+    "operation_id": "get_provider_subscription_api_v1_provider_subscriptions__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/provider-subscriptions/{id}",
+    "operation_id": "update_provider_subscription_api_v1_provider_subscriptions__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-webhook-events",
+    "operation_id": "list_provider_webhook_events_api_v1_provider_webhook_events_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/provider-webhook-events",
+    "operation_id": "create_provider_webhook_event_api_v1_provider_webhook_events_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/provider-webhook-events/{id}",
+    "operation_id": "delete_provider_webhook_event_api_v1_provider_webhook_events__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/provider-webhook-events/{id}",
+    "operation_id": "get_provider_webhook_event_api_v1_provider_webhook_events__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/provider-webhook-events/{id}",
+    "operation_id": "update_provider_webhook_event_api_v1_provider_webhook_events__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/refunds",
+    "operation_id": "list_refunds_api_v1_refunds_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/refunds",
+    "operation_id": "create_refund_api_v1_refunds_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/refunds/{id}",
+    "operation_id": "delete_refund_api_v1_refunds__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/refunds/{id}",
+    "operation_id": "get_refund_api_v1_refunds__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/refunds/{id}",
+    "operation_id": "update_refund_api_v1_refunds__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/settings",
+    "operation_id": "get_my_settings_api_v1_settings_get",
+    "tags": [
+      "Settings"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/settings",
+    "operation_id": "update_my_settings_api_v1_settings_patch",
+    "tags": [
+      "Settings"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/subscription-history",
+    "operation_id": "list_subscription_history_api_v1_subscription_history_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/subscription-history",
+    "operation_id": "create_subscription_history_api_v1_subscription_history_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/subscription-history/{id}",
+    "operation_id": "delete_subscription_history_api_v1_subscription_history__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/subscription-history/{id}",
+    "operation_id": "get_subscription_history_api_v1_subscription_history__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/subscription-history/{id}",
+    "operation_id": "update_subscription_history_api_v1_subscription_history__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/subscriptions",
+    "operation_id": "list_subscriptions_api_v1_subscriptions_get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/subscriptions",
+    "operation_id": "create_subscription_api_v1_subscriptions_post",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/subscriptions/{id}",
+    "operation_id": "delete_subscription_api_v1_subscriptions__id__delete",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/subscriptions/{id}",
+    "operation_id": "get_subscription_api_v1_subscriptions__id__get",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/subscriptions/{id}",
+    "operation_id": "update_subscription_api_v1_subscriptions__id__put",
+    "tags": [
+      "Billing"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/user-devices",
+    "operation_id": "list_user_devices_api_v1_user_devices_get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/user-devices",
+    "operation_id": "create_user_device_api_v1_user_devices_post",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/user-devices/{id}",
+    "operation_id": "delete_user_device_api_v1_user_devices__id__delete",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/user-devices/{id}",
+    "operation_id": "get_user_device_api_v1_user_devices__id__get",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/user-devices/{id}",
+    "operation_id": "update_user_device_api_v1_user_devices__id__put",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users",
+    "operation_id": "list_users_api_v1_users_get",
+    "tags": [
+      "Users"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users",
+    "operation_id": "create_user_api_v1_users_post",
+    "tags": [
+      "Users"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/me",
+    "operation_id": "get_my_profile_api_v1_users_me_get",
+    "tags": [
+      "Users"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/users/{id}",
+    "operation_id": "delete_user_api_v1_users__id__delete",
+    "tags": [
+      "Users"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/{id}",
+    "operation_id": "get_user_api_v1_users__id__get",
+    "tags": [
+      "Users"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/users/{id}",
+    "operation_id": "update_user_api_v1_users__id__put",
+    "tags": [
+      "Users"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspace-credit-transactions",
+    "operation_id": "list_workspace_credit_transactions_api_v1_workspace_credit_transactions_get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workspace-credit-transactions",
+    "operation_id": "create_workspace_credit_transaction_api_v1_workspace_credit_transactions_post",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/workspace-credit-transactions/{id}",
+    "operation_id": "delete_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__delete",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspace-credit-transactions/{id}",
+    "operation_id": "get_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspace-invite-usages",
+    "operation_id": "list_workspace_invite_usages_api_v1_workspace_invite_usages_get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workspace-invite-usages",
+    "operation_id": "create_workspace_invite_usage_api_v1_workspace_invite_usages_post",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/workspace-invite-usages/{id}",
+    "operation_id": "delete_workspace_invite_usage_api_v1_workspace_invite_usages__id__delete",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspace-invite-usages/{id}",
+    "operation_id": "get_workspace_invite_usage_api_v1_workspace_invite_usages__id__get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/workspace-invite-usages/{id}",
+    "operation_id": "update_workspace_invite_usage_api_v1_workspace_invite_usages__id__put",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspace-invites",
+    "operation_id": "list_workspace_invites_api_v1_workspace_invites_get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workspace-invites",
+    "operation_id": "create_workspace_invite_api_v1_workspace_invites_post",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/workspace-invites/{id}",
+    "operation_id": "delete_workspace_invite_api_v1_workspace_invites__id__delete",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspace-invites/{id}",
+    "operation_id": "get_workspace_invite_api_v1_workspace_invites__id__get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/workspace-invites/{id}",
+    "operation_id": "update_workspace_invite_api_v1_workspace_invites__id__put",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspaces",
+    "operation_id": "list_workspaces_api_v1_workspaces_get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workspaces",
+    "operation_id": "create_workspace_api_v1_workspaces_post",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/workspaces/{id}",
+    "operation_id": "delete_workspace_api_v1_workspaces__id__delete",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workspaces/{id}",
+    "operation_id": "get_workspace_api_v1_workspaces__id__get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/workspaces/{id}",
+    "operation_id": "update_workspace_api_v1_workspaces__id__put",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "operation_id": "health_health_get",
+    "tags": [
+      "System"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/health/live",
+    "operation_id": "live_health_health_live_get",
+    "tags": [
+      "System"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/metrics",
+    "operation_id": "metrics_metrics_get",
+    "tags": [
+      "System"
+    ]
+  }
+]

@@ -8,145 +8,130 @@ from types import TracebackType
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from creator.domain.exceptions import PersistenceError
-from creator.infrastructure.database.db import SessionLocal
-from creator.infrastructure.persistence.repositories.auth_session_repositories import (
-    SqlAlchemyAuthSessionRepository,
-)
-from creator.infrastructure.persistence.repositories.billing_lifecycle_repositories import (
-    SqlAlchemyChargeRepository,
-    SqlAlchemyInvoiceRepository,
-    SqlAlchemySubscriptionRepository,
-)
-from creator.infrastructure.persistence.repositories.billing_profile_repositories import (
-    SqlAlchemyBillingAddressRepository,
-    SqlAlchemyBillingPaymentMethodRepository,
-)
-from creator.infrastructure.persistence.repositories.billing_repositories import (
+from creator.asset.ports import AssetRepository
+from creator.asset.repository import SqlAlchemyAssetRepository
+from creator.auth.ports import AuthSessionRepository
+from creator.auth.repository import SqlAlchemyAuthSessionRepository
+from creator.billing_account.ports import BillingAccountRepository, BillingAddressRepository
+from creator.billing_account.repository import (
     SqlAlchemyBillingAccountRepository,
-    SqlAlchemyPlanItemRepository,
-    SqlAlchemyPlanRepository,
+    SqlAlchemyBillingAddressRepository,
 )
-from creator.infrastructure.persistence.repositories.brand_color_repositories import (
-    SqlAlchemyBrandColorRepository,
-)
-from creator.infrastructure.persistence.repositories.catalog_repositories import (
-    SqlAlchemyCouponRepository,
-    SqlAlchemyCreditPackageRepository,
-)
-from creator.infrastructure.persistence.repositories.commerce_repositories import (
-    SqlAlchemyCouponRedemptionRepository,
-    SqlAlchemyOrderRepository,
-    SqlAlchemyWorkspaceCreditTransactionRepository,
-)
-from creator.infrastructure.persistence.repositories.core import (
-    SqlAlchemyAgentWorkflowRepository,
-    SqlAlchemyAssetRepository,
-    SqlAlchemyBrandRepository,
-    SqlAlchemyBrandSettingsRepository,
-    SqlAlchemyContentRepository,
-    SqlAlchemyGenerationRepository,
-    SqlAlchemyImageGenerationRepository,
-    SqlAlchemyProjectRepository,
-    SqlAlchemySettingsRepository,
-    SqlAlchemyUserRepository,
-    SqlAlchemyWorkspaceRepository,
-    map_sqlalchemy_error,
-)
-from creator.infrastructure.persistence.repositories.design_repositories import (
-    SqlAlchemyDesignStructureRepository,
-)
-from creator.infrastructure.persistence.repositories.invite_usage_repositories import (
-    SqlAlchemyWorkspaceInviteUsageRepository,
-)
-from creator.infrastructure.persistence.repositories.notification_repositories import (
-    SqlAlchemyNotificationPreferenceRepository,
-    SqlAlchemyNotificationRecipientRepository,
-    SqlAlchemyNotificationRepository,
-    SqlAlchemyUserDeviceRepository,
-)
-from creator.infrastructure.persistence.repositories.outbox import SqlAlchemyOutboxRepository
-from creator.infrastructure.persistence.repositories.provider_audit_repositories import (
-    SqlAlchemyProviderIdempotencyKeyRepository,
-    SqlAlchemyProviderWebhookEventRepository,
-)
-from creator.infrastructure.persistence.repositories.provider_repositories import (
-    SqlAlchemyProviderDisputeRepository,
-    SqlAlchemyRefundRepository,
-)
-from creator.infrastructure.persistence.repositories.provider_sync_repositories import (
-    SqlAlchemyProviderCustomerRepository,
-    SqlAlchemyProviderSubscriptionRepository,
-)
-from creator.infrastructure.persistence.repositories.schema_repositories import (
-    SqlAlchemyBrandAssetRepository,
-    SqlAlchemyCampaignRepository,
-    SqlAlchemyGeneratedImageRepository,
-    SqlAlchemyPersonaRepository,
-    SqlAlchemyPlanningRepository,
-    SqlAlchemyPostStructureRepository,
-)
-from creator.infrastructure.persistence.repositories.subscription_history_repositories import (
-    SqlAlchemySubscriptionHistoryRepository,
-)
-from creator.infrastructure.persistence.repositories.workspace_invite_repositories import (
-    SqlAlchemyWorkspaceInviteRepository,
-)
-from creator.repositories import (
-    AgentWorkflowRepository,
-    AssetRepository,
-    AuthSessionRepository,
-    BillingAccountRepository,
-    BillingAddressRepository,
-    BillingPaymentMethodRepository,
-    BrandAssetRepository,
-    BrandColorRepository,
-    BrandRepository,
-    BrandSettingsRepository,
-    CampaignRepository,
-    ChargeRepository,
-    ContentRepository,
-    CouponRedemptionRepository,
-    CouponRepository,
-    CreditPackageRepository,
-    DesignStructureRepository,
-    GeneratedImageRepository,
-    GenerationRepository,
-    ImageGenerationRepository,
-    InvoiceRepository,
-    NotificationPreferenceRepository,
-    NotificationRecipientRepository,
-    NotificationRepository,
-    OrderRepository,
-    OutboxRepository,
-    PersonaRepository,
-    PlanItemRepository,
-    PlanningRepository,
-    PlanRepository,
-    PostStructureRepository,
-    ProjectRepository,
+from creator.billing_provider.ports import (
     ProviderCustomerRepository,
     ProviderDisputeRepository,
     ProviderIdempotencyKeyRepository,
     ProviderSubscriptionRepository,
     ProviderWebhookEventRepository,
-    RefundRepository,
-    SettingsRepository,
-    SubscriptionHistoryRepository,
-    SubscriptionRepository,
+)
+from creator.billing_provider.repository import (
+    SqlAlchemyProviderCustomerRepository,
+    SqlAlchemyProviderDisputeRepository,
+    SqlAlchemyProviderIdempotencyKeyRepository,
+    SqlAlchemyProviderSubscriptionRepository,
+    SqlAlchemyProviderWebhookEventRepository,
+)
+from creator.brand.ports import (
+    BrandAssetRepository,
+    BrandColorRepository,
+    BrandRepository,
+    BrandSettingsRepository,
+)
+from creator.brand.repository import (
+    SqlAlchemyBrandAssetRepository,
+    SqlAlchemyBrandColorRepository,
+    SqlAlchemyBrandRepository,
+    SqlAlchemyBrandSettingsRepository,
+)
+from creator.campaign.ports import CampaignRepository
+from creator.campaign.repository import SqlAlchemyCampaignRepository
+from creator.charge.ports import ChargeRepository
+from creator.charge.repository import SqlAlchemyChargeRepository
+from creator.content.ports import ContentRepository
+from creator.content.repository import SqlAlchemyContentRepository
+from creator.coupon.ports import CouponRedemptionRepository, CouponRepository
+from creator.coupon.repository import (
+    SqlAlchemyCouponRedemptionRepository,
+    SqlAlchemyCouponRepository,
+)
+from creator.credit.ports import WorkspaceCreditTransactionRepository
+from creator.credit.repository import SqlAlchemyWorkspaceCreditTransactionRepository
+from creator.credit_package.ports import CreditPackageRepository
+from creator.credit_package.repository import SqlAlchemyCreditPackageRepository
+from creator.design_structure.ports import DesignStructureRepository
+from creator.design_structure.repository import SqlAlchemyDesignStructureRepository
+from creator.domain.exceptions import PersistenceError
+from creator.generation.ports import (
+    GeneratedImageRepository,
+    GenerationRepository,
+    ImageGenerationRepository,
+)
+from creator.generation.repository import (
+    SqlAlchemyGeneratedImageRepository,
+    SqlAlchemyGenerationRepository,
+    SqlAlchemyImageGenerationRepository,
+)
+from creator.infrastructure.database.db import SessionLocal
+from creator.infrastructure.persistence.sql import map_sqlalchemy_error
+from creator.invoice.ports import InvoiceRepository
+from creator.invoice.repository import SqlAlchemyInvoiceRepository
+from creator.notification.ports import (
+    NotificationPreferenceRepository,
+    NotificationRecipientRepository,
+    NotificationRepository,
     UserDeviceRepository,
-    UserRepository,
-    WorkspaceCreditTransactionRepository,
+)
+from creator.notification.repository import (
+    SqlAlchemyNotificationPreferenceRepository,
+    SqlAlchemyNotificationRecipientRepository,
+    SqlAlchemyNotificationRepository,
+    SqlAlchemyUserDeviceRepository,
+)
+from creator.order.ports import OrderRepository
+from creator.order.repository import SqlAlchemyOrderRepository
+from creator.payment_method.ports import BillingPaymentMethodRepository
+from creator.payment_method.repository import SqlAlchemyBillingPaymentMethodRepository
+from creator.persona.ports import PersonaRepository
+from creator.persona.repository import SqlAlchemyPersonaRepository
+from creator.plan.ports import PlanItemRepository, PlanRepository
+from creator.plan.repository import SqlAlchemyPlanItemRepository, SqlAlchemyPlanRepository
+from creator.planning.ports import PlanningRepository
+from creator.planning.repository import SqlAlchemyPlanningRepository
+from creator.post_structure.ports import PostStructureRepository
+from creator.post_structure.repository import SqlAlchemyPostStructureRepository
+from creator.project.ports import ProjectRepository
+from creator.project.repository import SqlAlchemyProjectRepository
+from creator.refund.ports import RefundRepository
+from creator.refund.repository import SqlAlchemyRefundRepository
+from creator.subscription.ports import SubscriptionHistoryRepository, SubscriptionRepository
+from creator.subscription.repository import (
+    SqlAlchemySubscriptionHistoryRepository,
+    SqlAlchemySubscriptionRepository,
+)
+from creator.uow import UnitOfWork
+from creator.user.ports import SettingsRepository, UserRepository
+from creator.user.repository import SqlAlchemySettingsRepository, SqlAlchemyUserRepository
+from creator.workflow.ports import AgentWorkflowRepository, OutboxRepository
+from creator.workflow.repository import (
+    SqlAlchemyAgentWorkflowRepository,
+    SqlAlchemyOutboxRepository,
+)
+from creator.workspace.ports import (
     WorkspaceInviteRepository,
     WorkspaceInviteUsageRepository,
     WorkspaceRepository,
+)
+from creator.workspace.repository import (
+    SqlAlchemyWorkspaceInviteRepository,
+    SqlAlchemyWorkspaceInviteUsageRepository,
+    SqlAlchemyWorkspaceRepository,
 )
 
 SessionFactory = Callable[[], Session]
 logger = logging.getLogger(__name__)
 
 
-class SqlAlchemyUnitOfWork:
+class SqlAlchemyUnitOfWork(UnitOfWork):
     users: UserRepository
     auth_sessions: AuthSessionRepository
     settings: SettingsRepository

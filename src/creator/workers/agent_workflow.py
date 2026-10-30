@@ -8,8 +8,9 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel
 
-from creator.application.image_storage import GeneratedImage, persist_generated_image
 from creator.config import get_settings
+from creator.content.ports import ImageRecord
+from creator.core.types import JsonObject
 from creator.domain.agent_workflow import (
     AgentWorkflowStatus,
     AgentWorkflowStepRole,
@@ -20,10 +21,10 @@ from creator.domain.pipeline_events import (
     PipelineEventType,
     PipelinePayloadReference,
 )
+from creator.generation.storage_service import GeneratedImage, persist_generated_image
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from creator.infrastructure.runtime.observability import correlation_context, current_context
 from creator.infrastructure.runtime.storage import create_storage_provider
-from creator.repositories import AgentWorkflowRunRecord, ImageRecord, JsonObject, UserRecord
 from creator.services.agents.contracts import (
     AgentExecutionContext,
     BusinessOutput,
@@ -52,6 +53,8 @@ from creator.services.retrieval.factory import (
     RetrievalProviderNotConfiguredError,
     create_semantic_retriever,
 )
+from creator.user.ports import UserRecord
+from creator.workflow.ports import AgentWorkflowRunRecord
 
 logger = logging.getLogger(__name__)
 

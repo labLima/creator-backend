@@ -1,29 +1,19 @@
 from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint
 
+from creator.asset.models import Asset
+from creator.brand.models import Brand, BrandSettings
+from creator.content.models import Content, Image
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.database.db import Base
-from creator.infrastructure.database.models import (
-    Asset,
-    Brand,
-    BrandKnowledgeChunk,
-    BrandKnowledgeDocument,
-    BrandSettings,
-    Content,
-    ContentType,
-    CreditPrice,
-    CreditTransaction,
-    CreditWallet,
+from creator.generation.models import (
     Generation,
     GenerationJob,
     GenerationJobStatusEvent,
-    GenerationType,
-    Image,
-    Project,
-    Settings,
-    User,
-    Workspace,
-    WorkspaceMembership,
 )
+from creator.infrastructure.database.db import Base
+from creator.infrastructure.database.enums import ContentType, GenerationType
+from creator.project.models import Project
+from creator.user.models import Settings, User
+from creator.workspace.models import Workspace, WorkspaceMembership
 
 
 def constraint_names(table_name: str, constraint_type: type[object]) -> set[str]:
@@ -47,8 +37,6 @@ def test_initial_relational_model_tables_are_registered() -> None:
         WorkspaceMembership.__tablename__,
         Brand.__tablename__,
         BrandSettings.__tablename__,
-        BrandKnowledgeDocument.__tablename__,
-        BrandKnowledgeChunk.__tablename__,
         Project.__tablename__,
         Content.__tablename__,
         Generation.__tablename__,
@@ -56,9 +44,6 @@ def test_initial_relational_model_tables_are_registered() -> None:
         GenerationJob.__tablename__,
         GenerationJobStatusEvent.__tablename__,
         Image.__tablename__,
-        CreditWallet.__tablename__,
-        CreditTransaction.__tablename__,
-        CreditPrice.__tablename__,
     } <= set(Base.metadata.tables)
 
 
@@ -105,39 +90,6 @@ def test_settings_and_image_uniqueness_constraints_are_explicit() -> None:
 
     assert version_index.unique is True
     assert str(version_index.dialect_options["sqlite"]["where"]) == "deleted_at IS NULL"
-
-
-def test_credit_ledger_constraints_and_indexes_are_explicit() -> None:
-    assert "uq_credit_wallets_workspace_id" in constraint_names("credit_wallets", UniqueConstraint)
-    assert "uq_credit_transactions_workspace_idempotency" in constraint_names(
-        "credit_transactions", UniqueConstraint
-    )
-    assert "uq_credit_prices_action_key" in constraint_names("credit_prices", UniqueConstraint)
-    assert {
-        "ix_credit_transactions_workspace_created_at",
-        "ix_credit_transactions_workspace_action",
-        "ix_credit_transactions_workspace_user",
-    } <= index_names("credit_transactions")
-
-
-def test_brand_knowledge_constraints_and_indexes_are_explicit() -> None:
-    assert "uq_bk_documents_scope" in constraint_names(
-        "brand_knowledge_documents", UniqueConstraint
-    )
-    assert "uq_bk_chunks_document_index" in constraint_names(
-        "brand_knowledge_chunks", UniqueConstraint
-    )
-    assert {"ix_bk_documents_workspace_brand"} <= index_names("brand_knowledge_documents")
-    assert {"ix_bk_chunks_workspace_brand", "ix_bk_chunks_document_index"} <= index_names(
-        "brand_knowledge_chunks"
-    )
-    chunk_checks = constraint_names("brand_knowledge_chunks", CheckConstraint)
-    assert {
-        "ck_bk_chunks_index_nonnegative",
-        "ck_bk_chunks_embedding_array",
-        "ck_bk_chunks_metadata_object",
-        "ck_bk_chunks_content_length",
-    } <= chunk_checks
 
 
 def test_history_and_queue_indexes_are_explicit() -> None:

@@ -5,8 +5,9 @@ from sqlalchemy import JSON, Uuid, create_engine, select
 from sqlalchemy.orm import Session
 
 from creator.infrastructure.database.db import Base
-from creator.infrastructure.database.models import GlobalRole, Settings, User
-from creator.infrastructure.database.models.types import UTCDateTime
+from creator.infrastructure.database.enums import GlobalRole
+from creator.infrastructure.database.types import UTCDateTime
+from creator.user.models import Settings, User
 
 
 def test_registered_schema_creates_on_sqlite() -> None:
