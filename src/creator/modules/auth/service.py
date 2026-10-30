@@ -9,13 +9,13 @@ from uuid import UUID, uuid4
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
-from creator.application.auth_ports import AuthTokenServices, Clock
-from creator.application.auth_types import AuthSignupResult, IssuedSession
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
+from creator.modules.auth.ports import AuthTokenServices, Clock
+from creator.modules.auth.types import AuthSignupResult, IssuedSession
 from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
+from creator.uow import UnitOfWork
 
 _PASSWORD_HASHER = PasswordHasher()
 _DUMMY_HASH = _PASSWORD_HASHER.hash("creator-dummy-password")

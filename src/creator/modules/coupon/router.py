@@ -27,7 +27,6 @@ from creator.api.serializers import (
     _coupon_data,
     _coupon_redemption_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.coupon.schemas import (
     CouponCreateRequest,
     CouponRedemptionCreateRequest,
@@ -37,6 +36,7 @@ from creator.modules.coupon.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

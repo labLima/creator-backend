@@ -27,7 +27,6 @@ from creator.api.serializers import (
     _subscription_data,
     _subscription_history_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.subscription.schemas import (
     SubscriptionCreateRequest,
     SubscriptionUpdateRequest,
@@ -35,6 +34,7 @@ from creator.modules.subscription.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

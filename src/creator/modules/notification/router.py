@@ -29,7 +29,6 @@ from creator.api.serializers import (
     _notification_recipient_data,
     _user_device_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.notification.schemas import (
     NotificationCreateRequest,
     NotificationPreferenceRequest,
@@ -40,6 +39,7 @@ from creator.modules.notification.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

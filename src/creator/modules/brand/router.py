@@ -30,7 +30,6 @@ from creator.api.serializers import (
     _brand_data,
     _brand_settings_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
 from creator.modules.brand.schemas import (
@@ -46,6 +45,7 @@ from creator.modules.brand.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

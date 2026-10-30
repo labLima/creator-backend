@@ -30,7 +30,6 @@ from creator.api.serializers import (
     _provider_subscription_data,
     _provider_webhook_event_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.billing_provider.schemas import (
     ProviderCustomerCreateRequest,
     ProviderDisputeCreateRequest,
@@ -40,6 +39,7 @@ from creator.modules.billing_provider.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

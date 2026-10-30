@@ -26,7 +26,6 @@ from creator.api.responses import (
 from creator.api.serializers import (
     _order_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.order.schemas import (
     OrderCreateRequest,
     OrderUpdateRequest,
@@ -34,6 +33,7 @@ from creator.modules.order.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

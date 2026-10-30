@@ -7,15 +7,6 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from creator.application.auth import (
-    AuthConfigurationError,
-    ExpiredTokenError,
-    InvalidTokenError,
-    principal_from_access_token,
-    session_is_active,
-)
-from creator.application.auth_ports import AuthTokenServices
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.infrastructure.auth import auth_token_services
@@ -29,10 +20,19 @@ from creator.infrastructure.runtime.rate_limit import (
     create_rate_limiter,
 )
 from creator.infrastructure.runtime.storage import create_storage_provider
+from creator.modules.auth.ports import AuthTokenServices
+from creator.modules.auth.service import (
+    AuthConfigurationError,
+    ExpiredTokenError,
+    InvalidTokenError,
+    principal_from_access_token,
+    session_is_active,
+)
 from creator.repositories import UserRecord
 from creator.services.ai.factory import create_llm_provider
 from creator.services.ai.provider import LLMProvider
 from creator.services.storage.provider import StorageConfigurationError, StorageProvider
+from creator.uow import UnitOfWork
 
 bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorLegacyBearerAuth")
 logger = logging.getLogger(__name__)

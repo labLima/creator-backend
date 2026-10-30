@@ -20,7 +20,13 @@ from creator.api.dependencies import (
     get_uow,
 )
 from creator.api.responses import success_response
-from creator.application.auth import (
+from creator.config import Settings, get_settings
+from creator.domain.auth import Principal
+from creator.domain.exceptions import PersistenceError
+from creator.infrastructure.auth import auth_token_services
+from creator.modules.auth.ports import AuthTokenServices
+from creator.modules.auth.schemas import AuthLoginRequest, AuthSignupRequest
+from creator.modules.auth.service import (
     AuthConfigurationError,
     EmailAlreadyRegisteredError,
     ExpiredTokenError,
@@ -31,27 +37,21 @@ from creator.application.auth import (
     RevokedSessionError,
     session_is_active,
 )
-from creator.application.auth import (
+from creator.modules.auth.service import (
     login as login_local,
 )
-from creator.application.auth import (
+from creator.modules.auth.service import (
     logout as logout_local,
 )
-from creator.application.auth import (
+from creator.modules.auth.service import (
     refresh as refresh_local,
 )
-from creator.application.auth import (
+from creator.modules.auth.service import (
     signup as signup_local,
 )
-from creator.application.auth_ports import AuthTokenServices
-from creator.application.auth_types import AuthSignupResult, IssuedSession
-from creator.application.unit_of_work import UnitOfWork
-from creator.config import Settings, get_settings
-from creator.domain.auth import Principal
-from creator.domain.exceptions import PersistenceError
-from creator.infrastructure.auth import auth_token_services
-from creator.modules.auth.schemas import AuthLoginRequest, AuthSignupRequest
+from creator.modules.auth.types import AuthSignupResult, IssuedSession
 from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
+from creator.uow import UnitOfWork
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 

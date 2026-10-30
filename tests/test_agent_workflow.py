@@ -7,14 +7,6 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from creator.application.agent_image_workflow import (
-    AgentWorkflowDecisionError,
-    AgentWorkflowIdempotencyConflictError,
-    AgentWorkflowInputError,
-    StartImageWorkflowCommand,
-    decide_image_workflow,
-    start_image_workflow,
-)
 from creator.config import Settings
 from creator.domain.agent_workflow import (
     AgentWorkflowStatus,
@@ -27,6 +19,14 @@ from creator.domain.agent_workflow import (
 )
 from creator.domain.auth import Principal, WorkspaceRole
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
+from creator.modules.workflow.service import (
+    AgentWorkflowDecisionError,
+    AgentWorkflowIdempotencyConflictError,
+    AgentWorkflowInputError,
+    StartImageWorkflowCommand,
+    decide_image_workflow,
+    start_image_workflow,
+)
 from creator.repositories import (
     AgentWorkflowRunRecord,
     AgentWorkflowStepRecord,

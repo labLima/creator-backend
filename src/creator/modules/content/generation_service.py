@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import cast
 from uuid import UUID
 
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
 from creator.domain.exceptions import DomainError, PersistenceError
 from creator.prompts import (
@@ -13,6 +12,7 @@ from creator.prompts import (
 )
 from creator.repositories import GeneratedTextContentRecord, UserRecord
 from creator.services.ai.provider import LLMProvider
+from creator.uow import UnitOfWork
 
 
 class WorkspaceAccessDeniedError(DomainError):

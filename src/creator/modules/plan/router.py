@@ -27,7 +27,6 @@ from creator.api.serializers import (
     _plan_data,
     _plan_item_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.plan.schemas import (
     PlanCreateRequest,
     PlanItemCreateRequest,
@@ -37,6 +36,7 @@ from creator.modules.plan.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

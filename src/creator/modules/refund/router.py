@@ -25,7 +25,6 @@ from creator.api.responses import (
 from creator.api.serializers import (
     _refund_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.refund.schemas import (
     RefundCreateRequest,
     RefundUpdateRequest,
@@ -33,6 +32,7 @@ from creator.modules.refund.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
-from creator.application.unit_of_work import UnitOfWork
 from creator.repositories import GenerationJobRecord, ImageMetadata, ImageRecord, UserRecord
 from creator.services.storage.provider import (
     StorageError,
@@ -14,6 +13,7 @@ from creator.services.storage.provider import (
     UploadObjectRequest,
     immutable_image_path,
 )
+from creator.uow import UnitOfWork
 
 
 @dataclass(frozen=True, slots=True)

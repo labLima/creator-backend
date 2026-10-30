@@ -1,10 +1,10 @@
 import pytest
 
+from creator.infrastructure.database import models
+from creator.infrastructure.database.schema_manifest import LEGACY_TABLES, PDF_TABLES
 from creator.modules.campaign.schemas import CampaignCreateRequest
 from creator.modules.notification.schemas import NotificationCreateRequest
 from creator.modules.plan.schemas import PlanCreateRequest
-from creator.infrastructure.database import models
-from creator.infrastructure.database.schema_manifest import LEGACY_TABLES, PDF_TABLES
 
 EXPECTED_DIAGRAM_TABLES = {
     "plans",

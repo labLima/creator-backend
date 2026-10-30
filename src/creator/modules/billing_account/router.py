@@ -26,7 +26,6 @@ from creator.api.serializers import (
     _billing_account_data,
     _billing_address_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.billing_account.schemas import (
     BillingAccountCreateRequest,
     BillingAccountUpdateRequest,
@@ -36,6 +35,7 @@ from creator.modules.billing_account.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

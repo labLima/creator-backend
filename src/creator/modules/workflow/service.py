@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
 from creator.domain.agent_workflow import AgentWorkflowStatus, HumanReviewMode, WorkflowDecision
 from creator.domain.exceptions import EntityNotFoundError
@@ -18,6 +17,7 @@ from creator.domain.pipeline_events import (
 )
 from creator.prompts.base import normalize_json_object
 from creator.repositories import AgentWorkflowRunRecord, UserRecord
+from creator.uow import UnitOfWork
 
 
 class AgentWorkflowQueue(Protocol):

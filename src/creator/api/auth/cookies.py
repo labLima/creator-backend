@@ -4,9 +4,9 @@ from uuid import UUID
 
 from fastapi import Response
 
-from creator.application.auth_ports import AuthTokenServices, CookieSpec, CookieTransport
-from creator.application.auth_types import IssuedSession
 from creator.config import Settings
+from creator.modules.auth.ports import AuthTokenServices, CookieSpec, CookieTransport
+from creator.modules.auth.types import IssuedSession
 
 
 class FastApiCookieTransport:

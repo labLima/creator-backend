@@ -32,18 +32,6 @@ from creator.api.serializers import (
     _improved_content_data,
     _post_structure_data,
 )
-from creator.application.content_generation import (
-    ContentGenerationPersistenceError,
-    GenerateContentCommand,
-    WorkspaceAccessDeniedError,
-    generate_content,
-)
-from creator.application.content_improvement import (
-    ContentImprovementInvalidResponseError,
-    ImproveContentCommand,
-    improve_content,
-)
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
@@ -55,6 +43,17 @@ from creator.integrations.gemini.exceptions import (
     GeminiQuotaError,
     GeminiTimeoutError,
     GeminiTransientError,
+)
+from creator.modules.content.generation_service import (
+    ContentGenerationPersistenceError,
+    GenerateContentCommand,
+    WorkspaceAccessDeniedError,
+    generate_content,
+)
+from creator.modules.content.improvement_service import (
+    ContentImprovementInvalidResponseError,
+    ImproveContentCommand,
+    improve_content,
 )
 from creator.modules.content.schemas import (
     ContentCreateRequest,
@@ -68,6 +67,7 @@ from creator.repositories import (
 )
 from creator.repositories.common import PageRequest
 from creator.services.ai.provider import LLMProvider, ProviderNotConfiguredError
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

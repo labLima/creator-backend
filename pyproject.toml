@@ -67,8 +67,19 @@ markers = [
   "e2e: end-to-end API flows",
   "integration: database-backed integration tests",
 ]
-addopts = "--no-header --cov=creator.domain --cov=creator.application --cov=creator.services --cov=creator.repositories --cov-report=term-missing --cov-fail-under=80 -p no:cacheprovider"
+addopts = "--no-header --cov=creator.modules --cov=creator.domain --cov=creator.core --cov=creator.api --cov=creator.uow --cov-report=term-missing --cov-fail-under=80 -p no:cacheprovider"
 tmp_path_retention_policy = "none"
+
+[tool.coverage.run]
+# Routers are HTTP adapters exercised by the e2e suite; `make check` runs unit
+# tests only, so they are excluded exactly as `creator.api`/`creator.main` were
+# before the modular extraction.
+omit = [
+  "*/modules/*/router.py",
+  "*/api/router.py",
+  "*/api/system.py",
+  "*/api/openapi.py",
+]
 
 [tool.mypy]
 python_version = "3.12"

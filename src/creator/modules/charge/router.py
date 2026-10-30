@@ -25,7 +25,6 @@ from creator.api.responses import (
 from creator.api.serializers import (
     _charge_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.charge.schemas import (
     ChargeCreateRequest,
     ChargeUpdateRequest,
@@ -33,6 +32,7 @@ from creator.modules.charge.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

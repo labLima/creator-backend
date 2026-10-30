@@ -6,8 +6,8 @@ from uuid import UUID
 
 from fastapi import HTTPException
 
-from creator.application.unit_of_work import UnitOfWork
 from creator.repositories.user import UserRecord
+from creator.uow import UnitOfWork
 
 
 def require_global_billing_admin(user: UserRecord) -> None:

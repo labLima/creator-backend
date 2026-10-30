@@ -27,7 +27,6 @@ from creator.api.responses import (
 from creator.api.serializers import (
     _post_structure_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.core.pagination import page_request
 from creator.modules.post_structure.schemas import (
     PostStructureCreateRequest,
@@ -36,6 +35,7 @@ from creator.modules.post_structure.schemas import (
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

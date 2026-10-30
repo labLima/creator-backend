@@ -25,13 +25,13 @@ from creator.api.responses import (
 from creator.api.serializers import (
     _design_structure_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.design_structure.schemas import (
     DesignStructureCreateRequest,
 )
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

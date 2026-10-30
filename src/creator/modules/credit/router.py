@@ -26,13 +26,13 @@ from creator.api.responses import (
 from creator.api.serializers import (
     _workspace_credit_transaction_data,
 )
-from creator.application.unit_of_work import UnitOfWork
 from creator.modules.credit.schemas import (
     WorkspaceCreditTransactionCreateRequest,
 )
 from creator.repositories import (
     UserRecord,
 )
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

@@ -34,22 +34,6 @@ from creator.api.serializers import (
     _generation_data,
     _image_generation_status_data,
 )
-from creator.application.agent_image_workflow import (
-    AgentWorkflowDecisionError,
-    AgentWorkflowIdempotencyConflictError,
-    AgentWorkflowInputError,
-    StartImageWorkflowCommand,
-    decide_image_workflow,
-    start_image_workflow,
-)
-from creator.application.image_generation import (
-    GenerationQueue,
-    IdempotencyConflictError,
-    QueueEnqueueError,
-    submit_image_generation,
-    submit_image_regeneration,
-)
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.core.pagination import page_request
 from creator.domain.agent_workflow import WorkflowDecision
@@ -63,10 +47,26 @@ from creator.modules.generation.schemas import (
     ImageWorkflowRequest,
     RegenerateImageRequest,
 )
+from creator.modules.generation.service import (
+    GenerationQueue,
+    IdempotencyConflictError,
+    QueueEnqueueError,
+    submit_image_generation,
+    submit_image_regeneration,
+)
+from creator.modules.workflow.service import (
+    AgentWorkflowDecisionError,
+    AgentWorkflowIdempotencyConflictError,
+    AgentWorkflowInputError,
+    StartImageWorkflowCommand,
+    decide_image_workflow,
+    start_image_workflow,
+)
 from creator.repositories import (
     UserRecord,
 )
 from creator.services.storage.provider import StorageProvider, StorageUrlError
+from creator.uow import UnitOfWork
 
 router = APIRouter()
 

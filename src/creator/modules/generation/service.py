@@ -5,7 +5,6 @@ import json
 from typing import Protocol, cast
 from uuid import UUID
 
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
 from creator.domain.exceptions import ConflictError, EntityNotFoundError
 from creator.domain.pipeline_events import PipelineEvent
@@ -15,6 +14,7 @@ from creator.prompts import (
     generation_parameters_with_prompt_template,
 )
 from creator.repositories import ContentRecord, ImageGenerationStatusRecord, UserRecord
+from creator.uow import UnitOfWork
 
 MAX_GENERATION_PROMPT_LENGTH = 20_000
 

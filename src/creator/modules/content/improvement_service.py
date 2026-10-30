@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from creator.application.content_generation import WorkspaceAccessDeniedError
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings
 from creator.domain.exceptions import DomainError, EntityNotFoundError
+from creator.modules.content.generation_service import WorkspaceAccessDeniedError
 from creator.prompts import build_text_improvement_prompt, prompt_template_metadata
 from creator.repositories import ContentRecord, UserRecord
 from creator.services.ai.provider import LLMProvider
+from creator.uow import UnitOfWork
 
 
 class ContentImprovementInvalidResponseError(DomainError):
