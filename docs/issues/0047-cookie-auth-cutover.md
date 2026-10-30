@@ -1,4 +1,4 @@
-# Issue 0045: corte de autenticação para cookies
+# Issue 0047: corte de autenticação para cookies
 
 - ADR primária: [ADR-022](../adr/0022-cookie-auth-provider.md)
 - Implementação: [issue #128](https://github.com/labLima/creator-backend/issues/128)
