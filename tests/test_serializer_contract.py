@@ -1,4 +1,4 @@
-"""Golden-master guard for the 52 response mappers in `creator.main`.
+"""Golden-master guard for the response mappers.
 
 These mappers are implementation, not public API, so this is deliberately a
 characterization test: it proves that moving them between modules does not
@@ -21,7 +21,7 @@ from uuid import UUID
 
 import pytest
 
-import creator.main as main_module
+import creator.api.serializers as main_module
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = PROJECT_ROOT / "tests" / "contracts"

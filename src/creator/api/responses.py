@@ -8,6 +8,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from creator.infrastructure.runtime.observability import resolve_request_id
+from creator.repositories.common import Page
 
 ResponseHeaders = Mapping[str, str] | Sequence[tuple[str, str]]
 
@@ -85,3 +86,14 @@ def error_response(
         status_code,
         headers,
     )
+
+
+def page_payload(page: Page[Any], serializer: Any) -> dict[str, Any]:
+    return {
+        "items": [serializer(item) for item in page.items],
+        "pagination": {
+            "page": page.page,
+            "limit": page.limit,
+            "total": page.total,
+        },
+    }

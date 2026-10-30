@@ -91,13 +91,28 @@ def test_documented_paths_are_served() -> None:
 
 
 def _nested_route_paths() -> set[str]:
-    """Collect paths from routers that FastAPI keeps wrapped (0.162 `_IncludedRouter`)."""
+    """Collect paths from routers FastAPI keeps wrapped (0.162 `_IncludedRouter`).
+
+    Routers nest: app -> api_router -> module router. Walk recursively.
+    """
     paths: set[str] = set()
+
+    def walk(router: object) -> None:
+        for route in getattr(router, "routes", []):
+            if isinstance(route, APIRoute):
+                paths.add(route.path_format)
+                continue
+            nested = getattr(route, "original_router", None)
+            if nested is not None:
+                walk(nested)
+
     for route in app.routes:
-        original = getattr(route, "original_router", None)
-        if original is None:
+        if isinstance(route, APIRoute):
+            paths.add(route.path_format)
             continue
-        paths |= {child.path_format for child in original.routes if isinstance(child, APIRoute)}
+        nested = getattr(route, "original_router", None)
+        if nested is not None:
+            walk(nested)
     return paths
 
 
