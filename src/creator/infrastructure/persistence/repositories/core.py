@@ -43,7 +43,7 @@ from creator.generation.ports import (
     ImageGenerationStatusRecord,
     ImageGenerationWorkItem,
 )
-from creator.infrastructure.database.enums import ContentType, GenerationType, WorkspaceRole
+from creator.infrastructure.database.enums import ContentType, GenerationType
 from creator.infrastructure.persistence import sql
 from creator.project import models as project_tables
 from creator.project.ports import ProjectRecord
@@ -53,11 +53,7 @@ from creator.user.repository import SqlAlchemySettingsRepository, SqlAlchemyUser
 from creator.workflow import models as workflow_tables
 from creator.workflow.ports import AgentWorkflowRunRecord, AgentWorkflowStepRecord
 from creator.workspace import models as workspace_tables
-from creator.workspace.ports import (
-    CreatedWorkspaceRecord,
-    WorkspaceMembershipRecord,
-    WorkspaceRecord,
-)
+from creator.workspace.repository import SqlAlchemyWorkspaceRepository
 
 _now = sql.now
 _enum_value = sql.enum_value
@@ -70,30 +66,6 @@ _scoped_resource_count = sql.scoped_resource_count
 flush_or_raise = sql.flush_or_raise
 map_sqlalchemy_error = sql.map_sqlalchemy_error
 ROLE_RANK = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
-
-
-def _workspace_membership_record(
-    row: workspace_tables.WorkspaceMembership,
-) -> WorkspaceMembershipRecord:
-    return WorkspaceMembershipRecord(
-        id=row.id,
-        workspace_id=row.workspace_id,
-        user_id=row.user_id,
-        role=_enum_value(row.role),
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
-    )
-
-
-def _workspace_record(row: workspace_tables.Workspace) -> WorkspaceRecord:
-    return WorkspaceRecord(
-        id=row.id,
-        name=row.name,
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-        deleted_at=_optional_datetime(row.deleted_at),
-    )
 
 
 def _brand_record(row: brand_tables.Brand) -> BrandRecord:
@@ -340,186 +312,6 @@ def _user_record(row: user_tables.User) -> UserRecord:
         deleted_at=_optional_datetime(row.deleted_at),
         password_hash=row.password_hash,
     )
-
-
-class SqlAlchemyWorkspaceRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def add(self, *, name: str, owner_user_id: UUID) -> WorkspaceRecord:
-        created = self.create_for_user(user_id=owner_user_id, name=name)
-        return created.workspace
-
-    def create_for_user(
-        self,
-        *,
-        user_id: UUID,
-        name: str,
-        role: str = "owner",
-    ) -> CreatedWorkspaceRecord:
-        workspace = workspace_tables.Workspace(name=name)
-        self._session.add(workspace)
-        flush_or_raise(self._session)
-
-        membership = workspace_tables.WorkspaceMembership(
-            workspace_id=workspace.id,
-            user_id=user_id,
-            role=role,
-        )
-        self._session.add(membership)
-        flush_or_raise(self._session)
-
-        return CreatedWorkspaceRecord(
-            workspace=_workspace_record(workspace),
-            membership=_workspace_membership_record(membership),
-        )
-
-    def get_for_user(
-        self,
-        *,
-        user_id: UUID,
-        workspace_id: UUID,
-        include_deleted: bool = False,
-    ) -> WorkspaceRecord | None:
-        statement = self._scoped_select(user_id).where(
-            workspace_tables.Workspace.id == workspace_id
-        )
-        if not include_deleted:
-            statement = statement.where(workspace_tables.Workspace.deleted_at.is_(None))
-        row = self._session.scalars(statement).one_or_none()
-        return _workspace_record(row) if row else None
-
-    def list_for_user(
-        self,
-        *,
-        user_id: UUID,
-        page: PageRequest | None = None,
-    ) -> Page[WorkspaceRecord]:
-        page = page or PageRequest()
-        statement = self._scoped_select(user_id).where(
-            workspace_tables.Workspace.deleted_at.is_(None)
-        )
-        count_statement = (
-            select(func.count())
-            .select_from(workspace_tables.Workspace)
-            .join(
-                workspace_tables.WorkspaceMembership,
-                and_(
-                    workspace_tables.WorkspaceMembership.workspace_id
-                    == workspace_tables.Workspace.id,
-                    workspace_tables.WorkspaceMembership.user_id == user_id,
-                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
-                ),
-            )
-            .where(workspace_tables.Workspace.deleted_at.is_(None))
-        )
-        rows, total = _page(
-            self._session,
-            statement,
-            count_statement,
-            workspace_tables.Workspace.created_at,
-            page,
-        )
-        return Page(
-            items=[_workspace_record(row) for row in rows],
-            total=total,
-            page=page.page,
-            limit=page.limit,
-        )
-
-    def update(self, *, user_id: UUID, workspace_id: UUID, name: str) -> WorkspaceRecord:
-        row = self._writable_workspace(user_id=user_id, workspace_id=workspace_id)
-        row.name = name
-        row.updated_at = _now()
-        flush_or_raise(self._session)
-        return _workspace_record(row)
-
-    def soft_delete(self, *, user_id: UUID, workspace_id: UUID) -> None:
-        self.soft_delete_for_user(user_id=user_id, workspace_id=workspace_id)
-
-    def soft_delete_for_user(self, *, user_id: UUID, workspace_id: UUID) -> WorkspaceRecord:
-        row = self._session.scalars(
-            select(workspace_tables.Workspace)
-            .join(
-                workspace_tables.WorkspaceMembership,
-                and_(
-                    workspace_tables.WorkspaceMembership.workspace_id
-                    == workspace_tables.Workspace.id,
-                    workspace_tables.WorkspaceMembership.user_id == user_id,
-                    workspace_tables.WorkspaceMembership.role == WorkspaceRole.OWNER,
-                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
-                ),
-            )
-            .where(
-                workspace_tables.Workspace.id == workspace_id,
-                workspace_tables.Workspace.deleted_at.is_(None),
-            )
-            .with_for_update()
-        ).one_or_none()
-        if row is None:
-            raise EntityNotFoundError("Workspace not found")
-
-        timestamp = _now()
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
-        self._session.execute(
-            update(workspace_tables.WorkspaceMembership)
-            .where(
-                workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
-            )
-            .values(deleted_at=timestamp, updated_at=timestamp)
-        )
-        flush_or_raise(self._session)
-        return _workspace_record(row)
-
-    def user_has_workspace_role(
-        self,
-        *,
-        user_id: UUID,
-        workspace_id: UUID,
-        minimum_role: str = "viewer",
-    ) -> bool:
-        minimum_rank = ROLE_RANK[minimum_role]
-        row = self._session.scalars(
-            select(workspace_tables.WorkspaceMembership).where(
-                workspace_tables.WorkspaceMembership.user_id == user_id,
-                workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
-            )
-        ).one_or_none()
-        if row is None:
-            return False
-        return ROLE_RANK[_enum_value(row.role)] >= minimum_rank
-
-    def _writable_workspace(
-        self, *, user_id: UUID, workspace_id: UUID
-    ) -> workspace_tables.Workspace:
-        if not self.user_has_workspace_role(
-            user_id=user_id,
-            workspace_id=workspace_id,
-            minimum_role="admin",
-        ):
-            raise EntityNotFoundError("Workspace not found")
-        row = self._session.get(workspace_tables.Workspace, workspace_id)
-        if row is None or row.deleted_at is not None:
-            raise EntityNotFoundError("Workspace not found")
-        return row
-
-    def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return (
-            select(workspace_tables.Workspace)
-            .join(
-                workspace_tables.WorkspaceMembership,
-                and_(
-                    workspace_tables.WorkspaceMembership.workspace_id
-                    == workspace_tables.Workspace.id,
-                    workspace_tables.WorkspaceMembership.user_id == user_id,
-                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
-                ),
-            )
-            .where(workspace_tables.WorkspaceMembership.deleted_at.is_(None))
-        )
 
 
 class SqlAlchemyBrandRepository:
