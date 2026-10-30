@@ -7,7 +7,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import models, schema_models
+from creator.modules.brand.adapters import tables as brand_tables
+from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories.brand_color import BrandColorRecord, BrandColorRepository
 
 
@@ -31,36 +32,37 @@ class SqlAlchemyBrandColorRepository(BrandColorRepository):
 
     def _q(self, uid):
         return (
-            select(schema_models.BrandColor)
+            select(brand_tables.BrandColor)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == schema_models.BrandColor.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == brand_tables.BrandColor.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == uid,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.BrandColor.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == uid,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                brand_tables.BrandColor.deleted_at.is_(None),
             )
         )
 
     def list_for_user(self, *, user_id, brand_id=None):
         q = self._q(user_id)
         if brand_id is not None:
-            q = q.where(schema_models.BrandColor.brand_id == brand_id)
+            q = q.where(brand_tables.BrandColor.brand_id == brand_id)
         return [self._r(x) for x in self.s.scalars(q).all()]
 
     def get_for_user(self, *, user_id, color_id):
-        x = self.s.scalar(self._q(user_id).where(schema_models.BrandColor.id == color_id))
+        x = self.s.scalar(self._q(user_id).where(brand_tables.BrandColor.id == color_id))
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.BrandColor(**fields)
+        x = brand_tables.BrandColor(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, color_id, fields):
-        x = self.s.get(schema_models.BrandColor, color_id)
+        x = self.s.get(brand_tables.BrandColor, color_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Brand color not found")
         for k, v in fields.items():
@@ -70,7 +72,7 @@ class SqlAlchemyBrandColorRepository(BrandColorRepository):
         return self._r(x)
 
     def soft_delete(self, *, color_id):
-        x = self.s.get(schema_models.BrandColor, color_id)
+        x = self.s.get(brand_tables.BrandColor, color_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Brand color not found")
         x.deleted_at = datetime.now(UTC)

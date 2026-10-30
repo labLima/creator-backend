@@ -1,15 +1,35 @@
 from collections.abc import Generator
+from datetime import datetime
 from pathlib import Path
+from uuid import UUID
 
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, func
 from sqlalchemy.engine import make_url
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from creator.config import get_settings
+from creator.infrastructure.database.types import (
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
+
+timestamp = timestamp_tz
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class SchemaRow:
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp)
 
 
 def _ensure_sqlite_directory(database_url: str) -> None:

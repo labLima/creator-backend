@@ -14,7 +14,7 @@ from creator.domain.exceptions import (
     InvalidStateTransitionError,
 )
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.database import models
+from creator.infrastructure.database.enums import GlobalRole
 from creator.infrastructure.persistence.repositories.core import (
     SqlAlchemyAssetRepository,
     SqlAlchemyBrandRepository,
@@ -28,6 +28,13 @@ from creator.infrastructure.persistence.repositories.core import (
     SqlAlchemyWorkspaceRepository,
     flush_or_raise,
 )
+from creator.modules.asset.adapters import tables as asset_tables
+from creator.modules.brand.adapters import tables as brand_tables
+from creator.modules.content.adapters import tables as content_tables
+from creator.modules.generation.adapters import tables as generation_tables
+from creator.modules.project.adapters import tables as project_tables
+from creator.modules.user.adapters import tables as user_tables
+from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories import (
     ContentFilters,
     GenerationHistoryFilters,
@@ -103,20 +110,20 @@ class FakeSession:
         for field_name in ["created_at", "updated_at", "queued_at", "occurred_at"]:
             if hasattr(row, field_name) and getattr(row, field_name, None) is None:
                 setattr(row, field_name, NOW)
-        if isinstance(row, models.GenerationJob):
+        if isinstance(row, generation_tables.GenerationJob):
             if row.status is None:
                 row.status = GenerationJobStatus.PENDING
             if row.attempt_count is None:
                 row.attempt_count = 0
             if row.max_attempts is None:
                 row.max_attempts = 1
-        if isinstance(row, models.Content) and row.content_type is None:
-            row.content_type = models.ContentType.IMAGE
-        if isinstance(row, models.Generation) and row.generation_type is None:
-            row.generation_type = models.GenerationType.IMAGE
-        if isinstance(row, models.User) and row.global_role is None:
-            row.global_role = models.GlobalRole.MEMBRO
-        if isinstance(row, models.Project) and row.status is None:
+        if isinstance(row, content_tables.Content) and row.content_type is None:
+            row.content_type = content_tables.ContentType.IMAGE
+        if isinstance(row, generation_tables.Generation) and row.generation_type is None:
+            row.generation_type = generation_tables.GenerationType.IMAGE
+        if isinstance(row, user_tables.User) and row.global_role is None:
+            row.global_role = GlobalRole.MEMBRO
+        if isinstance(row, project_tables.Project) and row.status is None:
             row.status = "ACTIVE"
         for field_name in [
             "metadata_json",
@@ -135,28 +142,30 @@ def fake_session(session: FakeSession) -> Session:
     return cast(Session, session)
 
 
-def user_row() -> models.User:
-    return models.User(
+def user_row() -> user_tables.User:
+    return user_tables.User(
         id=uuid4(),
         external_id=f"local:{uuid4()}",
         email="user@example.com",
         display_name="User",
-        global_role=models.GlobalRole.MEMBRO,
+        global_role=GlobalRole.MEMBRO,
         created_at=NOW,
         updated_at=NOW,
     )
 
 
-def workspace_row() -> models.Workspace:
-    return models.Workspace(id=uuid4(), name="Workspace", created_at=NOW, updated_at=NOW)
+def workspace_row() -> workspace_tables.Workspace:
+    return workspace_tables.Workspace(id=uuid4(), name="Workspace", created_at=NOW, updated_at=NOW)
 
 
-def membership_row(user: models.User, workspace: models.Workspace) -> models.WorkspaceMembership:
-    return models.WorkspaceMembership(
+def membership_row(
+    user: user_tables.User, workspace: workspace_tables.Workspace
+) -> workspace_tables.WorkspaceMembership:
+    return workspace_tables.WorkspaceMembership(
         id=uuid4(),
         workspace_id=workspace.id,
         user_id=user.id,
-        role=models.WorkspaceRole.OWNER,
+        role=workspace_tables.WorkspaceRole.OWNER,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -166,8 +175,8 @@ def brand_row(
     *,
     workspace_id: UUID | None = None,
     user_id: UUID | None = None,
-) -> models.Brand:
-    return models.Brand(
+) -> brand_tables.Brand:
+    return brand_tables.Brand(
         id=uuid4(),
         workspace_id=workspace_id or uuid4(),
         created_by_user_id=user_id or uuid4(),
@@ -180,8 +189,8 @@ def brand_row(
     )
 
 
-def project_row(brand: models.Brand) -> models.Project:
-    return models.Project(
+def project_row(brand: brand_tables.Brand) -> project_tables.Project:
+    return project_tables.Project(
         id=uuid4(),
         workspace_id=brand.workspace_id,
         brand_id=brand.id,
@@ -203,14 +212,14 @@ def content_row(
     brand_id: UUID | None = None,
     project_id: UUID | None = None,
     deleted_at: datetime | None = None,
-) -> models.Content:
-    return models.Content(
+) -> content_tables.Content:
+    return content_tables.Content(
         id=content_id or uuid4(),
         workspace_id=workspace_id or uuid4(),
         created_by_user_id=user_id or uuid4(),
         brand_id=brand_id,
         project_id=project_id,
-        content_type=models.ContentType.IMAGE,
+        content_type=content_tables.ContentType.IMAGE,
         title="Content",
         payload={"kind": "image"},
         created_at=NOW,
@@ -219,15 +228,15 @@ def content_row(
     )
 
 
-def generation_row(content: models.Content) -> models.Generation:
-    return models.Generation(
+def generation_row(content: content_tables.Content) -> generation_tables.Generation:
+    return generation_tables.Generation(
         id=uuid4(),
         workspace_id=content.workspace_id,
         content_id=content.id,
         brand_id=content.brand_id,
         project_id=content.project_id,
         requested_by_user_id=content.created_by_user_id,
-        generation_type=models.GenerationType.IMAGE,
+        generation_type=generation_tables.GenerationType.IMAGE,
         model="gemini-image",
         prompt="Generate",
         parameters={},
@@ -236,8 +245,8 @@ def generation_row(content: models.Content) -> models.Generation:
     )
 
 
-def asset_row(content: models.Content) -> models.Asset:
-    return models.Asset(
+def asset_row(content: content_tables.Content) -> asset_tables.Asset:
+    return asset_tables.Asset(
         id=uuid4(),
         workspace_id=content.workspace_id,
         brand_id=content.brand_id,
@@ -256,8 +265,8 @@ def asset_row(content: models.Content) -> models.Asset:
     )
 
 
-def brand_settings_row(brand: models.Brand) -> models.BrandSettings:
-    return models.BrandSettings(
+def brand_settings_row(brand: brand_tables.Brand) -> brand_tables.BrandSettings:
+    return brand_tables.BrandSettings(
         id=uuid4(),
         workspace_id=brand.workspace_id,
         brand_id=brand.id,
@@ -270,8 +279,10 @@ def brand_settings_row(brand: models.Brand) -> models.BrandSettings:
     )
 
 
-def job_row(generation: models.Generation, status: GenerationJobStatus) -> models.GenerationJob:
-    return models.GenerationJob(
+def job_row(
+    generation: generation_tables.Generation, status: GenerationJobStatus
+) -> generation_tables.GenerationJob:
+    return generation_tables.GenerationJob(
         id=uuid4(),
         workspace_id=generation.workspace_id,
         generation_id=generation.id,
@@ -285,8 +296,8 @@ def job_row(generation: models.Generation, status: GenerationJobStatus) -> model
     )
 
 
-def image_row(generation: models.Generation) -> models.Image:
-    return models.Image(
+def image_row(generation: generation_tables.Generation) -> content_tables.Image:
+    return content_tables.Image(
         id=uuid4(),
         workspace_id=generation.workspace_id,
         content_id=generation.content_id,
@@ -352,7 +363,7 @@ def test_settings_repository_get_create_upsert_and_update() -> None:
     assert created.brand_name == "Lefil"
     assert created.default_preferences == {"locale": "pt-BR"}
 
-    existing = models.Settings(
+    existing = user_tables.Settings(
         id=uuid4(),
         user_id=user_id,
         brand_name="Lefil",
@@ -557,8 +568,8 @@ def test_workspace_repository_creates_workspace_with_owner_membership() -> None:
     assert created.membership.user_id == user_id
     assert created.membership.workspace_id == created.workspace.id
     assert created.membership.role == "owner"
-    assert any(isinstance(row, models.Workspace) for row in session.added)
-    assert any(isinstance(row, models.WorkspaceMembership) for row in session.added)
+    assert any(isinstance(row, workspace_tables.Workspace) for row in session.added)
+    assert any(isinstance(row, workspace_tables.WorkspaceMembership) for row in session.added)
 
 
 def test_workspace_repository_soft_deletes_owned_workspace() -> None:
@@ -675,7 +686,8 @@ def test_content_repository_creates_text_content_with_generation() -> None:
     assert generated.generation_model == "gemini-2.5-flash"
     assert generated.generation_parameters == {"prompt_template": {"id": "content.generation.v1"}}
     assert any(
-        isinstance(row, models.Generation) and row.generation_type == models.GenerationType.TEXT
+        isinstance(row, generation_tables.Generation)
+        and row.generation_type == generation_tables.GenerationType.TEXT
         for row in session.added
     )
 
@@ -774,7 +786,9 @@ def test_image_generation_repository_reclaims_processing_job_without_status_even
     assert claimed is not None
     assert claimed.job.status == GenerationJobStatus.PROCESSING
     assert claimed.job.attempt_count == 2
-    assert not any(isinstance(row, models.GenerationJobStatusEvent) for row in session.added)
+    assert not any(
+        isinstance(row, generation_tables.GenerationJobStatusEvent) for row in session.added
+    )
 
 
 def test_image_generation_repository_reserves_image_version_once() -> None:

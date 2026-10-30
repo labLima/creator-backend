@@ -7,7 +7,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.design_structure.adapters import tables as design_structure_tables
+from creator.modules.post_structure.adapters import tables as post_structure_tables
 from creator.repositories.design import DesignStructureRecord, DesignStructureRepository
 
 
@@ -22,12 +23,12 @@ class SqlAlchemyDesignStructureRepository(DesignStructureRepository):
 
     def _owned(self, uid, did):
         return self.s.scalar(
-            select(schema_models.DesignStructure)
-            .join(schema_models.PostStructure)
+            select(design_structure_tables.DesignStructure)
+            .join(post_structure_tables.PostStructure)
             .where(
-                schema_models.DesignStructure.id == did,
-                schema_models.PostStructure.created_by == uid,
-                schema_models.DesignStructure.deleted_at.is_(None),
+                design_structure_tables.DesignStructure.id == did,
+                post_structure_tables.PostStructure.created_by == uid,
+                design_structure_tables.DesignStructure.deleted_at.is_(None),
             )
         )
 
@@ -35,11 +36,11 @@ class SqlAlchemyDesignStructureRepository(DesignStructureRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.DesignStructure)
-                .join(schema_models.PostStructure)
+                select(design_structure_tables.DesignStructure)
+                .join(post_structure_tables.PostStructure)
                 .where(
-                    schema_models.PostStructure.created_by == user_id,
-                    schema_models.DesignStructure.deleted_at.is_(None),
+                    post_structure_tables.PostStructure.created_by == user_id,
+                    design_structure_tables.DesignStructure.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -49,13 +50,13 @@ class SqlAlchemyDesignStructureRepository(DesignStructureRepository):
         return self._r(x) if x else None
 
     def add(self, *, post_structure_id):
-        x = schema_models.DesignStructure(post_structure_id=post_structure_id)
+        x = design_structure_tables.DesignStructure(post_structure_id=post_structure_id)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, design_id, fields):
-        x = self.s.get(schema_models.DesignStructure, design_id)
+        x = self.s.get(design_structure_tables.DesignStructure, design_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Design structure not found")
         for key, value in fields.items():
@@ -65,7 +66,7 @@ class SqlAlchemyDesignStructureRepository(DesignStructureRepository):
         return self._r(x)
 
     def soft_delete(self, *, design_id):
-        x = self.s.get(schema_models.DesignStructure, design_id)
+        x = self.s.get(design_structure_tables.DesignStructure, design_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Design structure not found")
         x.deleted_at = datetime.now(UTC)

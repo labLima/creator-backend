@@ -7,7 +7,9 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.billing_account.adapters import tables as billing_account_tables
+from creator.modules.billing_provider.adapters import tables as billing_provider_tables
+from creator.modules.refund.adapters import tables as refund_tables
 from creator.repositories.provider import (
     ProviderDisputeRecord,
     ProviderDisputeRepository,
@@ -36,12 +38,12 @@ class SqlAlchemyRefundRepository(RefundRepository):
 
     def _owned(self, uid, rid):
         return self.s.scalar(
-            select(schema_models.Refund)
-            .join(schema_models.BillingAccount)
+            select(refund_tables.Refund)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.Refund.id == rid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.Refund.deleted_at.is_(None),
+                refund_tables.Refund.id == rid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                refund_tables.Refund.deleted_at.is_(None),
             )
         )
 
@@ -49,11 +51,11 @@ class SqlAlchemyRefundRepository(RefundRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.Refund)
-                .join(schema_models.BillingAccount)
+                select(refund_tables.Refund)
+                .join(billing_account_tables.BillingAccount)
                 .where(
-                    schema_models.BillingAccount.user_id == user_id,
-                    schema_models.Refund.deleted_at.is_(None),
+                    billing_account_tables.BillingAccount.user_id == user_id,
+                    refund_tables.Refund.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -63,13 +65,13 @@ class SqlAlchemyRefundRepository(RefundRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.Refund(**fields)
+        x = refund_tables.Refund(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, refund_id, fields):
-        x = self.s.get(schema_models.Refund, refund_id)
+        x = self.s.get(refund_tables.Refund, refund_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Refund not found")
         for k, v in fields.items():
@@ -79,7 +81,7 @@ class SqlAlchemyRefundRepository(RefundRepository):
         return self._r(x)
 
     def soft_delete(self, *, refund_id):
-        x = self.s.get(schema_models.Refund, refund_id)
+        x = self.s.get(refund_tables.Refund, refund_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Refund not found")
         x.deleted_at = datetime.now(UTC)
@@ -109,12 +111,12 @@ class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
 
     def _owned(self, uid, did):
         return self.s.scalar(
-            select(schema_models.ProviderDispute)
-            .join(schema_models.BillingAccount)
+            select(billing_provider_tables.ProviderDispute)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.ProviderDispute.id == did,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.ProviderDispute.deleted_at.is_(None),
+                billing_provider_tables.ProviderDispute.id == did,
+                billing_account_tables.BillingAccount.user_id == uid,
+                billing_provider_tables.ProviderDispute.deleted_at.is_(None),
             )
         )
 
@@ -122,11 +124,11 @@ class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.ProviderDispute)
-                .join(schema_models.BillingAccount)
+                select(billing_provider_tables.ProviderDispute)
+                .join(billing_account_tables.BillingAccount)
                 .where(
-                    schema_models.BillingAccount.user_id == user_id,
-                    schema_models.ProviderDispute.deleted_at.is_(None),
+                    billing_account_tables.BillingAccount.user_id == user_id,
+                    billing_provider_tables.ProviderDispute.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -136,13 +138,13 @@ class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.ProviderDispute(**fields)
+        x = billing_provider_tables.ProviderDispute(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, dispute_id, fields):
-        x = self.s.get(schema_models.ProviderDispute, dispute_id)
+        x = self.s.get(billing_provider_tables.ProviderDispute, dispute_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Provider dispute not found")
         for k, v in fields.items():
@@ -152,7 +154,7 @@ class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
         return self._r(x)
 
     def soft_delete(self, *, dispute_id):
-        x = self.s.get(schema_models.ProviderDispute, dispute_id)
+        x = self.s.get(billing_provider_tables.ProviderDispute, dispute_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Provider dispute not found")
         x.deleted_at = datetime.now(UTC)

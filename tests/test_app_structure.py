@@ -20,7 +20,7 @@ def test_executable_app_modules_are_importable() -> None:
         "creator.infrastructure",
         "creator.infrastructure.auth",
         "creator.infrastructure.database",
-        "creator.infrastructure.database.models",
+        "creator.infrastructure.database.metadata",
         "creator.infrastructure.persistence",
         "creator.infrastructure.persistence.repositories",
         "creator.infrastructure.runtime",

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.billing_provider.adapters import tables as billing_provider_tables
 from creator.repositories.provider_audit import (
     ProviderIdempotencyKeyRecord,
     ProviderIdempotencyKeyRepository,
@@ -41,21 +41,22 @@ class SqlAlchemyProviderWebhookEventRepository(ProviderWebhookEventRepository):
 
     def list(self):
         return [
-            self._r(x) for x in self.s.scalars(select(schema_models.ProviderWebhookEvent)).all()
+            self._r(x)
+            for x in self.s.scalars(select(billing_provider_tables.ProviderWebhookEvent)).all()
         ]
 
     def get(self, *, event_id):
-        x = self.s.get(schema_models.ProviderWebhookEvent, event_id)
+        x = self.s.get(billing_provider_tables.ProviderWebhookEvent, event_id)
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.ProviderWebhookEvent(**fields)
+        x = billing_provider_tables.ProviderWebhookEvent(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, event_id, fields):
-        x = self.s.get(schema_models.ProviderWebhookEvent, event_id)
+        x = self.s.get(billing_provider_tables.ProviderWebhookEvent, event_id)
         if x is None:
             raise ValueError("Provider webhook event not found")
         for k, v in fields.items():
@@ -86,24 +87,24 @@ class SqlAlchemyProviderIdempotencyKeyRepository(ProviderIdempotencyKeyRepositor
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.ProviderIdempotencyKey).where(
-                    schema_models.ProviderIdempotencyKey.deleted_at.is_(None)
+                select(billing_provider_tables.ProviderIdempotencyKey).where(
+                    billing_provider_tables.ProviderIdempotencyKey.deleted_at.is_(None)
                 )
             ).all()
         ]
 
     def get(self, *, key_id):
-        x = self.s.get(schema_models.ProviderIdempotencyKey, key_id)
+        x = self.s.get(billing_provider_tables.ProviderIdempotencyKey, key_id)
         return self._r(x) if x and x.deleted_at is None else None
 
     def add(self, *, fields):
-        x = schema_models.ProviderIdempotencyKey(**fields)
+        x = billing_provider_tables.ProviderIdempotencyKey(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, key_id, fields):
-        x = self.s.get(schema_models.ProviderIdempotencyKey, key_id)
+        x = self.s.get(billing_provider_tables.ProviderIdempotencyKey, key_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Provider idempotency key not found")
         for k, v in fields.items():

@@ -6,11 +6,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import models, schema_models
+from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories.workspace import WorkspaceInviteRecord, WorkspaceInviteRepository
 
 
-def _record(row: schema_models.WorkspaceInvite) -> WorkspaceInviteRecord:
+def _record(row: workspace_tables.WorkspaceInvite) -> WorkspaceInviteRecord:
     return WorkspaceInviteRecord(
         row.id,
         row.workspace_id,
@@ -35,19 +35,19 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def _owned(self, user_id: UUID, invite_id: UUID) -> schema_models.WorkspaceInvite | None:
+    def _owned(self, user_id: UUID, invite_id: UUID) -> workspace_tables.WorkspaceInvite | None:
         return self._session.scalar(
-            select(schema_models.WorkspaceInvite)
+            select(workspace_tables.WorkspaceInvite)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id
-                == schema_models.WorkspaceInvite.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == workspace_tables.WorkspaceInvite.workspace_id,
             )
             .where(
-                schema_models.WorkspaceInvite.id == invite_id,
-                models.WorkspaceMembership.user_id == user_id,
-                schema_models.WorkspaceInvite.deleted_at.is_(None),
-                models.WorkspaceMembership.deleted_at.is_(None),
+                workspace_tables.WorkspaceInvite.id == invite_id,
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceInvite.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             )
         )
 
@@ -55,20 +55,20 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
         self, *, user_id: UUID, workspace_id: UUID | None = None
     ) -> list[WorkspaceInviteRecord]:
         query = (
-            select(schema_models.WorkspaceInvite)
+            select(workspace_tables.WorkspaceInvite)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id
-                == schema_models.WorkspaceInvite.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == workspace_tables.WorkspaceInvite.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.WorkspaceInvite.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                workspace_tables.WorkspaceInvite.deleted_at.is_(None),
             )
         )
         if workspace_id is not None:
-            query = query.where(schema_models.WorkspaceInvite.workspace_id == workspace_id)
+            query = query.where(workspace_tables.WorkspaceInvite.workspace_id == workspace_id)
         return [_record(x) for x in self._session.scalars(query).all()]
 
     def get_for_user(self, *, user_id: UUID, invite_id: UUID) -> WorkspaceInviteRecord | None:
@@ -87,7 +87,7 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
         expires_at: datetime | None,
         token: str,
     ) -> WorkspaceInviteRecord:
-        row = schema_models.WorkspaceInvite(
+        row = workspace_tables.WorkspaceInvite(
             workspace_id=workspace_id,
             created_by=created_by,
             type=type,
@@ -103,7 +103,7 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
         return _record(row)
 
     def update(self, *, invite_id: UUID, fields: dict[str, object]) -> WorkspaceInviteRecord:
-        row = self._session.get(schema_models.WorkspaceInvite, invite_id)
+        row = self._session.get(workspace_tables.WorkspaceInvite, invite_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Workspace invite not found")
         for name, value in fields.items():
@@ -113,7 +113,7 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
         return _record(row)
 
     def soft_delete(self, *, invite_id: UUID) -> None:
-        row = self._session.get(schema_models.WorkspaceInvite, invite_id)
+        row = self._session.get(workspace_tables.WorkspaceInvite, invite_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Workspace invite not found")
         row.deleted_at = datetime.now(UTC)

@@ -7,7 +7,9 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.billing_account.adapters import tables as billing_account_tables
+from creator.modules.billing_provider.adapters import tables as billing_provider_tables
+from creator.modules.subscription.adapters import tables as subscription_tables
 from creator.repositories.provider_sync import (
     ProviderCustomerRecord,
     ProviderCustomerRepository,
@@ -35,12 +37,12 @@ class SqlAlchemyProviderCustomerRepository(ProviderCustomerRepository):
 
     def _owned(self, uid, rid):
         return self.s.scalar(
-            select(schema_models.ProviderCustomer)
-            .join(schema_models.BillingAccount)
+            select(billing_provider_tables.ProviderCustomer)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.ProviderCustomer.id == rid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.ProviderCustomer.deleted_at.is_(None),
+                billing_provider_tables.ProviderCustomer.id == rid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                billing_provider_tables.ProviderCustomer.deleted_at.is_(None),
             )
         )
 
@@ -48,11 +50,11 @@ class SqlAlchemyProviderCustomerRepository(ProviderCustomerRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.ProviderCustomer)
-                .join(schema_models.BillingAccount)
+                select(billing_provider_tables.ProviderCustomer)
+                .join(billing_account_tables.BillingAccount)
                 .where(
-                    schema_models.BillingAccount.user_id == user_id,
-                    schema_models.ProviderCustomer.deleted_at.is_(None),
+                    billing_account_tables.BillingAccount.user_id == user_id,
+                    billing_provider_tables.ProviderCustomer.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -62,13 +64,13 @@ class SqlAlchemyProviderCustomerRepository(ProviderCustomerRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.ProviderCustomer(**fields)
+        x = billing_provider_tables.ProviderCustomer(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, record_id, fields):
-        x = self.s.get(schema_models.ProviderCustomer, record_id)
+        x = self.s.get(billing_provider_tables.ProviderCustomer, record_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Provider customer not found")
         for k, v in fields.items():
@@ -78,7 +80,7 @@ class SqlAlchemyProviderCustomerRepository(ProviderCustomerRepository):
         return self._r(x)
 
     def soft_delete(self, *, record_id):
-        x = self.s.get(schema_models.ProviderCustomer, record_id)
+        x = self.s.get(billing_provider_tables.ProviderCustomer, record_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Provider customer not found")
         x.deleted_at = datetime.now(UTC)
@@ -105,13 +107,13 @@ class SqlAlchemyProviderSubscriptionRepository(ProviderSubscriptionRepository):
 
     def _owned(self, uid, rid):
         return self.s.scalar(
-            select(schema_models.ProviderSubscription)
-            .join(schema_models.Subscription)
-            .join(schema_models.BillingAccount)
+            select(billing_provider_tables.ProviderSubscription)
+            .join(subscription_tables.Subscription)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.ProviderSubscription.id == rid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.ProviderSubscription.deleted_at.is_(None),
+                billing_provider_tables.ProviderSubscription.id == rid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                billing_provider_tables.ProviderSubscription.deleted_at.is_(None),
             )
         )
 
@@ -119,12 +121,12 @@ class SqlAlchemyProviderSubscriptionRepository(ProviderSubscriptionRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.ProviderSubscription)
-                .join(schema_models.Subscription)
-                .join(schema_models.BillingAccount)
+                select(billing_provider_tables.ProviderSubscription)
+                .join(subscription_tables.Subscription)
+                .join(billing_account_tables.BillingAccount)
                 .where(
-                    schema_models.BillingAccount.user_id == user_id,
-                    schema_models.ProviderSubscription.deleted_at.is_(None),
+                    billing_account_tables.BillingAccount.user_id == user_id,
+                    billing_provider_tables.ProviderSubscription.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -134,13 +136,13 @@ class SqlAlchemyProviderSubscriptionRepository(ProviderSubscriptionRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.ProviderSubscription(**fields)
+        x = billing_provider_tables.ProviderSubscription(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, record_id, fields):
-        x = self.s.get(schema_models.ProviderSubscription, record_id)
+        x = self.s.get(billing_provider_tables.ProviderSubscription, record_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Provider subscription not found")
         for k, v in fields.items():
@@ -150,7 +152,7 @@ class SqlAlchemyProviderSubscriptionRepository(ProviderSubscriptionRepository):
         return self._r(x)
 
     def soft_delete(self, *, record_id):
-        x = self.s.get(schema_models.ProviderSubscription, record_id)
+        x = self.s.get(billing_provider_tables.ProviderSubscription, record_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Provider subscription not found")
         x.deleted_at = datetime.now(UTC)

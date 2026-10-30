@@ -6,11 +6,12 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.billing_account.adapters import tables as billing_account_tables
+from creator.modules.plan.adapters import tables as plan_tables
 from creator.repositories.billing import BillingAccountRecord, PlanItemRecord, PlanRecord
 
 
-def _plan(row: schema_models.Plan) -> PlanRecord:
+def _plan(row: plan_tables.Plan) -> PlanRecord:
     return PlanRecord(
         id=row.id,
         code=row.code,
@@ -31,17 +32,17 @@ class SqlAlchemyPlanRepository:
 
     def list(self) -> list[PlanRecord]:
         rows = self._session.scalars(
-            select(schema_models.Plan)
-            .where(schema_models.Plan.deleted_at.is_(None))
-            .order_by(schema_models.Plan.created_at.desc())
+            select(plan_tables.Plan)
+            .where(plan_tables.Plan.deleted_at.is_(None))
+            .order_by(plan_tables.Plan.created_at.desc())
         ).all()
         return [_plan(row) for row in rows]
 
     def get(self, *, plan_id: UUID) -> PlanRecord | None:
         row = self._session.scalars(
-            select(schema_models.Plan).where(
-                schema_models.Plan.id == plan_id,
-                schema_models.Plan.deleted_at.is_(None),
+            select(plan_tables.Plan).where(
+                plan_tables.Plan.id == plan_id,
+                plan_tables.Plan.deleted_at.is_(None),
             )
         ).one_or_none()
         return _plan(row) if row else None
@@ -56,7 +57,7 @@ class SqlAlchemyPlanRepository:
         metadata: dict[str, object],
         is_active: bool,
     ) -> PlanRecord:
-        row = schema_models.Plan(
+        row = plan_tables.Plan(
             code=code,
             type=type,
             name=name,
@@ -69,7 +70,7 @@ class SqlAlchemyPlanRepository:
         return _plan(row)
 
     def update(self, *, plan_id: UUID, fields: dict[str, object]) -> PlanRecord:
-        row = self._session.get(schema_models.Plan, plan_id)
+        row = self._session.get(plan_tables.Plan, plan_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Plan not found")
         mapping = {"metadata": "metadata_json"}
@@ -80,7 +81,7 @@ class SqlAlchemyPlanRepository:
         return _plan(row)
 
     def soft_delete(self, *, plan_id: UUID) -> None:
-        row = self._session.get(schema_models.Plan, plan_id)
+        row = self._session.get(plan_tables.Plan, plan_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Plan not found")
         timestamp = datetime.now(UTC)
@@ -89,7 +90,7 @@ class SqlAlchemyPlanRepository:
         self._session.flush()
 
 
-def _billing_account(row: schema_models.BillingAccount) -> BillingAccountRecord:
+def _billing_account(row: billing_account_tables.BillingAccount) -> BillingAccountRecord:
     return BillingAccountRecord(
         id=row.id,
         user_id=row.user_id,
@@ -117,21 +118,21 @@ class SqlAlchemyBillingAccountRepository:
 
     def list_for_user(self, *, user_id: UUID) -> list[BillingAccountRecord]:
         rows = self._session.scalars(
-            select(schema_models.BillingAccount)
+            select(billing_account_tables.BillingAccount)
             .where(
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.BillingAccount.deleted_at.is_(None),
+                billing_account_tables.BillingAccount.user_id == user_id,
+                billing_account_tables.BillingAccount.deleted_at.is_(None),
             )
-            .order_by(schema_models.BillingAccount.created_at.desc())
+            .order_by(billing_account_tables.BillingAccount.created_at.desc())
         ).all()
         return [_billing_account(row) for row in rows]
 
     def get_for_user(self, *, user_id: UUID, account_id: UUID) -> BillingAccountRecord | None:
         row = self._session.scalars(
-            select(schema_models.BillingAccount).where(
-                schema_models.BillingAccount.id == account_id,
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.BillingAccount.deleted_at.is_(None),
+            select(billing_account_tables.BillingAccount).where(
+                billing_account_tables.BillingAccount.id == account_id,
+                billing_account_tables.BillingAccount.user_id == user_id,
+                billing_account_tables.BillingAccount.deleted_at.is_(None),
             )
         ).one_or_none()
         return _billing_account(row) if row else None
@@ -147,7 +148,7 @@ class SqlAlchemyBillingAccountRepository:
         document: str | None,
         document_type: str | None,
     ) -> BillingAccountRecord:
-        row = schema_models.BillingAccount(
+        row = billing_account_tables.BillingAccount(
             user_id=user_id,
             payer_type=payer_type,
             name=name,
@@ -164,10 +165,10 @@ class SqlAlchemyBillingAccountRepository:
         self, *, user_id: UUID, account_id: UUID, fields: dict[str, object]
     ) -> BillingAccountRecord:
         row = self._session.scalars(
-            select(schema_models.BillingAccount).where(
-                schema_models.BillingAccount.id == account_id,
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.BillingAccount.deleted_at.is_(None),
+            select(billing_account_tables.BillingAccount).where(
+                billing_account_tables.BillingAccount.id == account_id,
+                billing_account_tables.BillingAccount.user_id == user_id,
+                billing_account_tables.BillingAccount.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
@@ -180,10 +181,10 @@ class SqlAlchemyBillingAccountRepository:
 
     def soft_delete(self, *, user_id: UUID, account_id: UUID) -> None:
         row = self._session.scalars(
-            select(schema_models.BillingAccount).where(
-                schema_models.BillingAccount.id == account_id,
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.BillingAccount.deleted_at.is_(None),
+            select(billing_account_tables.BillingAccount).where(
+                billing_account_tables.BillingAccount.id == account_id,
+                billing_account_tables.BillingAccount.user_id == user_id,
+                billing_account_tables.BillingAccount.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
@@ -194,7 +195,7 @@ class SqlAlchemyBillingAccountRepository:
         self._session.flush()
 
 
-def _plan_item(row: schema_models.PlanItem) -> PlanItemRecord:
+def _plan_item(row: plan_tables.PlanItem) -> PlanItemRecord:
     return PlanItemRecord(
         id=row.id,
         plan_id=row.plan_id,
@@ -217,20 +218,18 @@ class SqlAlchemyPlanItemRepository:
         self._session = session
 
     def list(self, *, plan_id: UUID | None = None) -> list[PlanItemRecord]:
-        statement = select(schema_models.PlanItem).where(
-            schema_models.PlanItem.deleted_at.is_(None)
-        )
+        statement = select(plan_tables.PlanItem).where(plan_tables.PlanItem.deleted_at.is_(None))
         if plan_id is not None:
-            statement = statement.where(schema_models.PlanItem.plan_id == plan_id)
+            statement = statement.where(plan_tables.PlanItem.plan_id == plan_id)
         rows = self._session.scalars(
-            statement.order_by(schema_models.PlanItem.created_at.desc())
+            statement.order_by(plan_tables.PlanItem.created_at.desc())
         ).all()
         return [_plan_item(row) for row in rows]
 
     def get(self, *, item_id: UUID) -> PlanItemRecord | None:
         row = self._session.scalars(
-            select(schema_models.PlanItem).where(
-                schema_models.PlanItem.id == item_id, schema_models.PlanItem.deleted_at.is_(None)
+            select(plan_tables.PlanItem).where(
+                plan_tables.PlanItem.id == item_id, plan_tables.PlanItem.deleted_at.is_(None)
             )
         ).one_or_none()
         return _plan_item(row) if row else None
@@ -248,7 +247,7 @@ class SqlAlchemyPlanItemRepository:
         price_brackets: dict[str, object] | None,
         status: str | None,
     ) -> PlanItemRecord:
-        row = schema_models.PlanItem(
+        row = plan_tables.PlanItem(
             plan_id=plan_id,
             name=name,
             description=description,
@@ -264,7 +263,7 @@ class SqlAlchemyPlanItemRepository:
         return _plan_item(row)
 
     def update(self, *, item_id: UUID, fields: dict[str, object]) -> PlanItemRecord:
-        row = self._session.get(schema_models.PlanItem, item_id)
+        row = self._session.get(plan_tables.PlanItem, item_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Plan item not found")
         for name, value in fields.items():
@@ -274,7 +273,7 @@ class SqlAlchemyPlanItemRepository:
         return _plan_item(row)
 
     def soft_delete(self, *, item_id: UUID) -> None:
-        row = self._session.get(schema_models.PlanItem, item_id)
+        row = self._session.get(plan_tables.PlanItem, item_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Plan item not found")
         timestamp = datetime.now(UTC)

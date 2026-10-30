@@ -4,7 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from creator.config import get_settings
-from creator.infrastructure.database import models as models  # noqa: F401
+from creator.infrastructure.database import metadata as models  # noqa: F401
 from creator.infrastructure.database.db import Base
 
 config = context.config

@@ -7,7 +7,13 @@ from uuid import UUID
 from sqlalchemy import Select, asc, desc, func, select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import models, schema_models
+from creator.modules.brand.adapters import tables as brand_tables
+from creator.modules.campaign.adapters import tables as campaign_tables
+from creator.modules.generation.adapters import tables as generation_tables
+from creator.modules.persona.adapters import tables as persona_tables
+from creator.modules.planning.adapters import tables as planning_tables
+from creator.modules.post_structure.adapters import tables as post_structure_tables
+from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories import (
     BrandAssetRecord,
     CampaignRecord,
@@ -20,7 +26,7 @@ from creator.repositories import (
 )
 
 
-def _record(row: schema_models.Campaign) -> CampaignRecord:
+def _record(row: campaign_tables.Campaign) -> CampaignRecord:
     return CampaignRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -55,7 +61,7 @@ class _CampaignRepositoryBase:
         start_at: datetime | None = None,
         end_at: datetime | None = None,
     ) -> CampaignRecord:
-        row = schema_models.Campaign(
+        row = campaign_tables.Campaign(
             workspace_id=workspace_id,
             created_by=created_by,
             name=name,
@@ -71,7 +77,7 @@ class _CampaignRepositoryBase:
         return _record(row)
 
     def update(self, *, campaign_id: UUID, fields: dict[str, object]) -> CampaignRecord:
-        row = self._session.get(schema_models.Campaign, campaign_id)
+        row = self._session.get(campaign_tables.Campaign, campaign_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Campaign not found")
         for name, value in fields.items():
@@ -81,7 +87,7 @@ class _CampaignRepositoryBase:
         return _record(row)
 
     def soft_delete(self, *, campaign_id: UUID) -> None:
-        row = self._session.get(schema_models.Campaign, campaign_id)
+        row = self._session.get(campaign_tables.Campaign, campaign_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Campaign not found")
         timestamp = datetime.now(UTC)
@@ -90,7 +96,7 @@ class _CampaignRepositoryBase:
         self._session.flush()
 
 
-def _planning_record(row: schema_models.Planning) -> PlanningRecord:
+def _planning_record(row: planning_tables.Planning) -> PlanningRecord:
     return PlanningRecord(
         id=row.id,
         brand_id=row.brand_id,
@@ -110,7 +116,7 @@ def _planning_record(row: schema_models.Planning) -> PlanningRecord:
     )
 
 
-def _persona_record(row: schema_models.Persona) -> PersonaRecord:
+def _persona_record(row: persona_tables.Persona) -> PersonaRecord:
     return PersonaRecord(
         id=row.id,
         brand_id=row.brand_id,
@@ -130,7 +136,7 @@ def _persona_record(row: schema_models.Persona) -> PersonaRecord:
     )
 
 
-def _generated_image_record(row: schema_models.GeneratedImage) -> GeneratedImageRecord:
+def _generated_image_record(row: generation_tables.GeneratedImage) -> GeneratedImageRecord:
     return GeneratedImageRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -152,17 +158,17 @@ class SqlAlchemyGeneratedImageRepository:
 
     def get_for_user(self, *, user_id: UUID, image_id: UUID) -> GeneratedImageRecord | None:
         row = self._session.scalars(
-            select(schema_models.GeneratedImage)
+            select(generation_tables.GeneratedImage)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id
-                == schema_models.GeneratedImage.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == generation_tables.GeneratedImage.workspace_id,
             )
             .where(
-                schema_models.GeneratedImage.id == image_id,
-                schema_models.GeneratedImage.deleted_at.is_(None),
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
+                generation_tables.GeneratedImage.id == image_id,
+                generation_tables.GeneratedImage.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             )
         ).one_or_none()
         return _generated_image_record(row) if row else None
@@ -173,7 +179,7 @@ class SqlAlchemyPersonaRepository:
         self._session = session
 
     def add(self, *, created_by: UUID, **fields: object) -> PersonaRecord:
-        row = schema_models.Persona(created_by=created_by, **fields)
+        row = persona_tables.Persona(created_by=created_by, **fields)
         self._session.add(row)
         self._session.flush()
         return _persona_record(row)
@@ -189,26 +195,27 @@ class SqlAlchemyPersonaRepository:
         statement = self._select(user_id)
         count = (
             select(func.count())
-            .select_from(schema_models.Persona)
-            .join(models.Brand, models.Brand.id == schema_models.Persona.brand_id)
+            .select_from(persona_tables.Persona)
+            .join(brand_tables.Brand, brand_tables.Brand.id == persona_tables.Persona.brand_id)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == models.Brand.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == brand_tables.Brand.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.Persona.deleted_at.is_(None),
-                models.Brand.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                persona_tables.Persona.deleted_at.is_(None),
+                brand_tables.Brand.deleted_at.is_(None),
             )
         )
         if brand_id is not None:
-            statement = statement.where(schema_models.Persona.brand_id == brand_id)
-            count = count.where(schema_models.Persona.brand_id == brand_id)
+            statement = statement.where(persona_tables.Persona.brand_id == brand_id)
+            count = count.where(persona_tables.Persona.brand_id == brand_id)
         order = (
-            asc(schema_models.Persona.created_at)
+            asc(persona_tables.Persona.created_at)
             if page.sort == "asc"
-            else desc(schema_models.Persona.created_at)
+            else desc(persona_tables.Persona.created_at)
         )
         rows = self._session.scalars(
             statement.order_by(order).offset(page.offset).limit(page.limit)
@@ -222,12 +229,12 @@ class SqlAlchemyPersonaRepository:
 
     def get_for_user(self, *, user_id: UUID, persona_id: UUID) -> PersonaRecord | None:
         row = self._session.scalars(
-            self._select(user_id).where(schema_models.Persona.id == persona_id)
+            self._select(user_id).where(persona_tables.Persona.id == persona_id)
         ).one_or_none()
         return _persona_record(row) if row else None
 
     def update(self, *, persona_id: UUID, fields: dict[str, object]) -> PersonaRecord:
-        row = self._session.get(schema_models.Persona, persona_id)
+        row = self._session.get(persona_tables.Persona, persona_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Persona not found")
         for name, value in fields.items():
@@ -237,7 +244,7 @@ class SqlAlchemyPersonaRepository:
         return _persona_record(row)
 
     def soft_delete(self, *, persona_id: UUID) -> None:
-        row = self._session.get(schema_models.Persona, persona_id)
+        row = self._session.get(persona_tables.Persona, persona_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Persona not found")
         timestamp = datetime.now(UTC)
@@ -245,19 +252,20 @@ class SqlAlchemyPersonaRepository:
         row.updated_at = timestamp
         self._session.flush()
 
-    def _select(self, user_id: UUID) -> Select[schema_models.Persona]:
+    def _select(self, user_id: UUID) -> Select[persona_tables.Persona]:
         return (
-            select(schema_models.Persona)
-            .join(models.Brand, models.Brand.id == schema_models.Persona.brand_id)
+            select(persona_tables.Persona)
+            .join(brand_tables.Brand, brand_tables.Brand.id == persona_tables.Persona.brand_id)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == models.Brand.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == brand_tables.Brand.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.Persona.deleted_at.is_(None),
-                models.Brand.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                persona_tables.Persona.deleted_at.is_(None),
+                brand_tables.Brand.deleted_at.is_(None),
             )
         )
 
@@ -267,15 +275,15 @@ class SqlAlchemyPlanningRepository:
         self._session = session
 
     def add(self, *, created_by: UUID, **fields: object) -> PlanningRecord:
-        persona = self._session.get(schema_models.Persona, fields["persona_id"])
+        persona = self._session.get(persona_tables.Persona, fields["persona_id"])
         if persona is None or persona.deleted_at is not None:
             raise ValueError("Persona does not exist")
-        campaign = self._session.get(schema_models.Campaign, fields["campaign_id"])
+        campaign = self._session.get(campaign_tables.Campaign, fields["campaign_id"])
         if campaign is None or campaign.deleted_at is not None:
             raise ValueError("Campaign does not exist")
         if persona.brand_id != fields["brand_id"]:
             raise ValueError("Persona and planning brand do not match")
-        brand = self._session.get(models.Brand, fields["brand_id"])
+        brand = self._session.get(brand_tables.Brand, fields["brand_id"])
         if (
             brand is None
             or brand.deleted_at is not None
@@ -307,7 +315,7 @@ class SqlAlchemyPlanningRepository:
                 "persona_trigger": persona.trigger,
             }
         )
-        row = schema_models.Planning(created_by=created_by, **fields)
+        row = planning_tables.Planning(created_by=created_by, **fields)
         self._session.add(row)
         self._session.flush()
         return _planning_record(row)
@@ -323,29 +331,30 @@ class SqlAlchemyPlanningRepository:
         statement = self._select(user_id)
         count = (
             select(func.count())
-            .select_from(schema_models.Planning)
+            .select_from(planning_tables.Planning)
             .join(
-                schema_models.Campaign,
-                schema_models.Campaign.id == schema_models.Planning.campaign_id,
+                campaign_tables.Campaign,
+                campaign_tables.Campaign.id == planning_tables.Planning.campaign_id,
             )
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == schema_models.Campaign.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == campaign_tables.Campaign.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.Planning.deleted_at.is_(None),
-                schema_models.Campaign.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                planning_tables.Planning.deleted_at.is_(None),
+                campaign_tables.Campaign.deleted_at.is_(None),
             )
         )
         if campaign_id is not None:
-            statement = statement.where(schema_models.Planning.campaign_id == campaign_id)
-            count = count.where(schema_models.Planning.campaign_id == campaign_id)
+            statement = statement.where(planning_tables.Planning.campaign_id == campaign_id)
+            count = count.where(planning_tables.Planning.campaign_id == campaign_id)
         order = (
-            asc(schema_models.Planning.created_at)
+            asc(planning_tables.Planning.created_at)
             if page.sort == "asc"
-            else desc(schema_models.Planning.created_at)
+            else desc(planning_tables.Planning.created_at)
         )
         rows = self._session.scalars(
             statement.order_by(order).offset(page.offset).limit(page.limit)
@@ -359,12 +368,12 @@ class SqlAlchemyPlanningRepository:
 
     def get_for_user(self, *, user_id: UUID, planning_id: UUID) -> PlanningRecord | None:
         row = self._session.scalars(
-            self._select(user_id).where(schema_models.Planning.id == planning_id)
+            self._select(user_id).where(planning_tables.Planning.id == planning_id)
         ).one_or_none()
         return _planning_record(row) if row else None
 
     def update(self, *, planning_id: UUID, fields: dict[str, object]) -> PlanningRecord:
-        row = self._session.get(schema_models.Planning, planning_id)
+        row = self._session.get(planning_tables.Planning, planning_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Planning not found")
         mapping = {
@@ -383,7 +392,7 @@ class SqlAlchemyPlanningRepository:
         return _planning_record(row)
 
     def soft_delete(self, *, planning_id: UUID) -> None:
-        row = self._session.get(schema_models.Planning, planning_id)
+        row = self._session.get(planning_tables.Planning, planning_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Planning not found")
         timestamp = datetime.now(UTC)
@@ -391,22 +400,23 @@ class SqlAlchemyPlanningRepository:
         row.updated_at = timestamp
         self._session.flush()
 
-    def _select(self, user_id: UUID) -> Select[schema_models.Planning]:
+    def _select(self, user_id: UUID) -> Select[planning_tables.Planning]:
         return (
-            select(schema_models.Planning)
+            select(planning_tables.Planning)
             .join(
-                schema_models.Campaign,
-                schema_models.Campaign.id == schema_models.Planning.campaign_id,
+                campaign_tables.Campaign,
+                campaign_tables.Campaign.id == planning_tables.Planning.campaign_id,
             )
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == schema_models.Campaign.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == campaign_tables.Campaign.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.Planning.deleted_at.is_(None),
-                schema_models.Campaign.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                planning_tables.Planning.deleted_at.is_(None),
+                campaign_tables.Campaign.deleted_at.is_(None),
             )
         )
 
@@ -414,7 +424,7 @@ class SqlAlchemyPlanningRepository:
 class SqlAlchemyCampaignRepository(_CampaignRepositoryBase):
     def get_for_user(self, *, user_id: UUID, campaign_id: UUID) -> CampaignRecord | None:
         row = self._session.scalars(
-            self._select(user_id).where(schema_models.Campaign.id == campaign_id)
+            self._select(user_id).where(campaign_tables.Campaign.id == campaign_id)
         ).one_or_none()
         return _record(row) if row else None
 
@@ -429,24 +439,25 @@ class SqlAlchemyCampaignRepository(_CampaignRepositoryBase):
         statement = self._select(user_id)
         count = (
             select(func.count())
-            .select_from(schema_models.Campaign)
+            .select_from(campaign_tables.Campaign)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == schema_models.Campaign.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == campaign_tables.Campaign.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.Campaign.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                campaign_tables.Campaign.deleted_at.is_(None),
             )
         )
         if workspace_id is not None:
-            statement = statement.where(schema_models.Campaign.workspace_id == workspace_id)
-            count = count.where(schema_models.Campaign.workspace_id == workspace_id)
+            statement = statement.where(campaign_tables.Campaign.workspace_id == workspace_id)
+            count = count.where(campaign_tables.Campaign.workspace_id == workspace_id)
         order = (
-            asc(schema_models.Campaign.created_at)
+            asc(campaign_tables.Campaign.created_at)
             if page.sort == "asc"
-            else desc(schema_models.Campaign.created_at)
+            else desc(campaign_tables.Campaign.created_at)
         )
         rows = self._session.scalars(
             statement.order_by(order).offset(page.offset).limit(page.limit)
@@ -460,20 +471,21 @@ class SqlAlchemyCampaignRepository(_CampaignRepositoryBase):
 
     def _select(self, user_id: UUID) -> Select[Any]:
         return (
-            select(schema_models.Campaign)
+            select(campaign_tables.Campaign)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == schema_models.Campaign.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == campaign_tables.Campaign.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.Campaign.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                campaign_tables.Campaign.deleted_at.is_(None),
             )
         )
 
 
-def _post_record(row: schema_models.PostStructure) -> PostStructureRecord:
+def _post_record(row: post_structure_tables.PostStructure) -> PostStructureRecord:
     return PostStructureRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -503,10 +515,10 @@ class SqlAlchemyPostStructureRepository:
     def add(
         self, *, workspace_id: UUID, planning_id: UUID, created_by: UUID, **fields: str | None
     ) -> PostStructureRecord:
-        planning = self._session.get(schema_models.Planning, planning_id)
+        planning = self._session.get(planning_tables.Planning, planning_id)
         if planning is None or planning.deleted_at is not None:
             raise ValueError("Planning does not exist")
-        campaign = self._session.get(schema_models.Campaign, planning.campaign_id)
+        campaign = self._session.get(campaign_tables.Campaign, planning.campaign_id)
         if campaign is None or campaign.workspace_id != workspace_id:
             raise ValueError("Planning and post structure workspace do not match")
         field_names = {
@@ -521,7 +533,7 @@ class SqlAlchemyPostStructureRepository:
             "resolution": "art_resolution",
         }
         fields = {field_names.get(key, key): value for key, value in fields.items()}
-        row = schema_models.PostStructure(
+        row = post_structure_tables.PostStructure(
             workspace_id=workspace_id, planning_id=planning_id, created_by=created_by, **fields
         )
         self._session.add(row)
@@ -530,14 +542,14 @@ class SqlAlchemyPostStructureRepository:
 
     def get_for_user(self, *, user_id: UUID, post_structure_id: UUID) -> PostStructureRecord | None:
         row = self._session.scalars(
-            self._select(user_id).where(schema_models.PostStructure.id == post_structure_id)
+            self._select(user_id).where(post_structure_tables.PostStructure.id == post_structure_id)
         ).one_or_none()
         return _post_record(row) if row else None
 
     def update(
         self, *, post_structure_id: UUID, fields: dict[str, str | None]
     ) -> PostStructureRecord | None:
-        row = self._session.get(schema_models.PostStructure, post_structure_id)
+        row = self._session.get(post_structure_tables.PostStructure, post_structure_id)
         if row is None or row.deleted_at is not None:
             return None
         for field, value in fields.items():
@@ -560,7 +572,7 @@ class SqlAlchemyPostStructureRepository:
         return _post_record(row)
 
     def soft_delete(self, *, post_structure_id: UUID) -> bool:
-        row = self._session.get(schema_models.PostStructure, post_structure_id)
+        row = self._session.get(post_structure_tables.PostStructure, post_structure_id)
         if row is None or row.deleted_at is not None:
             return False
         row.deleted_at = datetime.now(UTC)
@@ -579,27 +591,32 @@ class SqlAlchemyPostStructureRepository:
         statement = self._select(user_id)
         count = (
             select(func.count())
-            .select_from(schema_models.PostStructure)
+            .select_from(post_structure_tables.PostStructure)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == schema_models.PostStructure.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == post_structure_tables.PostStructure.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.PostStructure.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                post_structure_tables.PostStructure.deleted_at.is_(None),
             )
         )
         if workspace_id is not None:
-            statement = statement.where(schema_models.PostStructure.workspace_id == workspace_id)
-            count = count.where(schema_models.PostStructure.workspace_id == workspace_id)
+            statement = statement.where(
+                post_structure_tables.PostStructure.workspace_id == workspace_id
+            )
+            count = count.where(post_structure_tables.PostStructure.workspace_id == workspace_id)
         if planning_id is not None:
-            statement = statement.where(schema_models.PostStructure.planning_id == planning_id)
-            count = count.where(schema_models.PostStructure.planning_id == planning_id)
+            statement = statement.where(
+                post_structure_tables.PostStructure.planning_id == planning_id
+            )
+            count = count.where(post_structure_tables.PostStructure.planning_id == planning_id)
         order = (
-            asc(schema_models.PostStructure.created_at)
+            asc(post_structure_tables.PostStructure.created_at)
             if page.sort == "asc"
-            else desc(schema_models.PostStructure.created_at)
+            else desc(post_structure_tables.PostStructure.created_at)
         )
         rows = self._session.scalars(
             statement.order_by(order).offset(page.offset).limit(page.limit)
@@ -613,20 +630,21 @@ class SqlAlchemyPostStructureRepository:
 
     def _select(self, user_id: UUID) -> Select[Any]:
         return (
-            select(schema_models.PostStructure)
+            select(post_structure_tables.PostStructure)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == schema_models.PostStructure.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == post_structure_tables.PostStructure.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.PostStructure.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                post_structure_tables.PostStructure.deleted_at.is_(None),
             )
         )
 
 
-def _brand_asset_record(row: schema_models.BrandAsset) -> BrandAssetRecord:
+def _brand_asset_record(row: brand_tables.BrandAsset) -> BrandAssetRecord:
     return BrandAssetRecord(
         id=row.id,
         brand_id=row.brand_id,
@@ -653,7 +671,7 @@ class SqlAlchemyBrandAssetRepository:
         file_name: str | None = None,
         description: str | None = None,
     ) -> BrandAssetRecord:
-        row = schema_models.BrandAsset(
+        row = brand_tables.BrandAsset(
             brand_id=brand_id,
             type=type,
             file_url=file_url,
@@ -666,7 +684,7 @@ class SqlAlchemyBrandAssetRepository:
 
     def get_for_user(self, *, user_id: UUID, asset_id: UUID) -> BrandAssetRecord | None:
         row = self._session.scalars(
-            self._select(user_id).where(schema_models.BrandAsset.id == asset_id)
+            self._select(user_id).where(brand_tables.BrandAsset.id == asset_id)
         ).one_or_none()
         return _brand_asset_record(row) if row else None
 
@@ -681,26 +699,27 @@ class SqlAlchemyBrandAssetRepository:
         statement = self._select(user_id)
         count = (
             select(func.count())
-            .select_from(schema_models.BrandAsset)
-            .join(models.Brand, models.Brand.id == schema_models.BrandAsset.brand_id)
+            .select_from(brand_tables.BrandAsset)
+            .join(brand_tables.Brand, brand_tables.Brand.id == brand_tables.BrandAsset.brand_id)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == models.Brand.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == brand_tables.Brand.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.BrandAsset.deleted_at.is_(None),
-                models.Brand.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                brand_tables.BrandAsset.deleted_at.is_(None),
+                brand_tables.Brand.deleted_at.is_(None),
             )
         )
         if brand_id is not None:
-            statement = statement.where(schema_models.BrandAsset.brand_id == brand_id)
-            count = count.where(schema_models.BrandAsset.brand_id == brand_id)
+            statement = statement.where(brand_tables.BrandAsset.brand_id == brand_id)
+            count = count.where(brand_tables.BrandAsset.brand_id == brand_id)
         order = (
-            asc(schema_models.BrandAsset.created_at)
+            asc(brand_tables.BrandAsset.created_at)
             if page.sort == "asc"
-            else desc(schema_models.BrandAsset.created_at)
+            else desc(brand_tables.BrandAsset.created_at)
         )
         rows = self._session.scalars(
             statement.order_by(order).offset(page.offset).limit(page.limit)
@@ -713,7 +732,7 @@ class SqlAlchemyBrandAssetRepository:
         )
 
     def update(self, *, asset_id: UUID, fields: dict[str, object]) -> BrandAssetRecord:
-        row = self._session.get(schema_models.BrandAsset, asset_id)
+        row = self._session.get(brand_tables.BrandAsset, asset_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Brand asset not found")
         for name, value in fields.items():
@@ -723,7 +742,7 @@ class SqlAlchemyBrandAssetRepository:
         return _brand_asset_record(row)
 
     def soft_delete(self, *, asset_id: UUID) -> None:
-        row = self._session.get(schema_models.BrandAsset, asset_id)
+        row = self._session.get(brand_tables.BrandAsset, asset_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Brand asset not found")
         timestamp = datetime.now(UTC)
@@ -731,18 +750,19 @@ class SqlAlchemyBrandAssetRepository:
         row.updated_at = timestamp
         self._session.flush()
 
-    def _select(self, user_id: UUID) -> Select[schema_models.BrandAsset]:
+    def _select(self, user_id: UUID) -> Select[brand_tables.BrandAsset]:
         return (
-            select(schema_models.BrandAsset)
-            .join(models.Brand, models.Brand.id == schema_models.BrandAsset.brand_id)
+            select(brand_tables.BrandAsset)
+            .join(brand_tables.Brand, brand_tables.Brand.id == brand_tables.BrandAsset.brand_id)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id == models.Brand.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == brand_tables.Brand.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.BrandAsset.deleted_at.is_(None),
-                models.Brand.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                brand_tables.BrandAsset.deleted_at.is_(None),
+                brand_tables.Brand.deleted_at.is_(None),
             )
         )

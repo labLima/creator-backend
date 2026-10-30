@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from creator.domain.pipeline_events import PipelineEvent
-from creator.infrastructure.database import models
+from creator.modules.workflow.adapters import tables as workflow_tables
 from creator.repositories.outbox import OutboxEventRecord
 
 
@@ -17,7 +17,7 @@ class SqlAlchemyOutboxRepository:
         self._session = session
 
     def add(self, *, workspace_id: UUID, aggregate_id: UUID, event: PipelineEvent) -> UUID:
-        row = models.OutboxEvent(
+        row = workflow_tables.OutboxEvent(
             id=event.event_id,
             workspace_id=workspace_id,
             aggregate_id=aggregate_id,
@@ -34,39 +34,39 @@ class SqlAlchemyOutboxRepository:
         stale_before = now - timedelta(seconds=60)
         claim_token = uuid4().hex
         candidate_ids = (
-            select(models.OutboxEvent.id)
+            select(workflow_tables.OutboxEvent.id)
             .where(
-                models.OutboxEvent.published_at.is_(None),
-                models.OutboxEvent.dead_lettered_at.is_(None),
-                models.OutboxEvent.available_at <= now,
-                (models.OutboxEvent.claimed_at.is_(None))
-                | (models.OutboxEvent.claimed_at < stale_before),
+                workflow_tables.OutboxEvent.published_at.is_(None),
+                workflow_tables.OutboxEvent.dead_lettered_at.is_(None),
+                workflow_tables.OutboxEvent.available_at <= now,
+                (workflow_tables.OutboxEvent.claimed_at.is_(None))
+                | (workflow_tables.OutboxEvent.claimed_at < stale_before),
             )
-            .order_by(models.OutboxEvent.created_at.asc())
+            .order_by(workflow_tables.OutboxEvent.created_at.asc())
             .limit(limit)
         )
         self._session.execute(
-            update(models.OutboxEvent)
-            .where(models.OutboxEvent.id.in_(candidate_ids))
+            update(workflow_tables.OutboxEvent)
+            .where(workflow_tables.OutboxEvent.id.in_(candidate_ids))
             .values(
                 claimed_at=now,
                 claimed_by=claim_token,
-                attempts=models.OutboxEvent.attempts + 1,
+                attempts=workflow_tables.OutboxEvent.attempts + 1,
             )
             .execution_options(synchronize_session=False)
         )
         rows = self._session.scalars(
-            select(models.OutboxEvent)
+            select(workflow_tables.OutboxEvent)
             .where(
-                models.OutboxEvent.claimed_by == claim_token,
-                models.OutboxEvent.published_at.is_(None),
+                workflow_tables.OutboxEvent.claimed_by == claim_token,
+                workflow_tables.OutboxEvent.published_at.is_(None),
             )
-            .order_by(models.OutboxEvent.created_at.asc())
+            .order_by(workflow_tables.OutboxEvent.created_at.asc())
         ).all()
         return [_record(row) for row in rows]
 
     def mark_published(self, event_id: UUID) -> None:
-        row = self._session.get(models.OutboxEvent, event_id)
+        row = self._session.get(workflow_tables.OutboxEvent, event_id)
         if row is not None:
             row.published_at = datetime.now(UTC)
             row.claimed_at = None
@@ -80,7 +80,7 @@ class SqlAlchemyOutboxRepository:
         max_attempts: int = 5,
         retry_intervals: tuple[int, ...] = (30, 60, 120, 300),
     ) -> bool:
-        row = self._session.get(models.OutboxEvent, event_id)
+        row = self._session.get(workflow_tables.OutboxEvent, event_id)
         if row is None:
             return False
         row.last_error = error[:2_000]
@@ -100,31 +100,31 @@ class SqlAlchemyOutboxRepository:
         stale_before = now - timedelta(seconds=lease_seconds)
         claim_token = uuid4().hex
         self._session.execute(
-            update(models.OutboxEvent)
+            update(workflow_tables.OutboxEvent)
             .where(
-                models.OutboxEvent.id == event_id,
-                models.OutboxEvent.consumed_at.is_(None),
-                models.OutboxEvent.dead_lettered_at.is_(None),
-                (models.OutboxEvent.consumer_claimed_at.is_(None))
-                | (models.OutboxEvent.consumer_claimed_at < stale_before),
+                workflow_tables.OutboxEvent.id == event_id,
+                workflow_tables.OutboxEvent.consumed_at.is_(None),
+                workflow_tables.OutboxEvent.dead_lettered_at.is_(None),
+                (workflow_tables.OutboxEvent.consumer_claimed_at.is_(None))
+                | (workflow_tables.OutboxEvent.consumer_claimed_at < stale_before),
             )
             .values(
                 consumer_claimed_at=now,
                 consumer_claimed_by=claim_token,
-                consumer_attempts=models.OutboxEvent.consumer_attempts + 1,
+                consumer_attempts=workflow_tables.OutboxEvent.consumer_attempts + 1,
             )
             .execution_options(synchronize_session=False)
         )
         row = self._session.scalars(
-            select(models.OutboxEvent).where(
-                models.OutboxEvent.id == event_id,
-                models.OutboxEvent.consumer_claimed_by == claim_token,
+            select(workflow_tables.OutboxEvent).where(
+                workflow_tables.OutboxEvent.id == event_id,
+                workflow_tables.OutboxEvent.consumer_claimed_by == claim_token,
             )
         ).one_or_none()
         return _record(row) if row is not None else None
 
     def mark_consumed(self, event_id: UUID) -> None:
-        row = self._session.get(models.OutboxEvent, event_id)
+        row = self._session.get(workflow_tables.OutboxEvent, event_id)
         if row is None or row.dead_lettered_at is not None:
             return
         row.consumed_at = datetime.now(UTC)
@@ -140,7 +140,7 @@ class SqlAlchemyOutboxRepository:
         max_attempts: int = 5,
         retry_intervals: tuple[int, ...] = (30, 60, 120, 300),
     ) -> bool:
-        row = self._session.get(models.OutboxEvent, event_id)
+        row = self._session.get(workflow_tables.OutboxEvent, event_id)
         if row is None:
             return False
         row.last_consumer_error = error[:2_000]
@@ -154,15 +154,15 @@ class SqlAlchemyOutboxRepository:
         return False
 
     def dead_letter(self, event_id: UUID, *, phase: str, reason: str) -> None:
-        row = self._session.get(models.OutboxEvent, event_id)
+        row = self._session.get(workflow_tables.OutboxEvent, event_id)
         if row is not None:
             self._set_dead_letter(row, phase=phase, reason=reason)
 
     def exists(self, event_id: UUID) -> bool:
-        return self._session.get(models.OutboxEvent, event_id) is not None
+        return self._session.get(workflow_tables.OutboxEvent, event_id) is not None
 
     @staticmethod
-    def _set_dead_letter(row: models.OutboxEvent, *, phase: str, reason: str) -> None:
+    def _set_dead_letter(row: workflow_tables.OutboxEvent, *, phase: str, reason: str) -> None:
         row.dead_lettered_at = datetime.now(UTC)
         row.dead_letter_phase = phase[:32]
         row.dead_letter_reason = reason[:2_000]
@@ -172,7 +172,7 @@ class SqlAlchemyOutboxRepository:
         row.consumer_claimed_by = None
 
 
-def _record(row: models.OutboxEvent) -> OutboxEventRecord:
+def _record(row: workflow_tables.OutboxEvent) -> OutboxEventRecord:
     return OutboxEventRecord(
         id=row.id,
         workspace_id=row.workspace_id,

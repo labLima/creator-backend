@@ -7,7 +7,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.coupon.adapters import tables as coupon_tables
+from creator.modules.credit_package.adapters import tables as credit_package_tables
 from creator.repositories.catalog import (
     CouponRecord,
     CouponRepository,
@@ -20,7 +21,7 @@ class SqlAlchemyCouponRepository(CouponRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
-    def _r(self, x: schema_models.Coupon) -> CouponRecord:
+    def _r(self, x: coupon_tables.Coupon) -> CouponRecord:
         return CouponRecord(
             x.id,
             x.code,
@@ -45,26 +46,26 @@ class SqlAlchemyCouponRepository(CouponRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.Coupon).where(schema_models.Coupon.deleted_at.is_(None))
+                select(coupon_tables.Coupon).where(coupon_tables.Coupon.deleted_at.is_(None))
             ).all()
         ]
 
     def get(self, *, coupon_id: UUID):
         x = self.s.scalar(
-            select(schema_models.Coupon).where(
-                schema_models.Coupon.id == coupon_id, schema_models.Coupon.deleted_at.is_(None)
+            select(coupon_tables.Coupon).where(
+                coupon_tables.Coupon.id == coupon_id, coupon_tables.Coupon.deleted_at.is_(None)
             )
         )
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.Coupon(**fields)
+        x = coupon_tables.Coupon(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, coupon_id: UUID, fields):
-        x = self.s.get(schema_models.Coupon, coupon_id)
+        x = self.s.get(coupon_tables.Coupon, coupon_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Coupon not found")
         for k, v in fields.items():
@@ -74,7 +75,7 @@ class SqlAlchemyCouponRepository(CouponRepository):
         return self._r(x)
 
     def soft_delete(self, *, coupon_id: UUID):
-        x = self.s.get(schema_models.Coupon, coupon_id)
+        x = self.s.get(coupon_tables.Coupon, coupon_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Coupon not found")
         x.deleted_at = datetime.now(UTC)
@@ -86,7 +87,7 @@ class SqlAlchemyCreditPackageRepository(CreditPackageRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
-    def _r(self, x: schema_models.CreditPackage) -> CreditPackageRecord:
+    def _r(self, x: credit_package_tables.CreditPackage) -> CreditPackageRecord:
         return CreditPackageRecord(
             x.id,
             x.code,
@@ -104,29 +105,29 @@ class SqlAlchemyCreditPackageRepository(CreditPackageRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.CreditPackage).where(
-                    schema_models.CreditPackage.deleted_at.is_(None)
+                select(credit_package_tables.CreditPackage).where(
+                    credit_package_tables.CreditPackage.deleted_at.is_(None)
                 )
             ).all()
         ]
 
     def get(self, *, package_id: UUID):
         x = self.s.scalar(
-            select(schema_models.CreditPackage).where(
-                schema_models.CreditPackage.id == package_id,
-                schema_models.CreditPackage.deleted_at.is_(None),
+            select(credit_package_tables.CreditPackage).where(
+                credit_package_tables.CreditPackage.id == package_id,
+                credit_package_tables.CreditPackage.deleted_at.is_(None),
             )
         )
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.CreditPackage(**fields)
+        x = credit_package_tables.CreditPackage(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, package_id: UUID, fields):
-        x = self.s.get(schema_models.CreditPackage, package_id)
+        x = self.s.get(credit_package_tables.CreditPackage, package_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Credit package not found")
         for k, v in fields.items():
@@ -136,7 +137,7 @@ class SqlAlchemyCreditPackageRepository(CreditPackageRepository):
         return self._r(x)
 
     def soft_delete(self, *, package_id: UUID):
-        x = self.s.get(schema_models.CreditPackage, package_id)
+        x = self.s.get(credit_package_tables.CreditPackage, package_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Credit package not found")
         x.deleted_at = datetime.now(UTC)

@@ -2,23 +2,18 @@ from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint
 
 from creator.domain.generation import GenerationJobStatus
 from creator.infrastructure.database.db import Base
-from creator.infrastructure.database.models import (
-    Asset,
-    Brand,
-    BrandSettings,
-    Content,
-    ContentType,
+from creator.infrastructure.database.enums import ContentType, GenerationType
+from creator.modules.asset.adapters.tables import Asset
+from creator.modules.brand.adapters.tables import Brand, BrandSettings
+from creator.modules.content.adapters.tables import Content, Image
+from creator.modules.generation.adapters.tables import (
     Generation,
     GenerationJob,
     GenerationJobStatusEvent,
-    GenerationType,
-    Image,
-    Project,
-    Settings,
-    User,
-    Workspace,
-    WorkspaceMembership,
 )
+from creator.modules.project.adapters.tables import Project
+from creator.modules.user.adapters.tables import Settings, User
+from creator.modules.workspace.adapters.tables import Workspace, WorkspaceMembership
 
 
 def constraint_names(table_name: str, constraint_type: type[object]) -> set[str]:

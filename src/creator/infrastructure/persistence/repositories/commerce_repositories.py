@@ -8,7 +8,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import models, schema_models
+from creator.modules.billing_account.adapters import tables as billing_account_tables
+from creator.modules.coupon.adapters import tables as coupon_tables
+from creator.modules.credit.adapters import tables as credit_tables
+from creator.modules.order.adapters import tables as order_tables
+from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories.commerce import (
     CouponRedemptionRecord,
     CouponRedemptionRepository,
@@ -42,12 +46,12 @@ class SqlAlchemyOrderRepository(OrderRepository):
 
     def _owned(self, uid, oid):
         return self.s.scalar(
-            select(schema_models.Order)
-            .join(schema_models.BillingAccount)
+            select(order_tables.Order)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.Order.id == oid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.Order.deleted_at.is_(None),
+                order_tables.Order.id == oid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                order_tables.Order.deleted_at.is_(None),
             )
         )
 
@@ -55,11 +59,11 @@ class SqlAlchemyOrderRepository(OrderRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.Order)
-                .join(schema_models.BillingAccount)
+                select(order_tables.Order)
+                .join(billing_account_tables.BillingAccount)
                 .where(
-                    schema_models.BillingAccount.user_id == user_id,
-                    schema_models.Order.deleted_at.is_(None),
+                    billing_account_tables.BillingAccount.user_id == user_id,
+                    order_tables.Order.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -69,13 +73,13 @@ class SqlAlchemyOrderRepository(OrderRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.Order(**fields)
+        x = order_tables.Order(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, order_id, fields):
-        x = self.s.get(schema_models.Order, order_id)
+        x = self.s.get(order_tables.Order, order_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Order not found")
         for k, v in fields.items():
@@ -85,7 +89,7 @@ class SqlAlchemyOrderRepository(OrderRepository):
         return self._r(x)
 
     def soft_delete(self, *, order_id):
-        x = self.s.get(schema_models.Order, order_id)
+        x = self.s.get(order_tables.Order, order_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Order not found")
         x.deleted_at = datetime.now(UTC)
@@ -97,7 +101,7 @@ class SqlAlchemyWorkspaceCreditTransactionRepository(WorkspaceCreditTransactionR
     def __init__(self, session: Session) -> None:
         self.s = session
 
-    def _r(self, x: schema_models.WorkspaceCreditTransaction) -> WorkspaceCreditTransactionRecord:
+    def _r(self, x: credit_tables.WorkspaceCreditTransaction) -> WorkspaceCreditTransactionRecord:
         return WorkspaceCreditTransactionRecord(
             x.id,
             x.workspace_id,
@@ -114,49 +118,49 @@ class SqlAlchemyWorkspaceCreditTransactionRepository(WorkspaceCreditTransactionR
         self, *, user_id: UUID, workspace_id: UUID | None = None
     ) -> list[WorkspaceCreditTransactionRecord]:
         q = (
-            select(schema_models.WorkspaceCreditTransaction)
+            select(credit_tables.WorkspaceCreditTransaction)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id
-                == schema_models.WorkspaceCreditTransaction.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == credit_tables.WorkspaceCreditTransaction.workspace_id,
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.WorkspaceCreditTransaction.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                credit_tables.WorkspaceCreditTransaction.deleted_at.is_(None),
             )
         )
         if workspace_id is not None:
-            q = q.where(schema_models.WorkspaceCreditTransaction.workspace_id == workspace_id)
+            q = q.where(credit_tables.WorkspaceCreditTransaction.workspace_id == workspace_id)
         return [self._r(x) for x in self.s.scalars(q).all()]
 
     def get_for_user(
         self, *, user_id: UUID, transaction_id: UUID
     ) -> WorkspaceCreditTransactionRecord | None:
         x = self.s.scalar(
-            select(schema_models.WorkspaceCreditTransaction)
+            select(credit_tables.WorkspaceCreditTransaction)
             .join(
-                models.WorkspaceMembership,
-                models.WorkspaceMembership.workspace_id
-                == schema_models.WorkspaceCreditTransaction.workspace_id,
+                workspace_tables.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership.workspace_id
+                == credit_tables.WorkspaceCreditTransaction.workspace_id,
             )
             .where(
-                schema_models.WorkspaceCreditTransaction.id == transaction_id,
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
-                schema_models.WorkspaceCreditTransaction.deleted_at.is_(None),
+                credit_tables.WorkspaceCreditTransaction.id == transaction_id,
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
+                credit_tables.WorkspaceCreditTransaction.deleted_at.is_(None),
             )
         )
         return self._r(x) if x else None
 
     def add(self, *, fields: dict[str, object]) -> WorkspaceCreditTransactionRecord:
-        x = schema_models.WorkspaceCreditTransaction(**fields)
+        x = credit_tables.WorkspaceCreditTransaction(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def soft_delete(self, *, transaction_id: UUID) -> None:
-        x = self.s.get(schema_models.WorkspaceCreditTransaction, transaction_id)
+        x = self.s.get(credit_tables.WorkspaceCreditTransaction, transaction_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Workspace credit transaction not found")
         x.deleted_at = datetime.now(UTC)
@@ -186,12 +190,12 @@ class SqlAlchemyCouponRedemptionRepository(CouponRedemptionRepository):
 
     def _owned(self, uid, rid):
         return self.s.scalar(
-            select(schema_models.CouponRedemption)
-            .join(schema_models.BillingAccount)
+            select(coupon_tables.CouponRedemption)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.CouponRedemption.id == rid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.CouponRedemption.deleted_at.is_(None),
+                coupon_tables.CouponRedemption.id == rid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                coupon_tables.CouponRedemption.deleted_at.is_(None),
             )
         )
 
@@ -199,11 +203,11 @@ class SqlAlchemyCouponRedemptionRepository(CouponRedemptionRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.CouponRedemption)
-                .join(schema_models.BillingAccount)
+                select(coupon_tables.CouponRedemption)
+                .join(billing_account_tables.BillingAccount)
                 .where(
-                    schema_models.BillingAccount.user_id == user_id,
-                    schema_models.CouponRedemption.deleted_at.is_(None),
+                    billing_account_tables.BillingAccount.user_id == user_id,
+                    coupon_tables.CouponRedemption.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -213,13 +217,13 @@ class SqlAlchemyCouponRedemptionRepository(CouponRedemptionRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.CouponRedemption(**fields)
+        x = coupon_tables.CouponRedemption(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, redemption_id, fields):
-        x = self.s.get(schema_models.CouponRedemption, redemption_id)
+        x = self.s.get(coupon_tables.CouponRedemption, redemption_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Coupon redemption not found")
         for k, v in fields.items():
@@ -229,7 +233,7 @@ class SqlAlchemyCouponRedemptionRepository(CouponRedemptionRepository):
         return self._r(x)
 
     def soft_delete(self, *, redemption_id):
-        x = self.s.get(schema_models.CouponRedemption, redemption_id)
+        x = self.s.get(coupon_tables.CouponRedemption, redemption_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Coupon redemption not found")
         x.deleted_at = datetime.now(UTC)

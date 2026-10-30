@@ -16,12 +16,12 @@ from sqlalchemy.orm import sessionmaker
 from creator.config import Settings
 from creator.domain.auth import Principal
 from creator.infrastructure.auth import auth_token_services
-from creator.infrastructure.database import models
 from creator.infrastructure.database.db import create_database_engine
 from creator.infrastructure.persistence.repositories.auth_session_repositories import (
     SqlAlchemyAuthSessionRepository,
 )
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.modules.auth.adapters import tables as auth_tables
 from creator.modules.auth.ports import (
     AccessTokenCodec,
     Clock,
@@ -254,9 +254,9 @@ def test_concurrent_refresh_has_one_winner(
         active_family_sessions = (
             verification_uow._require_session()
             .scalars(
-                select(models.AuthSession).where(
-                    models.AuthSession.family_id == original.family_id,
-                    models.AuthSession.revoked_at.is_(None),
+                select(auth_tables.AuthSession).where(
+                    auth_tables.AuthSession.family_id == original.family_id,
+                    auth_tables.AuthSession.revoked_at.is_(None),
                 )
             )
             .all()

@@ -7,7 +7,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.billing_account.adapters import tables as billing_account_tables
+from creator.modules.subscription.adapters import tables as subscription_tables
 from creator.repositories.subscription_history import (
     SubscriptionHistoryRecord,
     SubscriptionHistoryRepository,
@@ -35,13 +36,13 @@ class SqlAlchemySubscriptionHistoryRepository(SubscriptionHistoryRepository):
 
     def _owned(self, uid, hid):
         return self.s.scalar(
-            select(schema_models.SubscriptionHistory)
-            .join(schema_models.Subscription)
-            .join(schema_models.BillingAccount)
+            select(subscription_tables.SubscriptionHistory)
+            .join(subscription_tables.Subscription)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.SubscriptionHistory.id == hid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.SubscriptionHistory.deleted_at.is_(None),
+                subscription_tables.SubscriptionHistory.id == hid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                subscription_tables.SubscriptionHistory.deleted_at.is_(None),
             )
         )
 
@@ -49,12 +50,12 @@ class SqlAlchemySubscriptionHistoryRepository(SubscriptionHistoryRepository):
         return [
             self._r(x)
             for x in self.s.scalars(
-                select(schema_models.SubscriptionHistory)
-                .join(schema_models.Subscription)
-                .join(schema_models.BillingAccount)
+                select(subscription_tables.SubscriptionHistory)
+                .join(subscription_tables.Subscription)
+                .join(billing_account_tables.BillingAccount)
                 .where(
-                    schema_models.BillingAccount.user_id == user_id,
-                    schema_models.SubscriptionHistory.deleted_at.is_(None),
+                    billing_account_tables.BillingAccount.user_id == user_id,
+                    subscription_tables.SubscriptionHistory.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -64,13 +65,13 @@ class SqlAlchemySubscriptionHistoryRepository(SubscriptionHistoryRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = schema_models.SubscriptionHistory(**fields)
+        x = subscription_tables.SubscriptionHistory(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, history_id, fields):
-        x = self.s.get(schema_models.SubscriptionHistory, history_id)
+        x = self.s.get(subscription_tables.SubscriptionHistory, history_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Subscription history not found")
         for key, value in fields.items():
@@ -80,7 +81,7 @@ class SqlAlchemySubscriptionHistoryRepository(SubscriptionHistoryRepository):
         return self._r(x)
 
     def soft_delete(self, *, history_id):
-        x = self.s.get(schema_models.SubscriptionHistory, history_id)
+        x = self.s.get(subscription_tables.SubscriptionHistory, history_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Subscription history not found")
         x.deleted_at = datetime.now(UTC)

@@ -6,11 +6,11 @@ from uuid import UUID
 from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import models
+from creator.modules.auth.adapters import tables as auth_tables
 from creator.repositories.auth import AuthSessionRecord
 
 
-def _record(row: models.AuthSession) -> AuthSessionRecord:
+def _record(row: auth_tables.AuthSession) -> AuthSessionRecord:
     return AuthSessionRecord(
         id=row.id,
         user_id=row.user_id,
@@ -43,7 +43,7 @@ class SqlAlchemyAuthSessionRepository:
         user_agent: str | None = None,
         ip_address: str | None = None,
     ) -> AuthSessionRecord:
-        row = models.AuthSession(
+        row = auth_tables.AuthSession(
             user_id=user_id,
             family_id=family_id,
             refresh_token_hash=refresh_token_hash,
@@ -58,19 +58,19 @@ class SqlAlchemyAuthSessionRepository:
         return _record(row)
 
     def get_by_id(self, session_id: UUID) -> AuthSessionRecord | None:
-        row = self._session.get(models.AuthSession, session_id)
+        row = self._session.get(auth_tables.AuthSession, session_id)
         return _record(row) if row else None
 
     def get_by_refresh_hash(self, refresh_token_hash: str) -> AuthSessionRecord | None:
         row = self._session.scalars(
-            select(models.AuthSession).where(
-                models.AuthSession.refresh_token_hash == refresh_token_hash
+            select(auth_tables.AuthSession).where(
+                auth_tables.AuthSession.refresh_token_hash == refresh_token_hash
             )
         ).one_or_none()
         return _record(row) if row else None
 
     def revoke(self, session_id: UUID, *, replaced_by_id: UUID | None = None) -> None:
-        row = self._session.get(models.AuthSession, session_id)
+        row = self._session.get(auth_tables.AuthSession, session_id)
         if row is None or row.revoked_at is not None:
             return
         row.revoked_at = datetime.now(UTC)
@@ -80,9 +80,9 @@ class SqlAlchemyAuthSessionRepository:
 
     def revoke_family(self, family_id: UUID) -> None:
         rows = self._session.scalars(
-            select(models.AuthSession).where(
-                models.AuthSession.family_id == family_id,
-                models.AuthSession.revoked_at.is_(None),
+            select(auth_tables.AuthSession).where(
+                auth_tables.AuthSession.family_id == family_id,
+                auth_tables.AuthSession.revoked_at.is_(None),
             )
         ).all()
         now = datetime.now(UTC)
@@ -91,7 +91,7 @@ class SqlAlchemyAuthSessionRepository:
         self._session.flush()
 
     def touch(self, session_id: UUID, *, at: datetime) -> None:
-        row = self._session.get(models.AuthSession, session_id)
+        row = self._session.get(auth_tables.AuthSession, session_id)
         if row is not None:
             row.last_used_at = at
             self._session.flush()
@@ -108,16 +108,16 @@ class SqlAlchemyAuthSessionRepository:
         user_agent: str | None = None,
         ip_address: str | None = None,
     ) -> AuthSessionRecord | None:
-        row = self._session.get(models.AuthSession, session_id)
+        row = self._session.get(auth_tables.AuthSession, session_id)
         if row is None:
             return None
         result = self._session.execute(
-            update(models.AuthSession)
+            update(auth_tables.AuthSession)
             .where(
-                models.AuthSession.id == session_id,
-                models.AuthSession.revoked_at.is_(None),
-                models.AuthSession.expires_at > now,
-                models.AuthSession.absolute_expires_at > now,
+                auth_tables.AuthSession.id == session_id,
+                auth_tables.AuthSession.revoked_at.is_(None),
+                auth_tables.AuthSession.expires_at > now,
+                auth_tables.AuthSession.absolute_expires_at > now,
             )
             .values(revoked_at=now, replaced_by_id=new_session_id, rotated_at=now)
         )
@@ -125,7 +125,7 @@ class SqlAlchemyAuthSessionRepository:
             # Bulk UPDATE may leave the identity map with the pre-CAS state.
             self._session.expire(row)
             return None
-        successor = models.AuthSession(
+        successor = auth_tables.AuthSession(
             id=new_session_id,
             user_id=row.user_id,
             family_id=row.family_id,
@@ -142,13 +142,13 @@ class SqlAlchemyAuthSessionRepository:
 
     def purge_expired(self, *, before: datetime) -> int:
         result = self._session.execute(
-            delete(models.AuthSession).where(
+            delete(auth_tables.AuthSession).where(
                 or_(
-                    models.AuthSession.absolute_expires_at < before,
-                    models.AuthSession.expires_at < before,
+                    auth_tables.AuthSession.absolute_expires_at < before,
+                    auth_tables.AuthSession.expires_at < before,
                     and_(
-                        models.AuthSession.revoked_at.is_not(None),
-                        models.AuthSession.revoked_at < before,
+                        auth_tables.AuthSession.revoked_at.is_not(None),
+                        auth_tables.AuthSession.revoked_at < before,
                     ),
                 )
             )

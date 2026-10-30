@@ -25,7 +25,20 @@ from creator.domain.exceptions import (
     PersistenceError,
 )
 from creator.domain.generation import GenerationJobStatus, can_transition
-from creator.infrastructure.database import models
+from creator.infrastructure.database.enums import (
+    ContentType,
+    GenerationType,
+    GlobalRole,
+    WorkspaceRole,
+)
+from creator.modules.asset.adapters import tables as asset_tables
+from creator.modules.brand.adapters import tables as brand_tables
+from creator.modules.content.adapters import tables as content_tables
+from creator.modules.generation.adapters import tables as generation_tables
+from creator.modules.project.adapters import tables as project_tables
+from creator.modules.user.adapters import tables as user_tables
+from creator.modules.workflow.adapters import tables as workflow_tables
+from creator.modules.workspace.adapters import tables as workspace_tables
 from creator.repositories import (
     AgentWorkflowRunRecord,
     AgentWorkflowStepRecord,
@@ -91,7 +104,7 @@ def flush_or_raise(session: Session) -> None:
         raise map_sqlalchemy_error(error) from error
 
 
-def _user_record(row: models.User) -> UserRecord:
+def _user_record(row: user_tables.User) -> UserRecord:
     return UserRecord(
         id=row.id,
         external_id=row.external_id,
@@ -105,7 +118,7 @@ def _user_record(row: models.User) -> UserRecord:
     )
 
 
-def _settings_record(row: models.Settings) -> SettingsRecord:
+def _settings_record(row: user_tables.Settings) -> SettingsRecord:
     return SettingsRecord(
         id=row.id,
         user_id=row.user_id,
@@ -120,7 +133,7 @@ def _settings_record(row: models.Settings) -> SettingsRecord:
     )
 
 
-def _workspace_record(row: models.Workspace) -> WorkspaceRecord:
+def _workspace_record(row: workspace_tables.Workspace) -> WorkspaceRecord:
     return WorkspaceRecord(
         id=row.id,
         name=row.name,
@@ -131,7 +144,7 @@ def _workspace_record(row: models.Workspace) -> WorkspaceRecord:
 
 
 def _workspace_membership_record(
-    row: models.WorkspaceMembership,
+    row: workspace_tables.WorkspaceMembership,
 ) -> WorkspaceMembershipRecord:
     return WorkspaceMembershipRecord(
         id=row.id,
@@ -144,7 +157,7 @@ def _workspace_membership_record(
     )
 
 
-def _brand_record(row: models.Brand) -> BrandRecord:
+def _brand_record(row: brand_tables.Brand) -> BrandRecord:
     return BrandRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -159,7 +172,7 @@ def _brand_record(row: models.Brand) -> BrandRecord:
     )
 
 
-def _project_record(row: models.Project) -> ProjectRecord:
+def _project_record(row: project_tables.Project) -> ProjectRecord:
     return ProjectRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -175,7 +188,7 @@ def _project_record(row: models.Project) -> ProjectRecord:
     )
 
 
-def _content_record(row: models.Content) -> ContentRecord:
+def _content_record(row: content_tables.Content) -> ContentRecord:
     return ContentRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -191,7 +204,7 @@ def _content_record(row: models.Content) -> ContentRecord:
     )
 
 
-def _generation_record(row: models.Generation) -> GenerationRecord:
+def _generation_record(row: generation_tables.Generation) -> GenerationRecord:
     return GenerationRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -209,7 +222,7 @@ def _generation_record(row: models.Generation) -> GenerationRecord:
     )
 
 
-def _agent_workflow_run_record(row: models.AgentWorkflowRun) -> AgentWorkflowRunRecord:
+def _agent_workflow_run_record(row: workflow_tables.AgentWorkflowRun) -> AgentWorkflowRunRecord:
     return AgentWorkflowRunRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -234,7 +247,7 @@ def _agent_workflow_run_record(row: models.AgentWorkflowRun) -> AgentWorkflowRun
     )
 
 
-def _agent_workflow_step_record(row: models.AgentWorkflowStep) -> AgentWorkflowStepRecord:
+def _agent_workflow_step_record(row: workflow_tables.AgentWorkflowStep) -> AgentWorkflowStepRecord:
     return AgentWorkflowStepRecord(
         id=row.id,
         run_id=row.run_id,
@@ -269,7 +282,7 @@ def _agent_workflow_step_record(row: models.AgentWorkflowStep) -> AgentWorkflowS
     )
 
 
-def _asset_record(row: models.Asset) -> AssetRecord:
+def _asset_record(row: asset_tables.Asset) -> AssetRecord:
     return AssetRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -290,7 +303,7 @@ def _asset_record(row: models.Asset) -> AssetRecord:
     )
 
 
-def _brand_settings_record(row: models.BrandSettings) -> BrandSettingsRecord:
+def _brand_settings_record(row: brand_tables.BrandSettings) -> BrandSettingsRecord:
     return BrandSettingsRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -305,7 +318,7 @@ def _brand_settings_record(row: models.BrandSettings) -> BrandSettingsRecord:
     )
 
 
-def _job_record(row: models.GenerationJob, content_id: UUID) -> GenerationJobRecord:
+def _job_record(row: generation_tables.GenerationJob, content_id: UUID) -> GenerationJobRecord:
     return GenerationJobRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -328,7 +341,7 @@ def _job_record(row: models.GenerationJob, content_id: UUID) -> GenerationJobRec
     )
 
 
-def _image_record(row: models.Image) -> ImageRecord:
+def _image_record(row: content_tables.Image) -> ImageRecord:
     return ImageRecord(
         id=row.id,
         workspace_id=row.workspace_id,
@@ -350,10 +363,10 @@ def _image_record(row: models.Image) -> ImageRecord:
 
 
 def _image_generation_status_record(
-    job: models.GenerationJob,
+    job: generation_tables.GenerationJob,
     content_id: UUID,
     parameters: dict[str, object] | None,
-    image: models.Image | None,
+    image: content_tables.Image | None,
 ) -> ImageGenerationStatusRecord:
     return ImageGenerationStatusRecord(
         job=_job_record(job, content_id),
@@ -375,7 +388,7 @@ class SqlAlchemyUserRepository:
         global_role: str = "membro",
         password_hash: str | None = None,
     ) -> UserRecord:
-        row = models.User(
+        row = user_tables.User(
             external_id=external_id,
             email=email,
             display_name=display_name,
@@ -387,25 +400,27 @@ class SqlAlchemyUserRepository:
         return _user_record(row)
 
     def get_by_id(self, user_id: UUID, *, include_deleted: bool = False) -> UserRecord | None:
-        statement = select(models.User).where(models.User.id == user_id)
+        statement = select(user_tables.User).where(user_tables.User.id == user_id)
         if not include_deleted:
-            statement = statement.where(models.User.deleted_at.is_(None))
+            statement = statement.where(user_tables.User.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _user_record(row) if row else None
 
     def get_by_external_id(
         self, external_id: str, *, include_deleted: bool = False
     ) -> UserRecord | None:
-        statement = select(models.User).where(models.User.external_id == external_id)
+        statement = select(user_tables.User).where(user_tables.User.external_id == external_id)
         if not include_deleted:
-            statement = statement.where(models.User.deleted_at.is_(None))
+            statement = statement.where(user_tables.User.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _user_record(row) if row else None
 
     def get_by_email(self, email: str, *, include_deleted: bool = False) -> UserRecord | None:
-        statement = select(models.User).where(func.lower(models.User.email) == email.lower())
+        statement = select(user_tables.User).where(
+            func.lower(user_tables.User.email) == email.lower()
+        )
         if not include_deleted:
-            statement = statement.where(models.User.deleted_at.is_(None))
+            statement = statement.where(user_tables.User.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _user_record(row) if row else None
 
@@ -416,16 +431,16 @@ class SqlAlchemyUserRepository:
         page: PageRequest | None = None,
     ) -> Page[UserRecord]:
         page = page or PageRequest()
-        statement = select(models.User)
-        count_statement = select(func.count()).select_from(models.User)
+        statement = select(user_tables.User)
+        count_statement = select(func.count()).select_from(user_tables.User)
         if not include_deleted:
-            statement = statement.where(models.User.deleted_at.is_(None))
-            count_statement = count_statement.where(models.User.deleted_at.is_(None))
+            statement = statement.where(user_tables.User.deleted_at.is_(None))
+            count_statement = count_statement.where(user_tables.User.deleted_at.is_(None))
         rows, total = _page(
             self._session,
             statement,
             count_statement,
-            models.User.created_at,
+            user_tables.User.created_at,
             page,
         )
         return Page(
@@ -442,7 +457,7 @@ class SqlAlchemyUserRepository:
         email: str | None = None,
         display_name: str | None = None,
     ) -> UserRecord:
-        row = self._session.get(models.User, user_id)
+        row = self._session.get(user_tables.User, user_id)
         if row is None or row.deleted_at is not None:
             raise EntityNotFoundError("User not found")
         if email is not None:
@@ -461,7 +476,7 @@ class SqlAlchemyUserRepository:
         display_name: str | None = None,
         global_role: str | None = None,
     ) -> UserRecord:
-        row = self._session.get(models.User, user_id)
+        row = self._session.get(user_tables.User, user_id)
         if row is None or row.deleted_at is not None:
             raise EntityNotFoundError("User not found")
         if email is not None:
@@ -469,13 +484,13 @@ class SqlAlchemyUserRepository:
         if display_name is not None:
             row.display_name = display_name
         if global_role is not None:
-            row.global_role = models.GlobalRole(global_role)
+            row.global_role = GlobalRole(global_role)
         row.updated_at = _now()
         flush_or_raise(self._session)
         return _user_record(row)
 
     def soft_delete(self, user_id: UUID) -> None:
-        row = self._session.get(models.User, user_id)
+        row = self._session.get(user_tables.User, user_id)
         if row is None or row.deleted_at is not None:
             raise EntityNotFoundError("User not found")
         timestamp = _now()
@@ -490,13 +505,15 @@ class SqlAlchemySettingsRepository:
 
     def get_by_user_id(self, user_id: UUID) -> SettingsRecord | None:
         row = self._session.scalars(
-            select(models.Settings).where(models.Settings.user_id == user_id)
+            select(user_tables.Settings).where(user_tables.Settings.user_id == user_id)
         ).one_or_none()
         return _settings_record(row) if row else None
 
     def get_or_create_for_user(self, user_id: UUID) -> SettingsRecord:
         row = self._session.scalars(
-            select(models.Settings).where(models.Settings.user_id == user_id).with_for_update()
+            select(user_tables.Settings)
+            .where(user_tables.Settings.user_id == user_id)
+            .with_for_update()
         ).one_or_none()
         if row is not None:
             return _settings_record(row)
@@ -504,7 +521,9 @@ class SqlAlchemySettingsRepository:
             return self.create_for_user(user_id)
         except ConflictError:
             row = self._session.scalars(
-                select(models.Settings).where(models.Settings.user_id == user_id).with_for_update()
+                select(user_tables.Settings)
+                .where(user_tables.Settings.user_id == user_id)
+                .with_for_update()
             ).one_or_none()
             if row is None:
                 raise
@@ -521,7 +540,7 @@ class SqlAlchemySettingsRepository:
         visual_style: str = "photographic",
         default_preferences: JsonObject | None = None,
     ) -> SettingsRecord:
-        row = models.Settings(
+        row = user_tables.Settings(
             user_id=user_id,
             brand_name=brand_name,
             segment=segment,
@@ -536,7 +555,9 @@ class SqlAlchemySettingsRepository:
 
     def update_partial(self, user_id: UUID, changes: JsonObject) -> SettingsRecord:
         row = self._session.scalars(
-            select(models.Settings).where(models.Settings.user_id == user_id).with_for_update()
+            select(user_tables.Settings)
+            .where(user_tables.Settings.user_id == user_id)
+            .with_for_update()
         ).one_or_none()
         if row is None:
             raise EntityNotFoundError("Settings not found")
@@ -578,11 +599,11 @@ class SqlAlchemyWorkspaceRepository:
         name: str,
         role: str = "owner",
     ) -> CreatedWorkspaceRecord:
-        workspace = models.Workspace(name=name)
+        workspace = workspace_tables.Workspace(name=name)
         self._session.add(workspace)
         flush_or_raise(self._session)
 
-        membership = models.WorkspaceMembership(
+        membership = workspace_tables.WorkspaceMembership(
             workspace_id=workspace.id,
             user_id=user_id,
             role=role,
@@ -602,9 +623,11 @@ class SqlAlchemyWorkspaceRepository:
         workspace_id: UUID,
         include_deleted: bool = False,
     ) -> WorkspaceRecord | None:
-        statement = self._scoped_select(user_id).where(models.Workspace.id == workspace_id)
+        statement = self._scoped_select(user_id).where(
+            workspace_tables.Workspace.id == workspace_id
+        )
         if not include_deleted:
-            statement = statement.where(models.Workspace.deleted_at.is_(None))
+            statement = statement.where(workspace_tables.Workspace.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _workspace_record(row) if row else None
 
@@ -615,25 +638,28 @@ class SqlAlchemyWorkspaceRepository:
         page: PageRequest | None = None,
     ) -> Page[WorkspaceRecord]:
         page = page or PageRequest()
-        statement = self._scoped_select(user_id).where(models.Workspace.deleted_at.is_(None))
+        statement = self._scoped_select(user_id).where(
+            workspace_tables.Workspace.deleted_at.is_(None)
+        )
         count_statement = (
             select(func.count())
-            .select_from(models.Workspace)
+            .select_from(workspace_tables.Workspace)
             .join(
-                models.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership,
                 and_(
-                    models.WorkspaceMembership.workspace_id == models.Workspace.id,
-                    models.WorkspaceMembership.user_id == user_id,
-                    models.WorkspaceMembership.deleted_at.is_(None),
+                    workspace_tables.WorkspaceMembership.workspace_id
+                    == workspace_tables.Workspace.id,
+                    workspace_tables.WorkspaceMembership.user_id == user_id,
+                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
-            .where(models.Workspace.deleted_at.is_(None))
+            .where(workspace_tables.Workspace.deleted_at.is_(None))
         )
         rows, total = _page(
             self._session,
             statement,
             count_statement,
-            models.Workspace.created_at,
+            workspace_tables.Workspace.created_at,
             page,
         )
         return Page(
@@ -655,19 +681,20 @@ class SqlAlchemyWorkspaceRepository:
 
     def soft_delete_for_user(self, *, user_id: UUID, workspace_id: UUID) -> WorkspaceRecord:
         row = self._session.scalars(
-            select(models.Workspace)
+            select(workspace_tables.Workspace)
             .join(
-                models.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership,
                 and_(
-                    models.WorkspaceMembership.workspace_id == models.Workspace.id,
-                    models.WorkspaceMembership.user_id == user_id,
-                    models.WorkspaceMembership.role == models.WorkspaceRole.OWNER,
-                    models.WorkspaceMembership.deleted_at.is_(None),
+                    workspace_tables.WorkspaceMembership.workspace_id
+                    == workspace_tables.Workspace.id,
+                    workspace_tables.WorkspaceMembership.user_id == user_id,
+                    workspace_tables.WorkspaceMembership.role == WorkspaceRole.OWNER,
+                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
             .where(
-                models.Workspace.id == workspace_id,
-                models.Workspace.deleted_at.is_(None),
+                workspace_tables.Workspace.id == workspace_id,
+                workspace_tables.Workspace.deleted_at.is_(None),
             )
             .with_for_update()
         ).one_or_none()
@@ -678,10 +705,10 @@ class SqlAlchemyWorkspaceRepository:
         row.deleted_at = timestamp
         row.updated_at = timestamp
         self._session.execute(
-            update(models.WorkspaceMembership)
+            update(workspace_tables.WorkspaceMembership)
             .where(
-                models.WorkspaceMembership.workspace_id == workspace_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             )
             .values(deleted_at=timestamp, updated_at=timestamp)
         )
@@ -697,40 +724,43 @@ class SqlAlchemyWorkspaceRepository:
     ) -> bool:
         minimum_rank = ROLE_RANK[minimum_role]
         row = self._session.scalars(
-            select(models.WorkspaceMembership).where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.workspace_id == workspace_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
+            select(workspace_tables.WorkspaceMembership).where(
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
             return False
         return ROLE_RANK[_enum_value(row.role)] >= minimum_rank
 
-    def _writable_workspace(self, *, user_id: UUID, workspace_id: UUID) -> models.Workspace:
+    def _writable_workspace(
+        self, *, user_id: UUID, workspace_id: UUID
+    ) -> workspace_tables.Workspace:
         if not self.user_has_workspace_role(
             user_id=user_id,
             workspace_id=workspace_id,
             minimum_role="admin",
         ):
             raise EntityNotFoundError("Workspace not found")
-        row = self._session.get(models.Workspace, workspace_id)
+        row = self._session.get(workspace_tables.Workspace, workspace_id)
         if row is None or row.deleted_at is not None:
             raise EntityNotFoundError("Workspace not found")
         return row
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
         return (
-            select(models.Workspace)
+            select(workspace_tables.Workspace)
             .join(
-                models.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership,
                 and_(
-                    models.WorkspaceMembership.workspace_id == models.Workspace.id,
-                    models.WorkspaceMembership.user_id == user_id,
-                    models.WorkspaceMembership.deleted_at.is_(None),
+                    workspace_tables.WorkspaceMembership.workspace_id
+                    == workspace_tables.Workspace.id,
+                    workspace_tables.WorkspaceMembership.user_id == user_id,
+                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
-            .where(models.WorkspaceMembership.deleted_at.is_(None))
+            .where(workspace_tables.WorkspaceMembership.deleted_at.is_(None))
         )
 
 
@@ -769,7 +799,7 @@ class SqlAlchemyBrandRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Workspace not found")
-        row = models.Brand(
+        row = brand_tables.Brand(
             workspace_id=workspace_id,
             created_by_user_id=created_by_user_id,
             name=name,
@@ -788,9 +818,9 @@ class SqlAlchemyBrandRepository:
         brand_id: UUID,
         include_deleted: bool = False,
     ) -> BrandRecord | None:
-        statement = self._scoped_select(user_id).where(models.Brand.id == brand_id)
+        statement = self._scoped_select(user_id).where(brand_tables.Brand.id == brand_id)
         if not include_deleted:
-            statement = statement.where(models.Brand.deleted_at.is_(None))
+            statement = statement.where(brand_tables.Brand.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _brand_record(row) if row else None
 
@@ -802,13 +832,13 @@ class SqlAlchemyBrandRepository:
         page: PageRequest | None = None,
     ) -> Page[BrandRecord]:
         page = page or PageRequest()
-        statement = self._scoped_select(user_id).where(models.Brand.deleted_at.is_(None))
-        count_statement = self._scoped_count(user_id).where(models.Brand.deleted_at.is_(None))
+        statement = self._scoped_select(user_id).where(brand_tables.Brand.deleted_at.is_(None))
+        count_statement = self._scoped_count(user_id).where(brand_tables.Brand.deleted_at.is_(None))
         if workspace_id is not None:
-            statement = statement.where(models.Brand.workspace_id == workspace_id)
-            count_statement = count_statement.where(models.Brand.workspace_id == workspace_id)
+            statement = statement.where(brand_tables.Brand.workspace_id == workspace_id)
+            count_statement = count_statement.where(brand_tables.Brand.workspace_id == workspace_id)
         rows, total = _page(
-            self._session, statement, count_statement, models.Brand.created_at, page
+            self._session, statement, count_statement, brand_tables.Brand.created_at, page
         )
         return Page(
             items=[_brand_record(row) for row in rows],
@@ -847,11 +877,11 @@ class SqlAlchemyBrandRepository:
         row.updated_at = timestamp
         flush_or_raise(self._session)
 
-    def _writable_brand(self, *, user_id: UUID, brand_id: UUID) -> models.Brand:
+    def _writable_brand(self, *, user_id: UUID, brand_id: UUID) -> brand_tables.Brand:
         row = self._session.scalars(
             self._scoped_select(user_id).where(
-                models.Brand.id == brand_id,
-                models.Brand.deleted_at.is_(None),
+                brand_tables.Brand.id == brand_id,
+                brand_tables.Brand.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None or not _user_has_workspace_role(
@@ -861,13 +891,13 @@ class SqlAlchemyBrandRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Brand not found")
-        return cast(models.Brand, row)
+        return cast(brand_tables.Brand, row)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, models.Brand)
+        return _scoped_resource_select(user_id, brand_tables.Brand)
 
     def _scoped_count(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_count(user_id, models.Brand)
+        return _scoped_resource_count(user_id, brand_tables.Brand)
 
 
 class SqlAlchemyProjectRepository:
@@ -892,7 +922,7 @@ class SqlAlchemyProjectRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Workspace not found")
-        row = models.Project(
+        row = project_tables.Project(
             workspace_id=workspace_id,
             brand_id=brand_id,
             created_by_user_id=created_by_user_id,
@@ -912,9 +942,9 @@ class SqlAlchemyProjectRepository:
         project_id: UUID,
         include_deleted: bool = False,
     ) -> ProjectRecord | None:
-        statement = self._scoped_select(user_id).where(models.Project.id == project_id)
+        statement = self._scoped_select(user_id).where(project_tables.Project.id == project_id)
         if not include_deleted:
-            statement = statement.where(models.Project.deleted_at.is_(None))
+            statement = statement.where(project_tables.Project.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _project_record(row) if row else None
 
@@ -927,16 +957,20 @@ class SqlAlchemyProjectRepository:
         page: PageRequest | None = None,
     ) -> Page[ProjectRecord]:
         page = page or PageRequest()
-        statement = self._scoped_select(user_id).where(models.Project.deleted_at.is_(None))
-        count_statement = self._scoped_count(user_id).where(models.Project.deleted_at.is_(None))
+        statement = self._scoped_select(user_id).where(project_tables.Project.deleted_at.is_(None))
+        count_statement = self._scoped_count(user_id).where(
+            project_tables.Project.deleted_at.is_(None)
+        )
         if workspace_id is not None:
-            statement = statement.where(models.Project.workspace_id == workspace_id)
-            count_statement = count_statement.where(models.Project.workspace_id == workspace_id)
+            statement = statement.where(project_tables.Project.workspace_id == workspace_id)
+            count_statement = count_statement.where(
+                project_tables.Project.workspace_id == workspace_id
+            )
         if brand_id is not None:
-            statement = statement.where(models.Project.brand_id == brand_id)
-            count_statement = count_statement.where(models.Project.brand_id == brand_id)
+            statement = statement.where(project_tables.Project.brand_id == brand_id)
+            count_statement = count_statement.where(project_tables.Project.brand_id == brand_id)
         rows, total = _page(
-            self._session, statement, count_statement, models.Project.created_at, page
+            self._session, statement, count_statement, project_tables.Project.created_at, page
         )
         return Page(
             items=[_project_record(row) for row in rows],
@@ -975,11 +1009,11 @@ class SqlAlchemyProjectRepository:
         row.updated_at = timestamp
         flush_or_raise(self._session)
 
-    def _writable_project(self, *, user_id: UUID, project_id: UUID) -> models.Project:
+    def _writable_project(self, *, user_id: UUID, project_id: UUID) -> project_tables.Project:
         row = self._session.scalars(
             self._scoped_select(user_id).where(
-                models.Project.id == project_id,
-                models.Project.deleted_at.is_(None),
+                project_tables.Project.id == project_id,
+                project_tables.Project.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None or not _user_has_workspace_role(
@@ -989,31 +1023,31 @@ class SqlAlchemyProjectRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Project not found")
-        return cast(models.Project, row)
+        return cast(project_tables.Project, row)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, models.Project)
+        return _scoped_resource_select(user_id, project_tables.Project)
 
     def _scoped_count(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_count(user_id, models.Project)
+        return _scoped_resource_count(user_id, project_tables.Project)
 
 
 def _scoped_resource_select(user_id: UUID, model: type[Any]) -> Select[Any]:
     return (
         select(model)
         .join(
-            models.WorkspaceMembership,
+            workspace_tables.WorkspaceMembership,
             and_(
-                models.WorkspaceMembership.workspace_id == model.workspace_id,
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.workspace_id == model.workspace_id,
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             ),
         )
         .join(
-            models.Workspace,
+            workspace_tables.Workspace,
             and_(
-                models.Workspace.id == model.workspace_id,
-                models.Workspace.deleted_at.is_(None),
+                workspace_tables.Workspace.id == model.workspace_id,
+                workspace_tables.Workspace.deleted_at.is_(None),
             ),
         )
     )
@@ -1024,18 +1058,18 @@ def _scoped_resource_count(user_id: UUID, model: type[Any]) -> Select[Any]:
         select(func.count())
         .select_from(model)
         .join(
-            models.WorkspaceMembership,
+            workspace_tables.WorkspaceMembership,
             and_(
-                models.WorkspaceMembership.workspace_id == model.workspace_id,
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.workspace_id == model.workspace_id,
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             ),
         )
         .join(
-            models.Workspace,
+            workspace_tables.Workspace,
             and_(
-                models.Workspace.id == model.workspace_id,
-                models.Workspace.deleted_at.is_(None),
+                workspace_tables.Workspace.id == model.workspace_id,
+                workspace_tables.Workspace.deleted_at.is_(None),
             ),
         )
     )
@@ -1071,7 +1105,7 @@ class SqlAlchemyContentRepository:
         title: str | None = None,
         payload: JsonObject | None = None,
     ) -> ContentRecord:
-        row = models.Content(
+        row = content_tables.Content(
             workspace_id=workspace_id,
             created_by_user_id=created_by_user_id,
             content_type=content_type,
@@ -1103,10 +1137,10 @@ class SqlAlchemyContentRepository:
         ):
             raise EntityNotFoundError("Workspace not found")
 
-        content = models.Content(
+        content = content_tables.Content(
             workspace_id=workspace_id,
             created_by_user_id=requested_by_user_id,
-            content_type=models.ContentType.TEXT,
+            content_type=ContentType.TEXT,
             brand_id=brand_id,
             project_id=project_id,
             title=title,
@@ -1115,11 +1149,11 @@ class SqlAlchemyContentRepository:
         self._session.add(content)
         flush_or_raise(self._session)
 
-        generation = models.Generation(
+        generation = generation_tables.Generation(
             workspace_id=workspace_id,
             content_id=content.id,
             requested_by_user_id=requested_by_user_id,
-            generation_type=models.GenerationType.TEXT,
+            generation_type=GenerationType.TEXT,
             brand_id=brand_id,
             project_id=project_id,
             model=model,
@@ -1139,18 +1173,19 @@ class SqlAlchemyContentRepository:
     def user_has_workspace_access(self, *, user_id: UUID, workspace_id: UUID) -> bool:
         statement = (
             select(func.count())
-            .select_from(models.WorkspaceMembership)
+            .select_from(workspace_tables.WorkspaceMembership)
             .join(
-                models.Workspace,
+                workspace_tables.Workspace,
                 and_(
-                    models.Workspace.id == models.WorkspaceMembership.workspace_id,
-                    models.Workspace.deleted_at.is_(None),
+                    workspace_tables.Workspace.id
+                    == workspace_tables.WorkspaceMembership.workspace_id,
+                    workspace_tables.Workspace.deleted_at.is_(None),
                 ),
             )
             .where(
-                models.WorkspaceMembership.user_id == user_id,
-                models.WorkspaceMembership.workspace_id == workspace_id,
-                models.WorkspaceMembership.deleted_at.is_(None),
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+                workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
+                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             )
         )
         return self._session.execute(statement).scalar_one() > 0
@@ -1162,9 +1197,9 @@ class SqlAlchemyContentRepository:
         content_id: UUID,
         include_deleted: bool = False,
     ) -> ContentRecord | None:
-        statement = self._scoped_select(user_id).where(models.Content.id == content_id)
+        statement = self._scoped_select(user_id).where(content_tables.Content.id == content_id)
         if not include_deleted:
-            statement = statement.where(models.Content.deleted_at.is_(None))
+            statement = statement.where(content_tables.Content.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _content_record(row) if row else None
 
@@ -1178,13 +1213,13 @@ class SqlAlchemyContentRepository:
         if content is None:
             return None
         images = self._session.scalars(
-            select(models.Image)
+            select(content_tables.Image)
             .where(
-                models.Image.content_id == content.id,
-                models.Image.workspace_id == content.workspace_id,
-                models.Image.deleted_at.is_(None),
+                content_tables.Image.content_id == content.id,
+                content_tables.Image.workspace_id == content.workspace_id,
+                content_tables.Image.deleted_at.is_(None),
             )
-            .order_by(models.Image.version_number.desc(), models.Image.id.desc())
+            .order_by(content_tables.Image.version_number.desc(), content_tables.Image.id.desc())
         ).all()
         return ContentDetailRecord(
             content=content,
@@ -1203,11 +1238,15 @@ class SqlAlchemyContentRepository:
         statement = self._apply_content_filters(self._scoped_select(user_id), filters)
         count_statement = self._apply_content_filters(self._scoped_count(user_id), filters)
         order_column = (
-            asc(models.Content.created_at)
+            asc(content_tables.Content.created_at)
             if page.sort == "asc"
-            else desc(models.Content.created_at)
+            else desc(content_tables.Content.created_at)
         )
-        id_order = asc(models.Content.id) if page.sort == "asc" else desc(models.Content.id)
+        id_order = (
+            asc(content_tables.Content.id)
+            if page.sort == "asc"
+            else desc(content_tables.Content.id)
+        )
         rows = self._session.scalars(
             statement.order_by(order_column, id_order).offset(page.offset).limit(page.limit)
         ).all()
@@ -1231,8 +1270,8 @@ class SqlAlchemyContentRepository:
     ) -> ContentRecord:
         row = self._session.scalars(
             self._scoped_select(user_id).where(
-                models.Content.id == content_id,
-                models.Content.deleted_at.is_(None),
+                content_tables.Content.id == content_id,
+                content_tables.Content.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
@@ -1251,7 +1290,7 @@ class SqlAlchemyContentRepository:
 
     def soft_delete(self, *, user_id: UUID, content_id: UUID) -> None:
         row = self._session.scalars(
-            self._scoped_select(user_id).where(models.Content.id == content_id)
+            self._scoped_select(user_id).where(content_tables.Content.id == content_id)
         ).one_or_none()
         if row is None:
             raise EntityNotFoundError("Content not found")
@@ -1264,28 +1303,30 @@ class SqlAlchemyContentRepository:
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
         return (
-            select(models.Content)
+            select(content_tables.Content)
             .join(
-                models.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership,
                 and_(
-                    models.WorkspaceMembership.workspace_id == models.Content.workspace_id,
-                    models.WorkspaceMembership.user_id == user_id,
-                    models.WorkspaceMembership.deleted_at.is_(None),
+                    workspace_tables.WorkspaceMembership.workspace_id
+                    == content_tables.Content.workspace_id,
+                    workspace_tables.WorkspaceMembership.user_id == user_id,
+                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
-            .where(models.WorkspaceMembership.deleted_at.is_(None))
+            .where(workspace_tables.WorkspaceMembership.deleted_at.is_(None))
         )
 
     def _scoped_count(self, user_id: UUID) -> Select[Any]:
         return (
             select(func.count())
-            .select_from(models.Content)
+            .select_from(content_tables.Content)
             .join(
-                models.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership,
                 and_(
-                    models.WorkspaceMembership.workspace_id == models.Content.workspace_id,
-                    models.WorkspaceMembership.user_id == user_id,
-                    models.WorkspaceMembership.deleted_at.is_(None),
+                    workspace_tables.WorkspaceMembership.workspace_id
+                    == content_tables.Content.workspace_id,
+                    workspace_tables.WorkspaceMembership.user_id == user_id,
+                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
         )
@@ -1296,25 +1337,25 @@ class SqlAlchemyContentRepository:
         filters: ContentFilters,
     ) -> Select[Any]:
         if not filters.include_deleted:
-            statement = statement.where(models.Content.deleted_at.is_(None))
+            statement = statement.where(content_tables.Content.deleted_at.is_(None))
         if filters.workspace_id is not None:
-            statement = statement.where(models.Content.workspace_id == filters.workspace_id)
+            statement = statement.where(content_tables.Content.workspace_id == filters.workspace_id)
         if filters.content_type is not None:
-            statement = statement.where(models.Content.content_type == filters.content_type)
+            statement = statement.where(content_tables.Content.content_type == filters.content_type)
         if filters.query is not None:
             query = filters.query.strip()
             if query:
                 pattern = f"%{query.lower()}%"
                 search_text = func.lower(
-                    func.coalesce(models.Content.title, "")
+                    func.coalesce(content_tables.Content.title, "")
                     + " "
-                    + sql_cast(models.Content.payload, Text)
+                    + sql_cast(content_tables.Content.payload, Text)
                 )
                 statement = statement.where(search_text.like(pattern))
         if filters.created_from is not None:
-            statement = statement.where(models.Content.created_at >= filters.created_from)
+            statement = statement.where(content_tables.Content.created_at >= filters.created_from)
         if filters.created_to is not None:
-            statement = statement.where(models.Content.created_at <= filters.created_to)
+            statement = statement.where(content_tables.Content.created_at <= filters.created_to)
         return statement
 
 
@@ -1343,15 +1384,15 @@ class SqlAlchemyGenerationRepository:
         ):
             raise EntityNotFoundError("Workspace not found")
         content = self._session.scalars(
-            select(models.Content).where(
-                models.Content.id == content_id,
-                models.Content.workspace_id == workspace_id,
-                models.Content.deleted_at.is_(None),
+            select(content_tables.Content).where(
+                content_tables.Content.id == content_id,
+                content_tables.Content.workspace_id == workspace_id,
+                content_tables.Content.deleted_at.is_(None),
             )
         ).one_or_none()
         if content is None:
             raise EntityNotFoundError("Content not found")
-        row = models.Generation(
+        row = generation_tables.Generation(
             workspace_id=workspace_id,
             content_id=content_id,
             requested_by_user_id=requested_by_user_id,
@@ -1373,9 +1414,11 @@ class SqlAlchemyGenerationRepository:
         generation_id: UUID,
         include_deleted: bool = False,
     ) -> GenerationRecord | None:
-        statement = self._scoped_select(user_id).where(models.Generation.id == generation_id)
+        statement = self._scoped_select(user_id).where(
+            generation_tables.Generation.id == generation_id
+        )
         if not include_deleted:
-            statement = statement.where(models.Generation.deleted_at.is_(None))
+            statement = statement.where(generation_tables.Generation.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _generation_record(row) if row else None
 
@@ -1388,16 +1431,24 @@ class SqlAlchemyGenerationRepository:
         page: PageRequest | None = None,
     ) -> Page[GenerationRecord]:
         page = page or PageRequest()
-        statement = self._scoped_select(user_id).where(models.Generation.deleted_at.is_(None))
-        count_statement = self._scoped_count(user_id).where(models.Generation.deleted_at.is_(None))
+        statement = self._scoped_select(user_id).where(
+            generation_tables.Generation.deleted_at.is_(None)
+        )
+        count_statement = self._scoped_count(user_id).where(
+            generation_tables.Generation.deleted_at.is_(None)
+        )
         if workspace_id is not None:
-            statement = statement.where(models.Generation.workspace_id == workspace_id)
-            count_statement = count_statement.where(models.Generation.workspace_id == workspace_id)
+            statement = statement.where(generation_tables.Generation.workspace_id == workspace_id)
+            count_statement = count_statement.where(
+                generation_tables.Generation.workspace_id == workspace_id
+            )
         if content_id is not None:
-            statement = statement.where(models.Generation.content_id == content_id)
-            count_statement = count_statement.where(models.Generation.content_id == content_id)
+            statement = statement.where(generation_tables.Generation.content_id == content_id)
+            count_statement = count_statement.where(
+                generation_tables.Generation.content_id == content_id
+            )
         rows, total = _page(
-            self._session, statement, count_statement, models.Generation.created_at, page
+            self._session, statement, count_statement, generation_tables.Generation.created_at, page
         )
         return Page(
             items=[_generation_record(row) for row in rows],
@@ -1433,11 +1484,13 @@ class SqlAlchemyGenerationRepository:
         row.updated_at = timestamp
         flush_or_raise(self._session)
 
-    def _writable_generation(self, *, user_id: UUID, generation_id: UUID) -> models.Generation:
+    def _writable_generation(
+        self, *, user_id: UUID, generation_id: UUID
+    ) -> generation_tables.Generation:
         row = self._session.scalars(
             self._scoped_select(user_id).where(
-                models.Generation.id == generation_id,
-                models.Generation.deleted_at.is_(None),
+                generation_tables.Generation.id == generation_id,
+                generation_tables.Generation.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None or not _user_has_workspace_role(
@@ -1447,25 +1500,25 @@ class SqlAlchemyGenerationRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Generation not found")
-        return cast(models.Generation, row)
+        return cast(generation_tables.Generation, row)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, models.Generation).join(
-            models.Content,
+        return _scoped_resource_select(user_id, generation_tables.Generation).join(
+            content_tables.Content,
             and_(
-                models.Content.id == models.Generation.content_id,
-                models.Content.workspace_id == models.Generation.workspace_id,
-                models.Content.deleted_at.is_(None),
+                content_tables.Content.id == generation_tables.Generation.content_id,
+                content_tables.Content.workspace_id == generation_tables.Generation.workspace_id,
+                content_tables.Content.deleted_at.is_(None),
             ),
         )
 
     def _scoped_count(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_count(user_id, models.Generation).join(
-            models.Content,
+        return _scoped_resource_count(user_id, generation_tables.Generation).join(
+            content_tables.Content,
             and_(
-                models.Content.id == models.Generation.content_id,
-                models.Content.workspace_id == models.Generation.workspace_id,
-                models.Content.deleted_at.is_(None),
+                content_tables.Content.id == generation_tables.Generation.content_id,
+                content_tables.Content.workspace_id == generation_tables.Generation.workspace_id,
+                content_tables.Content.deleted_at.is_(None),
             ),
         )
 
@@ -1497,7 +1550,7 @@ class SqlAlchemyAssetRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Workspace not found")
-        row = models.Asset(
+        row = asset_tables.Asset(
             workspace_id=workspace_id,
             brand_id=brand_id,
             project_id=project_id,
@@ -1522,9 +1575,9 @@ class SqlAlchemyAssetRepository:
         asset_id: UUID,
         include_deleted: bool = False,
     ) -> AssetRecord | None:
-        statement = self._scoped_select(user_id).where(models.Asset.id == asset_id)
+        statement = self._scoped_select(user_id).where(asset_tables.Asset.id == asset_id)
         if not include_deleted:
-            statement = statement.where(models.Asset.deleted_at.is_(None))
+            statement = statement.where(asset_tables.Asset.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _asset_record(row) if row else None
 
@@ -1539,19 +1592,19 @@ class SqlAlchemyAssetRepository:
         page: PageRequest | None = None,
     ) -> Page[AssetRecord]:
         page = page or PageRequest()
-        statement = self._scoped_select(user_id).where(models.Asset.deleted_at.is_(None))
-        count_statement = self._scoped_count(user_id).where(models.Asset.deleted_at.is_(None))
+        statement = self._scoped_select(user_id).where(asset_tables.Asset.deleted_at.is_(None))
+        count_statement = self._scoped_count(user_id).where(asset_tables.Asset.deleted_at.is_(None))
         for column, value in [
-            (models.Asset.workspace_id, workspace_id),
-            (models.Asset.brand_id, brand_id),
-            (models.Asset.project_id, project_id),
-            (models.Asset.content_id, content_id),
+            (asset_tables.Asset.workspace_id, workspace_id),
+            (asset_tables.Asset.brand_id, brand_id),
+            (asset_tables.Asset.project_id, project_id),
+            (asset_tables.Asset.content_id, content_id),
         ]:
             if value is not None:
                 statement = statement.where(column == value)
                 count_statement = count_statement.where(column == value)
         rows, total = _page(
-            self._session, statement, count_statement, models.Asset.created_at, page
+            self._session, statement, count_statement, asset_tables.Asset.created_at, page
         )
         return Page(
             items=[_asset_record(row) for row in rows],
@@ -1587,11 +1640,11 @@ class SqlAlchemyAssetRepository:
         row.updated_at = timestamp
         flush_or_raise(self._session)
 
-    def _writable_asset(self, *, user_id: UUID, asset_id: UUID) -> models.Asset:
+    def _writable_asset(self, *, user_id: UUID, asset_id: UUID) -> asset_tables.Asset:
         row = self._session.scalars(
             self._scoped_select(user_id).where(
-                models.Asset.id == asset_id,
-                models.Asset.deleted_at.is_(None),
+                asset_tables.Asset.id == asset_id,
+                asset_tables.Asset.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None or not _user_has_workspace_role(
@@ -1601,13 +1654,13 @@ class SqlAlchemyAssetRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Asset not found")
-        return cast(models.Asset, row)
+        return cast(asset_tables.Asset, row)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, models.Asset)
+        return _scoped_resource_select(user_id, asset_tables.Asset)
 
     def _scoped_count(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_count(user_id, models.Asset)
+        return _scoped_resource_count(user_id, asset_tables.Asset)
 
 
 class SqlAlchemyBrandSettingsRepository:
@@ -1621,9 +1674,11 @@ class SqlAlchemyBrandSettingsRepository:
         brand_id: UUID,
         include_deleted: bool = False,
     ) -> BrandSettingsRecord | None:
-        statement = self._scoped_select(user_id).where(models.BrandSettings.brand_id == brand_id)
+        statement = self._scoped_select(user_id).where(
+            brand_tables.BrandSettings.brand_id == brand_id
+        )
         if not include_deleted:
-            statement = statement.where(models.BrandSettings.deleted_at.is_(None))
+            statement = statement.where(brand_tables.BrandSettings.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _brand_settings_record(row) if row else None
 
@@ -1646,10 +1701,12 @@ class SqlAlchemyBrandSettingsRepository:
         ):
             raise EntityNotFoundError("Brand not found")
         row = self._session.scalars(
-            select(models.BrandSettings).where(models.BrandSettings.brand_id == brand_id)
+            select(brand_tables.BrandSettings).where(
+                brand_tables.BrandSettings.brand_id == brand_id
+            )
         ).one_or_none()
         if row is None:
-            row = models.BrandSettings(
+            row = brand_tables.BrandSettings(
                 workspace_id=workspace_id,
                 brand_id=brand_id,
                 voice_settings=_json(voice_settings),
@@ -1702,11 +1759,11 @@ class SqlAlchemyBrandSettingsRepository:
         row.updated_at = timestamp
         flush_or_raise(self._session)
 
-    def _writable_settings(self, *, user_id: UUID, brand_id: UUID) -> models.BrandSettings:
+    def _writable_settings(self, *, user_id: UUID, brand_id: UUID) -> brand_tables.BrandSettings:
         row = self._session.scalars(
             self._scoped_select(user_id).where(
-                models.BrandSettings.brand_id == brand_id,
-                models.BrandSettings.deleted_at.is_(None),
+                brand_tables.BrandSettings.brand_id == brand_id,
+                brand_tables.BrandSettings.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None or not _user_has_workspace_role(
@@ -1716,10 +1773,10 @@ class SqlAlchemyBrandSettingsRepository:
             minimum_role="editor",
         ):
             raise EntityNotFoundError("Brand settings not found")
-        return cast(models.BrandSettings, row)
+        return cast(brand_tables.BrandSettings, row)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, models.BrandSettings)
+        return _scoped_resource_select(user_id, brand_tables.BrandSettings)
 
 
 class SqlAlchemyAgentWorkflowRepository:
@@ -1743,7 +1800,7 @@ class SqlAlchemyAgentWorkflowRepository:
             self._session, user_id=user_id, workspace_id=workspace_id, minimum_role="editor"
         ):
             raise EntityNotFoundError("Workspace not found")
-        row = models.AgentWorkflowRun(
+        row = workflow_tables.AgentWorkflowRun(
             workspace_id=workspace_id,
             content_id=content_id,
             brand_id=brand_id,
@@ -1760,7 +1817,7 @@ class SqlAlchemyAgentWorkflowRepository:
 
     def get_for_user(self, *, user_id: UUID, run_id: UUID) -> AgentWorkflowRunRecord | None:
         row = self._session.scalars(
-            self._scoped_select(user_id).where(models.AgentWorkflowRun.id == run_id)
+            self._scoped_select(user_id).where(workflow_tables.AgentWorkflowRun.id == run_id)
         ).one_or_none()
         return _agent_workflow_run_record(row) if row else None
 
@@ -1768,17 +1825,17 @@ class SqlAlchemyAgentWorkflowRepository:
         self, *, user_id: UUID, workspace_id: UUID, idempotency_key: str
     ) -> AgentWorkflowRunRecord | None:
         statement = self._scoped_select(user_id).where(
-            models.AgentWorkflowRun.workspace_id == workspace_id,
-            models.AgentWorkflowRun.idempotency_key == idempotency_key,
+            workflow_tables.AgentWorkflowRun.workspace_id == workspace_id,
+            workflow_tables.AgentWorkflowRun.idempotency_key == idempotency_key,
         )
         row = self._session.scalars(statement).one_or_none()
         return _agent_workflow_run_record(row) if row else None
 
     def get_internal(self, run_id: UUID) -> AgentWorkflowRunRecord | None:
         row = self._session.scalars(
-            select(models.AgentWorkflowRun).where(
-                models.AgentWorkflowRun.id == run_id,
-                models.AgentWorkflowRun.deleted_at.is_(None),
+            select(workflow_tables.AgentWorkflowRun).where(
+                workflow_tables.AgentWorkflowRun.id == run_id,
+                workflow_tables.AgentWorkflowRun.deleted_at.is_(None),
             )
         ).one_or_none()
         return _agent_workflow_run_record(row) if row else None
@@ -1790,29 +1847,29 @@ class SqlAlchemyAgentWorkflowRepository:
         if run is None:
             return None
         rows = self._session.scalars(
-            select(models.AgentWorkflowStep)
+            select(workflow_tables.AgentWorkflowStep)
             .where(
-                models.AgentWorkflowStep.run_id == run_id,
-                models.AgentWorkflowStep.workspace_id == run.workspace_id,
-                models.AgentWorkflowStep.deleted_at.is_(None),
+                workflow_tables.AgentWorkflowStep.run_id == run_id,
+                workflow_tables.AgentWorkflowStep.workspace_id == run.workspace_id,
+                workflow_tables.AgentWorkflowStep.deleted_at.is_(None),
             )
             .order_by(
-                models.AgentWorkflowStep.sequence_number.asc(),
-                models.AgentWorkflowStep.attempt.asc(),
+                workflow_tables.AgentWorkflowStep.sequence_number.asc(),
+                workflow_tables.AgentWorkflowStep.attempt.asc(),
             )
         ).all()
         return [_agent_workflow_step_record(row) for row in rows]
 
     def list_steps_internal(self, run_id: UUID) -> list[AgentWorkflowStepRecord]:
         rows = self._session.scalars(
-            select(models.AgentWorkflowStep)
+            select(workflow_tables.AgentWorkflowStep)
             .where(
-                models.AgentWorkflowStep.run_id == run_id,
-                models.AgentWorkflowStep.deleted_at.is_(None),
+                workflow_tables.AgentWorkflowStep.run_id == run_id,
+                workflow_tables.AgentWorkflowStep.deleted_at.is_(None),
             )
             .order_by(
-                models.AgentWorkflowStep.sequence_number.asc(),
-                models.AgentWorkflowStep.attempt.asc(),
+                workflow_tables.AgentWorkflowStep.sequence_number.asc(),
+                workflow_tables.AgentWorkflowStep.attempt.asc(),
             )
         ).all()
         return [_agent_workflow_step_record(row) for row in rows]
@@ -1830,17 +1887,17 @@ class SqlAlchemyAgentWorkflowRepository:
         stage_item: int = 0,
     ) -> AgentWorkflowStepRecord:
         run = self._session.scalars(
-            select(models.AgentWorkflowRun)
+            select(workflow_tables.AgentWorkflowRun)
             .where(
-                models.AgentWorkflowRun.id == run_id,
-                models.AgentWorkflowRun.workspace_id == workspace_id,
-                models.AgentWorkflowRun.deleted_at.is_(None),
+                workflow_tables.AgentWorkflowRun.id == run_id,
+                workflow_tables.AgentWorkflowRun.workspace_id == workspace_id,
+                workflow_tables.AgentWorkflowRun.deleted_at.is_(None),
             )
             .with_for_update()
         ).one_or_none()
         if run is None:
             raise EntityNotFoundError("Agent workflow not found")
-        row = models.AgentWorkflowStep(
+        row = workflow_tables.AgentWorkflowStep(
             run_id=run_id,
             workspace_id=workspace_id,
             sequence_number=sequence_number,
@@ -1875,9 +1932,9 @@ class SqlAlchemyAgentWorkflowRepository:
         correlation_id: UUID | None = None,
     ) -> AgentWorkflowStepRecord:
         row = self._session.scalars(
-            select(models.AgentWorkflowStep).where(
-                models.AgentWorkflowStep.id == step_id,
-                models.AgentWorkflowStep.deleted_at.is_(None),
+            select(workflow_tables.AgentWorkflowStep).where(
+                workflow_tables.AgentWorkflowStep.id == step_id,
+                workflow_tables.AgentWorkflowStep.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
@@ -1905,7 +1962,9 @@ class SqlAlchemyAgentWorkflowRepository:
 
     def fail_step(self, step_id: UUID, *, error_code: str, error_message: str) -> None:
         row = self._session.scalars(
-            select(models.AgentWorkflowStep).where(models.AgentWorkflowStep.id == step_id)
+            select(workflow_tables.AgentWorkflowStep).where(
+                workflow_tables.AgentWorkflowStep.id == step_id
+            )
         ).one_or_none()
         if row is None:
             raise EntityNotFoundError("Agent workflow step not found")
@@ -1930,9 +1989,10 @@ class SqlAlchemyAgentWorkflowRepository:
         failure_message: str | None = None,
     ) -> AgentWorkflowRunRecord:
         row = self._session.scalars(
-            select(models.AgentWorkflowRun)
+            select(workflow_tables.AgentWorkflowRun)
             .where(
-                models.AgentWorkflowRun.id == run_id, models.AgentWorkflowRun.deleted_at.is_(None)
+                workflow_tables.AgentWorkflowRun.id == run_id,
+                workflow_tables.AgentWorkflowRun.deleted_at.is_(None),
             )
             .with_for_update()
         ).one_or_none()
@@ -1959,9 +2019,9 @@ class SqlAlchemyAgentWorkflowRepository:
 
     def update_input(self, run_id: UUID, input: JsonObject) -> AgentWorkflowRunRecord:
         row = self._session.scalars(
-            select(models.AgentWorkflowRun).where(
-                models.AgentWorkflowRun.id == run_id,
-                models.AgentWorkflowRun.deleted_at.is_(None),
+            select(workflow_tables.AgentWorkflowRun).where(
+                workflow_tables.AgentWorkflowRun.id == run_id,
+                workflow_tables.AgentWorkflowRun.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
@@ -1972,7 +2032,7 @@ class SqlAlchemyAgentWorkflowRepository:
         return _agent_workflow_run_record(row)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return _scoped_resource_select(user_id, models.AgentWorkflowRun)
+        return _scoped_resource_select(user_id, workflow_tables.AgentWorkflowRun)
 
 
 class SqlAlchemyImageGenerationRepository:
@@ -2000,16 +2060,16 @@ class SqlAlchemyImageGenerationRepository:
         ):
             raise EntityNotFoundError("Content not found")
         content = self._session.scalars(
-            select(models.Content).where(
-                models.Content.id == content_id,
-                models.Content.workspace_id == workspace_id,
-                models.Content.deleted_at.is_(None),
+            select(content_tables.Content).where(
+                content_tables.Content.id == content_id,
+                content_tables.Content.workspace_id == workspace_id,
+                content_tables.Content.deleted_at.is_(None),
             )
         ).one_or_none()
         if content is None:
             raise EntityNotFoundError("Content not found")
 
-        generation = models.Generation(
+        generation = generation_tables.Generation(
             workspace_id=workspace_id,
             content_id=content_id,
             requested_by_user_id=requested_by_user_id,
@@ -2020,7 +2080,7 @@ class SqlAlchemyImageGenerationRepository:
         self._session.add(generation)
         flush_or_raise(self._session)
 
-        job = models.GenerationJob(
+        job = generation_tables.GenerationJob(
             workspace_id=workspace_id,
             generation_id=generation.id,
             external_id=external_id,
@@ -2040,13 +2100,15 @@ class SqlAlchemyImageGenerationRepository:
         job_id: UUID,
         include_deleted: bool = False,
     ) -> GenerationJobRecord | None:
-        statement = self._scoped_job_select(user_id).where(models.GenerationJob.id == job_id)
+        statement = self._scoped_job_select(user_id).where(
+            generation_tables.GenerationJob.id == job_id
+        )
         if not include_deleted:
-            statement = statement.where(models.GenerationJob.deleted_at.is_(None))
+            statement = statement.where(generation_tables.GenerationJob.deleted_at.is_(None))
         row = self._session.execute(statement).one_or_none()
         if row is None:
             return None
-        job, content_id = cast(tuple[models.GenerationJob, UUID], row)
+        job, content_id = cast(tuple[generation_tables.GenerationJob, UUID], row)
         return _job_record(job, content_id)
 
     def list_history_for_user(
@@ -2061,16 +2123,19 @@ class SqlAlchemyImageGenerationRepository:
         statement = self._apply_history_filters(self._scoped_job_select(user_id), filters)
         count_statement = self._apply_history_filters(self._scoped_job_count(user_id), filters)
         order_column = (
-            asc(models.GenerationJob.created_at)
+            asc(generation_tables.GenerationJob.created_at)
             if page.sort == "asc"
-            else desc(models.GenerationJob.created_at)
+            else desc(generation_tables.GenerationJob.created_at)
         )
         rows = self._session.execute(
             statement.order_by(order_column).offset(page.offset).limit(page.limit)
         ).all()
         total: int = self._session.execute(count_statement).scalar_one()
         return Page(
-            items=[_job_record(*cast(tuple[models.GenerationJob, UUID], row)) for row in rows],
+            items=[
+                _job_record(*cast(tuple[generation_tables.GenerationJob, UUID], row))
+                for row in rows
+            ],
             total=total,
             page=page.page,
             limit=page.limit,
@@ -2082,17 +2147,17 @@ class SqlAlchemyImageGenerationRepository:
         workspace_id: UUID | None = None,
     ) -> GenerationJobRecord | None:
         candidate_statement = (
-            select(models.GenerationJob)
+            select(generation_tables.GenerationJob)
             .where(
-                models.GenerationJob.status == GenerationJobStatus.PENDING,
-                models.GenerationJob.deleted_at.is_(None),
+                generation_tables.GenerationJob.status == GenerationJobStatus.PENDING,
+                generation_tables.GenerationJob.deleted_at.is_(None),
             )
-            .order_by(models.GenerationJob.created_at.asc())
+            .order_by(generation_tables.GenerationJob.created_at.asc())
             .limit(1)
         )
         if workspace_id is not None:
             candidate_statement = candidate_statement.where(
-                models.GenerationJob.workspace_id == workspace_id
+                generation_tables.GenerationJob.workspace_id == workspace_id
             )
 
         candidate = self._session.scalars(candidate_statement).first()
@@ -2104,16 +2169,16 @@ class SqlAlchemyImageGenerationRepository:
         # SQLite ignores FOR UPDATE/SKIP LOCKED. A conditional UPDATE gives both
         # SQLite and PostgreSQL a single-winner claim.
         result = self._session.execute(
-            update(models.GenerationJob)
+            update(generation_tables.GenerationJob)
             .where(
-                models.GenerationJob.id == candidate_id,
-                models.GenerationJob.status == GenerationJobStatus.PENDING,
-                models.GenerationJob.deleted_at.is_(None),
+                generation_tables.GenerationJob.id == candidate_id,
+                generation_tables.GenerationJob.status == GenerationJobStatus.PENDING,
+                generation_tables.GenerationJob.deleted_at.is_(None),
             )
             .values(
                 status=GenerationJobStatus.PROCESSING,
                 started_at=timestamp,
-                attempt_count=models.GenerationJob.attempt_count + 1,
+                attempt_count=generation_tables.GenerationJob.attempt_count + 1,
                 updated_at=timestamp,
             )
             .execution_options(synchronize_session=False)
@@ -2159,14 +2224,22 @@ class SqlAlchemyImageGenerationRepository:
         job_id: UUID,
         include_deleted: bool = False,
     ) -> ImageGenerationStatusRecord | None:
-        statement = self._scoped_status_select(user_id).where(models.GenerationJob.id == job_id)
+        statement = self._scoped_status_select(user_id).where(
+            generation_tables.GenerationJob.id == job_id
+        )
         if not include_deleted:
-            statement = statement.where(models.GenerationJob.deleted_at.is_(None))
+            statement = statement.where(generation_tables.GenerationJob.deleted_at.is_(None))
         row = self._session.execute(statement).one_or_none()
         if row is None:
             return None
         job, content_id, parameters, image = cast(
-            tuple[models.GenerationJob, UUID, dict[str, object] | None, models.Image | None], row
+            tuple[
+                generation_tables.GenerationJob,
+                UUID,
+                dict[str, object] | None,
+                content_tables.Image | None,
+            ],
+            row,
         )
         return _image_generation_status_record(job, content_id, parameters, image)
 
@@ -2178,44 +2251,52 @@ class SqlAlchemyImageGenerationRepository:
         include_deleted: bool = False,
     ) -> ImageGenerationStatusRecord | None:
         statement = self._scoped_status_select(user_id).where(
-            models.GenerationJob.external_id == external_id
+            generation_tables.GenerationJob.external_id == external_id
         )
         if not include_deleted:
-            statement = statement.where(models.GenerationJob.deleted_at.is_(None))
+            statement = statement.where(generation_tables.GenerationJob.deleted_at.is_(None))
         row = self._session.execute(statement).one_or_none()
         if row is None:
             return None
         job, content_id, parameters, image = cast(
-            tuple[models.GenerationJob, UUID, dict[str, object] | None, models.Image | None], row
+            tuple[
+                generation_tables.GenerationJob,
+                UUID,
+                dict[str, object] | None,
+                content_tables.Image | None,
+            ],
+            row,
         )
         return _image_generation_status_record(job, content_id, parameters, image)
 
     def claim_pending_by_id(self, job_id: UUID) -> ImageGenerationWorkItem | None:
         statement = (
-            select(models.GenerationJob, models.Generation, models.User)
+            select(generation_tables.GenerationJob, generation_tables.Generation, user_tables.User)
             .join(
-                models.Generation,
+                generation_tables.Generation,
                 and_(
-                    models.Generation.id == models.GenerationJob.generation_id,
-                    models.Generation.workspace_id == models.GenerationJob.workspace_id,
-                    models.Generation.deleted_at.is_(None),
+                    generation_tables.Generation.id
+                    == generation_tables.GenerationJob.generation_id,
+                    generation_tables.Generation.workspace_id
+                    == generation_tables.GenerationJob.workspace_id,
+                    generation_tables.Generation.deleted_at.is_(None),
                 ),
             )
             .join(
-                models.User,
+                user_tables.User,
                 and_(
-                    models.User.id == models.Generation.requested_by_user_id,
-                    models.User.deleted_at.is_(None),
+                    user_tables.User.id == generation_tables.Generation.requested_by_user_id,
+                    user_tables.User.deleted_at.is_(None),
                 ),
             )
             .where(
-                models.GenerationJob.id == job_id,
-                models.GenerationJob.status.in_(
+                generation_tables.GenerationJob.id == job_id,
+                generation_tables.GenerationJob.status.in_(
                     [GenerationJobStatus.PENDING, GenerationJobStatus.PROCESSING]
                 ),
-                models.GenerationJob.deleted_at.is_(None),
+                generation_tables.GenerationJob.deleted_at.is_(None),
             )
-            .with_for_update(of=models.GenerationJob)
+            .with_for_update(of=generation_tables.GenerationJob)
         )
         row = self._session.execute(statement).one_or_none()
         if row is None:
@@ -2238,9 +2319,9 @@ class SqlAlchemyImageGenerationRepository:
 
     def get_image_by_generation_id(self, generation_id: UUID) -> ImageRecord | None:
         image = self._session.scalars(
-            select(models.Image).where(
-                models.Image.generation_id == generation_id,
-                models.Image.deleted_at.is_(None),
+            select(content_tables.Image).where(
+                content_tables.Image.generation_id == generation_id,
+                content_tables.Image.deleted_at.is_(None),
             )
         ).one_or_none()
         return _image_record(image) if image else None
@@ -2253,11 +2334,11 @@ class SqlAlchemyImageGenerationRepository:
         failure_message: str,
     ) -> int:
         jobs = self._session.scalars(
-            select(models.GenerationJob)
+            select(generation_tables.GenerationJob)
             .where(
-                models.GenerationJob.status == GenerationJobStatus.PROCESSING,
-                models.GenerationJob.started_at < older_than,
-                models.GenerationJob.deleted_at.is_(None),
+                generation_tables.GenerationJob.status == GenerationJobStatus.PROCESSING,
+                generation_tables.GenerationJob.started_at < older_than,
+                generation_tables.GenerationJob.deleted_at.is_(None),
             )
             .with_for_update(skip_locked=True)
         ).all()
@@ -2279,27 +2360,28 @@ class SqlAlchemyImageGenerationRepository:
         include_deleted: bool = False,
     ) -> ImageRecord | None:
         statement = (
-            select(models.Image)
+            select(content_tables.Image)
             .join(
-                models.Content,
+                content_tables.Content,
                 and_(
-                    models.Content.id == models.Image.content_id,
-                    models.Content.workspace_id == models.Image.workspace_id,
-                    models.Content.deleted_at.is_(None),
+                    content_tables.Content.id == content_tables.Image.content_id,
+                    content_tables.Content.workspace_id == content_tables.Image.workspace_id,
+                    content_tables.Content.deleted_at.is_(None),
                 ),
             )
             .join(
-                models.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership,
                 and_(
-                    models.WorkspaceMembership.workspace_id == models.Image.workspace_id,
-                    models.WorkspaceMembership.user_id == user_id,
-                    models.WorkspaceMembership.deleted_at.is_(None),
+                    workspace_tables.WorkspaceMembership.workspace_id
+                    == content_tables.Image.workspace_id,
+                    workspace_tables.WorkspaceMembership.user_id == user_id,
+                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
-            .where(models.Image.id == image_id)
+            .where(content_tables.Image.id == image_id)
         )
         if not include_deleted:
-            statement = statement.where(models.Image.deleted_at.is_(None))
+            statement = statement.where(content_tables.Image.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()
         return _image_record(row) if row else None
 
@@ -2316,7 +2398,7 @@ class SqlAlchemyImageGenerationRepository:
         timestamp = _now()
         job.completed_at = timestamp
         job.updated_at = timestamp
-        image_row = models.Image(
+        image_row = content_tables.Image(
             workspace_id=job.workspace_id,
             content_id=generation.content_id,
             generation_id=job.generation_id,
@@ -2356,30 +2438,33 @@ class SqlAlchemyImageGenerationRepository:
         return cast(
             Select[Any],
             (
-                select(models.GenerationJob, models.Generation.content_id)
+                select(generation_tables.GenerationJob, generation_tables.Generation.content_id)
                 .join(
-                    models.Generation,
+                    generation_tables.Generation,
                     and_(
-                        models.Generation.id == models.GenerationJob.generation_id,
-                        models.Generation.workspace_id == models.GenerationJob.workspace_id,
-                        models.Generation.deleted_at.is_(None),
+                        generation_tables.Generation.id
+                        == generation_tables.GenerationJob.generation_id,
+                        generation_tables.Generation.workspace_id
+                        == generation_tables.GenerationJob.workspace_id,
+                        generation_tables.Generation.deleted_at.is_(None),
                     ),
                 )
                 .join(
-                    models.Content,
+                    content_tables.Content,
                     and_(
-                        models.Content.id == models.Generation.content_id,
-                        models.Content.workspace_id == models.Generation.workspace_id,
-                        models.Content.deleted_at.is_(None),
+                        content_tables.Content.id == generation_tables.Generation.content_id,
+                        content_tables.Content.workspace_id
+                        == generation_tables.Generation.workspace_id,
+                        content_tables.Content.deleted_at.is_(None),
                     ),
                 )
                 .join(
-                    models.WorkspaceMembership,
+                    workspace_tables.WorkspaceMembership,
                     and_(
-                        models.WorkspaceMembership.workspace_id
-                        == models.GenerationJob.workspace_id,
-                        models.WorkspaceMembership.user_id == user_id,
-                        models.WorkspaceMembership.deleted_at.is_(None),
+                        workspace_tables.WorkspaceMembership.workspace_id
+                        == generation_tables.GenerationJob.workspace_id,
+                        workspace_tables.WorkspaceMembership.user_id == user_id,
+                        workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                     ),
                 )
             ),
@@ -2388,29 +2473,33 @@ class SqlAlchemyImageGenerationRepository:
     def _scoped_job_count(self, user_id: UUID) -> Select[Any]:
         return (
             select(func.count())
-            .select_from(models.GenerationJob)
+            .select_from(generation_tables.GenerationJob)
             .join(
-                models.Generation,
+                generation_tables.Generation,
                 and_(
-                    models.Generation.id == models.GenerationJob.generation_id,
-                    models.Generation.workspace_id == models.GenerationJob.workspace_id,
-                    models.Generation.deleted_at.is_(None),
+                    generation_tables.Generation.id
+                    == generation_tables.GenerationJob.generation_id,
+                    generation_tables.Generation.workspace_id
+                    == generation_tables.GenerationJob.workspace_id,
+                    generation_tables.Generation.deleted_at.is_(None),
                 ),
             )
             .join(
-                models.Content,
+                content_tables.Content,
                 and_(
-                    models.Content.id == models.Generation.content_id,
-                    models.Content.workspace_id == models.Generation.workspace_id,
-                    models.Content.deleted_at.is_(None),
+                    content_tables.Content.id == generation_tables.Generation.content_id,
+                    content_tables.Content.workspace_id
+                    == generation_tables.Generation.workspace_id,
+                    content_tables.Content.deleted_at.is_(None),
                 ),
             )
             .join(
-                models.WorkspaceMembership,
+                workspace_tables.WorkspaceMembership,
                 and_(
-                    models.WorkspaceMembership.workspace_id == models.GenerationJob.workspace_id,
-                    models.WorkspaceMembership.user_id == user_id,
-                    models.WorkspaceMembership.deleted_at.is_(None),
+                    workspace_tables.WorkspaceMembership.workspace_id
+                    == generation_tables.GenerationJob.workspace_id,
+                    workspace_tables.WorkspaceMembership.user_id == user_id,
+                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
         )
@@ -2420,43 +2509,48 @@ class SqlAlchemyImageGenerationRepository:
             Select[Any],
             (
                 select(
-                    models.GenerationJob,
-                    models.Generation.content_id,
-                    models.Generation.parameters,
-                    models.Image,
+                    generation_tables.GenerationJob,
+                    generation_tables.Generation.content_id,
+                    generation_tables.Generation.parameters,
+                    content_tables.Image,
                 )
                 .join(
-                    models.Generation,
+                    generation_tables.Generation,
                     and_(
-                        models.Generation.id == models.GenerationJob.generation_id,
-                        models.Generation.workspace_id == models.GenerationJob.workspace_id,
-                        models.Generation.deleted_at.is_(None),
+                        generation_tables.Generation.id
+                        == generation_tables.GenerationJob.generation_id,
+                        generation_tables.Generation.workspace_id
+                        == generation_tables.GenerationJob.workspace_id,
+                        generation_tables.Generation.deleted_at.is_(None),
                     ),
                 )
                 .join(
-                    models.Content,
+                    content_tables.Content,
                     and_(
-                        models.Content.id == models.Generation.content_id,
-                        models.Content.workspace_id == models.Generation.workspace_id,
-                        models.Content.deleted_at.is_(None),
+                        content_tables.Content.id == generation_tables.Generation.content_id,
+                        content_tables.Content.workspace_id
+                        == generation_tables.Generation.workspace_id,
+                        content_tables.Content.deleted_at.is_(None),
                     ),
                 )
                 .join(
-                    models.WorkspaceMembership,
+                    workspace_tables.WorkspaceMembership,
                     and_(
-                        models.WorkspaceMembership.workspace_id
-                        == models.GenerationJob.workspace_id,
-                        models.WorkspaceMembership.user_id == user_id,
-                        models.WorkspaceMembership.deleted_at.is_(None),
+                        workspace_tables.WorkspaceMembership.workspace_id
+                        == generation_tables.GenerationJob.workspace_id,
+                        workspace_tables.WorkspaceMembership.user_id == user_id,
+                        workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                     ),
                 )
                 .outerjoin(
-                    models.Image,
+                    content_tables.Image,
                     and_(
-                        models.Image.generation_id == models.GenerationJob.generation_id,
-                        models.Image.workspace_id == models.GenerationJob.workspace_id,
-                        models.Image.content_id == models.Generation.content_id,
-                        models.Image.deleted_at.is_(None),
+                        content_tables.Image.generation_id
+                        == generation_tables.GenerationJob.generation_id,
+                        content_tables.Image.workspace_id
+                        == generation_tables.GenerationJob.workspace_id,
+                        content_tables.Image.content_id == generation_tables.Generation.content_id,
+                        content_tables.Image.deleted_at.is_(None),
                     ),
                 )
             ),
@@ -2468,25 +2562,33 @@ class SqlAlchemyImageGenerationRepository:
         filters: GenerationHistoryFilters,
     ) -> Select[Any]:
         if not filters.include_deleted:
-            statement = statement.where(models.GenerationJob.deleted_at.is_(None))
+            statement = statement.where(generation_tables.GenerationJob.deleted_at.is_(None))
         if filters.workspace_id is not None:
-            statement = statement.where(models.GenerationJob.workspace_id == filters.workspace_id)
+            statement = statement.where(
+                generation_tables.GenerationJob.workspace_id == filters.workspace_id
+            )
         if filters.content_id is not None:
-            statement = statement.where(models.Generation.content_id == filters.content_id)
+            statement = statement.where(
+                generation_tables.Generation.content_id == filters.content_id
+            )
         if filters.status is not None:
-            statement = statement.where(models.GenerationJob.status == filters.status)
+            statement = statement.where(generation_tables.GenerationJob.status == filters.status)
         if filters.created_from is not None:
-            statement = statement.where(models.GenerationJob.created_at >= filters.created_from)
+            statement = statement.where(
+                generation_tables.GenerationJob.created_at >= filters.created_from
+            )
         if filters.created_to is not None:
-            statement = statement.where(models.GenerationJob.created_at <= filters.created_to)
+            statement = statement.where(
+                generation_tables.GenerationJob.created_at <= filters.created_to
+            )
         return statement
 
-    def _locked_job(self, job_id: UUID) -> models.GenerationJob:
+    def _locked_job(self, job_id: UUID) -> generation_tables.GenerationJob:
         job = self._session.scalars(
-            select(models.GenerationJob)
+            select(generation_tables.GenerationJob)
             .where(
-                models.GenerationJob.id == job_id,
-                models.GenerationJob.deleted_at.is_(None),
+                generation_tables.GenerationJob.id == job_id,
+                generation_tables.GenerationJob.deleted_at.is_(None),
             )
             .with_for_update()
         ).one_or_none()
@@ -2494,12 +2596,14 @@ class SqlAlchemyImageGenerationRepository:
             raise EntityNotFoundError("Generation Job not found")
         return job
 
-    def _generation_for_job(self, job: models.GenerationJob) -> models.Generation:
+    def _generation_for_job(
+        self, job: generation_tables.GenerationJob
+    ) -> generation_tables.Generation:
         generation = self._session.scalars(
-            select(models.Generation).where(
-                models.Generation.id == job.generation_id,
-                models.Generation.workspace_id == job.workspace_id,
-                models.Generation.deleted_at.is_(None),
+            select(generation_tables.Generation).where(
+                generation_tables.Generation.id == job.generation_id,
+                generation_tables.Generation.workspace_id == job.workspace_id,
+                generation_tables.Generation.deleted_at.is_(None),
             )
         ).one_or_none()
         if generation is None:
@@ -2508,14 +2612,18 @@ class SqlAlchemyImageGenerationRepository:
 
     def _lock_content(self, content_id: UUID) -> None:
         content = self._session.scalars(
-            select(models.Content)
-            .where(models.Content.id == content_id, models.Content.deleted_at.is_(None))
+            select(content_tables.Content)
+            .where(
+                content_tables.Content.id == content_id, content_tables.Content.deleted_at.is_(None)
+            )
             .with_for_update()
         ).one_or_none()
         if content is None:
             raise EntityNotFoundError("Content not found")
 
-    def _transition_job(self, job: models.GenerationJob, target: GenerationJobStatus) -> None:
+    def _transition_job(
+        self, job: generation_tables.GenerationJob, target: GenerationJobStatus
+    ) -> None:
         current = job.status
         if not can_transition(current, target):
             raise InvalidStateTransitionError(f"Cannot transition {current} to {target}")
@@ -2531,7 +2639,7 @@ class SqlAlchemyImageGenerationRepository:
         request_id: UUID | None = None,
     ) -> None:
         self._session.add(
-            models.GenerationJobStatusEvent(
+            generation_tables.GenerationJobStatusEvent(
                 generation_job_id=job_id,
                 previous_status=previous_status,
                 status=status,
@@ -2541,7 +2649,9 @@ class SqlAlchemyImageGenerationRepository:
 
     def _content_id_for_generation(self, generation_id: UUID) -> UUID:
         content_id = self._session.execute(
-            select(models.Generation.content_id).where(models.Generation.id == generation_id)
+            select(generation_tables.Generation.content_id).where(
+                generation_tables.Generation.id == generation_id
+            )
         ).scalar_one_or_none()
         if content_id is None:
             raise EntityNotFoundError("Generation not found")
@@ -2549,8 +2659,8 @@ class SqlAlchemyImageGenerationRepository:
 
     def _next_image_version(self, content_id: UUID) -> int:
         completed_version = self._session.execute(
-            select(func.coalesce(func.max(models.Image.version_number), 0) + 1).where(
-                models.Image.content_id == content_id
+            select(func.coalesce(func.max(content_tables.Image.version_number), 0) + 1).where(
+                content_tables.Image.content_id == content_id
             )
         ).scalar_one()
         reserved_version = self._session.execute(
@@ -2558,7 +2668,9 @@ class SqlAlchemyImageGenerationRepository:
                 func.coalesce(
                     func.max(
                         sql_cast(
-                            models.Generation.parameters["image_version_number"].as_integer(),
+                            generation_tables.Generation.parameters[
+                                "image_version_number"
+                            ].as_integer(),
                             Integer,
                         )
                     ),
@@ -2566,9 +2678,10 @@ class SqlAlchemyImageGenerationRepository:
                 )
                 + 1
             ).where(
-                models.Generation.content_id == content_id,
-                models.Generation.deleted_at.is_(None),
-                func.json_type(models.Generation.parameters["image_version_number"]) == "number",
+                generation_tables.Generation.content_id == content_id,
+                generation_tables.Generation.deleted_at.is_(None),
+                func.json_type(generation_tables.Generation.parameters["image_version_number"])
+                == "number",
             )
         ).scalar_one()
         return max(int(completed_version), int(reserved_version))

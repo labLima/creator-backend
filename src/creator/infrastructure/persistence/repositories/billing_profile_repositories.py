@@ -9,7 +9,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.billing_account.adapters import tables as billing_account_tables
+from creator.modules.payment_method.adapters import tables as payment_method_tables
 from creator.repositories.billing import (
     BillingAddressRecord,
     BillingAddressRepository,
@@ -22,7 +23,7 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
-    def _record(self, x: schema_models.BillingAddress) -> BillingAddressRecord:
+    def _record(self, x: billing_account_tables.BillingAddress) -> BillingAddressRecord:
         return BillingAddressRecord(
             x.id,
             x.billing_account_id,
@@ -40,26 +41,26 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
 
     def _owned(self, uid: UUID, aid: UUID):
         return self.s.scalar(
-            select(schema_models.BillingAddress)
-            .join(schema_models.BillingAccount)
+            select(billing_account_tables.BillingAddress)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.BillingAddress.id == aid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.BillingAddress.deleted_at.is_(None),
+                billing_account_tables.BillingAddress.id == aid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                billing_account_tables.BillingAddress.deleted_at.is_(None),
             )
         )
 
     def list_for_user(self, *, user_id: UUID, account_id: UUID | None = None):
         q = (
-            select(schema_models.BillingAddress)
-            .join(schema_models.BillingAccount)
+            select(billing_account_tables.BillingAddress)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.BillingAddress.deleted_at.is_(None),
+                billing_account_tables.BillingAccount.user_id == user_id,
+                billing_account_tables.BillingAddress.deleted_at.is_(None),
             )
         )
         if account_id is not None:
-            q = q.where(schema_models.BillingAddress.billing_account_id == account_id)
+            q = q.where(billing_account_tables.BillingAddress.billing_account_id == account_id)
         return [self._record(x) for x in self.s.scalars(q).all()]
 
     def get_for_user(self, *, user_id: UUID, address_id: UUID):
@@ -67,13 +68,13 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
         return self._record(x) if x else None
 
     def add(self, *, billing_account_id: UUID, fields: dict[str, object]):
-        x = schema_models.BillingAddress(billing_account_id=billing_account_id, **fields)
+        x = billing_account_tables.BillingAddress(billing_account_id=billing_account_id, **fields)
         self.s.add(x)
         self.s.flush()
         return self._record(x)
 
     def update(self, *, address_id: UUID, fields: dict[str, object]):
-        x = self.s.get(schema_models.BillingAddress, address_id)
+        x = self.s.get(billing_account_tables.BillingAddress, address_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Billing address not found")
         for k, v in fields.items():
@@ -83,7 +84,7 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
         return self._record(x)
 
     def soft_delete(self, *, address_id: UUID):
-        x = self.s.get(schema_models.BillingAddress, address_id)
+        x = self.s.get(billing_account_tables.BillingAddress, address_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Billing address not found")
         x.deleted_at = datetime.now(UTC)
@@ -95,7 +96,7 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
-    def _record(self, x: schema_models.BillingPaymentMethod) -> BillingPaymentMethodRecord:
+    def _record(self, x: payment_method_tables.BillingPaymentMethod) -> BillingPaymentMethodRecord:
         return BillingPaymentMethodRecord(
             x.id,
             x.billing_account_id,
@@ -115,26 +116,26 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
 
     def _owned(self, uid: UUID, mid: UUID):
         return self.s.scalar(
-            select(schema_models.BillingPaymentMethod)
-            .join(schema_models.BillingAccount)
+            select(payment_method_tables.BillingPaymentMethod)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.BillingPaymentMethod.id == mid,
-                schema_models.BillingAccount.user_id == uid,
-                schema_models.BillingPaymentMethod.deleted_at.is_(None),
+                payment_method_tables.BillingPaymentMethod.id == mid,
+                billing_account_tables.BillingAccount.user_id == uid,
+                payment_method_tables.BillingPaymentMethod.deleted_at.is_(None),
             )
         )
 
     def list_for_user(self, *, user_id: UUID, account_id: UUID | None = None):
         q = (
-            select(schema_models.BillingPaymentMethod)
-            .join(schema_models.BillingAccount)
+            select(payment_method_tables.BillingPaymentMethod)
+            .join(billing_account_tables.BillingAccount)
             .where(
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.BillingPaymentMethod.deleted_at.is_(None),
+                billing_account_tables.BillingAccount.user_id == user_id,
+                payment_method_tables.BillingPaymentMethod.deleted_at.is_(None),
             )
         )
         if account_id is not None:
-            q = q.where(schema_models.BillingPaymentMethod.billing_account_id == account_id)
+            q = q.where(payment_method_tables.BillingPaymentMethod.billing_account_id == account_id)
         return [self._record(x) for x in self.s.scalars(q).all()]
 
     def get_for_user(self, *, user_id: UUID, method_id: UUID):
@@ -142,13 +143,15 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
         return self._record(x) if x else None
 
     def add(self, *, billing_account_id: UUID, fields: dict[str, object]):
-        x = schema_models.BillingPaymentMethod(billing_account_id=billing_account_id, **fields)
+        x = payment_method_tables.BillingPaymentMethod(
+            billing_account_id=billing_account_id, **fields
+        )
         self.s.add(x)
         self.s.flush()
         return self._record(x)
 
     def update(self, *, method_id: UUID, fields: dict[str, object]):
-        x = self.s.get(schema_models.BillingPaymentMethod, method_id)
+        x = self.s.get(payment_method_tables.BillingPaymentMethod, method_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Billing payment method not found")
         for k, v in fields.items():
@@ -158,7 +161,7 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
         return self._record(x)
 
     def soft_delete(self, *, method_id: UUID):
-        x = self.s.get(schema_models.BillingPaymentMethod, method_id)
+        x = self.s.get(payment_method_tables.BillingPaymentMethod, method_id)
         if x is None or x.deleted_at is not None:
             raise ValueError("Billing payment method not found")
         x.deleted_at = datetime.now(UTC)

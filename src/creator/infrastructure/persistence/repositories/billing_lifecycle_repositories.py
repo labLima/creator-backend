@@ -6,7 +6,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from creator.infrastructure.database import schema_models
+from creator.modules.billing_account.adapters import tables as billing_account_tables
+from creator.modules.charge.adapters import tables as charge_tables
+from creator.modules.invoice.adapters import tables as invoice_tables
+from creator.modules.subscription.adapters import tables as subscription_tables
 from creator.repositories.billing import (
     ChargeRecord,
     ChargeRepository,
@@ -17,7 +20,7 @@ from creator.repositories.billing import (
 )
 
 
-def _subscription(row: schema_models.Subscription) -> SubscriptionRecord:
+def _subscription(row: subscription_tables.Subscription) -> SubscriptionRecord:
     return SubscriptionRecord(
         row.id,
         row.billing_account_id,
@@ -37,30 +40,34 @@ class SqlAlchemySubscriptionRepository(SubscriptionRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def _owned(self, user_id: UUID, subscription_id: UUID) -> schema_models.Subscription | None:
+    def _owned(
+        self, user_id: UUID, subscription_id: UUID
+    ) -> subscription_tables.Subscription | None:
         return self._session.scalar(
-            select(schema_models.Subscription)
+            select(subscription_tables.Subscription)
             .join(
-                schema_models.BillingAccount,
-                schema_models.BillingAccount.id == schema_models.Subscription.billing_account_id,
+                billing_account_tables.BillingAccount,
+                billing_account_tables.BillingAccount.id
+                == subscription_tables.Subscription.billing_account_id,
             )
             .where(
-                schema_models.Subscription.id == subscription_id,
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.Subscription.deleted_at.is_(None),
+                subscription_tables.Subscription.id == subscription_id,
+                billing_account_tables.BillingAccount.user_id == user_id,
+                subscription_tables.Subscription.deleted_at.is_(None),
             )
         )
 
     def list_for_user(self, *, user_id: UUID) -> list[SubscriptionRecord]:
         rows = self._session.scalars(
-            select(schema_models.Subscription)
+            select(subscription_tables.Subscription)
             .join(
-                schema_models.BillingAccount,
-                schema_models.BillingAccount.id == schema_models.Subscription.billing_account_id,
+                billing_account_tables.BillingAccount,
+                billing_account_tables.BillingAccount.id
+                == subscription_tables.Subscription.billing_account_id,
             )
             .where(
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.Subscription.deleted_at.is_(None),
+                billing_account_tables.BillingAccount.user_id == user_id,
+                subscription_tables.Subscription.deleted_at.is_(None),
             )
         ).all()
         return [_subscription(row) for row in rows]
@@ -79,7 +86,7 @@ class SqlAlchemySubscriptionRepository(SubscriptionRepository):
         billing_day: int | None,
         start_at: datetime | None,
     ) -> SubscriptionRecord:
-        row = schema_models.Subscription(
+        row = subscription_tables.Subscription(
             billing_account_id=billing_account_id,
             workspace_id=workspace_id,
             plan_id=plan_id,
@@ -93,7 +100,7 @@ class SqlAlchemySubscriptionRepository(SubscriptionRepository):
         return _subscription(row)
 
     def update(self, *, subscription_id: UUID, fields: dict[str, object]) -> SubscriptionRecord:
-        row = self._session.get(schema_models.Subscription, subscription_id)
+        row = self._session.get(subscription_tables.Subscription, subscription_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Subscription not found")
         for name, value in fields.items():
@@ -103,7 +110,7 @@ class SqlAlchemySubscriptionRepository(SubscriptionRepository):
         return _subscription(row)
 
     def soft_delete(self, *, subscription_id: UUID) -> None:
-        row = self._session.get(schema_models.Subscription, subscription_id)
+        row = self._session.get(subscription_tables.Subscription, subscription_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Subscription not found")
         row.deleted_at = datetime.now(UTC)
@@ -111,7 +118,7 @@ class SqlAlchemySubscriptionRepository(SubscriptionRepository):
         self._session.flush()
 
 
-def _invoice(row: schema_models.Invoice) -> InvoiceRecord:
+def _invoice(row: invoice_tables.Invoice) -> InvoiceRecord:
     return InvoiceRecord(
         row.id,
         row.billing_account_id,
@@ -131,30 +138,32 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def _owned(self, user_id: UUID, invoice_id: UUID) -> schema_models.Invoice | None:
+    def _owned(self, user_id: UUID, invoice_id: UUID) -> invoice_tables.Invoice | None:
         return self._session.scalar(
-            select(schema_models.Invoice)
+            select(invoice_tables.Invoice)
             .join(
-                schema_models.BillingAccount,
-                schema_models.BillingAccount.id == schema_models.Invoice.billing_account_id,
+                billing_account_tables.BillingAccount,
+                billing_account_tables.BillingAccount.id
+                == invoice_tables.Invoice.billing_account_id,
             )
             .where(
-                schema_models.Invoice.id == invoice_id,
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.Invoice.deleted_at.is_(None),
+                invoice_tables.Invoice.id == invoice_id,
+                billing_account_tables.BillingAccount.user_id == user_id,
+                invoice_tables.Invoice.deleted_at.is_(None),
             )
         )
 
     def list_for_user(self, *, user_id: UUID) -> list[InvoiceRecord]:
         rows = self._session.scalars(
-            select(schema_models.Invoice)
+            select(invoice_tables.Invoice)
             .join(
-                schema_models.BillingAccount,
-                schema_models.BillingAccount.id == schema_models.Invoice.billing_account_id,
+                billing_account_tables.BillingAccount,
+                billing_account_tables.BillingAccount.id
+                == invoice_tables.Invoice.billing_account_id,
             )
             .where(
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.Invoice.deleted_at.is_(None),
+                billing_account_tables.BillingAccount.user_id == user_id,
+                invoice_tables.Invoice.deleted_at.is_(None),
             )
         ).all()
         return [_invoice(row) for row in rows]
@@ -173,7 +182,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         billing_at: datetime | None,
         due_at: datetime | None,
     ) -> InvoiceRecord:
-        row = schema_models.Invoice(
+        row = invoice_tables.Invoice(
             billing_account_id=billing_account_id,
             subscription_id=subscription_id,
             amount_cents=amount_cents,
@@ -187,7 +196,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         return _invoice(row)
 
     def update(self, *, invoice_id: UUID, fields: dict[str, object]) -> InvoiceRecord:
-        row = self._session.get(schema_models.Invoice, invoice_id)
+        row = self._session.get(invoice_tables.Invoice, invoice_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Invoice not found")
         for name, value in fields.items():
@@ -197,7 +206,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         return _invoice(row)
 
     def soft_delete(self, *, invoice_id: UUID) -> None:
-        row = self._session.get(schema_models.Invoice, invoice_id)
+        row = self._session.get(invoice_tables.Invoice, invoice_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Invoice not found")
         row.deleted_at = datetime.now(UTC)
@@ -205,7 +214,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         self._session.flush()
 
 
-def _charge(row: schema_models.Charge) -> ChargeRecord:
+def _charge(row: charge_tables.Charge) -> ChargeRecord:
     return ChargeRecord(
         row.id,
         row.billing_account_id,
@@ -223,30 +232,30 @@ class SqlAlchemyChargeRepository(ChargeRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def _owned(self, user_id: UUID, charge_id: UUID) -> schema_models.Charge | None:
+    def _owned(self, user_id: UUID, charge_id: UUID) -> charge_tables.Charge | None:
         return self._session.scalar(
-            select(schema_models.Charge)
+            select(charge_tables.Charge)
             .join(
-                schema_models.BillingAccount,
-                schema_models.BillingAccount.id == schema_models.Charge.billing_account_id,
+                billing_account_tables.BillingAccount,
+                billing_account_tables.BillingAccount.id == charge_tables.Charge.billing_account_id,
             )
             .where(
-                schema_models.Charge.id == charge_id,
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.Charge.deleted_at.is_(None),
+                charge_tables.Charge.id == charge_id,
+                billing_account_tables.BillingAccount.user_id == user_id,
+                charge_tables.Charge.deleted_at.is_(None),
             )
         )
 
     def list_for_user(self, *, user_id: UUID) -> list[ChargeRecord]:
         rows = self._session.scalars(
-            select(schema_models.Charge)
+            select(charge_tables.Charge)
             .join(
-                schema_models.BillingAccount,
-                schema_models.BillingAccount.id == schema_models.Charge.billing_account_id,
+                billing_account_tables.BillingAccount,
+                billing_account_tables.BillingAccount.id == charge_tables.Charge.billing_account_id,
             )
             .where(
-                schema_models.BillingAccount.user_id == user_id,
-                schema_models.Charge.deleted_at.is_(None),
+                billing_account_tables.BillingAccount.user_id == user_id,
+                charge_tables.Charge.deleted_at.is_(None),
             )
         ).all()
         return [_charge(row) for row in rows]
@@ -258,7 +267,7 @@ class SqlAlchemyChargeRepository(ChargeRepository):
     def add(
         self, *, billing_account_id: UUID, invoice_id: UUID | None, amount_cents: int, currency: str
     ) -> ChargeRecord:
-        row = schema_models.Charge(
+        row = charge_tables.Charge(
             billing_account_id=billing_account_id,
             invoice_id=invoice_id,
             amount_cents=amount_cents,
@@ -270,7 +279,7 @@ class SqlAlchemyChargeRepository(ChargeRepository):
         return _charge(row)
 
     def update(self, *, charge_id: UUID, fields: dict[str, object]) -> ChargeRecord:
-        row = self._session.get(schema_models.Charge, charge_id)
+        row = self._session.get(charge_tables.Charge, charge_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Charge not found")
         for name, value in fields.items():
@@ -280,7 +289,7 @@ class SqlAlchemyChargeRepository(ChargeRepository):
         return _charge(row)
 
     def soft_delete(self, *, charge_id: UUID) -> None:
-        row = self._session.get(schema_models.Charge, charge_id)
+        row = self._session.get(charge_tables.Charge, charge_id)
         if row is None or row.deleted_at is not None:
             raise ValueError("Charge not found")
         row.deleted_at = datetime.now(UTC)

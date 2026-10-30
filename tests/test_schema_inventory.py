@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.schema import CreateTable
 
-from creator.infrastructure.database import models as _models  # noqa: F401  (registers tables)
+from creator.infrastructure.database import metadata as _models  # noqa: F401  (registers tables)
 from creator.infrastructure.database.db import Base
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
