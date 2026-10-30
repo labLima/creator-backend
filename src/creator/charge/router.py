@@ -16,15 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _charge_data,
-)
+from creator.charge import service
 from creator.charge.schemas import (
     ChargeCreateRequest,
     ChargeUpdateRequest,
@@ -42,11 +37,7 @@ def list_charges(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _charge_data(x) for x in unit_of_work.charges.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_charges(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -58,16 +49,13 @@ def create_charge(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    item = unit_of_work.charges.add(**payload.model_dump())
-    unit_of_work.commit()
-    return success_response(_charge_data(item), request, status_code=201)
+    return success_response(
+        service.create_charge(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/charges/{id}", tags=["Billing"])
@@ -77,10 +65,12 @@ def get_charge(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.charges.get_for_user(user_id=current_user.id, charge_id=charge_id)
-    if item is None:
-        raise not_found("Charge")
-    return success_response(_charge_data(item), request)
+    return success_response(
+        service.get_charge(
+            uow=unit_of_work, actor=current_user, charge_id=charge_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/charges/{id}", tags=["Billing"])
@@ -91,13 +81,16 @@ def update_charge(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.charges.get_for_user(user_id=current_user.id, charge_id=charge_id) is None:
-        raise not_found("Charge")
-    item = unit_of_work.charges.update(
-        charge_id=charge_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_charge(
+            uow=unit_of_work,
+            actor=current_user,
+            charge_id=charge_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_charge_data(item), request)
 
 
 @router.delete("/api/v1/charges/{id}", tags=["Billing"])
@@ -107,8 +100,9 @@ def delete_charge(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.charges.get_for_user(user_id=current_user.id, charge_id=charge_id) is None:
-        raise not_found("Charge")
-    unit_of_work.charges.soft_delete(charge_id=charge_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_charge(
+            uow=unit_of_work, actor=current_user, charge_id=charge_id, request=request
+        ),
+        request,
+    )

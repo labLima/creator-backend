@@ -16,16 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_global_billing_admin,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _credit_package_data,
-)
+from creator.credit_package import service
 from creator.credit_package.schemas import (
     CreditPackageCreateRequest,
     CreditPackageUpdateRequest,
@@ -42,9 +36,8 @@ def list_credit_packages(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
     return success_response(
-        {"items": [_credit_package_data(x) for x in unit_of_work.credit_packages.list()]},
+        service.list_credit_packages(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -56,10 +49,13 @@ def create_credit_package(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.credit_packages.add(fields=payload.model_dump())
-    unit_of_work.commit()
-    return success_response(_credit_package_data(item), request, status_code=201)
+    return success_response(
+        service.create_credit_package(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/credit-packages/{id}", tags=["Billing"])
@@ -69,11 +65,12 @@ def get_credit_package(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.credit_packages.get(package_id=package_id)
-    if item is None:
-        raise not_found("Credit package")
-    return success_response(_credit_package_data(item), request)
+    return success_response(
+        service.get_credit_package(
+            uow=unit_of_work, actor=current_user, package_id=package_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/credit-packages/{id}", tags=["Billing"])
@@ -84,14 +81,16 @@ def update_credit_package(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.credit_packages.get(package_id=package_id) is None:
-        raise not_found("Credit package")
-    item = unit_of_work.credit_packages.update(
-        package_id=package_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_credit_package(
+            uow=unit_of_work,
+            actor=current_user,
+            package_id=package_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_credit_package_data(item), request)
 
 
 @router.delete("/api/v1/credit-packages/{id}", tags=["Billing"])
@@ -101,9 +100,9 @@ def delete_credit_package(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.credit_packages.get(package_id=package_id) is None:
-        raise not_found("Credit package")
-    unit_of_work.credit_packages.soft_delete(package_id=package_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_credit_package(
+            uow=unit_of_work, actor=current_user, package_id=package_id, request=request
+        ),
+        request,
+    )

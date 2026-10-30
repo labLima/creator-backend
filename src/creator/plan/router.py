@@ -16,17 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_global_billing_admin,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _plan_data,
-    _plan_item_data,
-)
+from creator.plan import service
 from creator.plan.schemas import (
     PlanCreateRequest,
     PlanItemCreateRequest,
@@ -45,9 +38,9 @@ def list_plans(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
     return success_response(
-        {"items": [_plan_data(item) for item in unit_of_work.plans.list()]}, request
+        service.list_plans(uow=unit_of_work, actor=current_user, request=request),
+        request,
     )
 
 
@@ -58,10 +51,11 @@ def create_plan(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.plans.add(**payload.model_dump())
-    unit_of_work.commit()
-    return success_response(_plan_data(item), request, status_code=201)
+    return success_response(
+        service.create_plan(uow=unit_of_work, actor=current_user, payload=payload, request=request),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/plans/{id}", tags=["Billing"])
@@ -71,11 +65,10 @@ def get_plan(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.plans.get(plan_id=plan_id)
-    if item is None:
-        raise not_found("Plan")
-    return success_response(_plan_data(item), request)
+    return success_response(
+        service.get_plan(uow=unit_of_work, actor=current_user, plan_id=plan_id, request=request),
+        request,
+    )
 
 
 @router.put("/api/v1/plans/{id}", tags=["Billing"])
@@ -86,12 +79,12 @@ def update_plan(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.plans.get(plan_id=plan_id) is None:
-        raise not_found("Plan")
-    item = unit_of_work.plans.update(plan_id=plan_id, fields=payload.model_dump(exclude_unset=True))
-    unit_of_work.commit()
-    return success_response(_plan_data(item), request)
+    return success_response(
+        service.update_plan(
+            uow=unit_of_work, actor=current_user, plan_id=plan_id, payload=payload, request=request
+        ),
+        request,
+    )
 
 
 @router.delete("/api/v1/plans/{id}", tags=["Billing"])
@@ -101,12 +94,10 @@ def delete_plan(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.plans.get(plan_id=plan_id) is None:
-        raise not_found("Plan")
-    unit_of_work.plans.soft_delete(plan_id=plan_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_plan(uow=unit_of_work, actor=current_user, plan_id=plan_id, request=request),
+        request,
+    )
 
 
 @router.get("/api/v1/plan-items", tags=["Billing"])
@@ -116,9 +107,12 @@ def list_plan_items(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     plan_id: UUID | None = None,
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    items = unit_of_work.plan_items.list(plan_id=plan_id)
-    return success_response({"items": [_plan_item_data(item) for item in items]}, request)
+    return success_response(
+        service.list_plan_items(
+            uow=unit_of_work, actor=current_user, plan_id=plan_id, request=request
+        ),
+        request,
+    )
 
 
 @router.post("/api/v1/plan-items", tags=["Billing"])
@@ -128,12 +122,13 @@ def create_plan_item(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.plans.get(plan_id=payload.plan_id) is None:
-        raise not_found("Plan")
-    item = unit_of_work.plan_items.add(**payload.model_dump())
-    unit_of_work.commit()
-    return success_response(_plan_item_data(item), request, status_code=201)
+    return success_response(
+        service.create_plan_item(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/plan-items/{id}", tags=["Billing"])
@@ -143,11 +138,12 @@ def get_plan_item(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.plan_items.get(item_id=item_id)
-    if item is None:
-        raise not_found("Plan item")
-    return success_response(_plan_item_data(item), request)
+    return success_response(
+        service.get_plan_item(
+            uow=unit_of_work, actor=current_user, item_id=item_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/plan-items/{id}", tags=["Billing"])
@@ -158,14 +154,12 @@ def update_plan_item(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.plan_items.get(item_id=item_id) is None:
-        raise not_found("Plan item")
-    item = unit_of_work.plan_items.update(
-        item_id=item_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_plan_item(
+            uow=unit_of_work, actor=current_user, item_id=item_id, payload=payload, request=request
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_plan_item_data(item), request)
 
 
 @router.delete("/api/v1/plan-items/{id}", tags=["Billing"])
@@ -175,9 +169,9 @@ def delete_plan_item(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.plan_items.get(item_id=item_id) is None:
-        raise not_found("Plan item")
-    unit_of_work.plan_items.soft_delete(item_id=item_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_plan_item(
+            uow=unit_of_work, actor=current_user, item_id=item_id, request=request
+        ),
+        request,
+    )

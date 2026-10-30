@@ -16,16 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_workspace_write,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _order_data,
-)
+from creator.order import service
 from creator.order.schemas import (
     OrderCreateRequest,
     OrderUpdateRequest,
@@ -43,11 +37,7 @@ def list_orders(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _order_data(x) for x in unit_of_work.orders.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_orders(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -59,21 +49,13 @@ def create_order(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=payload.workspace_id
+    return success_response(
+        service.create_order(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
     )
-    data = payload.model_dump()
-    data["status"] = "pending"
-    item = unit_of_work.orders.add(fields=data)
-    unit_of_work.commit()
-    return success_response(_order_data(item), request, status_code=201)
 
 
 @router.get("/api/v1/orders/{id}", tags=["Billing"])
@@ -83,10 +65,10 @@ def get_order(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.orders.get_for_user(user_id=current_user.id, order_id=order_id)
-    if item is None:
-        raise not_found("Order")
-    return success_response(_order_data(item), request)
+    return success_response(
+        service.get_order(uow=unit_of_work, actor=current_user, order_id=order_id, request=request),
+        request,
+    )
 
 
 @router.put("/api/v1/orders/{id}", tags=["Billing"])
@@ -97,13 +79,16 @@ def update_order(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.orders.get_for_user(user_id=current_user.id, order_id=order_id) is None:
-        raise not_found("Order")
-    item = unit_of_work.orders.update(
-        order_id=order_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_order(
+            uow=unit_of_work,
+            actor=current_user,
+            order_id=order_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_order_data(item), request)
 
 
 @router.delete("/api/v1/orders/{id}", tags=["Billing"])
@@ -113,8 +98,9 @@ def delete_order(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.orders.get_for_user(user_id=current_user.id, order_id=order_id) is None:
-        raise not_found("Order")
-    unit_of_work.orders.soft_delete(order_id=order_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_order(
+            uow=unit_of_work, actor=current_user, order_id=order_id, request=request
+        ),
+        request,
+    )

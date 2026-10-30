@@ -16,18 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_workspace_write,
-)
 from creator.api.responses import (
-    page_payload,
     success_response,
 )
-from creator.api.serializers import (
-    _planning_data,
-)
-from creator.core.pagination import page_request
+from creator.planning import service
 from creator.planning.schemas import (
     PlanningCreateRequest,
     PlanningUpdateRequest,
@@ -48,12 +40,18 @@ def list_planning(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     sort: Annotated[str, Query(pattern="^-?created_at$")] = "-created_at",
 ) -> JSONResponse:
-    result = unit_of_work.planning.list_for_user(
-        user_id=current_user.id,
-        campaign_id=campaign_id,
-        page=page_request(page, limit, sort),
+    return success_response(
+        service.list_planning(
+            uow=unit_of_work,
+            actor=current_user,
+            campaign_id=campaign_id,
+            page=page,
+            limit=limit,
+            sort=sort,
+            request=request,
+        ),
+        request,
     )
-    return success_response(page_payload(result, _planning_data), request)
 
 
 @router.post("/api/v1/planning", tags=["Planning"])
@@ -63,20 +61,13 @@ def create_planning(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    campaign = unit_of_work.campaigns.get_for_user(
-        user_id=current_user.id, campaign_id=payload.campaign_id
+    return success_response(
+        service.create_planning(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
     )
-    if campaign is None:
-        raise not_found("Campaign")
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=campaign.workspace_id
-    )
-    planning = unit_of_work.planning.add(
-        created_by=current_user.id,
-        **payload.model_dump(),
-    )
-    unit_of_work.commit()
-    return success_response(_planning_data(planning), request, status_code=201)
 
 
 @router.get("/api/v1/planning/{id}", tags=["Planning"])
@@ -86,10 +77,12 @@ def get_planning(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    planning = unit_of_work.planning.get_for_user(user_id=current_user.id, planning_id=planning_id)
-    if planning is None:
-        raise not_found("Planning")
-    return success_response(_planning_data(planning), request)
+    return success_response(
+        service.get_planning(
+            uow=unit_of_work, actor=current_user, planning_id=planning_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/planning/{id}", tags=["Planning"])
@@ -100,22 +93,16 @@ def update_planning(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    existing = unit_of_work.planning.get_for_user(user_id=current_user.id, planning_id=planning_id)
-    if existing is None:
-        raise not_found("Planning")
-    campaign = unit_of_work.campaigns.get_for_user(
-        user_id=current_user.id, campaign_id=existing.campaign_id
+    return success_response(
+        service.update_planning(
+            uow=unit_of_work,
+            actor=current_user,
+            planning_id=planning_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    if campaign is None:
-        raise not_found("Planning")
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=campaign.workspace_id
-    )
-    updated = unit_of_work.planning.update(
-        planning_id=planning_id, fields=payload.model_dump(exclude_unset=True)
-    )
-    unit_of_work.commit()
-    return success_response(_planning_data(updated), request)
 
 
 @router.delete("/api/v1/planning/{id}", tags=["Planning"])
@@ -125,17 +112,9 @@ def delete_planning(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    existing = unit_of_work.planning.get_for_user(user_id=current_user.id, planning_id=planning_id)
-    if existing is None:
-        raise not_found("Planning")
-    campaign = unit_of_work.campaigns.get_for_user(
-        user_id=current_user.id, campaign_id=existing.campaign_id
+    return success_response(
+        service.delete_planning(
+            uow=unit_of_work, actor=current_user, planning_id=planning_id, request=request
+        ),
+        request,
     )
-    if campaign is None:
-        raise not_found("Planning")
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=campaign.workspace_id
-    )
-    unit_of_work.planning.soft_delete(planning_id=planning_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)

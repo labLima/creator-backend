@@ -16,15 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _design_structure_data,
-)
+from creator.design_structure import service
 from creator.design_structure.schemas import (
     DesignStructureCreateRequest,
 )
@@ -41,12 +36,7 @@ def list_design_structures(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _design_structure_data(x)
-                for x in unit_of_work.design_structures.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_design_structures(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -58,14 +48,13 @@ def create_design_structure(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.post_structures.get_for_user(
-        user_id=current_user.id, post_structure_id=payload.post_structure_id
+    return success_response(
+        service.create_design_structure(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
     )
-    if item is None:
-        raise not_found("Post structure")
-    result = unit_of_work.design_structures.add(post_structure_id=payload.post_structure_id)
-    unit_of_work.commit()
-    return success_response(_design_structure_data(result), request, status_code=201)
 
 
 @router.get("/api/v1/design-structures/{id}", tags=["Post Structures"])
@@ -75,10 +64,12 @@ def get_design_structure(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.design_structures.get_for_user(user_id=current_user.id, design_id=design_id)
-    if item is None:
-        raise not_found("Design structure")
-    return success_response(_design_structure_data(item), request)
+    return success_response(
+        service.get_design_structure(
+            uow=unit_of_work, actor=current_user, design_id=design_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/design-structures/{id}", tags=["Post Structures"])
@@ -89,14 +80,16 @@ def update_design_structure(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.design_structures.get_for_user(user_id=current_user.id, design_id=design_id)
-        is None
-    ):
-        raise not_found("Design structure")
-    item = unit_of_work.design_structures.update(design_id=design_id, fields=payload)
-    unit_of_work.commit()
-    return success_response(_design_structure_data(item), request)
+    return success_response(
+        service.update_design_structure(
+            uow=unit_of_work,
+            actor=current_user,
+            design_id=design_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
 
 
 @router.delete("/api/v1/design-structures/{id}", tags=["Post Structures"])
@@ -106,11 +99,9 @@ def delete_design_structure(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.design_structures.get_for_user(user_id=current_user.id, design_id=design_id)
-        is None
-    ):
-        raise not_found("Design structure")
-    unit_of_work.design_structures.soft_delete(design_id=design_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_design_structure(
+            uow=unit_of_work, actor=current_user, design_id=design_id, request=request
+        ),
+        request,
+    )

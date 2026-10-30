@@ -16,18 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_workspace_write,
-)
 from creator.api.responses import (
-    page_payload,
     success_response,
 )
-from creator.api.serializers import (
-    _persona_data,
-)
-from creator.core.pagination import page_request
+from creator.persona import service
 from creator.persona.schemas import (
     PersonaCreateRequest,
     PersonaUpdateRequest,
@@ -48,12 +40,18 @@ def list_personas(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     sort: Annotated[str, Query(pattern="^-?created_at$")] = "-created_at",
 ) -> JSONResponse:
-    result = unit_of_work.personas.list_for_user(
-        user_id=current_user.id,
-        brand_id=brand_id,
-        page=page_request(page, limit, sort),
+    return success_response(
+        service.list_personas(
+            uow=unit_of_work,
+            actor=current_user,
+            brand_id=brand_id,
+            page=page,
+            limit=limit,
+            sort=sort,
+            request=request,
+        ),
+        request,
     )
-    return success_response(page_payload(result, _persona_data), request)
 
 
 @router.post("/api/v1/personas", tags=["Personas"])
@@ -63,16 +61,13 @@ def create_persona(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    brand = unit_of_work.brands.get_for_user(user_id=current_user.id, brand_id=payload.brand_id)
-    if brand is None:
-        raise not_found("Brand")
-    require_workspace_write(unit_of_work, user_id=current_user.id, workspace_id=brand.workspace_id)
-    persona = unit_of_work.personas.add(
-        created_by=current_user.id,
-        **payload.model_dump(),
+    return success_response(
+        service.create_persona(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
     )
-    unit_of_work.commit()
-    return success_response(_persona_data(persona), request, status_code=201)
 
 
 @router.get("/api/v1/personas/{id}", tags=["Personas"])
@@ -82,10 +77,12 @@ def get_persona(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    persona = unit_of_work.personas.get_for_user(user_id=current_user.id, persona_id=persona_id)
-    if persona is None:
-        raise not_found("Persona")
-    return success_response(_persona_data(persona), request)
+    return success_response(
+        service.get_persona(
+            uow=unit_of_work, actor=current_user, persona_id=persona_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/personas/{id}", tags=["Personas"])
@@ -96,18 +93,16 @@ def update_persona(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    existing = unit_of_work.personas.get_for_user(user_id=current_user.id, persona_id=persona_id)
-    if existing is None:
-        raise not_found("Persona")
-    brand = unit_of_work.brands.get_for_user(user_id=current_user.id, brand_id=existing.brand_id)
-    if brand is None:
-        raise not_found("Persona")
-    require_workspace_write(unit_of_work, user_id=current_user.id, workspace_id=brand.workspace_id)
-    updated = unit_of_work.personas.update(
-        persona_id=persona_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_persona(
+            uow=unit_of_work,
+            actor=current_user,
+            persona_id=persona_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_persona_data(updated), request)
 
 
 @router.delete("/api/v1/personas/{id}", tags=["Personas"])
@@ -117,13 +112,9 @@ def delete_persona(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    existing = unit_of_work.personas.get_for_user(user_id=current_user.id, persona_id=persona_id)
-    if existing is None:
-        raise not_found("Persona")
-    brand = unit_of_work.brands.get_for_user(user_id=current_user.id, brand_id=existing.brand_id)
-    if brand is None:
-        raise not_found("Persona")
-    require_workspace_write(unit_of_work, user_id=current_user.id, workspace_id=brand.workspace_id)
-    unit_of_work.personas.soft_delete(persona_id=persona_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_persona(
+            uow=unit_of_work, actor=current_user, persona_id=persona_id, request=request
+        ),
+        request,
+    )

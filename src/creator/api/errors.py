@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import HTTPException
+from fastapi import HTTPException  # noqa: F401  (re-exported)
 
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
@@ -55,3 +55,12 @@ def not_found(entity: str) -> HTTPException:
         status_code=404,
         detail={"code": f"{code}_NOT_FOUND", "message": f"{entity} not found"},
     )
+
+
+__all__ = [
+    "HTTPException",
+    "not_found",
+    "require_admin",
+    "require_global_billing_admin",
+    "require_workspace_write",
+]

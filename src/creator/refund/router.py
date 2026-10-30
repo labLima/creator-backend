@@ -16,15 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _refund_data,
-)
+from creator.refund import service
 from creator.refund.schemas import (
     RefundCreateRequest,
     RefundUpdateRequest,
@@ -42,11 +37,7 @@ def list_refunds(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _refund_data(x) for x in unit_of_work.refunds.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_refunds(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -58,18 +49,13 @@ def create_refund(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    data = payload.model_dump()
-    data["status"] = "pending"
-    item = unit_of_work.refunds.add(fields=data)
-    unit_of_work.commit()
-    return success_response(_refund_data(item), request, status_code=201)
+    return success_response(
+        service.create_refund(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/refunds/{id}", tags=["Billing"])
@@ -79,10 +65,12 @@ def get_refund(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.refunds.get_for_user(user_id=current_user.id, refund_id=refund_id)
-    if item is None:
-        raise not_found("Refund")
-    return success_response(_refund_data(item), request)
+    return success_response(
+        service.get_refund(
+            uow=unit_of_work, actor=current_user, refund_id=refund_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/refunds/{id}", tags=["Billing"])
@@ -93,13 +81,16 @@ def update_refund(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.refunds.get_for_user(user_id=current_user.id, refund_id=refund_id) is None:
-        raise not_found("Refund")
-    item = unit_of_work.refunds.update(
-        refund_id=refund_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_refund(
+            uow=unit_of_work,
+            actor=current_user,
+            refund_id=refund_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_refund_data(item), request)
 
 
 @router.delete("/api/v1/refunds/{id}", tags=["Billing"])
@@ -109,8 +100,9 @@ def delete_refund(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.refunds.get_for_user(user_id=current_user.id, refund_id=refund_id) is None:
-        raise not_found("Refund")
-    unit_of_work.refunds.soft_delete(refund_id=refund_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_refund(
+            uow=unit_of_work, actor=current_user, refund_id=refund_id, request=request
+        ),
+        request,
+    )

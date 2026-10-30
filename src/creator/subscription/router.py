@@ -16,17 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_workspace_write,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _subscription_data,
-    _subscription_history_data,
-)
+from creator.subscription import service
 from creator.subscription.schemas import (
     SubscriptionCreateRequest,
     SubscriptionUpdateRequest,
@@ -44,12 +37,7 @@ def list_subscription_history(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _subscription_history_data(x)
-                for x in unit_of_work.subscription_history.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_subscription_history(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -61,18 +49,13 @@ def create_subscription_history(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    subscription_id = payload.get("subscription_id")
-    if (
-        subscription_id is None
-        or unit_of_work.subscriptions.get_for_user(
-            user_id=current_user.id, subscription_id=subscription_id
-        )
-        is None
-    ):
-        raise not_found("Subscription")
-    item = unit_of_work.subscription_history.add(fields=payload)
-    unit_of_work.commit()
-    return success_response(_subscription_history_data(item), request, status_code=201)
+    return success_response(
+        service.create_subscription_history(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/subscription-history/{id}", tags=["Billing"])
@@ -82,12 +65,12 @@ def get_subscription_history(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.subscription_history.get_for_user(
-        user_id=current_user.id, history_id=history_id
+    return success_response(
+        service.get_subscription_history(
+            uow=unit_of_work, actor=current_user, history_id=history_id, request=request
+        ),
+        request,
     )
-    if item is None:
-        raise not_found("Subscription history")
-    return success_response(_subscription_history_data(item), request)
 
 
 @router.put("/api/v1/subscription-history/{id}", tags=["Billing"])
@@ -98,16 +81,16 @@ def update_subscription_history(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.subscription_history.get_for_user(
-            user_id=current_user.id, history_id=history_id
-        )
-        is None
-    ):
-        raise not_found("Subscription history")
-    item = unit_of_work.subscription_history.update(history_id=history_id, fields=payload)
-    unit_of_work.commit()
-    return success_response(_subscription_history_data(item), request)
+    return success_response(
+        service.update_subscription_history(
+            uow=unit_of_work,
+            actor=current_user,
+            history_id=history_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
 
 
 @router.delete("/api/v1/subscription-history/{id}", tags=["Billing"])
@@ -117,16 +100,12 @@ def delete_subscription_history(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.subscription_history.get_for_user(
-            user_id=current_user.id, history_id=history_id
-        )
-        is None
-    ):
-        raise not_found("Subscription history")
-    unit_of_work.subscription_history.soft_delete(history_id=history_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_subscription_history(
+            uow=unit_of_work, actor=current_user, history_id=history_id, request=request
+        ),
+        request,
+    )
 
 
 @router.get("/api/v1/subscriptions", tags=["Billing"])
@@ -136,12 +115,7 @@ def list_subscriptions(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _subscription_data(x)
-                for x in unit_of_work.subscriptions.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_subscriptions(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -153,21 +127,13 @@ def create_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=payload.workspace_id
+    return success_response(
+        service.create_subscription(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
     )
-    if unit_of_work.plans.get(plan_id=payload.plan_id) is None:
-        raise not_found("Plan")
-    item = unit_of_work.subscriptions.add(**payload.model_dump())
-    unit_of_work.commit()
-    return success_response(_subscription_data(item), request, status_code=201)
 
 
 @router.get("/api/v1/subscriptions/{id}", tags=["Billing"])
@@ -177,12 +143,12 @@ def get_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.subscriptions.get_for_user(
-        user_id=current_user.id, subscription_id=subscription_id
+    return success_response(
+        service.get_subscription(
+            uow=unit_of_work, actor=current_user, subscription_id=subscription_id, request=request
+        ),
+        request,
     )
-    if item is None:
-        raise not_found("Subscription")
-    return success_response(_subscription_data(item), request)
 
 
 @router.put("/api/v1/subscriptions/{id}", tags=["Billing"])
@@ -193,18 +159,16 @@ def update_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.subscriptions.get_for_user(
-            user_id=current_user.id, subscription_id=subscription_id
-        )
-        is None
-    ):
-        raise not_found("Subscription")
-    item = unit_of_work.subscriptions.update(
-        subscription_id=subscription_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_subscription(
+            uow=unit_of_work,
+            actor=current_user,
+            subscription_id=subscription_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_subscription_data(item), request)
 
 
 @router.delete("/api/v1/subscriptions/{id}", tags=["Billing"])
@@ -214,13 +178,9 @@ def delete_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.subscriptions.get_for_user(
-            user_id=current_user.id, subscription_id=subscription_id
-        )
-        is None
-    ):
-        raise not_found("Subscription")
-    unit_of_work.subscriptions.soft_delete(subscription_id=subscription_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_subscription(
+            uow=unit_of_work, actor=current_user, subscription_id=subscription_id, request=request
+        ),
+        request,
+    )

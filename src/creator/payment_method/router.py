@@ -16,15 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _payment_method_data,
-)
+from creator.payment_method import service
 from creator.payment_method.schemas import (
     PaymentMethodCreateRequest,
     PaymentMethodUpdateRequest,
@@ -43,14 +38,12 @@ def list_payment_methods(
     billing_account_id: UUID | None = None,
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _payment_method_data(x)
-                for x in unit_of_work.billing_payment_methods.list_for_user(
-                    user_id=current_user.id, account_id=billing_account_id
-                )
-            ]
-        },
+        service.list_payment_methods(
+            uow=unit_of_work,
+            actor=current_user,
+            billing_account_id=billing_account_id,
+            request=request,
+        ),
         request,
     )
 
@@ -62,18 +55,13 @@ def create_payment_method(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    data = payload.model_dump()
-    account_id = data.pop("billing_account_id")
-    item = unit_of_work.billing_payment_methods.add(billing_account_id=account_id, fields=data)
-    unit_of_work.commit()
-    return success_response(_payment_method_data(item), request, status_code=201)
+    return success_response(
+        service.create_payment_method(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/billing-payment-methods/{id}", tags=["Billing"])
@@ -83,12 +71,12 @@ def get_payment_method(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.billing_payment_methods.get_for_user(
-        user_id=current_user.id, method_id=method_id
+    return success_response(
+        service.get_payment_method(
+            uow=unit_of_work, actor=current_user, method_id=method_id, request=request
+        ),
+        request,
     )
-    if item is None:
-        raise not_found("Billing payment method")
-    return success_response(_payment_method_data(item), request)
 
 
 @router.put("/api/v1/billing-payment-methods/{id}", tags=["Billing"])
@@ -99,18 +87,16 @@ def update_payment_method(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_payment_methods.get_for_user(
-            user_id=current_user.id, method_id=method_id
-        )
-        is None
-    ):
-        raise not_found("Billing payment method")
-    item = unit_of_work.billing_payment_methods.update(
-        method_id=method_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_payment_method(
+            uow=unit_of_work,
+            actor=current_user,
+            method_id=method_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_payment_method_data(item), request)
 
 
 @router.delete("/api/v1/billing-payment-methods/{id}", tags=["Billing"])
@@ -120,13 +106,9 @@ def delete_payment_method(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_payment_methods.get_for_user(
-            user_id=current_user.id, method_id=method_id
-        )
-        is None
-    ):
-        raise not_found("Billing payment method")
-    unit_of_work.billing_payment_methods.soft_delete(method_id=method_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_payment_method(
+            uow=unit_of_work, actor=current_user, method_id=method_id, request=request
+        ),
+        request,
+    )

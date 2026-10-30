@@ -16,20 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_global_billing_admin,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _provider_customer_data,
-    _provider_dispute_data,
-    _provider_idempotency_key_data,
-    _provider_subscription_data,
-    _provider_webhook_event_data,
-)
+from creator.billing_provider import service
 from creator.billing_provider.schemas import (
     ProviderCustomerCreateRequest,
     ProviderDisputeCreateRequest,
@@ -49,12 +39,7 @@ def list_provider_customers(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _provider_customer_data(x)
-                for x in unit_of_work.provider_customers.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_provider_customers(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -66,18 +51,13 @@ def create_provider_customer(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    data = payload.model_dump()
-    data["metadata_json"] = data.pop("metadata")
-    item = unit_of_work.provider_customers.add(fields=data)
-    unit_of_work.commit()
-    return success_response(_provider_customer_data(item), request, status_code=201)
+    return success_response(
+        service.create_provider_customer(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/provider-customers/{id}", tags=["Billing"])
@@ -87,12 +67,12 @@ def get_provider_customer(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.provider_customers.get_for_user(
-        user_id=current_user.id, record_id=record_id
+    return success_response(
+        service.get_provider_customer(
+            uow=unit_of_work, actor=current_user, record_id=record_id, request=request
+        ),
+        request,
     )
-    if item is None:
-        raise not_found("Provider customer")
-    return success_response(_provider_customer_data(item), request)
 
 
 @router.delete("/api/v1/provider-customers/{id}", tags=["Billing"])
@@ -102,14 +82,12 @@ def delete_provider_customer(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.provider_customers.get_for_user(user_id=current_user.id, record_id=record_id)
-        is None
-    ):
-        raise not_found("Provider customer")
-    unit_of_work.provider_customers.soft_delete(record_id=record_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_provider_customer(
+            uow=unit_of_work, actor=current_user, record_id=record_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/provider-customers/{id}", tags=["Billing"])
@@ -120,14 +98,16 @@ def update_provider_customer(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.provider_customers.get_for_user(user_id=current_user.id, record_id=record_id)
-        is None
-    ):
-        raise not_found("Provider customer")
-    item = unit_of_work.provider_customers.update(record_id=record_id, fields=payload)
-    unit_of_work.commit()
-    return success_response(_provider_customer_data(item), request)
+    return success_response(
+        service.update_provider_customer(
+            uow=unit_of_work,
+            actor=current_user,
+            record_id=record_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
 
 
 @router.get("/api/v1/provider-subscriptions", tags=["Billing"])
@@ -137,12 +117,7 @@ def list_provider_subscriptions(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _provider_subscription_data(x)
-                for x in unit_of_work.provider_subscriptions.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_provider_subscriptions(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -154,18 +129,13 @@ def create_provider_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.subscriptions.get_for_user(
-            user_id=current_user.id, subscription_id=payload.subscription_id
-        )
-        is None
-    ):
-        raise not_found("Subscription")
-    data = payload.model_dump()
-    data["payload"] = data.pop("payload")
-    item = unit_of_work.provider_subscriptions.add(fields=data)
-    unit_of_work.commit()
-    return success_response(_provider_subscription_data(item), request, status_code=201)
+    return success_response(
+        service.create_provider_subscription(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/provider-subscriptions/{id}", tags=["Billing"])
@@ -175,12 +145,12 @@ def get_provider_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.provider_subscriptions.get_for_user(
-        user_id=current_user.id, record_id=record_id
+    return success_response(
+        service.get_provider_subscription(
+            uow=unit_of_work, actor=current_user, record_id=record_id, request=request
+        ),
+        request,
     )
-    if item is None:
-        raise not_found("Provider subscription")
-    return success_response(_provider_subscription_data(item), request)
 
 
 @router.delete("/api/v1/provider-subscriptions/{id}", tags=["Billing"])
@@ -190,16 +160,12 @@ def delete_provider_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.provider_subscriptions.get_for_user(
-            user_id=current_user.id, record_id=record_id
-        )
-        is None
-    ):
-        raise not_found("Provider subscription")
-    unit_of_work.provider_subscriptions.soft_delete(record_id=record_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_provider_subscription(
+            uow=unit_of_work, actor=current_user, record_id=record_id, request=request
+        ),
+        request,
+    )
 
 
 @router.get("/api/v1/provider-webhook-events", tags=["Billing"])
@@ -208,13 +174,8 @@ def list_provider_webhook_events(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
     return success_response(
-        {
-            "items": [
-                _provider_webhook_event_data(x) for x in unit_of_work.provider_webhook_events.list()
-            ]
-        },
+        service.list_provider_webhook_events(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -226,10 +187,13 @@ def create_provider_webhook_event(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.provider_webhook_events.add(fields=payload)
-    unit_of_work.commit()
-    return success_response(_provider_webhook_event_data(item), request, status_code=201)
+    return success_response(
+        service.create_provider_webhook_event(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/provider-webhook-events/{id}", tags=["Billing"])
@@ -239,11 +203,12 @@ def get_provider_webhook_event(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.provider_webhook_events.get(event_id=event_id)
-    if item is None:
-        raise not_found("Provider webhook event")
-    return success_response(_provider_webhook_event_data(item), request)
+    return success_response(
+        service.get_provider_webhook_event(
+            uow=unit_of_work, actor=current_user, event_id=event_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/provider-webhook-events/{id}", tags=["Billing"])
@@ -254,12 +219,16 @@ def update_provider_webhook_event(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.provider_webhook_events.get(event_id=event_id) is None:
-        raise not_found("Provider webhook event")
-    item = unit_of_work.provider_webhook_events.update(event_id=event_id, fields=payload)
-    unit_of_work.commit()
-    return success_response(_provider_webhook_event_data(item), request)
+    return success_response(
+        service.update_provider_webhook_event(
+            uow=unit_of_work,
+            actor=current_user,
+            event_id=event_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
 
 
 @router.delete("/api/v1/provider-webhook-events/{id}", tags=["Billing"])
@@ -269,15 +238,12 @@ def delete_provider_webhook_event(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.provider_webhook_events.get(event_id=event_id)
-    if item is None:
-        raise not_found("Provider webhook event")
-    updated = unit_of_work.provider_webhook_events.update(
-        event_id=event_id, fields={"status": "deleted"}
+    return success_response(
+        service.delete_provider_webhook_event(
+            uow=unit_of_work, actor=current_user, event_id=event_id, request=request
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_provider_webhook_event_data(updated), request)
 
 
 @router.get("/api/v1/provider-idempotency-keys", tags=["Billing"])
@@ -286,14 +252,10 @@ def list_provider_idempotency_keys(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
     return success_response(
-        {
-            "items": [
-                _provider_idempotency_key_data(x)
-                for x in unit_of_work.provider_idempotency_keys.list()
-            ]
-        },
+        service.list_provider_idempotency_keys(
+            uow=unit_of_work, actor=current_user, request=request
+        ),
         request,
     )
 
@@ -305,10 +267,13 @@ def create_provider_idempotency_key(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.provider_idempotency_keys.add(fields=payload)
-    unit_of_work.commit()
-    return success_response(_provider_idempotency_key_data(item), request, status_code=201)
+    return success_response(
+        service.create_provider_idempotency_key(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/provider-idempotency-keys/{id}", tags=["Billing"])
@@ -318,11 +283,12 @@ def get_provider_idempotency_key(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    item = unit_of_work.provider_idempotency_keys.get(key_id=key_id)
-    if item is None:
-        raise not_found("Provider idempotency key")
-    return success_response(_provider_idempotency_key_data(item), request)
+    return success_response(
+        service.get_provider_idempotency_key(
+            uow=unit_of_work, actor=current_user, key_id=key_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/provider-idempotency-keys/{id}", tags=["Billing"])
@@ -333,12 +299,12 @@ def update_provider_idempotency_key(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.provider_idempotency_keys.get(key_id=key_id) is None:
-        raise not_found("Provider idempotency key")
-    item = unit_of_work.provider_idempotency_keys.update(key_id=key_id, fields=payload)
-    unit_of_work.commit()
-    return success_response(_provider_idempotency_key_data(item), request)
+    return success_response(
+        service.update_provider_idempotency_key(
+            uow=unit_of_work, actor=current_user, key_id=key_id, payload=payload, request=request
+        ),
+        request,
+    )
 
 
 @router.delete("/api/v1/provider-idempotency-keys/{id}", tags=["Billing"])
@@ -348,14 +314,12 @@ def delete_provider_idempotency_key(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_global_billing_admin(current_user)
-    if unit_of_work.provider_idempotency_keys.get(key_id=key_id) is None:
-        raise not_found("Provider idempotency key")
-    item = unit_of_work.provider_idempotency_keys.update(
-        key_id=key_id, fields={"status": "deleted"}
+    return success_response(
+        service.delete_provider_idempotency_key(
+            uow=unit_of_work, actor=current_user, key_id=key_id, request=request
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_provider_idempotency_key_data(item), request)
 
 
 @router.put("/api/v1/provider-subscriptions/{id}", tags=["Billing"])
@@ -366,16 +330,16 @@ def update_provider_subscription(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.provider_subscriptions.get_for_user(
-            user_id=current_user.id, record_id=record_id
-        )
-        is None
-    ):
-        raise not_found("Provider subscription")
-    item = unit_of_work.provider_subscriptions.update(record_id=record_id, fields=payload)
-    unit_of_work.commit()
-    return success_response(_provider_subscription_data(item), request)
+    return success_response(
+        service.update_provider_subscription(
+            uow=unit_of_work,
+            actor=current_user,
+            record_id=record_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
 
 
 @router.get("/api/v1/provider-disputes", tags=["Billing"])
@@ -385,12 +349,7 @@ def list_provider_disputes(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _provider_dispute_data(x)
-                for x in unit_of_work.provider_disputes.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_provider_disputes(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -402,19 +361,13 @@ def create_provider_dispute(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    data = payload.model_dump()
-    data["status"] = "open"
-    data["payload"] = {}
-    item = unit_of_work.provider_disputes.add(fields=data)
-    unit_of_work.commit()
-    return success_response(_provider_dispute_data(item), request, status_code=201)
+    return success_response(
+        service.create_provider_dispute(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/provider-disputes/{id}", tags=["Billing"])
@@ -424,12 +377,12 @@ def get_provider_dispute(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.provider_disputes.get_for_user(
-        user_id=current_user.id, dispute_id=dispute_id
+    return success_response(
+        service.get_provider_dispute(
+            uow=unit_of_work, actor=current_user, dispute_id=dispute_id, request=request
+        ),
+        request,
     )
-    if item is None:
-        raise not_found("Provider dispute")
-    return success_response(_provider_dispute_data(item), request)
 
 
 @router.put("/api/v1/provider-disputes/{id}", tags=["Billing"])
@@ -440,16 +393,16 @@ def update_provider_dispute(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.provider_disputes.get_for_user(user_id=current_user.id, dispute_id=dispute_id)
-        is None
-    ):
-        raise not_found("Provider dispute")
-    item = unit_of_work.provider_disputes.update(
-        dispute_id=dispute_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_provider_dispute(
+            uow=unit_of_work,
+            actor=current_user,
+            dispute_id=dispute_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_provider_dispute_data(item), request)
 
 
 @router.delete("/api/v1/provider-disputes/{id}", tags=["Billing"])
@@ -459,11 +412,9 @@ def delete_provider_dispute(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.provider_disputes.get_for_user(user_id=current_user.id, dispute_id=dispute_id)
-        is None
-    ):
-        raise not_found("Provider dispute")
-    unit_of_work.provider_disputes.soft_delete(dispute_id=dispute_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_provider_dispute(
+            uow=unit_of_work, actor=current_user, dispute_id=dispute_id, request=request
+        ),
+        request,
+    )

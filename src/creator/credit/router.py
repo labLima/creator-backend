@@ -16,16 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-    require_workspace_write,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _workspace_credit_transaction_data,
-)
+from creator.credit import service
 from creator.credit.schemas import (
     WorkspaceCreditTransactionCreateRequest,
 )
@@ -42,11 +36,11 @@ def list_workspace_credit_transactions(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
     workspace_id: UUID | None = None,
 ) -> JSONResponse:
-    items = unit_of_work.workspace_credit_transactions.list_for_user(
-        user_id=current_user.id, workspace_id=workspace_id
-    )
     return success_response(
-        {"items": [_workspace_credit_transaction_data(x) for x in items]}, request
+        service.list_workspace_credit_transactions(
+            uow=unit_of_work, actor=current_user, workspace_id=workspace_id, request=request
+        ),
+        request,
     )
 
 
@@ -57,12 +51,13 @@ def create_workspace_credit_transaction(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=payload.workspace_id
+    return success_response(
+        service.create_workspace_credit_transaction(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
     )
-    item = unit_of_work.workspace_credit_transactions.add(fields=payload.model_dump())
-    unit_of_work.commit()
-    return success_response(_workspace_credit_transaction_data(item), request, status_code=201)
 
 
 @router.get("/api/v1/workspace-credit-transactions/{id}", tags=["Workspaces"])
@@ -72,12 +67,12 @@ def get_workspace_credit_transaction(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.workspace_credit_transactions.get_for_user(
-        user_id=current_user.id, transaction_id=transaction_id
+    return success_response(
+        service.get_workspace_credit_transaction(
+            uow=unit_of_work, actor=current_user, transaction_id=transaction_id, request=request
+        ),
+        request,
     )
-    if item is None:
-        raise not_found("Workspace credit transaction")
-    return success_response(_workspace_credit_transaction_data(item), request)
 
 
 @router.delete("/api/v1/workspace-credit-transactions/{id}", tags=["Workspaces"])
@@ -87,13 +82,9 @@ def delete_workspace_credit_transaction(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.workspace_credit_transactions.get_for_user(
-            user_id=current_user.id, transaction_id=transaction_id
-        )
-        is None
-    ):
-        raise not_found("Workspace credit transaction")
-    unit_of_work.workspace_credit_transactions.soft_delete(transaction_id=transaction_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_workspace_credit_transaction(
+            uow=unit_of_work, actor=current_user, transaction_id=transaction_id, request=request
+        ),
+        request,
+    )

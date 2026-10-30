@@ -16,15 +16,10 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.errors import (
-    not_found,
-)
 from creator.api.responses import (
     success_response,
 )
-from creator.api.serializers import (
-    _invoice_data,
-)
+from creator.invoice import service
 from creator.invoice.schemas import (
     InvoiceCreateRequest,
     InvoiceUpdateRequest,
@@ -42,12 +37,7 @@ def list_invoices(
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
     return success_response(
-        {
-            "items": [
-                _invoice_data(x)
-                for x in unit_of_work.invoices.list_for_user(user_id=current_user.id)
-            ]
-        },
+        service.list_invoices(uow=unit_of_work, actor=current_user, request=request),
         request,
     )
 
@@ -59,16 +49,13 @@ def create_invoice(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if (
-        unit_of_work.billing_accounts.get_for_user(
-            user_id=current_user.id, account_id=payload.billing_account_id
-        )
-        is None
-    ):
-        raise not_found("Billing account")
-    item = unit_of_work.invoices.add(**payload.model_dump())
-    unit_of_work.commit()
-    return success_response(_invoice_data(item), request, status_code=201)
+    return success_response(
+        service.create_invoice(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
 
 
 @router.get("/api/v1/invoices/{id}", tags=["Billing"])
@@ -78,10 +65,12 @@ def get_invoice(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    item = unit_of_work.invoices.get_for_user(user_id=current_user.id, invoice_id=invoice_id)
-    if item is None:
-        raise not_found("Invoice")
-    return success_response(_invoice_data(item), request)
+    return success_response(
+        service.get_invoice(
+            uow=unit_of_work, actor=current_user, invoice_id=invoice_id, request=request
+        ),
+        request,
+    )
 
 
 @router.put("/api/v1/invoices/{id}", tags=["Billing"])
@@ -92,13 +81,16 @@ def update_invoice(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.invoices.get_for_user(user_id=current_user.id, invoice_id=invoice_id) is None:
-        raise not_found("Invoice")
-    item = unit_of_work.invoices.update(
-        invoice_id=invoice_id, fields=payload.model_dump(exclude_unset=True)
+    return success_response(
+        service.update_invoice(
+            uow=unit_of_work,
+            actor=current_user,
+            invoice_id=invoice_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
     )
-    unit_of_work.commit()
-    return success_response(_invoice_data(item), request)
 
 
 @router.delete("/api/v1/invoices/{id}", tags=["Billing"])
@@ -108,8 +100,9 @@ def delete_invoice(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> JSONResponse:
-    if unit_of_work.invoices.get_for_user(user_id=current_user.id, invoice_id=invoice_id) is None:
-        raise not_found("Invoice")
-    unit_of_work.invoices.soft_delete(invoice_id=invoice_id)
-    unit_of_work.commit()
-    return success_response({"deleted": True}, request)
+    return success_response(
+        service.delete_invoice(
+            uow=unit_of_work, actor=current_user, invoice_id=invoice_id, request=request
+        ),
+        request,
+    )
