@@ -64,8 +64,6 @@ def browser_server(e2e: tuple[object, object], tmp_path: Path) -> Generator[str,
         )
     application, _ = e2e
     settings = application.state.e2e_settings
-    settings.auth_token_body_enabled = False
-    settings.auth_legacy_bearer_enabled = False
     settings.auth_cookie_secure = True
     certificate, key = _write_test_certificate(tmp_path)
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -27,10 +27,35 @@ Para SPA e API em origens diferentes, use `credentials: "include"`, uma origem
 explicitamente permitida e o perfil SameSite compatível. `SameSite=None`
 cross-site exige HTTPS, `Secure` e allowlist explícita; wildcard não é aceito.
 
-Durante uma release de transição, login e signup podem retornar tokens no JSON
-para clientes antigos. O cliente novo deve ignorar esses campos. No cutover,
-`AUTH_LEGACY_BEARER_ENABLED=false` e `AUTH_TOKEN_BODY_ENABLED=false`; apenas
-cookies permanecem no contrato.
+O contrato após o cutover usa apenas cookies de sessão. Login, signup e refresh
+não retornam access ou refresh no JSON, e `Authorization: Bearer` não autentica
+nem dispensa CSRF. As flags de transição não existem na nova imagem.
+
+## Liberação e rollback
+
+Antes de liberar o cutover, obtenha sign-off explícito do frontend e comunique
+o prazo de depreciação aos clientes afetados. Registre links para ambas as
+evidências na [issue #128](https://github.com/labLima/creator-backend/issues/128);
+ambos os requisitos permanecem pendentes até essa confirmação.
+
+Mantenha a imagem imediatamente anterior disponível durante uma release. Se
+for necessário reverter nesse período, implante essa imagem e configure nela:
+
+```text
+AUTH_COOKIE_SESSIONS_ENABLED=false
+AUTH_LEGACY_BEARER_ENABLED=true
+AUTH_TOKEN_BODY_ENABLED=true
+```
+
+Antes de encaminhar requisições para a imagem anterior, configure o proxy para
+remover o header `Cookie` de todas as requisições à API. Isso é obrigatório: as
+rotas de refresh, CSRF e logout ainda podem ler o cookie de refresh mesmo com
+a flag de cookies desabilitada. Valide o bloqueio no proxy antes do tráfego;
+assim, cookies antigos são ignorados. Clientes devem usar Bearer e os tokens do
+login; a imagem anterior não aceita refresh por JSON, portanto precisam fazer
+novo login quando o access expirar. As flags são exclusivas da imagem anterior
+e não revertem a nova imagem. Não há migration de banco para trocar o transporte.
+Após uma release, retire a imagem anterior do plano de rollback.
 
 ## Teste de navegador
 

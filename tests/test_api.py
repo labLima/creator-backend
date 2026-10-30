@@ -1606,17 +1606,19 @@ async def test_api_v1_route_rejects_bearer_token_without_auth_config() -> None:
 
 
 @pytest.mark.anyio
-async def test_api_v1_route_accepts_valid_local_token_when_enabled() -> None:
+async def test_cookie_mutation_does_not_bypass_csrf_with_bearer() -> None:
+    application = authorized_app()
     async with AsyncClient(
-        transport=ASGITransport(app=authorized_app()), base_url="http://test"
+        transport=ASGITransport(app=application), base_url="http://test"
     ) as client:
         response = await client.post(
             "/api/v1/content/generate",
-            headers={"Authorization": f"Bearer {local_access_token()}"},
+            headers={"Origin": "http://test", "Authorization": f"Bearer {local_access_token()}"},
+            cookies={"creator_access": local_access_token()},
         )
 
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "CSRF_TOKEN_MISSING"
 
 
 @pytest.mark.anyio
@@ -1643,52 +1645,24 @@ async def test_users_me_accepts_cookie_and_rejects_invalid_cookie() -> None:
 
 
 @pytest.mark.anyio
-async def test_users_me_accepts_legacy_bearer_only_while_flag_is_enabled() -> None:
+async def test_users_me_ignores_bearer_and_uses_cookie_identity() -> None:
     application = authorized_app()
     application.dependency_overrides[get_current_user] = require_test_principal
+    other = local_access_token("00000000-0000-0000-0000-000000000002")
     async with AsyncClient(
         transport=ASGITransport(app=application), base_url="http://test"
     ) as client:
-        enabled = await client.get(
+        bearer_only = await client.get(
+            "/api/v1/users/me", headers={"Authorization": f"Bearer {other}"}
+        )
+        cookie_and_bearer = await client.get(
             "/api/v1/users/me",
-            headers={"Authorization": f"Bearer {local_access_token()}"},
+            headers={"Authorization": f"Bearer {other}"},
+            cookies={"creator_access": local_access_token()},
         )
 
-    application = authenticated_app()
-    application.dependency_overrides[get_settings] = lambda: Settings(
-        _env_file=None,
-        auth_required=True,
-        auth_jwt_secret=JWT_SECRET,
-        auth_legacy_bearer_enabled=False,
-        rate_limit_backend="memory",
-    )
-    application.dependency_overrides[get_current_user] = require_test_principal
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        disabled = await client.get(
-            "/api/v1/users/me",
-            headers={"Authorization": f"Bearer {local_access_token()}"},
-        )
-
-    assert enabled.status_code == 200
-    assert disabled.status_code == 401
-
-
-@pytest.mark.anyio
-async def test_different_valid_cookie_and_bearer_subjects_are_ambiguous() -> None:
-    application = authorized_app()
-    async with AsyncClient(
-        transport=ASGITransport(app=application), base_url="http://test"
-    ) as client:
-        response = await client.get(
-            "/api/v1/users/me",
-            headers={"Authorization": f"Bearer {local_access_token()}"},
-            cookies={"creator_access": local_access_token("00000000-0000-0000-0000-000000000002")},
-        )
-
-    assert response.status_code == 401
-    assert response.json()["error"]["code"] == "AUTH_AMBIGUOUS"
+    assert bearer_only.status_code == 401
+    assert cookie_and_bearer.status_code == 200
 
 
 @pytest.mark.anyio
@@ -1704,6 +1678,7 @@ async def test_cookie_authentication_keeps_principal_rate_limit_identity() -> No
     limiter = RecordingLimiter()
     application = authorized_app()
     application.dependency_overrides[get_rate_limiter] = lambda: limiter
+    application.dependency_overrides[get_current_user] = require_test_principal
     async with AsyncClient(
         transport=ASGITransport(app=application), base_url="http://test"
     ) as client:
@@ -1711,27 +1686,26 @@ async def test_cookie_authentication_keeps_principal_rate_limit_identity() -> No
             "/api/v1/users/me",
             cookies={"creator_access": local_access_token()},
         )
-        bearer_precedence = await client.get(
+        cookie_and_bearer = await client.get(
             "/api/v1/users/me",
             headers={
                 "Authorization": (
                     "Bearer " + local_access_token("00000000-0000-0000-0000-000000000002")
                 )
             },
-            cookies={"creator_access": "expired-or-invalid-cookie"},
+            cookies={"creator_access": local_access_token()},
         )
-        matching_credentials = await client.get(
+        bearer_only = await client.get(
             "/api/v1/users/me",
             headers={"Authorization": f"Bearer {local_access_token()}"},
-            cookies={"creator_access": local_access_token()},
         )
 
     assert response.status_code == 200
-    assert bearer_precedence.status_code == 200
-    assert matching_credentials.status_code == 200
+    assert cookie_and_bearer.status_code == 200
+    assert bearer_only.status_code == 401
     assert limiter.calls[0]["identity"] == "principal:00000000-0000-0000-0000-000000000001"
-    assert limiter.calls[1]["identity"] == "principal:00000000-0000-0000-0000-000000000002"
-    assert limiter.calls[2]["identity"] == "principal:00000000-0000-0000-0000-000000000001"
+    assert limiter.calls[1]["identity"] == "principal:00000000-0000-0000-0000-000000000001"
+    assert len(limiter.calls) == 2
     assert "POST /api/v1/auth/refresh" in AUTH_RATE_LIMIT_ENDPOINTS
 
 
@@ -2357,10 +2331,7 @@ async def test_swagger_uses_cookie_security_for_protected_routes() -> None:
         ),
     }
     generate_operation = openapi_schema["paths"]["/api/v1/content/generate"]["post"]
-    assert generate_operation["security"] == [
-        {"CreatorSessionCookie": []},
-        {"CreatorLegacyBearerAuth": []},
-    ]
+    assert generate_operation["security"] == [{"CreatorSessionCookie": []}]
     assert all(
         parameter["name"] != "authorization"
         for parameter in generate_operation.get("parameters", [])

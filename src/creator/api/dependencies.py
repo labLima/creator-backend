@@ -4,8 +4,7 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, Security, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, HTTPException, Request, status
 
 from creator.application.auth import (
     AuthConfigurationError,
@@ -34,7 +33,6 @@ from creator.services.ai.factory import create_llm_provider
 from creator.services.ai.provider import LLMProvider
 from creator.services.storage.provider import StorageConfigurationError, StorageProvider
 
-bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorLegacyBearerAuth")
 logger = logging.getLogger(__name__)
 
 
@@ -56,71 +54,17 @@ def _auth_exception(
 
 def get_principal(
     request: Request,
-    credentials: Annotated[
-        HTTPAuthorizationCredentials | str | None,
-        Security(bearer_scheme),
-    ] = None,
     settings: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
     token_services: Annotated[AuthTokenServices, Depends(auth_token_services)] = None,  # type: ignore[assignment]
 ) -> Principal | None:
-    # Keep the small direct-call API used by legacy unit tests while the HTTP
-    # dependency receives a Request plus Security credentials.  The HTTP path
-    # never enters this branch.
-    if isinstance(credentials, Settings) and not isinstance(request, Request):
-        legacy_credentials = request
-        request = None
-        settings = credentials
-        credentials = legacy_credentials
-    token_services = _resolve_token_services(token_services)
-    request_obj = request if isinstance(request, Request) else None
-    bearer = _bearer_token(credentials) if settings.auth_legacy_bearer_enabled else None
-    cookie = (
-        request_obj.cookies.get(settings.auth_cookie_access_name)
-        if request_obj is not None and settings.auth_cookie_sessions_enabled
-        else None
-    )
-    if bearer is None and cookie is None:
+    token = request.cookies.get(settings.auth_cookie_access_name)
+    if not token:
         if settings.auth_required:
             raise _invalid_auth_exception()
         return None
-
-    bearer_principal: Principal | None = None
-    if bearer is not None:
-        bearer_principal = _decode_principal(bearer, settings, token_services)
-
-    cookie_principal: Principal | None = None
-    if cookie is not None:
-        try:
-            cookie_principal = principal_from_access_token(
-                cookie, settings, token_services=token_services
-            )
-        except (ExpiredTokenError, InvalidTokenError) as error:
-            # An invalid lower-priority cookie cannot replace a supplied Bearer.
-            if bearer is None:
-                raise _invalid_auth_exception() from error
-        except AuthConfigurationError as error:
-            if bearer_principal is None:
-                if not settings.auth_required:
-                    return None
-                raise _auth_exception(
-                    "AUTHENTICATION_MISCONFIGURED",
-                    "Authentication is not configured",
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                ) from error
-
-    if bearer_principal is not None and cookie_principal is not None:
-        if bearer_principal.subject != cookie_principal.subject:
-            raise _ambiguous_auth_exception()
-        principal: Principal | None = bearer_principal
-    else:
-        principal = bearer_principal or cookie_principal
-
-    if principal is None:
-        if settings.auth_required:
-            raise _invalid_auth_exception()
-        return None
-    if request_obj is not None:
-        request_obj.state.auth_source = "bearer" if bearer_principal is not None else "cookie"
+    principal = _decode_principal(token, settings, _resolve_token_services(token_services))
+    if principal is not None:
+        request.state.auth_source = "cookie"
     return principal
 
 
@@ -129,37 +73,11 @@ def get_optional_principal(
     settings: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
     token_services: Annotated[AuthTokenServices, Depends(auth_token_services)] = None,  # type: ignore[assignment]
 ) -> Principal | None:
-    """Validate a supplied token without making authentication mandatory.
-
-    The global rate-limit dependency must be able to rate-limit public Auth routes
-    by IP before the endpoint's own authentication requirements are evaluated.
-    """
-    token_services = _resolve_token_services(token_services)
-    bearer = request.headers.get("Authorization") if settings.auth_legacy_bearer_enabled else None
-    cookie = (
-        request.cookies.get(settings.auth_cookie_access_name)
-        if settings.auth_cookie_sessions_enabled
-        else None
-    )
-    try:
-        bearer_token = _bearer_token(bearer) if bearer else None
-    except HTTPException:
-        return None
-    if bearer_token is None and not cookie:
-        return None
-
-    bearer_principal = _optional_decode_principal(bearer_token, settings, token_services)
-    if bearer_token is not None and bearer_principal is None:
-        return None
-
-    cookie_principal = _optional_decode_principal(cookie, settings, token_services)
-    if bearer_principal is not None and cookie_principal is not None:
-        if bearer_principal.subject != cookie_principal.subject:
-            raise _ambiguous_auth_exception()
-
-    principal = bearer_principal or cookie_principal
+    """Identify cookie sessions for rate limiting without requiring authentication."""
+    token = request.cookies.get(settings.auth_cookie_access_name)
+    principal = _optional_decode_principal(token, settings, _resolve_token_services(token_services))
     if principal is not None:
-        request.state.auth_source = "bearer" if bearer_principal is not None else "cookie"
+        request.state.auth_source = "cookie"
     return principal
 
 
@@ -360,23 +278,12 @@ def enforce_cookie_security(
         return
     if request.url.path in {"/api/v1/auth/login", "/api/v1/auth/signup"}:
         return
-    if not settings.auth_cookie_sessions_enabled:
-        return
-
     has_session_cookie = any(
         request.cookies.get(name)
         for name in (settings.auth_cookie_access_name, settings.auth_cookie_refresh_name)
     )
     if not has_session_cookie:
         return
-    if settings.auth_legacy_bearer_enabled:
-        try:
-            bearer_token = _bearer_token(request.headers.get("Authorization"))
-        except HTTPException:
-            bearer_token = None
-        if _optional_decode_principal(bearer_token, settings, token_services) is not None:
-            return
-
     origin = request.headers.get("origin")
     expected_origin = f"{request.url.scheme}://{request.url.netloc}"
     allowed_origins = set(settings.auth_cors_origins) or {expected_origin}
@@ -428,26 +335,6 @@ def enforce_cookie_security(
 
 def _invalid_auth_exception() -> HTTPException:
     return _auth_exception("AUTHENTICATION_INVALID", "Authentication failed")
-
-
-def _ambiguous_auth_exception() -> HTTPException:
-    return _auth_exception(
-        "AUTH_AMBIGUOUS",
-        "Bearer and cookie credentials identify different Principals",
-    )
-
-
-def _bearer_token(credentials: HTTPAuthorizationCredentials | str | None) -> str | None:
-    if credentials is None:
-        return None
-    if isinstance(credentials, str):
-        scheme, _, token = credentials.partition(" ")
-        if scheme.lower() != "bearer" or not token:
-            raise _invalid_auth_exception()
-        return token
-    if credentials.scheme.lower() != "bearer" or not credentials.credentials:
-        raise _invalid_auth_exception()
-    return credentials.credentials
 
 
 def _decode_principal(

@@ -48,8 +48,8 @@ async def test_signup_login_refresh_logout_flow(e2e: tuple[object, object]) -> N
         assert signup_data["session"]["provider"] == "local"
         assert signup_data["workspace"]["name"] == "Creator Workspace"
         assert signup_data["session"]["csrf_token"]
-        assert signup_data["session"]["access_token"]
-        assert signup_data["session"]["refresh_token"]
+        assert "access_token" not in signup_data["session"]
+        assert "refresh_token" not in signup_data["session"]
         _assert_session_cookies(signup)
 
         login = await client.post(
@@ -59,8 +59,8 @@ async def test_signup_login_refresh_logout_flow(e2e: tuple[object, object]) -> N
         assert login.status_code == 200, login.text
         session = login.json()["data"]
         assert session["csrf_token"]
-        assert session["access_token"]
-        assert session["refresh_token"]
+        assert "access_token" not in session
+        assert "refresh_token" not in session
         _assert_session_cookies(login)
 
         me = await client.get("/api/v1/users/me")
@@ -73,7 +73,9 @@ async def test_signup_login_refresh_logout_flow(e2e: tuple[object, object]) -> N
             headers={"Origin": "http://test", "X-CSRF-Token": csrf or ""},
         )
         assert rotated.status_code == 200, rotated.text
-        assert rotated.json()["data"]["refresh_token"]
+        assert "access_token" not in rotated.json()["data"]
+        assert "refresh_token" not in rotated.json()["data"]
+        _assert_session_cookies(rotated)
 
         csrf = client.cookies.get("creator_csrf")
         logout = await client.post(
@@ -95,8 +97,6 @@ async def test_signup_login_cookie_only_mode_and_auth_errors_are_not_cached(
     e2e: tuple[object, object],
 ) -> None:
     application, _ = e2e
-    settings = application.state.e2e_settings
-    settings.auth_token_body_enabled = False
     async with AsyncClient(
         transport=ASGITransport(app=application), base_url="http://test"
     ) as client:
@@ -254,7 +254,7 @@ async def test_refresh_body_is_rejected_and_csrf_can_be_rehydrated_from_refresh(
 
 
 @pytest.mark.anyio
-async def test_cookie_mutations_enforce_csrf_origin_and_bearer_exemption(
+async def test_cookie_mutations_enforce_csrf_origin_even_with_bearer(
     e2e: tuple[object, object],
 ) -> None:
     application, _ = e2e
@@ -265,7 +265,8 @@ async def test_cookie_mutations_enforce_csrf_origin_and_bearer_exemption(
             "/api/v1/auth/signup", json=signup_payload("csrf-origin@example.com")
         )
         assert signup.status_code == 201, signup.text
-        session = signup.json()["data"]["session"]
+        access_token = client.cookies.get("creator_access")
+        assert access_token is not None
         csrf = client.cookies.get("creator_csrf")
         assert csrf is not None
 
@@ -290,9 +291,17 @@ async def test_cookie_mutations_enforce_csrf_origin_and_bearer_exemption(
 
         bearer_logout = await client.post(
             "/api/v1/auth/logout",
-            headers={"Authorization": f"Bearer {session['access_token']}"},
+            headers={"Origin": "http://test", "Authorization": f"Bearer {access_token}"},
         )
-        assert bearer_logout.status_code == 200, bearer_logout.text
+        assert bearer_logout.status_code == 403
+        assert bearer_logout.json()["error"]["code"] == "CSRF_TOKEN_MISSING"
+
+        client.cookies.clear()
+        bearer_only = await client.get(
+            "/api/v1/users/me", headers={"Authorization": f"Bearer {access_token}"}
+        )
+        assert bearer_only.status_code == 401
+        assert bearer_only.json()["error"]["code"] == "AUTHENTICATION_INVALID"
 
 
 @pytest.mark.anyio

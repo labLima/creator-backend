@@ -167,14 +167,22 @@ com credenciais.
 
 ## Rollback e consequências
 
-- A migração será protegida por feature flag.
-- Em rollback, a API desabilita leitura/escrita de cookies, expira cookies
-  emitidos e preserva temporariamente Bearer para os clientes existentes.
+- A transição inicial usa flags. Após o corte da [issue #128](https://github.com/labLima/creator-backend/issues/128),
+  a nova imagem aceita somente cookies e não contém essas flags, Bearer ou
+  tokens de sessão no JSON. As garantias de CSRF e Origin continuam aplicáveis.
+- Durante uma release, o rollback usa a imagem imediatamente anterior com
+  `AUTH_COOKIE_SESSIONS_ENABLED=false`, `AUTH_LEGACY_BEARER_ENABLED=true` e
+  `AUTH_TOKEN_BODY_ENABLED=true`. O proxy deve remover `Cookie` das requisições
+  para a API: a imagem anterior ainda lê o cookie de refresh em algumas rotas.
+  Clientes usam Bearer e fazem novo login quando o access expira, pois essa
+  imagem não aceita refresh por JSON. As flags não revertem a nova imagem.
+  O procedimento está no [guia do SPA](../spa-cookie-auth-migration.md).
 - Nenhuma migration de banco é necessária para trocar o transporte.
 - O custo é manter um adapter e seus testes. O benefício é compatibilidade com
   o runtime atual, auditabilidade e separação entre transporte e domínio.
-- A mudança para cookies exige atualização posterior de OpenAPI, CORS, guia do
-  SPA e E2E de navegador; todos permanecem fora desta issue.
+- A liberação do corte depende de sign-off explícito do frontend e comunicação
+  do prazo de depreciação, com evidências vinculadas à issue #128. Esses gates
+  não são presumidos como concluídos.
 
 ## Gate de implementação e aceitação
 

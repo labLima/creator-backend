@@ -118,17 +118,10 @@ def test_openapi_declares_cookie_security_for_business_operations() -> None:
             continue
         for method, operation in operations.items():
             if method in {"get", "post", "put", "patch", "delete"}:
-                if path == "/api/v1/auth/refresh":
-                    expected_security = [{"CreatorRefreshCookie": []}]
-                elif path == "/api/v1/auth/csrf":
-                    expected_security = [
-                        {"CreatorSessionCookie": []},
-                        {"CreatorRefreshCookie": []},
-                        {"CreatorLegacyBearerAuth": []},
-                    ]
+                if path in {"/api/v1/auth/refresh", "/api/v1/auth/csrf"}:
+                    expected_security = []
                 else:
                     expected_security = [{"CreatorSessionCookie": []}]
-                    expected_security.append({"CreatorLegacyBearerAuth": []})
                 assert operation.get("security") == expected_security, (
                     f"{method.upper()} {path} must declare cookie security"
                 )

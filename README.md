@@ -62,7 +62,7 @@ Configure `AUTH_JWT_SECRET` com um valor forte. Em produção, use
 
 ### Política de cookies
 
-A política de transição é explícita e validada quando `Settings` é carregado:
+A política de cookies é validada quando `Settings` é carregado:
 
 - `creator_access` e `creator_refresh` são `HttpOnly`; nenhum cookie define
   `Domain`.
@@ -75,12 +75,9 @@ A política de transição é explícita e validada quando `Settings` é carrega
 - O `Max-Age` dos cookies segue o TTL do token e é limitado por
   `AUTH_SESSION_ABSOLUTE_TTL_DAYS`.
 
-Os valores do `.env.example` são para HTTP local, CORS vazio e flags de
-transição habilitadas. Em produção, use um `AUTH_JWT_SECRET` forte,
+Os valores do `.env.example` são para HTTP local e CORS vazio. Em produção, use um `AUTH_JWT_SECRET` forte,
 `AUTH_COOKIE_SECURE=true`, uma lista JSON explícita em `AUTH_CORS_ORIGINS`
-quando o SPA estiver em outra origem e desabilite
-`AUTH_TOKEN_BODY_ENABLED`/`AUTH_LEGACY_BEARER_ENABLED` somente após a migração
-dos clientes. Paths e TTLs podem ser ajustados para um reverse proxy pelas
+quando o SPA estiver em outra origem. Paths e TTLs podem ser ajustados para um reverse proxy pelas
 configurações `AUTH_COOKIE_*` e `AUTH_*TTL*` correspondentes.
 
 O guia de migração do SPA descreve `credentials: "include"`, o envio de
@@ -89,11 +86,9 @@ autenticação e de CSRF são `no-store`. Consulte
 [`docs/spa-cookie-auth-migration.md`](docs/spa-cookie-auth-migration.md) antes
 de integrar um cliente.
 
-`AUTH_LEGACY_BEARER_ENABLED=true` mantém a aceitação do header `Authorization:
-Bearer` durante a transição. Quando Bearer e cookie válidos chegam juntos,
-Bearer tem precedência; se os tokens identificarem `sub` diferentes, a API
-responde `401 AUTH_AMBIGUOUS`. Após migrar os clientes, defina a flag como
-`false` para aceitar somente cookies.
+A API autentica exclusivamente pelos cookies de sessão. `Authorization: Bearer`
+não autentica nem dispensa CSRF. As flags de transição foram removidas desta
+imagem; o procedimento de rollback está no guia do SPA.
 
 ## IA e storage
 
@@ -165,8 +160,8 @@ no header `X-CSRF-Token` em mutações. Não armazene tokens em `localStorage`.
 Coordene um único refresh por vez (single-flight). Em `401`, aguarde o refresh
 compartilhado e repita a requisição uma vez. Em `409 REFRESH_IN_PROGRESS`,
 aguarde o refresh em andamento; falhas posteriores devem limpar o estado local
-e exigir novo login. Durante a janela de migração, o backend pode manter Bearer
-e tokens no corpo; o cutover desliga essas flags.
+e exigir novo login. Login, signup e refresh não retornam access ou refresh no
+corpo JSON.
 
 ## Banco e migrations
 

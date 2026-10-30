@@ -8,14 +8,21 @@ from tests.e2e.conftest import signup_payload
 pytestmark = pytest.mark.e2e
 
 
-async def _signup(client: AsyncClient, email: str) -> tuple[str, str]:
+async def _signup(client: AsyncClient, email: str) -> tuple[dict[str, str], str]:
     response = await client.post(
         "/api/v1/auth/signup", json=signup_payload(email, f"Workspace {email}")
     )
     assert response.status_code == 201, response.text
     data = response.json()["data"]
+    access = client.cookies.get("creator_access")
+    csrf = client.cookies.get("creator_csrf")
+    assert access is not None and csrf is not None
     client.cookies.clear()
-    return data["session"]["access_token"], data["workspace"]["id"]
+    return {
+        "Cookie": f"creator_access={access}; creator_csrf={csrf}",
+        "Origin": "http://test",
+        "X-CSRF-Token": csrf,
+    }, data["workspace"]["id"]
 
 
 @pytest.mark.anyio
@@ -29,7 +36,7 @@ async def test_content_generation_is_workspace_scoped(e2e: tuple[object, object]
 
         generated = await client.post(
             "/api/v1/content/generate",
-            headers={"Authorization": f"Bearer {owner_token}"},
+            headers=owner_token,
             json={
                 "workspace_id": owner_workspace,
                 "topic": "Launch campaign",
@@ -45,7 +52,7 @@ async def test_content_generation_is_workspace_scoped(e2e: tuple[object, object]
 
         denied = await client.post(
             "/api/v1/content/generate",
-            headers={"Authorization": f"Bearer {other_token}"},
+            headers=other_token,
             json={
                 "workspace_id": owner_workspace,
                 "topic": "Launch campaign",
@@ -60,7 +67,7 @@ async def test_content_generation_is_workspace_scoped(e2e: tuple[object, object]
 
         own = await client.post(
             "/api/v1/content/generate",
-            headers={"Authorization": f"Bearer {other_token}"},
+            headers=other_token,
             json={
                 "workspace_id": other_workspace,
                 "topic": "Own campaign",

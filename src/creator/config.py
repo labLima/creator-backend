@@ -61,9 +61,6 @@ class Settings(BaseSettings):
     auth_password_min_length: int = 12
     auth_login_max_attempts: int = 5
     auth_login_lockout_seconds: int = 900
-    auth_cookie_sessions_enabled: bool = True
-    auth_legacy_bearer_enabled: bool = True
-    auth_token_body_enabled: bool = True
     auth_cookie_access_name: str = "creator_access"
     auth_cookie_refresh_name: str = "creator_refresh"
     auth_cookie_csrf_name: str = "creator_csrf"

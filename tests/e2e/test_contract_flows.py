@@ -27,22 +27,29 @@ def _assert_envelope(response: Response, *, success: bool) -> dict[str, Any]:
     return body
 
 
-async def _signup(client: AsyncClient, email: str) -> tuple[str, str]:
+async def _signup(client: AsyncClient, email: str) -> tuple[dict[str, str], str]:
     response = await client.post(
         "/api/v1/auth/signup", json=signup_payload(email, f"Workspace {email}")
     )
     assert response.status_code == 201, response.text
     data = _assert_envelope(response, success=True)["data"]
+    access = client.cookies.get("creator_access")
+    csrf = client.cookies.get("creator_csrf")
+    assert access is not None and csrf is not None
     client.cookies.clear()
-    return data["session"]["access_token"], data["workspace"]["id"]
+    return {
+        "Cookie": f"creator_access={access}; creator_csrf={csrf}",
+        "Origin": "http://test",
+        "X-CSRF-Token": csrf,
+    }, data["workspace"]["id"]
 
 
-def _auth(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+def _auth(token: dict[str, str]) -> dict[str, str]:
+    return token
 
 
 async def _generate_content(
-    client: AsyncClient, token: str, workspace_id: str, *, topic: str = "Launch campaign"
+    client: AsyncClient, token: dict[str, str], workspace_id: str, *, topic: str = "Launch campaign"
 ) -> dict[str, Any]:
     response = await client.post(
         "/api/v1/content/generate",

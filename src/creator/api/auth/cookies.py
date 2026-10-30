@@ -45,8 +45,6 @@ def set_auth_cookies(
     csrf_token: str,
     settings: Settings,
 ) -> None:
-    if not settings.auth_cookie_sessions_enabled:
-        return
     policy = settings.auth_cookie_policy
     transport.set(
         CookieSpec(

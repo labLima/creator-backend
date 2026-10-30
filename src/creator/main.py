@@ -1160,22 +1160,15 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 "HttpOnly Creator access cookie; mutating requests also require X-CSRF-Token."
             ),
         }
-        security_schemes["CreatorRefreshCookie"] = {
-            "type": "apiKey",
-            "in": "cookie",
+        components.setdefault("parameters", {})["RefreshCookie"] = {
             "name": settings.auth_cookie_refresh_name,
-            "description": "HttpOnly Creator refresh cookie used only for session rotation.",
+            "in": "cookie",
+            "required": False,
+            "description": (
+                "HttpOnly refresh cookie; required for refresh and accepted by CSRF rehydration."
+            ),
+            "schema": {"type": "string"},
         }
-        if settings.auth_legacy_bearer_enabled:
-            security_schemes["CreatorLegacyBearerAuth"] = {
-                "type": "http",
-                "scheme": "bearer",
-                "description": (
-                    "Legacy Bearer accepted only when AUTH_LEGACY_BEARER_ENABLED=true."
-                ),
-            }
-        else:
-            security_schemes.pop("CreatorLegacyBearerAuth", None)
         responses = components.setdefault("responses", {})
         headers = components.setdefault("headers", {})
         headers.setdefault(
@@ -1231,27 +1224,22 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
             "Unauthorized",
             {
                 "description": (
-                    "Authentication failed because credentials are missing, invalid, expired, "
-                    "or because the Bearer and cookie credentials identify different Principals "
-                    "(AUTH_AMBIGUOUS)."
+                    "Authentication failed because credentials are missing, invalid, or expired."
                 ),
                 "content": {
                     "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
                 },
-                "x-error-codes": ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"],
+                "x-error-codes": ["AUTHENTICATION_INVALID"],
             },
         )
         responses.setdefault(
             "LoginRejected",
             {
-                "description": (
-                    "Creator rejected the email and password credentials or the supplied "
-                    "Bearer and cookie credentials are ambiguous (AUTH_AMBIGUOUS)."
-                ),
+                "description": "Creator rejected the email and password credentials.",
                 "content": {
                     "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
                 },
-                "x-error-codes": ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"],
+                "x-error-codes": ["AUTHENTICATION_INVALID"],
             },
         )
         responses.setdefault(
@@ -1283,29 +1271,28 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                     "/api/v1/auth/login",
                     "/api/v1/auth/signup",
                 }:
-                    if path == "/api/v1/auth/refresh":
-                        operation["security"] = [{"CreatorRefreshCookie": []}]
-                    elif path == "/api/v1/auth/csrf":
-                        operation["security"] = [
-                            {"CreatorSessionCookie": []},
-                            {"CreatorRefreshCookie": []},
-                        ]
-                        if settings.auth_legacy_bearer_enabled:
-                            operation["security"].append({"CreatorLegacyBearerAuth": []})
+                    if path in {"/api/v1/auth/refresh", "/api/v1/auth/csrf"}:
+                        operation["security"] = []
+                        operation["description"] = (
+                            "Requires a valid creator_refresh cookie."
+                            if path.endswith("/refresh")
+                            else "Requires a valid creator_access or creator_refresh cookie."
+                        )
+                        operation.setdefault("parameters", []).append(
+                            {"$ref": "#/components/parameters/RefreshCookie"}
+                        )
                     else:
                         operation["security"] = [{"CreatorSessionCookie": []}]
-                        if settings.auth_legacy_bearer_enabled:
-                            operation["security"].append({"CreatorLegacyBearerAuth": []})
                 if path.startswith("/api/v1/") and "401" in operation["responses"]:
                     operation["responses"]["401"].setdefault(
-                        "x-error-codes", ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"]
+                        "x-error-codes", ["AUTHENTICATION_INVALID"]
                     )
                 if path.startswith("/api/v1/"):
                     operation["responses"].setdefault(
                         "401",
                         {
                             "$ref": "#/components/responses/Unauthorized",
-                            "x-error-codes": ["AUTHENTICATION_INVALID", "AUTH_AMBIGUOUS"],
+                            "x-error-codes": ["AUTHENTICATION_INVALID"],
                         },
                     )
                     if path == "/api/v1/auth/refresh":
@@ -1397,27 +1384,8 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 "principal": {"$ref": "#/components/schemas/AuthPrincipal"},
                 "provider": {"type": "string", "const": "local"},
                 "metadata": {"type": "object", "additionalProperties": True},
-                "access_token": {
-                    "type": "string",
-                    "deprecated": True,
-                    "description": (
-                        "Legacy transition field, returned only while "
-                        "AUTH_TOKEN_BODY_ENABLED=true. Prefer the HttpOnly creator_access cookie."
-                    ),
-                },
-                "refresh_token": {
-                    "type": "string",
-                    "deprecated": True,
-                    "description": (
-                        "Legacy transition field, returned only while "
-                        "AUTH_TOKEN_BODY_ENABLED=true. Prefer the HttpOnly creator_refresh cookie."
-                    ),
-                },
             },
         }
-        if not settings.auth_token_body_enabled:
-            schemas["AuthSession"]["properties"].pop("access_token", None)
-            schemas["AuthSession"]["properties"].pop("refresh_token", None)
         schemas["AuthLoginResponse"] = {
             "type": "object",
             "required": ["success", "data", "meta"],
@@ -1483,7 +1451,7 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
             success.setdefault("headers", {})["Set-Cookie"] = {
                 "description": (
                     "Separate Set-Cookie headers for creator_access, creator_refresh and "
-                    "creator_csrf are emitted when cookie sessions are enabled."
+                    "creator_csrf are emitted when a session is created."
                 ),
                 "schema": {"type": "string"},
             }
