@@ -33,11 +33,7 @@ from creator.domain.agent_workflow import (
     can_transition_agent_workflow,
     can_transition_agent_workflow_step,
 )
-from creator.domain.exceptions import (
-    ConflictError,
-    EntityNotFoundError,
-    InvalidStateTransitionError,
-)
+from creator.domain.exceptions import EntityNotFoundError, InvalidStateTransitionError
 from creator.domain.generation import GenerationJobStatus, can_transition
 from creator.generation import models as generation_tables
 from creator.generation.ports import (
@@ -52,8 +48,8 @@ from creator.infrastructure.persistence import sql
 from creator.project import models as project_tables
 from creator.project.ports import ProjectRecord
 from creator.user import models as user_tables
-from creator.user.ports import SettingsRecord, UserRecord
-from creator.user.repository import SqlAlchemyUserRepository
+from creator.user.ports import UserRecord
+from creator.user.repository import SqlAlchemySettingsRepository, SqlAlchemyUserRepository
 from creator.workflow import models as workflow_tables
 from creator.workflow.ports import AgentWorkflowRunRecord, AgentWorkflowStepRecord
 from creator.workspace import models as workspace_tables
@@ -74,21 +70,6 @@ _scoped_resource_count = sql.scoped_resource_count
 flush_or_raise = sql.flush_or_raise
 map_sqlalchemy_error = sql.map_sqlalchemy_error
 ROLE_RANK = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
-
-
-def _settings_record(row: user_tables.Settings) -> SettingsRecord:
-    return SettingsRecord(
-        id=row.id,
-        user_id=row.user_id,
-        brand_name=row.brand_name,
-        segment=row.segment,
-        tone=row.tone,
-        voice=row.voice,
-        visual_style=row.visual_style,
-        default_preferences=_json(row.default_preferences),
-        created_at=_datetime(row.created_at),
-        updated_at=_datetime(row.updated_at),
-    )
 
 
 def _workspace_membership_record(
@@ -359,88 +340,6 @@ def _user_record(row: user_tables.User) -> UserRecord:
         deleted_at=_optional_datetime(row.deleted_at),
         password_hash=row.password_hash,
     )
-
-
-class SqlAlchemySettingsRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def get_by_user_id(self, user_id: UUID) -> SettingsRecord | None:
-        row = self._session.scalars(
-            select(user_tables.Settings).where(user_tables.Settings.user_id == user_id)
-        ).one_or_none()
-        return _settings_record(row) if row else None
-
-    def get_or_create_for_user(self, user_id: UUID) -> SettingsRecord:
-        row = self._session.scalars(
-            select(user_tables.Settings)
-            .where(user_tables.Settings.user_id == user_id)
-            .with_for_update()
-        ).one_or_none()
-        if row is not None:
-            return _settings_record(row)
-        try:
-            return self.create_for_user(user_id)
-        except ConflictError:
-            row = self._session.scalars(
-                select(user_tables.Settings)
-                .where(user_tables.Settings.user_id == user_id)
-                .with_for_update()
-            ).one_or_none()
-            if row is None:
-                raise
-            return _settings_record(row)
-
-    def create_for_user(
-        self,
-        user_id: UUID,
-        *,
-        brand_name: str | None = None,
-        segment: str | None = None,
-        tone: str = "professional",
-        voice: str = "Clear and useful",
-        visual_style: str = "photographic",
-        default_preferences: JsonObject | None = None,
-    ) -> SettingsRecord:
-        row = user_tables.Settings(
-            user_id=user_id,
-            brand_name=brand_name,
-            segment=segment,
-            tone=tone,
-            voice=voice,
-            visual_style=visual_style,
-            default_preferences=_json(default_preferences),
-        )
-        self._session.add(row)
-        flush_or_raise(self._session)
-        return _settings_record(row)
-
-    def update_partial(self, user_id: UUID, changes: JsonObject) -> SettingsRecord:
-        row = self._session.scalars(
-            select(user_tables.Settings)
-            .where(user_tables.Settings.user_id == user_id)
-            .with_for_update()
-        ).one_or_none()
-        if row is None:
-            raise EntityNotFoundError("Settings not found")
-        for field_name in (
-            "brand_name",
-            "segment",
-            "tone",
-            "voice",
-            "visual_style",
-            "default_preferences",
-        ):
-            if field_name not in changes:
-                continue
-            value = changes[field_name]
-            if field_name == "default_preferences":
-                row.default_preferences = _json(value if isinstance(value, dict) else None)
-            else:
-                setattr(row, field_name, value)
-        row.updated_at = _now()
-        flush_or_raise(self._session)
-        return _settings_record(row)
 
 
 class SqlAlchemyWorkspaceRepository:

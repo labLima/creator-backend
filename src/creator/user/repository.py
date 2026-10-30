@@ -9,17 +9,19 @@ from sqlalchemy.orm import Session
 
 import creator.user.models as user_models
 from creator.core.pagination import Page, PageRequest
-from creator.domain.exceptions import EntityNotFoundError
+from creator.core.types import JsonObject
+from creator.domain.exceptions import ConflictError, EntityNotFoundError
 from creator.infrastructure.database.enums import GlobalRole
 from creator.infrastructure.persistence.sql import (
     as_datetime,
     as_optional_datetime,
     enum_value,
     flush_or_raise,
+    json_object,
     now,
     paginate,
 )
-from creator.user.ports import UserRecord
+from creator.user.ports import SettingsRecord, UserRecord
 
 
 def _user_record(row: user_models.User) -> UserRecord:
@@ -158,3 +160,100 @@ class SqlAlchemyUserRepository:
         row.deleted_at = timestamp
         row.updated_at = timestamp
         flush_or_raise(self._session)
+
+
+def _settings_record(row: user_models.Settings) -> SettingsRecord:
+    return SettingsRecord(
+        id=row.id,
+        user_id=row.user_id,
+        brand_name=row.brand_name,
+        segment=row.segment,
+        tone=row.tone,
+        voice=row.voice,
+        visual_style=row.visual_style,
+        default_preferences=json_object(row.default_preferences),
+        created_at=as_datetime(row.created_at),
+        updated_at=as_datetime(row.updated_at),
+    )
+
+
+class SqlAlchemySettingsRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_user_id(self, user_id: UUID) -> SettingsRecord | None:
+        row = self._session.scalars(
+            select(user_models.Settings).where(user_models.Settings.user_id == user_id)
+        ).one_or_none()
+        return _settings_record(row) if row else None
+
+    def get_or_create_for_user(self, user_id: UUID) -> SettingsRecord:
+        row = self._session.scalars(
+            select(user_models.Settings)
+            .where(user_models.Settings.user_id == user_id)
+            .with_for_update()
+        ).one_or_none()
+        if row is not None:
+            return _settings_record(row)
+        try:
+            return self.create_for_user(user_id)
+        except ConflictError:
+            row = self._session.scalars(
+                select(user_models.Settings)
+                .where(user_models.Settings.user_id == user_id)
+                .with_for_update()
+            ).one_or_none()
+            if row is None:
+                raise
+            return _settings_record(row)
+
+    def create_for_user(
+        self,
+        user_id: UUID,
+        *,
+        brand_name: str | None = None,
+        segment: str | None = None,
+        tone: str = "professional",
+        voice: str = "Clear and useful",
+        visual_style: str = "photographic",
+        default_preferences: JsonObject | None = None,
+    ) -> SettingsRecord:
+        row = user_models.Settings(
+            user_id=user_id,
+            brand_name=brand_name,
+            segment=segment,
+            tone=tone,
+            voice=voice,
+            visual_style=visual_style,
+            default_preferences=json_object(default_preferences),
+        )
+        self._session.add(row)
+        flush_or_raise(self._session)
+        return _settings_record(row)
+
+    def update_partial(self, user_id: UUID, changes: JsonObject) -> SettingsRecord:
+        row = self._session.scalars(
+            select(user_models.Settings)
+            .where(user_models.Settings.user_id == user_id)
+            .with_for_update()
+        ).one_or_none()
+        if row is None:
+            raise EntityNotFoundError("Settings not found")
+        for field_name in (
+            "brand_name",
+            "segment",
+            "tone",
+            "voice",
+            "visual_style",
+            "default_preferences",
+        ):
+            if field_name not in changes:
+                continue
+            value = changes[field_name]
+            if field_name == "default_preferences":
+                row.default_preferences = json_object(value if isinstance(value, dict) else None)
+            else:
+                setattr(row, field_name, value)
+        row.updated_at = now()
+        flush_or_raise(self._session)
+        return _settings_record(row)
