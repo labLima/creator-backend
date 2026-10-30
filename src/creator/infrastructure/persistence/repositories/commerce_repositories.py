@@ -17,7 +17,7 @@ from creator.credit.ports import (
     WorkspaceCreditTransactionRepository,
 )
 from creator.order import models as order_tables
-from creator.repositories.commerce import OrderRecord, OrderRepository
+from creator.order.ports import OrderRecord, OrderRepository
 from creator.workspace import models as workspace_tables
 
 

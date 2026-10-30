@@ -10,6 +10,14 @@ from sqlalchemy.orm import Session
 
 from creator.asset.ports import AssetRepository
 from creator.auth.ports import AuthSessionRepository
+from creator.billing_account.ports import BillingAccountRepository, BillingAddressRepository
+from creator.billing_provider.ports import (
+    ProviderCustomerRepository,
+    ProviderDisputeRepository,
+    ProviderIdempotencyKeyRepository,
+    ProviderSubscriptionRepository,
+    ProviderWebhookEventRepository,
+)
 from creator.brand.ports import (
     BrandAssetRepository,
     BrandColorRepository,
@@ -17,6 +25,7 @@ from creator.brand.ports import (
     BrandSettingsRepository,
 )
 from creator.campaign.ports import CampaignRepository
+from creator.charge.ports import ChargeRepository
 from creator.content.ports import ContentRepository
 from creator.coupon.ports import CouponRedemptionRepository, CouponRepository
 from creator.credit.ports import WorkspaceCreditTransactionRepository
@@ -111,19 +120,14 @@ from creator.infrastructure.persistence.repositories.subscription_history_reposi
 from creator.infrastructure.persistence.repositories.workspace_invite_repositories import (
     SqlAlchemyWorkspaceInviteRepository,
 )
+from creator.invoice.ports import InvoiceRepository
+from creator.order.ports import OrderRepository
+from creator.payment_method.ports import BillingPaymentMethodRepository
 from creator.persona.ports import PersonaRepository
 from creator.plan.ports import PlanItemRepository, PlanRepository
 from creator.planning.ports import PlanningRepository
 from creator.post_structure.ports import PostStructureRepository
-from creator.repositories.billing import (
-    BillingAccountRepository,
-    BillingAddressRepository,
-    BillingPaymentMethodRepository,
-    ChargeRepository,
-    InvoiceRepository,
-    SubscriptionRepository,
-)
-from creator.repositories.commerce import OrderRepository
+from creator.refund.ports import RefundRepository
 from creator.repositories.core import ProjectRepository
 from creator.repositories.notifications import (
     NotificationPreferenceRepository,
@@ -131,16 +135,7 @@ from creator.repositories.notifications import (
     NotificationRepository,
     UserDeviceRepository,
 )
-from creator.repositories.provider import ProviderDisputeRepository, RefundRepository
-from creator.repositories.provider_audit import (
-    ProviderIdempotencyKeyRepository,
-    ProviderWebhookEventRepository,
-)
-from creator.repositories.provider_sync import (
-    ProviderCustomerRepository,
-    ProviderSubscriptionRepository,
-)
-from creator.repositories.subscription_history import SubscriptionHistoryRepository
+from creator.subscription.ports import SubscriptionHistoryRepository, SubscriptionRepository
 from creator.uow import UnitOfWork
 from creator.user.ports import SettingsRepository, UserRepository
 from creator.workflow.ports import AgentWorkflowRepository, OutboxRepository

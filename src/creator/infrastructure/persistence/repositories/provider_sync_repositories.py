@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from creator.billing_account import models as billing_account_tables
 from creator.billing_provider import models as billing_provider_tables
-from creator.repositories.provider_sync import (
+from creator.billing_provider.ports import (
     ProviderCustomerRecord,
     ProviderCustomerRepository,
     ProviderSubscriptionRecord,

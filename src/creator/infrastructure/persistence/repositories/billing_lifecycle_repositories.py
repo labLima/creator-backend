@@ -8,16 +8,11 @@ from sqlalchemy.orm import Session
 
 from creator.billing_account import models as billing_account_tables
 from creator.charge import models as charge_tables
+from creator.charge.ports import ChargeRecord, ChargeRepository
 from creator.invoice import models as invoice_tables
-from creator.repositories.billing import (
-    ChargeRecord,
-    ChargeRepository,
-    InvoiceRecord,
-    InvoiceRepository,
-    SubscriptionRecord,
-    SubscriptionRepository,
-)
+from creator.invoice.ports import InvoiceRecord, InvoiceRepository
 from creator.subscription import models as subscription_tables
+from creator.subscription.ports import SubscriptionRecord, SubscriptionRepository
 
 
 def _subscription(row: subscription_tables.Subscription) -> SubscriptionRecord:

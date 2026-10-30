@@ -8,11 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from creator.billing_account import models as billing_account_tables
-from creator.repositories.subscription_history import (
-    SubscriptionHistoryRecord,
-    SubscriptionHistoryRepository,
-)
 from creator.subscription import models as subscription_tables
+from creator.subscription.ports import SubscriptionHistoryRecord, SubscriptionHistoryRepository
 
 
 class SqlAlchemySubscriptionHistoryRepository(SubscriptionHistoryRepository):

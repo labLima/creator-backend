@@ -9,13 +9,9 @@ from sqlalchemy.orm import Session
 
 from creator.billing_account import models as billing_account_tables
 from creator.billing_provider import models as billing_provider_tables
+from creator.billing_provider.ports import ProviderDisputeRecord, ProviderDisputeRepository
 from creator.refund import models as refund_tables
-from creator.repositories.provider import (
-    ProviderDisputeRecord,
-    ProviderDisputeRepository,
-    RefundRecord,
-    RefundRepository,
-)
+from creator.refund.ports import RefundRecord, RefundRepository
 
 
 class SqlAlchemyRefundRepository(RefundRepository):

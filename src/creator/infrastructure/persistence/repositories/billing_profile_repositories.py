@@ -10,13 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from creator.billing_account import models as billing_account_tables
+from creator.billing_account.ports import BillingAddressRecord, BillingAddressRepository
 from creator.payment_method import models as payment_method_tables
-from creator.repositories.billing import (
-    BillingAddressRecord,
-    BillingAddressRepository,
-    BillingPaymentMethodRecord,
-    BillingPaymentMethodRepository,
-)
+from creator.payment_method.ports import BillingPaymentMethodRecord, BillingPaymentMethodRepository
 
 
 class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
