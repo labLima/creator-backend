@@ -31,3 +31,16 @@ Durante uma release de transição, login e signup podem retornar tokens no JSON
 para clientes antigos. O cliente novo deve ignorar esses campos. No cutover,
 `AUTH_LEGACY_BEARER_ENABLED=false` e `AUTH_TOKEN_BODY_ENABLED=false`; apenas
 cookies permanecem no contrato.
+
+## Teste de navegador
+
+O fluxo de autenticação por cookies também é exercitado em Chromium real pelo
+teste `tests/e2e/test_browser_cookie_auth.py`. Execute localmente com
+`python -m playwright install chromium` e `pytest -q --no-cov
+tests/e2e/test_browser_cookie_auth.py`. O job `e2e` do GitHub Actions instala
+Chromium e executa esse teste junto aos demais fluxos E2E.
+
+O teste sobe a API em HTTPS com certificado temporário para validar cookies
+`Secure`, `HttpOnly`, `SameSite` e `Path` usando o cookie jar do navegador. No
+ambiente Windows local, o servidor Uvicorn em thread é ignorado devido à
+limitação do loop asyncio; o job Linux no CI executa o teste.
