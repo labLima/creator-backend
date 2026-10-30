@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from creator.brand import models as brand_tables
-from creator.repositories.brand_color import BrandColorRecord, BrandColorRepository
+from creator.brand.ports import BrandColorRecord, BrandColorRepository
 from creator.workspace import models as workspace_tables
 
 

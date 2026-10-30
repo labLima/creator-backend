@@ -1,3 +1,5 @@
+"""Repository ports."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,21 +7,14 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from creator.repositories.common import JsonObject, Page, PageRequest
-
-
-@dataclass(frozen=True, slots=True)
-class BrandRecord:
-    id: UUID
-    workspace_id: UUID
-    created_by_user_id: UUID | None
-    name: str
-    description: str | None
-    brand_voice: str | None
-    metadata: JsonObject
-    created_at: datetime
-    updated_at: datetime
-    deleted_at: datetime | None
+from creator.brand.ports import (
+    BrandRecord,
+    BrandRepository,
+    BrandSettingsRecord,
+    BrandSettingsRepository,
+)
+from creator.core.pagination import Page, PageRequest
+from creator.core.types import JsonObject
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,62 +67,6 @@ class AssetRecord:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
-
-
-@dataclass(frozen=True, slots=True)
-class BrandSettingsRecord:
-    id: UUID
-    workspace_id: UUID
-    brand_id: UUID
-    voice_settings: JsonObject
-    visual_settings: JsonObject
-    generation_defaults: JsonObject
-    metadata: JsonObject
-    created_at: datetime
-    updated_at: datetime
-    deleted_at: datetime | None
-
-
-class BrandRepository(Protocol):
-    def add(
-        self,
-        *,
-        workspace_id: UUID,
-        created_by_user_id: UUID | None,
-        name: str,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
-    ) -> BrandRecord: ...
-
-    def get_for_user(
-        self,
-        *,
-        user_id: UUID,
-        brand_id: UUID,
-        include_deleted: bool = False,
-    ) -> BrandRecord | None: ...
-
-    def list_for_user(
-        self,
-        *,
-        user_id: UUID,
-        workspace_id: UUID | None = None,
-        page: PageRequest | None = None,
-    ) -> Page[BrandRecord]: ...
-
-    def update(
-        self,
-        *,
-        user_id: UUID,
-        brand_id: UUID,
-        name: str | None = None,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
-    ) -> BrandRecord: ...
-
-    def soft_delete(self, *, user_id: UUID, brand_id: UUID) -> None: ...
 
 
 class ProjectRepository(Protocol):
@@ -269,36 +208,15 @@ class AssetRepository(Protocol):
     def soft_delete(self, *, user_id: UUID, asset_id: UUID) -> None: ...
 
 
-class BrandSettingsRepository(Protocol):
-    def get_for_user(
-        self,
-        *,
-        user_id: UUID,
-        brand_id: UUID,
-        include_deleted: bool = False,
-    ) -> BrandSettingsRecord | None: ...
-
-    def upsert(
-        self,
-        *,
-        user_id: UUID,
-        workspace_id: UUID,
-        brand_id: UUID,
-        voice_settings: JsonObject | None = None,
-        visual_settings: JsonObject | None = None,
-        generation_defaults: JsonObject | None = None,
-        metadata: JsonObject | None = None,
-    ) -> BrandSettingsRecord: ...
-
-    def update(
-        self,
-        *,
-        user_id: UUID,
-        brand_id: UUID,
-        voice_settings: JsonObject | None = None,
-        visual_settings: JsonObject | None = None,
-        generation_defaults: JsonObject | None = None,
-        metadata: JsonObject | None = None,
-    ) -> BrandSettingsRecord: ...
-
-    def soft_delete(self, *, user_id: UUID, brand_id: UUID) -> None: ...
+__all__ = [
+    "AssetRecord",
+    "AssetRepository",
+    "BrandRecord",
+    "BrandRepository",
+    "BrandSettingsRecord",
+    "BrandSettingsRepository",
+    "GenerationRecord",
+    "GenerationRepository",
+    "ProjectRecord",
+    "ProjectRepository",
+]

@@ -49,11 +49,9 @@ from creator.generation.service import (
     submit_image_generation,
     submit_image_regeneration,
 )
-from creator.repositories import (
-    UserRecord,
-)
 from creator.services.storage.provider import StorageProvider, StorageUrlError
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 router = APIRouter()
 

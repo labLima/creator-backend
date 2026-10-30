@@ -27,7 +27,7 @@ from creator.infrastructure.runtime.rate_limit import (
     create_rate_limiter,
 )
 from creator.main import create_app
-from creator.repositories import UserRecord
+from creator.user.ports import UserRecord
 
 
 class FakeClock:

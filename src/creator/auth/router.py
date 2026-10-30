@@ -50,8 +50,9 @@ from creator.auth.types import AuthSignupResult, IssuedSession
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
-from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
+from creator.workspace.ports import WorkspaceMembershipRecord, WorkspaceRecord
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 

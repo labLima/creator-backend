@@ -28,8 +28,8 @@ from creator.generation.schemas import (
     ImageWorkflowDecisionRequest,
     ImageWorkflowRequest,
 )
-from creator.repositories import UserRecord
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 from creator.workflow.service import (
     AgentWorkflowDecisionError,
     AgentWorkflowIdempotencyConflictError,

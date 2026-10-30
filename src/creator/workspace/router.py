@@ -32,10 +32,8 @@ from creator.api.serializers import (
 )
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
-from creator.repositories import (
-    UserRecord,
-)
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 from creator.workspace.schemas import (
     WorkspaceCreateRequest,
     WorkspaceInviteCreateRequest,

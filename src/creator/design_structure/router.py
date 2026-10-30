@@ -28,10 +28,8 @@ from creator.api.serializers import (
 from creator.design_structure.schemas import (
     DesignStructureCreateRequest,
 )
-from creator.repositories import (
-    UserRecord,
-)
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 router = APIRouter()
 

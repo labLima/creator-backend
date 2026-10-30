@@ -27,14 +27,12 @@ from creator.api.serializers import (
     _subscription_data,
     _subscription_history_data,
 )
-from creator.repositories import (
-    UserRecord,
-)
 from creator.subscription.schemas import (
     SubscriptionCreateRequest,
     SubscriptionUpdateRequest,
 )
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 router = APIRouter()
 

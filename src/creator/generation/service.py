@@ -13,8 +13,10 @@ from creator.prompts import (
     build_advertising_image_prompt,
     generation_parameters_with_prompt_template,
 )
-from creator.repositories import ContentRecord, ImageGenerationStatusRecord, UserRecord
+from creator.repositories.content import ContentRecord
+from creator.repositories.image_generation import ImageGenerationStatusRecord
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 MAX_GENERATION_PROMPT_LENGTH = 20_000
 

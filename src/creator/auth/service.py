@@ -14,8 +14,9 @@ from creator.auth.types import AuthSignupResult, IssuedSession
 from creator.config import Settings
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
-from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
+from creator.workspace.ports import WorkspaceMembershipRecord, WorkspaceRecord
 
 _PASSWORD_HASHER = PasswordHasher()
 _DUMMY_HASH = _PASSWORD_HASHER.hash("creator-dummy-password")

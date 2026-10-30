@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
-from creator.repositories import GenerationJobRecord, ImageMetadata, ImageRecord, UserRecord
+from creator.repositories.image_generation import GenerationJobRecord, ImageMetadata, ImageRecord
 from creator.services.storage.provider import (
     StorageError,
     StorageObjectNotFoundError,
@@ -14,6 +14,7 @@ from creator.services.storage.provider import (
     immutable_image_path,
 )
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 
 @dataclass(frozen=True, slots=True)

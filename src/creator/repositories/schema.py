@@ -1,3 +1,5 @@
+"""Repository ports."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,7 +7,8 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from creator.repositories.common import Page, PageRequest
+from creator.brand.ports import BrandAssetRecord, BrandAssetRepository
+from creator.core.pagination import Page, PageRequest
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,32 +180,17 @@ class PostStructureRepository(Protocol):
     def soft_delete(self, *, post_structure_id: UUID) -> bool: ...
 
 
-@dataclass(frozen=True, slots=True)
-class BrandAssetRecord:
-    id: UUID
-    brand_id: UUID
-    type: str
-    file_url: str
-    file_name: str | None
-    description: str | None
-    created_at: datetime
-    updated_at: datetime
-    deleted_at: datetime | None
-
-
-class BrandAssetRepository(Protocol):
-    def add(
-        self,
-        *,
-        brand_id: UUID,
-        type: str,
-        file_url: str,
-        file_name: str | None = None,
-        description: str | None = None,
-    ) -> BrandAssetRecord: ...
-    def get_for_user(self, *, user_id: UUID, asset_id: UUID) -> BrandAssetRecord | None: ...
-    def update(self, *, asset_id: UUID, fields: dict[str, object]) -> BrandAssetRecord: ...
-    def soft_delete(self, *, asset_id: UUID) -> None: ...
-    def list_for_user(
-        self, *, user_id: UUID, brand_id: UUID | None = None, page: PageRequest | None = None
-    ) -> Page[BrandAssetRecord]: ...
+__all__ = [
+    "BrandAssetRecord",
+    "BrandAssetRepository",
+    "CampaignRecord",
+    "CampaignRepository",
+    "GeneratedImageRecord",
+    "GeneratedImageRepository",
+    "PersonaRecord",
+    "PersonaRepository",
+    "PlanningRecord",
+    "PlanningRepository",
+    "PostStructureRecord",
+    "PostStructureRepository",
+]

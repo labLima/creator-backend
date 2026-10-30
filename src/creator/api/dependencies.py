@@ -28,11 +28,11 @@ from creator.infrastructure.runtime.rate_limit import (
     create_rate_limiter,
 )
 from creator.infrastructure.runtime.storage import create_storage_provider
-from creator.repositories import UserRecord
 from creator.services.ai.factory import create_llm_provider
 from creator.services.ai.provider import LLMProvider
 from creator.services.storage.provider import StorageConfigurationError, StorageProvider
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 bearer_scheme = HTTPBearer(auto_error=False, scheme_name="CreatorLegacyBearerAuth")
 logger = logging.getLogger(__name__)

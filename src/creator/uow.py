@@ -1,51 +1,60 @@
 from types import TracebackType
 from typing import Protocol, Self
 
-from creator.repositories import (
-    AgentWorkflowRepository,
-    AssetRepository,
-    AuthSessionRepository,
-    BillingAccountRepository,
-    BillingAddressRepository,
-    BillingPaymentMethodRepository,
+from creator.auth.ports import AuthSessionRepository
+from creator.brand.ports import (
     BrandAssetRepository,
     BrandColorRepository,
     BrandRepository,
     BrandSettingsRepository,
-    CampaignRepository,
+)
+from creator.repositories.agent_workflows import AgentWorkflowRepository
+from creator.repositories.billing import (
+    BillingAccountRepository,
+    BillingAddressRepository,
+    BillingPaymentMethodRepository,
     ChargeRepository,
-    ContentRepository,
-    CouponRedemptionRepository,
-    CouponRepository,
-    CreditPackageRepository,
-    DesignStructureRepository,
-    GeneratedImageRepository,
-    GenerationRepository,
-    ImageGenerationRepository,
     InvoiceRepository,
+    PlanItemRepository,
+    PlanRepository,
+    SubscriptionRepository,
+)
+from creator.repositories.catalog import CouponRepository, CreditPackageRepository
+from creator.repositories.commerce import (
+    CouponRedemptionRepository,
+    OrderRepository,
+    WorkspaceCreditTransactionRepository,
+)
+from creator.repositories.content import ContentRepository
+from creator.repositories.core import AssetRepository, GenerationRepository, ProjectRepository
+from creator.repositories.design import DesignStructureRepository
+from creator.repositories.image_generation import ImageGenerationRepository
+from creator.repositories.notifications import (
     NotificationPreferenceRepository,
     NotificationRecipientRepository,
     NotificationRepository,
-    OrderRepository,
-    OutboxRepository,
-    PersonaRepository,
-    PlanItemRepository,
-    PlanningRepository,
-    PlanRepository,
-    PostStructureRepository,
-    ProjectRepository,
-    ProviderCustomerRepository,
-    ProviderDisputeRepository,
-    ProviderIdempotencyKeyRepository,
-    ProviderSubscriptionRepository,
-    ProviderWebhookEventRepository,
-    RefundRepository,
-    SettingsRepository,
-    SubscriptionHistoryRepository,
-    SubscriptionRepository,
     UserDeviceRepository,
-    UserRepository,
-    WorkspaceCreditTransactionRepository,
+)
+from creator.repositories.outbox import OutboxRepository
+from creator.repositories.provider import ProviderDisputeRepository, RefundRepository
+from creator.repositories.provider_audit import (
+    ProviderIdempotencyKeyRepository,
+    ProviderWebhookEventRepository,
+)
+from creator.repositories.provider_sync import (
+    ProviderCustomerRepository,
+    ProviderSubscriptionRepository,
+)
+from creator.repositories.schema import (
+    CampaignRepository,
+    GeneratedImageRepository,
+    PersonaRepository,
+    PlanningRepository,
+    PostStructureRepository,
+)
+from creator.repositories.subscription_history import SubscriptionHistoryRepository
+from creator.user.ports import SettingsRepository, UserRepository
+from creator.workspace.ports import (
     WorkspaceInviteRepository,
     WorkspaceInviteUsageRepository,
     WorkspaceRepository,

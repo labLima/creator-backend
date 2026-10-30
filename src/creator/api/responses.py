@@ -7,8 +7,8 @@ from uuid import UUID, uuid4
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from creator.core.pagination import Page
 from creator.infrastructure.runtime.observability import resolve_request_id
-from creator.repositories.common import Page
 
 ResponseHeaders = Mapping[str, str] | Sequence[tuple[str, str]]
 

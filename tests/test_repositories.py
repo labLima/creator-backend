@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from creator.asset import models as asset_tables
 from creator.brand import models as brand_tables
 from creator.content import models as content_tables
+from creator.core.pagination import PageRequest
 from creator.domain.exceptions import (
     ConflictError,
     EntityNotFoundError,
@@ -33,12 +34,8 @@ from creator.infrastructure.persistence.repositories.core import (
     flush_or_raise,
 )
 from creator.project import models as project_tables
-from creator.repositories import (
-    ContentFilters,
-    GenerationHistoryFilters,
-    ImageMetadata,
-    PageRequest,
-)
+from creator.repositories.content import ContentFilters
+from creator.repositories.image_generation import GenerationHistoryFilters, ImageMetadata
 from creator.user import models as user_tables
 from creator.workspace import models as workspace_tables
 

@@ -10,25 +10,16 @@ from typing import Any
 from uuid import UUID
 
 from creator.api.responses import page_payload
+from creator.brand.ports import BrandRecord, BrandSettingsRecord
 from creator.content.improvement_service import (
     ImprovedContentPreview,
 )
-from creator.repositories import (
-    AssetRecord,
-    BrandRecord,
-    BrandSettingsRecord,
-    ContentDetailRecord,
-    ContentRecord,
-    GenerationRecord,
-    ImageGenerationStatusRecord,
-    ImageRecord,
-    Page,
-    ProjectRecord,
-    SettingsRecord,
-    UserRecord,
-    WorkspaceMembershipRecord,
-    WorkspaceRecord,
-)
+from creator.core.pagination import Page
+from creator.repositories.content import ContentDetailRecord, ContentRecord
+from creator.repositories.core import AssetRecord, GenerationRecord, ProjectRecord
+from creator.repositories.image_generation import ImageGenerationStatusRecord, ImageRecord
+from creator.user.ports import SettingsRecord, UserRecord
+from creator.workspace.ports import WorkspaceMembershipRecord, WorkspaceRecord
 
 
 def _workspace_data(workspace: WorkspaceRecord) -> dict[str, Any]:

@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from creator.config import get_settings
+from creator.core.types import JsonObject
 from creator.domain.exceptions import InvalidStateTransitionError
 from creator.generation.storage_service import GeneratedImage, persist_generated_image
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -21,7 +22,7 @@ from creator.integrations.gemini.exceptions import (
     GeminiTransientError,
 )
 from creator.integrations.gemini.image_generator import GeminiImageGenerationRequest
-from creator.repositories import ImageGenerationWorkItem, JsonObject
+from creator.repositories.image_generation import ImageGenerationWorkItem
 from creator.services.ai.image_provider import create_image_generator
 from creator.services.storage.provider import StorageError
 

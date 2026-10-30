@@ -19,11 +19,8 @@ from creator.domain.agent_workflow import (
 )
 from creator.domain.auth import Principal, WorkspaceRole
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
-from creator.repositories import (
-    AgentWorkflowRunRecord,
-    AgentWorkflowStepRecord,
-    ContentRecord,
-)
+from creator.repositories.agent_workflows import AgentWorkflowRunRecord, AgentWorkflowStepRecord
+from creator.repositories.content import ContentRecord
 from creator.services.agents.contracts import (
     AgentExecutionContext,
     BusinessOutput,

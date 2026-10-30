@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from creator.auth import models as auth_tables
 from creator.auth.ports import (
     AccessTokenCodec,
+    AuthSessionRecord,
     Clock,
     CsrfTokenService,
     RefreshTokenGenerator,
@@ -41,7 +42,6 @@ from creator.infrastructure.persistence.repositories.auth_session_repositories i
     SqlAlchemyAuthSessionRepository,
 )
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
-from creator.repositories.auth import AuthSessionRecord
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SECRET = "test-local-auth-jwt-secret-with-32-bytes"

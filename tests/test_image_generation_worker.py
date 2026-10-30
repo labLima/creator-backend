@@ -12,8 +12,9 @@ from creator.integrations.gemini.image_generator import (
     GeminiImageGenerationRequest,
     GeminiImageGenerationResult,
 )
-from creator.repositories import GenerationJobRecord, ImageGenerationWorkItem, UserRecord
+from creator.repositories.image_generation import GenerationJobRecord, ImageGenerationWorkItem
 from creator.services.storage.provider import StorageValidationError
+from creator.user.ports import UserRecord
 from creator.workers import image_generation
 
 NOW = datetime(2026, 9, 1, tzinfo=UTC)

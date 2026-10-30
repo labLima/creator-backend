@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 
 from creator.asset import models as asset_tables
 from creator.brand import models as brand_tables
+from creator.brand.ports import BrandRecord, BrandSettingsRecord
 from creator.content import models as content_tables
+from creator.core.pagination import Page, PageRequest
+from creator.core.types import JsonObject
 from creator.domain.agent_workflow import (
     AgentWorkflowStatus,
     AgentWorkflowStepRole,
@@ -34,36 +37,31 @@ from creator.infrastructure.database.enums import (
 )
 from creator.infrastructure.persistence import sql
 from creator.project import models as project_tables
-from creator.repositories import (
-    AgentWorkflowRunRecord,
-    AgentWorkflowStepRecord,
-    AssetRecord,
-    BrandRecord,
-    BrandSettingsRecord,
+from creator.repositories.agent_workflows import AgentWorkflowRunRecord, AgentWorkflowStepRecord
+from creator.repositories.content import (
     ContentDetailRecord,
     ContentFilters,
     ContentRecord,
-    CreatedWorkspaceRecord,
     GeneratedTextContentRecord,
+)
+from creator.repositories.core import AssetRecord, GenerationRecord, ProjectRecord
+from creator.repositories.image_generation import (
     GenerationHistoryFilters,
     GenerationJobRecord,
-    GenerationRecord,
     ImageGenerationStatusRecord,
     ImageGenerationWorkItem,
     ImageMetadata,
     ImageRecord,
-    JsonObject,
-    Page,
-    PageRequest,
-    ProjectRecord,
-    SettingsRecord,
-    UserRecord,
+)
+from creator.user import models as user_tables
+from creator.user.ports import SettingsRecord, UserRecord
+from creator.workflow import models as workflow_tables
+from creator.workspace import models as workspace_tables
+from creator.workspace.ports import (
+    CreatedWorkspaceRecord,
     WorkspaceMembershipRecord,
     WorkspaceRecord,
 )
-from creator.user import models as user_tables
-from creator.workflow import models as workflow_tables
-from creator.workspace import models as workspace_tables
 
 # Compatibility aliases: `core.py` still refers to the helpers by their
 # historical private names; new code calls `creator.infrastructure.persistence.sql`.

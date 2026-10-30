@@ -42,10 +42,8 @@ from creator.brand.schemas import (
 )
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
-from creator.repositories import (
-    UserRecord,
-)
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 router = APIRouter()
 

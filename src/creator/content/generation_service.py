@@ -10,9 +10,10 @@ from creator.prompts import (
     build_content_generation_prompt,
     generation_parameters_with_prompt_template,
 )
-from creator.repositories import GeneratedTextContentRecord, UserRecord
+from creator.repositories.content import GeneratedTextContentRecord
 from creator.services.ai.provider import LLMProvider
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 
 class WorkspaceAccessDeniedError(DomainError):

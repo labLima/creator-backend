@@ -50,7 +50,7 @@ from creator.content.schemas import (
     GenerateContentRequest,
     ImproveContentRequest,
 )
-from creator.core.pagination import page_request
+from creator.core.pagination import PageRequest, page_request
 from creator.domain.exceptions import EntityNotFoundError
 from creator.integrations.gemini.exceptions import (
     GeminiAuthenticationError,
@@ -61,13 +61,10 @@ from creator.integrations.gemini.exceptions import (
     GeminiTimeoutError,
     GeminiTransientError,
 )
-from creator.repositories import (
-    ContentFilters,
-    UserRecord,
-)
-from creator.repositories.common import PageRequest
+from creator.repositories.content import ContentFilters
 from creator.services.ai.provider import LLMProvider, ProviderNotConfiguredError
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 router = APIRouter()
 

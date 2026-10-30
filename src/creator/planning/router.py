@@ -32,10 +32,8 @@ from creator.planning.schemas import (
     PlanningCreateRequest,
     PlanningUpdateRequest,
 )
-from creator.repositories import (
-    UserRecord,
-)
 from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 router = APIRouter()
 
