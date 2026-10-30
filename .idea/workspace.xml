@@ -6,17 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/openapi.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docs/openapi.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/api/dependencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/api/dependencies.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/api/routes/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/api/routes/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/e2e/test_auth_flow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_auth_flow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/e2e/test_content_flow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_content_flow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/e2e/test_contract_flows.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_contract_flows.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_api.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_api.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_app_structure.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_app_structure.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_openapi_contract.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openapi_contract.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/spa-cookie-auth-migration.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/spa-cookie-auth-migration.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/test_browser_cookie_auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_browser_cookie_auth.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

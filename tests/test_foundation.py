@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import jwt
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 from creator.api.dependencies import get_current_user, get_principal
 from creator.config import Settings, get_settings
@@ -46,25 +46,37 @@ def local_token(*, subject: str = "00000000-0000-0000-0000-000000000001") -> str
     )
 
 
+def cookie_request(token: str | None = None, *, authorization: str | None = None) -> Request:
+    headers: list[tuple[bytes, bytes]] = []
+    if token is not None:
+        headers.append((b"cookie", f"creator_access={token}".encode()))
+    if authorization is not None:
+        headers.append((b"authorization", authorization.encode()))
+    return Request({"type": "http", "headers": headers})
+
+
 def test_required_auth_without_configuration_fails_closed() -> None:
     with pytest.raises(HTTPException) as error:
-        get_principal("Bearer token", Settings(_env_file=None, auth_required=True))
+        get_principal(cookie_request("token"), Settings(_env_file=None, auth_required=True))
 
     assert error.value.status_code == 500
     assert error.value.detail["code"] == "AUTHENTICATION_MISCONFIGURED"
 
 
 def test_optional_auth_without_configuration_returns_none() -> None:
-    assert get_principal("Bearer token", Settings(_env_file=None, auth_required=False)) is None
+    assert (
+        get_principal(cookie_request("token"), Settings(_env_file=None, auth_required=False))
+        is None
+    )
 
 
 def test_optional_auth_without_credentials_returns_none() -> None:
-    assert get_principal(None, Settings(auth_required=False)) is None
+    assert get_principal(cookie_request(), Settings(auth_required=False)) is None
 
 
 def test_principal_is_created_from_local_token() -> None:
     principal = get_principal(
-        f"Bearer {local_token()}",
+        cookie_request(local_token()),
         Settings(_env_file=None, auth_required=True, auth_jwt_secret=SECRET),
     )
 
@@ -73,10 +85,10 @@ def test_principal_is_created_from_local_token() -> None:
     assert principal.session_id == "00000000-0000-0000-0000-000000000099"
 
 
-def test_invalid_bearer_token_is_rejected() -> None:
+def test_invalid_cookie_token_is_rejected() -> None:
     with pytest.raises(HTTPException) as error:
         get_principal(
-            "Bearer not-a-jwt",
+            cookie_request("not-a-jwt"),
             Settings(_env_file=None, auth_required=True, auth_jwt_secret=SECRET),
         )
 
@@ -151,14 +163,17 @@ def test_current_user_rejects_missing_principal() -> None:
 
 def test_missing_required_auth_is_rejected() -> None:
     with pytest.raises(HTTPException) as error:
-        get_principal(None, Settings(auth_required=True))
+        get_principal(cookie_request(), Settings(auth_required=True))
 
     assert error.value.status_code == 401
 
 
-def test_malformed_auth_is_rejected() -> None:
+def test_authorization_header_does_not_authenticate() -> None:
     with pytest.raises(HTTPException) as error:
-        get_principal("Basic token", Settings())
+        get_principal(
+            cookie_request(authorization=f"Bearer {local_token()}"),
+            Settings(_env_file=None, auth_required=True, auth_jwt_secret=SECRET),
+        )
 
     assert error.value.status_code == 401
 

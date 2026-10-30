@@ -74,7 +74,6 @@ def _success(data: dict[str, Any], request: Request, *, status_code: int = 200) 
 def _session_data(
     session: IssuedSession,
     *,
-    settings: Settings,
     csrf_token: str,
 ) -> dict[str, Any]:
     data: dict[str, Any] = {
@@ -90,9 +89,6 @@ def _session_data(
         "provider": session.provider,
         "metadata": session.metadata,
     }
-    if settings.auth_token_body_enabled:
-        data["access_token"] = session.access_token
-        data["refresh_token"] = session.refresh_token
     return data
 
 
@@ -133,9 +129,7 @@ def _signup_data(
             "role": result.principal.role,
         },
         "session": (
-            _session_data(result.session, settings=settings, csrf_token=csrf_token)
-            if result.session
-            else None
+            _session_data(result.session, csrf_token=csrf_token) if result.session else None
         ),
         "workspace": _record_data(workspace),
         "membership": _membership_data(membership),
@@ -178,7 +172,7 @@ def login_with_password(
         ) from error
     csrf_token = csrf_for_session(session, settings=settings, token_services=token_services)
     response = success_response(
-        _session_data(session, settings=settings, csrf_token=csrf_token),
+        _session_data(session, csrf_token=csrf_token),
         request,
         headers={"Cache-Control": "no-store"},
     )
@@ -295,7 +289,7 @@ def refresh_session(
             detail={"code": "INVALID_REFRESH_TOKEN", "message": "Refresh token is invalid"},
         ) from error
     csrf_token = csrf_for_session(session, settings=settings, token_services=token_services)
-    response = _success(_session_data(session, settings=settings, csrf_token=csrf_token), request)
+    response = _success(_session_data(session, csrf_token=csrf_token), request)
     set_auth_cookies(
         FastApiCookieTransport(response), session, csrf_token=csrf_token, settings=settings
     )
