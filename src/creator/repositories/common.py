@@ -1,27 +1,8 @@
+"""Backwards-compatible re-exports; the vocabulary lives in `creator.core`."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+from creator.core.pagination import Page, PageRequest, SortDirection
+from creator.core.types import JsonObject
 
-JsonObject = dict[str, object]
-SortDirection = Literal["asc", "desc"]
-
-
-@dataclass(frozen=True, slots=True)
-class PageRequest:
-    page: int = 1
-    limit: int = 50
-    sort: SortDirection = "desc"
-
-    @property
-    def offset(self) -> int:
-        normalized_page = max(self.page, 1)
-        return (normalized_page - 1) * self.limit
-
-
-@dataclass(frozen=True, slots=True)
-class Page[T]:
-    items: list[T]
-    total: int
-    page: int
-    limit: int
+__all__ = ["JsonObject", "Page", "PageRequest", "SortDirection"]
