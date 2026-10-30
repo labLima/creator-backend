@@ -53,7 +53,7 @@ from creator.infrastructure.database.enums import (
 )
 from creator.infrastructure.persistence import sql
 from creator.project import models as project_tables
-from creator.repositories.core import ProjectRecord
+from creator.project.ports import ProjectRecord
 from creator.user import models as user_tables
 from creator.user.ports import SettingsRecord, UserRecord
 from creator.workflow import models as workflow_tables

@@ -1,4 +1,4 @@
-"""Repository ports."""
+"""Persistence ports owned by the project capability."""
 
 from __future__ import annotations
 
@@ -7,16 +7,8 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from creator.asset.ports import AssetRecord, AssetRepository
-from creator.brand.ports import (
-    BrandRecord,
-    BrandRepository,
-    BrandSettingsRecord,
-    BrandSettingsRepository,
-)
 from creator.core.pagination import Page, PageRequest
 from creator.core.types import JsonObject
-from creator.generation.ports import GenerationRecord, GenerationRepository
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,17 +68,3 @@ class ProjectRepository(Protocol):
     ) -> ProjectRecord: ...
 
     def soft_delete(self, *, user_id: UUID, project_id: UUID) -> None: ...
-
-
-__all__ = [
-    "AssetRecord",
-    "AssetRepository",
-    "BrandRecord",
-    "BrandRepository",
-    "BrandSettingsRecord",
-    "BrandSettingsRepository",
-    "GenerationRecord",
-    "GenerationRepository",
-    "ProjectRecord",
-    "ProjectRepository",
-]

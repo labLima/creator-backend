@@ -25,7 +25,6 @@ def test_executable_app_modules_are_importable() -> None:
         "creator.infrastructure.persistence.repositories",
         "creator.infrastructure.runtime",
         "creator.integrations",
-        "creator.repositories",
         "creator.services",
         "creator.uow",
     ]

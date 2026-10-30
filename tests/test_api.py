@@ -44,7 +44,7 @@ from creator.generation.service import (
 from creator.infrastructure.runtime.rate_limit import RateLimitDecision
 from creator.integrations.gemini.exceptions import GeminiTimeoutError
 from creator.main import app, create_app
-from creator.repositories.core import ProjectRecord
+from creator.project.ports import ProjectRecord
 from creator.services.storage.provider import StorageUrlError
 from creator.user.ports import SettingsRecord, UserRecord
 from creator.workspace.ports import (

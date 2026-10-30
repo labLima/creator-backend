@@ -133,8 +133,8 @@ from creator.persona.ports import PersonaRepository
 from creator.plan.ports import PlanItemRepository, PlanRepository
 from creator.planning.ports import PlanningRepository
 from creator.post_structure.ports import PostStructureRepository
+from creator.project.ports import ProjectRepository
 from creator.refund.ports import RefundRepository
-from creator.repositories.core import ProjectRepository
 from creator.subscription.ports import SubscriptionHistoryRepository, SubscriptionRepository
 from creator.uow import UnitOfWork
 from creator.user.ports import SettingsRepository, UserRepository

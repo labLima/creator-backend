@@ -18,7 +18,7 @@ from creator.content.improvement_service import (
 from creator.content.ports import ContentDetailRecord, ContentRecord, ImageRecord
 from creator.core.pagination import Page
 from creator.generation.ports import GenerationRecord, ImageGenerationStatusRecord
-from creator.repositories.core import ProjectRecord
+from creator.project.ports import ProjectRecord
 from creator.user.ports import SettingsRecord, UserRecord
 from creator.workspace.ports import WorkspaceMembershipRecord, WorkspaceRecord
 
