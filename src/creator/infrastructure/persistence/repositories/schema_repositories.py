@@ -1,3 +1,5 @@
+"""Repository ports."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -12,8 +14,7 @@ from creator.brand.ports import BrandAssetRecord
 from creator.campaign import models as campaign_tables
 from creator.campaign.ports import CampaignRecord
 from creator.core.pagination import Page, PageRequest
-from creator.generation import models as generation_tables
-from creator.generation.ports import GeneratedImageRecord
+from creator.generation.repository import SqlAlchemyGeneratedImageRepository
 from creator.persona import models as persona_tables
 from creator.persona.ports import PersonaRecord
 from creator.planning import models as planning_tables
@@ -21,6 +22,46 @@ from creator.planning.ports import PlanningRecord
 from creator.post_structure import models as post_structure_tables
 from creator.post_structure.ports import PostStructureRecord
 from creator.workspace import models as workspace_tables
+
+
+def _persona_record(row: persona_tables.Persona) -> PersonaRecord:
+    return PersonaRecord(
+        id=row.id,
+        brand_id=row.brand_id,
+        created_by=row.created_by,
+        name=row.name,
+        age=row.age,
+        gender=row.gender,
+        main_goal=row.main_goal,
+        challenge=row.challenge,
+        interest=row.interest,
+        routine=row.routine,
+        journey=row.journey,
+        trigger=row.trigger,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        deleted_at=row.deleted_at,
+    )
+
+
+def _planning_record(row: planning_tables.Planning) -> PlanningRecord:
+    return PlanningRecord(
+        id=row.id,
+        brand_id=row.brand_id,
+        campaign_id=row.campaign_id,
+        persona_id=row.persona_id,
+        created_by=row.created_by,
+        info=row.planning_info,
+        static_amount=row.planning_static_amount,
+        carousel_amount=row.planning_carousel_amount,
+        stories_amount=row.planning_stories_amount,
+        special_dates=row.planning_special_dates,
+        start_period=row.planning_start_period,
+        end_period=row.planning_end_period,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        deleted_at=row.deleted_at,
+    )
 
 
 def _record(row: campaign_tables.Campaign) -> CampaignRecord:
@@ -93,82 +134,41 @@ class _CampaignRepositoryBase:
         self._session.flush()
 
 
-def _planning_record(row: planning_tables.Planning) -> PlanningRecord:
-    return PlanningRecord(
-        id=row.id,
-        brand_id=row.brand_id,
-        campaign_id=row.campaign_id,
-        persona_id=row.persona_id,
-        created_by=row.created_by,
-        info=row.planning_info,
-        static_amount=row.planning_static_amount,
-        carousel_amount=row.planning_carousel_amount,
-        stories_amount=row.planning_stories_amount,
-        special_dates=row.planning_special_dates,
-        start_period=row.planning_start_period,
-        end_period=row.planning_end_period,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
-    )
-
-
-def _persona_record(row: persona_tables.Persona) -> PersonaRecord:
-    return PersonaRecord(
-        id=row.id,
-        brand_id=row.brand_id,
-        created_by=row.created_by,
-        name=row.name,
-        age=row.age,
-        gender=row.gender,
-        main_goal=row.main_goal,
-        challenge=row.challenge,
-        interest=row.interest,
-        routine=row.routine,
-        journey=row.journey,
-        trigger=row.trigger,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
-    )
-
-
-def _generated_image_record(row: generation_tables.GeneratedImage) -> GeneratedImageRecord:
-    return GeneratedImageRecord(
+def _post_record(row: post_structure_tables.PostStructure) -> PostStructureRecord:
+    return PostStructureRecord(
         id=row.id,
         workspace_id=row.workspace_id,
-        design_structure_id=row.design_structure_id,
-        signed_url=row.signed_url,
-        size=row.size,
-        resolution=row.resolution,
-        image_ratio=row.image_ratio,
-        status=row.image_status,
+        planning_id=row.planning_id,
+        created_by=row.created_by,
+        title=row.post_title,
+        objective=row.post_objective,
+        big_idea=row.post_big_idea,
+        main_message=row.post_main_message,
+        headline=row.post_headline,
+        image_cta=row.image_cta,
+        art_guiding=row.art_guiding,
+        status=row.post_status,
+        format=row.content_format,
+        ratio=row.art_ratio,
+        resolution=row.art_resolution,
         created_at=row.created_at,
         updated_at=row.updated_at,
         deleted_at=row.deleted_at,
     )
 
 
-class SqlAlchemyGeneratedImageRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def get_for_user(self, *, user_id: UUID, image_id: UUID) -> GeneratedImageRecord | None:
-        row = self._session.scalars(
-            select(generation_tables.GeneratedImage)
-            .join(
-                workspace_tables.WorkspaceMembership,
-                workspace_tables.WorkspaceMembership.workspace_id
-                == generation_tables.GeneratedImage.workspace_id,
-            )
-            .where(
-                generation_tables.GeneratedImage.id == image_id,
-                generation_tables.GeneratedImage.deleted_at.is_(None),
-                workspace_tables.WorkspaceMembership.user_id == user_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
-            )
-        ).one_or_none()
-        return _generated_image_record(row) if row else None
+def _brand_asset_record(row: brand_tables.BrandAsset) -> BrandAssetRecord:
+    return BrandAssetRecord(
+        id=row.id,
+        brand_id=row.brand_id,
+        type=row.type,
+        file_url=row.file_url,
+        file_name=row.file_name,
+        description=row.description,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        deleted_at=row.deleted_at,
+    )
 
 
 class SqlAlchemyPersonaRepository:
@@ -482,29 +482,6 @@ class SqlAlchemyCampaignRepository(_CampaignRepositoryBase):
         )
 
 
-def _post_record(row: post_structure_tables.PostStructure) -> PostStructureRecord:
-    return PostStructureRecord(
-        id=row.id,
-        workspace_id=row.workspace_id,
-        planning_id=row.planning_id,
-        created_by=row.created_by,
-        title=row.post_title,
-        objective=row.post_objective,
-        big_idea=row.post_big_idea,
-        main_message=row.post_main_message,
-        headline=row.post_headline,
-        image_cta=row.image_cta,
-        art_guiding=row.art_guiding,
-        status=row.post_status,
-        format=row.content_format,
-        ratio=row.art_ratio,
-        resolution=row.art_resolution,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
-    )
-
-
 class SqlAlchemyPostStructureRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -641,20 +618,6 @@ class SqlAlchemyPostStructureRepository:
         )
 
 
-def _brand_asset_record(row: brand_tables.BrandAsset) -> BrandAssetRecord:
-    return BrandAssetRecord(
-        id=row.id,
-        brand_id=row.brand_id,
-        type=row.type,
-        file_url=row.file_url,
-        file_name=row.file_name,
-        description=row.description,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
-    )
-
-
 class SqlAlchemyBrandAssetRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -763,3 +726,13 @@ class SqlAlchemyBrandAssetRepository:
                 brand_tables.Brand.deleted_at.is_(None),
             )
         )
+
+
+__all__ = [
+    "SqlAlchemyBrandAssetRepository",
+    "SqlAlchemyCampaignRepository",
+    "SqlAlchemyGeneratedImageRepository",
+    "SqlAlchemyPersonaRepository",
+    "SqlAlchemyPlanningRepository",
+    "SqlAlchemyPostStructureRepository",
+]
