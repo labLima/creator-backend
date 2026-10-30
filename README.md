@@ -83,6 +83,12 @@ quando o SPA estiver em outra origem e desabilite
 dos clientes. Paths e TTLs podem ser ajustados para um reverse proxy pelas
 configurações `AUTH_COOKIE_*` e `AUTH_*TTL*` correspondentes.
 
+O guia de migração do SPA descreve `credentials: "include"`, o envio de
+`X-CSRF-Token`, refresh single-flight e as respostas 401/409. Respostas de
+autenticação e de CSRF são `no-store`. Consulte
+[`docs/spa-cookie-auth-migration.md`](docs/spa-cookie-auth-migration.md) antes
+de integrar um cliente.
+
 `AUTH_LEGACY_BEARER_ENABLED=true` mantém a aceitação do header `Authorization:
 Bearer` durante a transição. Quando Bearer e cookie válidos chegam juntos,
 Bearer tem precedência; se os tokens identificarem `sub` diferentes, a API

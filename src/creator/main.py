@@ -1415,6 +1415,9 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 },
             },
         }
+        if not settings.auth_token_body_enabled:
+            schemas["AuthSession"]["properties"].pop("access_token", None)
+            schemas["AuthSession"]["properties"].pop("refresh_token", None)
         schemas["AuthLoginResponse"] = {
             "type": "object",
             "required": ["success", "data", "meta"],

@@ -116,6 +116,10 @@ def test_auth_openapi_documents_cookie_headers_and_optional_legacy_tokens() -> N
     static_session = static["components"]["schemas"]["AuthSession"]
     generated_session = generated["components"]["schemas"]["AuthSession"]
 
+    expected_session_fields = {"csrf_token", "expires_in", "refresh_expires_in"}
+    assert expected_session_fields <= set(static_session["required"])
+    assert expected_session_fields <= set(generated_session["required"])
+
     for token_name in ("access_token", "refresh_token"):
         assert token_name not in static_session["required"]
         assert token_name not in generated_session["required"]
@@ -204,6 +208,23 @@ def test_generated_openapi_removes_bearer_when_legacy_flag_is_disabled(
     assert schema["paths"]["/api/v1/auth/refresh"]["post"]["security"] == [
         {"CreatorRefreshCookie": []}
     ]
+
+
+def test_generated_openapi_removes_legacy_tokens_when_body_flag_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        main_module,
+        "get_settings",
+        lambda: Settings(_env_file=None, auth_token_body_enabled=False),
+    )
+
+    schema = main_module.create_app().openapi()
+    session = schema["components"]["schemas"]["AuthSession"]
+
+    assert {"csrf_token", "expires_in", "refresh_expires_in"} <= set(session["required"])
+    assert "access_token" not in session["properties"]
+    assert "refresh_token" not in session["properties"]
 
 
 def test_workflow_acceptance_does_not_document_redis_availability_errors() -> None:
