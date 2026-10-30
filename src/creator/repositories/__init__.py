@@ -12,6 +12,7 @@ from creator.brand.ports import (
     BrandSettingsRecord,
     BrandSettingsRepository,
 )
+from creator.campaign.ports import CampaignRecord, CampaignRepository
 from creator.content.ports import (
     ContentDetailRecord,
     ContentFilters,
@@ -21,6 +22,7 @@ from creator.content.ports import (
     ImageMetadata,
     ImageRecord,
 )
+from creator.design_structure.ports import DesignStructureRecord, DesignStructureRepository
 from creator.generation.ports import (
     GeneratedImageRecord,
     GeneratedImageRepository,
@@ -33,6 +35,9 @@ from creator.generation.ports import (
     ImageGenerationStatusRecord,
     ImageGenerationWorkItem,
 )
+from creator.persona.ports import PersonaRecord, PersonaRepository
+from creator.planning.ports import PlanningRecord, PlanningRepository
+from creator.post_structure.ports import PostStructureRecord, PostStructureRepository
 from creator.repositories.billing import (
     BillingAccountRecord,
     BillingAccountRepository,
@@ -67,7 +72,6 @@ from creator.repositories.commerce import (
 )
 from creator.repositories.common import JsonObject, Page, PageRequest, SortDirection
 from creator.repositories.core import ProjectRecord, ProjectRepository
-from creator.repositories.design import DesignStructureRecord, DesignStructureRepository
 from creator.repositories.notifications import (
     NotificationPreferenceRecord,
     NotificationPreferenceRepository,
@@ -95,16 +99,6 @@ from creator.repositories.provider_sync import (
     ProviderCustomerRepository,
     ProviderSubscriptionRecord,
     ProviderSubscriptionRepository,
-)
-from creator.repositories.schema import (
-    CampaignRecord,
-    CampaignRepository,
-    PersonaRecord,
-    PersonaRepository,
-    PlanningRecord,
-    PlanningRepository,
-    PostStructureRecord,
-    PostStructureRepository,
 )
 from creator.repositories.subscription_history import (
     SubscriptionHistoryRecord,

@@ -8,8 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from creator.design_structure import models as design_structure_tables
+from creator.design_structure.ports import DesignStructureRecord, DesignStructureRepository
 from creator.post_structure import models as post_structure_tables
-from creator.repositories.design import DesignStructureRecord, DesignStructureRepository
 
 
 class SqlAlchemyDesignStructureRepository(DesignStructureRepository):

@@ -16,7 +16,9 @@ from creator.brand.ports import (
     BrandRepository,
     BrandSettingsRepository,
 )
+from creator.campaign.ports import CampaignRepository
 from creator.content.ports import ContentRepository
+from creator.design_structure.ports import DesignStructureRepository
 from creator.domain.exceptions import PersistenceError
 from creator.generation.ports import (
     GeneratedImageRepository,
@@ -106,6 +108,9 @@ from creator.infrastructure.persistence.repositories.subscription_history_reposi
 from creator.infrastructure.persistence.repositories.workspace_invite_repositories import (
     SqlAlchemyWorkspaceInviteRepository,
 )
+from creator.persona.ports import PersonaRepository
+from creator.planning.ports import PlanningRepository
+from creator.post_structure.ports import PostStructureRepository
 from creator.repositories.billing import (
     BillingAccountRepository,
     BillingAddressRepository,
@@ -123,7 +128,6 @@ from creator.repositories.commerce import (
     WorkspaceCreditTransactionRepository,
 )
 from creator.repositories.core import ProjectRepository
-from creator.repositories.design import DesignStructureRepository
 from creator.repositories.notifications import (
     NotificationPreferenceRepository,
     NotificationRecipientRepository,
@@ -138,12 +142,6 @@ from creator.repositories.provider_audit import (
 from creator.repositories.provider_sync import (
     ProviderCustomerRepository,
     ProviderSubscriptionRepository,
-)
-from creator.repositories.schema import (
-    CampaignRepository,
-    PersonaRepository,
-    PlanningRepository,
-    PostStructureRepository,
 )
 from creator.repositories.subscription_history import SubscriptionHistoryRepository
 from creator.uow import UnitOfWork
