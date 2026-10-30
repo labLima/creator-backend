@@ -16,9 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    WorkspaceCreditTransactionCreateRequest,
-)
 from creator.api.errors import (
     not_found,
     require_workspace_write,
@@ -30,6 +27,9 @@ from creator.api.serializers import (
     _workspace_credit_transaction_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.credit.schemas import (
+    WorkspaceCreditTransactionCreateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

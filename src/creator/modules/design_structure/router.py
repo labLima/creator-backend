@@ -16,9 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    DesignStructureCreateRequest,
-)
 from creator.api.errors import (
     not_found,
 )
@@ -29,6 +26,9 @@ from creator.api.serializers import (
     _design_structure_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.design_structure.schemas import (
+    DesignStructureCreateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

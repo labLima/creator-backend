@@ -16,10 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    PaymentMethodCreateRequest,
-    PaymentMethodUpdateRequest,
-)
 from creator.api.errors import (
     not_found,
 )
@@ -30,6 +26,10 @@ from creator.api.serializers import (
     _payment_method_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.payment_method.schemas import (
+    PaymentMethodCreateRequest,
+    PaymentMethodUpdateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

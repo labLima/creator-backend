@@ -17,12 +17,6 @@ from creator.api.dependencies import (
     get_llm_provider,
     get_uow,
 )
-from creator.api.dtos import (
-    ContentCreateRequest,
-    ContentUpdateRequest,
-    GenerateContentRequest,
-    ImproveContentRequest,
-)
 from creator.api.errors import (
     not_found,
     require_workspace_write,
@@ -61,6 +55,12 @@ from creator.integrations.gemini.exceptions import (
     GeminiQuotaError,
     GeminiTimeoutError,
     GeminiTransientError,
+)
+from creator.modules.content.schemas import (
+    ContentCreateRequest,
+    ContentUpdateRequest,
+    GenerateContentRequest,
+    ImproveContentRequest,
 )
 from creator.repositories import (
     ContentFilters,

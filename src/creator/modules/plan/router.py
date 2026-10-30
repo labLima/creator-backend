@@ -16,12 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    PlanCreateRequest,
-    PlanItemCreateRequest,
-    PlanItemUpdateRequest,
-    PlanUpdateRequest,
-)
 from creator.api.errors import (
     not_found,
     require_global_billing_admin,
@@ -34,6 +28,12 @@ from creator.api.serializers import (
     _plan_item_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.plan.schemas import (
+    PlanCreateRequest,
+    PlanItemCreateRequest,
+    PlanItemUpdateRequest,
+    PlanUpdateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

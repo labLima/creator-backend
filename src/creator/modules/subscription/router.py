@@ -16,10 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    SubscriptionCreateRequest,
-    SubscriptionUpdateRequest,
-)
 from creator.api.errors import (
     not_found,
     require_workspace_write,
@@ -32,6 +28,10 @@ from creator.api.serializers import (
     _subscription_history_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.subscription.schemas import (
+    SubscriptionCreateRequest,
+    SubscriptionUpdateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

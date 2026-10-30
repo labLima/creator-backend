@@ -16,11 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    SettingsUpdateRequest,
-    UserCreateRequest,
-    UserUpdateRequest,
-)
 from creator.api.errors import (
     not_found,
     require_admin,
@@ -36,6 +31,11 @@ from creator.api.serializers import (
 from creator.application.unit_of_work import UnitOfWork
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
+from creator.modules.user.schemas import (
+    SettingsUpdateRequest,
+    UserCreateRequest,
+    UserUpdateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

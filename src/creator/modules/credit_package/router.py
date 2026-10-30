@@ -16,10 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    CreditPackageCreateRequest,
-    CreditPackageUpdateRequest,
-)
 from creator.api.errors import (
     not_found,
     require_global_billing_admin,
@@ -31,6 +27,10 @@ from creator.api.serializers import (
     _credit_package_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.credit_package.schemas import (
+    CreditPackageCreateRequest,
+    CreditPackageUpdateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

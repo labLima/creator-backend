@@ -16,13 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    NotificationCreateRequest,
-    NotificationPreferenceRequest,
-    NotificationUpdateRequest,
-    UserDeviceCreateRequest,
-    UserDeviceUpdateRequest,
-)
 from creator.api.errors import (
     not_found,
     require_workspace_write,
@@ -37,6 +30,13 @@ from creator.api.serializers import (
     _user_device_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.notification.schemas import (
+    NotificationCreateRequest,
+    NotificationPreferenceRequest,
+    NotificationUpdateRequest,
+    UserDeviceCreateRequest,
+    UserDeviceUpdateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

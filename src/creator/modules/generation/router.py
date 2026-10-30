@@ -18,14 +18,6 @@ from creator.api.dependencies import (
     get_storage_provider,
     get_uow,
 )
-from creator.api.dtos import (
-    GenerateImageRequest,
-    GenerationCreateRequest,
-    GenerationUpdateRequest,
-    ImageWorkflowDecisionRequest,
-    ImageWorkflowRequest,
-    RegenerateImageRequest,
-)
 from creator.api.errors import (
     not_found,
     require_workspace_write,
@@ -63,6 +55,14 @@ from creator.core.pagination import page_request
 from creator.domain.agent_workflow import WorkflowDecision
 from creator.domain.exceptions import EntityNotFoundError
 from creator.domain.generation import GenerationJobStatus
+from creator.modules.generation.schemas import (
+    GenerateImageRequest,
+    GenerationCreateRequest,
+    GenerationUpdateRequest,
+    ImageWorkflowDecisionRequest,
+    ImageWorkflowRequest,
+    RegenerateImageRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

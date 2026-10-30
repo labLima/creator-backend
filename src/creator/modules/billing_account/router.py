@@ -16,12 +16,6 @@ from creator.api.dependencies import (
     get_current_user,
     get_uow,
 )
-from creator.api.dtos import (
-    BillingAccountCreateRequest,
-    BillingAccountUpdateRequest,
-    BillingAddressCreateRequest,
-    BillingAddressUpdateRequest,
-)
 from creator.api.errors import (
     not_found,
 )
@@ -33,6 +27,12 @@ from creator.api.serializers import (
     _billing_address_data,
 )
 from creator.application.unit_of_work import UnitOfWork
+from creator.modules.billing_account.schemas import (
+    BillingAccountCreateRequest,
+    BillingAccountUpdateRequest,
+    BillingAddressCreateRequest,
+    BillingAddressUpdateRequest,
+)
 from creator.repositories import (
     UserRecord,
 )

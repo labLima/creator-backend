@@ -19,7 +19,6 @@ from creator.api.dependencies import (
     get_optional_principal,
     get_uow,
 )
-from creator.api.dtos import AuthLoginRequest, AuthSignupRequest
 from creator.api.responses import success_response
 from creator.application.auth import (
     AuthConfigurationError,
@@ -51,6 +50,7 @@ from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
 from creator.infrastructure.auth import auth_token_services
+from creator.modules.auth.schemas import AuthLoginRequest, AuthSignupRequest
 from creator.repositories import UserRecord, WorkspaceMembershipRecord, WorkspaceRecord
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
