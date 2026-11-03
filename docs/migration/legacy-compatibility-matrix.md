@@ -35,13 +35,13 @@
 | 25 | Cupons/descontos | `coupons`, `redeem_coupon`, `previewDiscountCoupon` | `/coupons`, `/coupon-redemptions` CRUD | Parcial | sem aplicação, resgate ou regra once-per-workspace |
 | 26 | Webhooks/reconciliação Pagar.me | rotas `/api/public/pagarme-*` | ausente | **Ausente** | sem endpoint público nem adapter |
 | 27 | Notificações/e-mail | Resend, `feed_notifications`, preferences | `/notifications` CRUD | Parcial | sem envio/entrega/push/email |
-| 28 | Admin/backoffice | `admin.functions`, `admin-insights.functions` | `/users` admin | **Ausente** | sem métricas, relatórios, catálogo, webhooks, Redis, busca |
+| 28 | Admin/backoffice | `admin.functions`, `admin-insights.functions` | `/users` admin | Parcial | existe CRUD admin de usuários; faltam métricas, relatórios, catálogo, webhooks, Redis e busca |
 | 29 | Assets/upload/signed URLs | `mediaUpload.ts`, `brand-assets`, `signAssetUrls` | `/assets` metadata CRUD | Parcial | sem upload nem assinatura em lote |
 | 30 | Health/metrics | não existia | `/health`, `/metrics` | **Novo** | comportamento novo, não legado |
 | 31 | Projects | não existia | `/projects` | **Novo** | modelo transitório do backend atual |
 | 32 | Landing/legal/sitemap/frontend | rotas públicas da SPA | n/a | **Fora de escopo** | frontend, não backend |
 
-**Contagem:** 0 equivalentes, 19 parciais, 10 ausentes, 3 novos/fora de escopo.
+**Contagem:** 0 equivalentes, 20 parciais, 9 ausentes, 3 novos/fora de escopo.
 
 ---
 

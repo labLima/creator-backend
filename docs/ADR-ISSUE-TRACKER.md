@@ -55,18 +55,18 @@ consolidação da estrutura plana; a issue remota é
 [#133](https://github.com/labLima/creator-backend/issues/133). A paridade de
 comportamento com o legado é a [0050](issues/0050-legacy-behavior-parity.md)
 ([#134](https://github.com/labLima/creator-backend/issues/134)) e a paridade de
-`operationId` é a [0051](issues/0051-openapi-operation-id-parity.md)
+`operationId`/error responses é a [0051](issues/0051-openapi-operation-id-parity.md)
 ([#135](https://github.com/labLima/creator-backend/issues/135)).
 
 ## Dispensas explícitas da Fase 1
 
-| Issue | Tracker / ADR | Fase de origem | Destino | Justificativa | Evidência |
-| --- | --- | --- | --- | --- | --- |
-| #23 | #34 / ADR-001 | Fase 1 | Fase 4 | Custo/consumo de IA é observabilidade de produção, não boundary de provider. | #23 permanece aberta na Fase 4. |
-| #24 | #42 / ADR-009 | Fase 1 | Fase 4 | Imagem multi-stage/readiness/SIGTERM pertence ao endurecimento de produção. | #24 permanece aberta na Fase 4. |
-| #31 | #40, #42, #43 | Fase 1 | Fase 4 | Runbooks/SLO/backup/incidentes são operação; a parte de contrato é coberta pela 0051. | #31 permanece aberta na Fase 4. |
-| #32 | #42 / ADR-009 | Fase 1 | Fase 4 | CD Cloud Run depende de decisão/credenciais de produção; ADR-009 emendada. | #32 permanece aberta na Fase 4. |
-| #44 | #43 / ADR-010 | Fase 1 | Fase 2 | Inventário de código concluído; paridade de comportamento/ETL transferida para 0050. | `docs/migration/legacy-inventory.md`, #134. |
+| Issue | Tipo | Tracker / ADR | Destino | Milestone destino | Justificativa | Evidência | Aprovado por/data |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| #23 | dispensa | #34 / ADR-001 | Fase 4 | 05 · Fase 4 — Produção e Operação | Custo/consumo de IA é observabilidade de produção, não boundary de provider. | #23 permanece aberta na Fase 4. | backend/platform — 2026-11-03 |
+| #24 | dispensa | #42 / ADR-009 | Fase 4 | 05 · Fase 4 — Produção e Operação | Imagem multi-stage/readiness/SIGTERM pertence ao endurecimento de produção. | #24 permanece aberta na Fase 4. | backend/platform — 2026-11-03 |
+| #31 | dispensa | #40, #42, #43 | Fase 4 | 05 · Fase 4 — Produção e Operação | Runbooks/SLO/backup/incidentes são operação; a paridade de operationId/error responses está na 0051. | #31 permanece aberta na Fase 4. | backend/platform — 2026-11-03 |
+| #32 | dispensa | #42 / ADR-009 | Fase 4 | 05 · Fase 4 — Produção e Operação | CD Cloud Run depende de decisão/credenciais de produção; ADR-009 emendada. | #32 permanece aberta na Fase 4. | backend/platform — 2026-11-03 |
+| #44 | substituição | #43 / ADR-010 | Fase 2 / #134 | 03 · Fase 2 — Produto Core | Issue fechada como completed sem evidência de comportamento/ETL; inventário produzido e escopo remanescente transferido. | `docs/migration/legacy-inventory.md`, #134. | backend/platform — 2026-11-03 |
 
 ## Regras de atualização
 

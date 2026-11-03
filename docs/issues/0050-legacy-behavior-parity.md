@@ -8,11 +8,12 @@
 
 ## Contexto
 
-A #44 foi fechada como inventário/migração do legado, mas não havia evidência de
-comportamento nem de dados. O inventário de código foi produzido em
+A #44 está fechada como `completed`, mas os critérios de migração de
+comportamento e ETL não foram atendidos. O inventário de código está em
 [`docs/migration/legacy-inventory.md`](../migration/legacy-inventory.md) e a
 matriz de compatibilidade em
 [`docs/migration/legacy-compatibility-matrix.md`](../migration/legacy-compatibility-matrix.md).
+O escopo remanescente está nesta issue.
 
 ## Escopo
 
@@ -43,8 +44,8 @@ matriz de compatibilidade em
 
 ## Evidência atual
 
-- Inventário de código completo (104 server functions, 4 handlers HTTP, 106 RPCs,
+- Inventário de código completo (104 server functions, 4 handlers HTTP, 107 RPCs,
   32 views, ~70 tabelas ativas, 5 buckets).
 - Nenhum comportamento classificado como plenamente equivalente: 0 equivalentes,
-  19 parciais, 10 ausentes, 3 novos/fora de escopo.
+  20 parciais, 9 ausentes, 3 novos/fora de escopo.
 - Sem dump de dados/storage; ETL não executável.

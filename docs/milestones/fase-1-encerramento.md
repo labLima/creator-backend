@@ -19,7 +19,7 @@ matriz reais.
 
 ## Escopo entregue
 
-- API `/api/v1` com 227 operações em 103 paths e envelope `{success,data,meta.request_id}`.
+- API com 227 operações e 103 paths no OpenAPI (inclui `/health`, `/health/live` e `/metrics`) e envelope `{success,data,meta.request_id}`.
 - 27 capacidades em `src/creator/<entidade>/` (ADR-024).
 - 51 tabelas no metadata SQLite, com DDL congelado em `tests/contracts/`.
 - Autenticação própria por cookies `HttpOnly`, CSRF e Origin (ADR-020/022).
@@ -37,8 +37,8 @@ matriz reais.
 
 | Critério | Evidência | Status |
 | --- | --- | --- |
-| Issues da fase fechadas com evidência | #34, #40, #42, #43 e #109 com comentário de encerramento; #44 substituída pela #134 | ✅ |
-| OpenAPI paritário | paths/métodos/segurança verdes; `operationId` reconciliado na [#135](https://github.com/labLima/creator-backend/issues/135) | ✅ (superfície; gap documentado) |
+| Issues da fase fechadas com evidência | Corpos de #34/#40/#42/#43/#109 atualizados; fechamento remoto será feito no merge. #44 está fechada como `completed`, mas seus critérios não foram atendidos; o escopo remanescente está na #134. | ✅ (fechamento no merge) |
+| OpenAPI paritário | paths/métodos/segurança verdes; `operationId` e error responses na [#135](https://github.com/labLima/creator-backend/issues/135) | ✅ (superfície; gap documentado) |
 | Matriz de migração do legado | `docs/SCHEMA-MIGRATION-MATRIX.md` + `docs/migration/*` + `tests/test_schema_migration_matrix.py` | ✅ |
 | Nenhuma issue da fase sem milestone/critério | auditoria da milestone 3; dispensas registradas no tracker central | ✅ |
 | `make check` / `make security` / `make e2e` | ver seção Evidência | ✅ |
@@ -81,10 +81,11 @@ Execução local em 2026-11-03:
 - `git diff --exit-code docs/openapi.yaml`: sem diff.
 - `git diff --exit-code CONTEXT.md`: sem diff.
 - `tests/test_schema_migration_matrix.py`: cobre todas as 51 tabelas.
-- CI remoto: pendente até o push do PR.
+- CI remoto: executar no head final do PR #136 antes do merge.
 
 ## Rollback
 
-Reverter o merge deste PR e reabrir os trackers #34/#40/#42/#43/#109. As issues
-#23/#24/#31/#32 permanecem na Fase 4; nenhuma migração de dados ou deploy é
-executada por este encerramento.
+Reverter apenas os commits documentais deste PR. O commit `4a23433` (fix S1)
+**não** deve ser revertido com o encerramento. Se o encerramento for revertido,
+reabrir os trackers #34/#40/#42/#43/#109; as issues #23/#24/#31/#32 permanecem na
+Fase 4. Nenhuma migração de dados ou deploy é executada por este encerramento.

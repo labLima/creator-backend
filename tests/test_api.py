@@ -1255,6 +1255,53 @@ async def test_brand_settings_upsert_rejects_brand_from_other_workspace() -> Non
 
 
 @pytest.mark.anyio
+async def test_brand_settings_upsert_rejects_viewer_role() -> None:
+    unit_of_work = FakeUnitOfWork(workspace_access=False)
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.put(
+            "/api/v1/brands/31000000-0000-0000-0000-000000000001/settings",
+            json={
+                "workspace_id": "10000000-0000-0000-0000-000000000001",
+                "voice_settings": {"tone": "clear"},
+            },
+        )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "WORKSPACE_ACCESS_DENIED"
+    assert unit_of_work.brand_settings.upsert_calls == []
+    assert unit_of_work.commits == 0
+
+
+@pytest.mark.anyio
+async def test_brand_settings_upsert_rejects_brand_not_visible_to_user() -> None:
+    unit_of_work = FakeUnitOfWork()
+    unit_of_work.brands = FakeCrudRepository(None)
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.put(
+            "/api/v1/brands/31000000-0000-0000-0000-000000000001/settings",
+            json={
+                "workspace_id": "10000000-0000-0000-0000-000000000001",
+                "voice_settings": {"tone": "clear"},
+            },
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "BRAND_SETTINGS_NOT_FOUND"
+    assert unit_of_work.brand_settings.upsert_calls == []
+    assert unit_of_work.commits == 0
+
+
+@pytest.mark.anyio
 async def test_core_resource_create_rejects_non_writable_workspace() -> None:
     application = authorized_app()
     application.dependency_overrides[get_uow] = lambda: FakeUnitOfWork(workspace_access=False)

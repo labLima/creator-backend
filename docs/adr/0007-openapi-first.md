@@ -14,14 +14,14 @@ Para o encerramento da Fase 1, **paridade OpenAPI** significa:
 
 - o mesmo conjunto de paths;
 - os mesmos métodos por path;
-- o mesmo esquema de segurança e os mesmos headers de autenticação;
-- os mesmos códigos de erro declarados.
+- o mesmo esquema de segurança e os mesmos headers de autenticação.
 
-`operationId` é parte do contrato, mas os 106 identificadores divergentes entre o
-YAML e `app.openapi()` ficam explicitamente fora do gate da Fase 1 e são tratados
-na [0051](../issues/0051-openapi-operation-id-parity.md), com decisão de fonte
-autoritativa e plano de breaking change. Nenhuma mudança de `operationId` deve ser
-feita silenciosamente.
+`operationId` e respostas de erro são parte do contrato, mas os 106
+identificadores divergentes e a cobertura de error responses ficam
+explicitamente fora do gate da Fase 1 e são tratados na
+[0051](../issues/0051-openapi-operation-id-parity.md), com decisão de fonte
+autoritativa e plano de breaking change. Nenhuma mudança de `operationId` ou de
+respostas de erro deve ser feita silenciosamente.
 
 ## Issues vinculadas
 

@@ -141,15 +141,18 @@ def upsert_brand_settings(
     if brand is None or brand.workspace_id != payload.workspace_id:
         raise not_found("Brand settings")
     require_workspace_write(uow, user_id=actor.id, workspace_id=brand.workspace_id)
-    settings = uow.brand_settings.upsert(
-        user_id=actor.id,
-        workspace_id=brand.workspace_id,
-        brand_id=brand_id,
-        voice_settings=payload.voice_settings,
-        visual_settings=payload.visual_settings,
-        generation_defaults=payload.generation_defaults,
-        metadata=payload.metadata,
-    )
+    try:
+        settings = uow.brand_settings.upsert(
+            user_id=actor.id,
+            workspace_id=brand.workspace_id,
+            brand_id=brand_id,
+            voice_settings=payload.voice_settings,
+            visual_settings=payload.visual_settings,
+            generation_defaults=payload.generation_defaults,
+            metadata=payload.metadata,
+        )
+    except EntityNotFoundError as error:
+        raise not_found("Brand settings") from error
     uow.commit()
 
     return _brand_settings_data(settings)

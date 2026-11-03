@@ -11,7 +11,7 @@
 | Legado | `/tmp/opencode/create-bloom-73` |
 | Branch/commit | `main`, `1dd4b416111ea97de9b3e3395f04823760aea018` (2026-10-30, clone raso) |
 | Backend atual | `/home/emanueljtrodrigues/Documents/LeFil/creator-backend` |
-| Branch/commit | `feat/milestone-3-foundation`, `108fb09b230d387aa917c2014925bf186ddb1982` (2026-11-03) |
+| Branch/commit | `dev` @ `108fb09b230d387aa917c2014925bf186ddb1982` (2026-11-03); head do PR #136: `5a8cf06` |
 | Método | Leitura estática de código, migrations, OpenAPI e testes; nenhuma migration/teste executado; nenhum segredo lido |
 | Limitação | O clone legado é code-only: não há dump do banco, contagens de linhas, amostras ou export de storage |
 
@@ -27,9 +27,9 @@ CURRENT = /home/emanueljtrodrigues/Documents/LeFil/creator-backend
 ## 1. Veredito executivo
 
 1. **O legado não é um backend REST.** É uma SPA TanStack Start com Supabase. Grande parte do “backend” está em `createServerFn` (RPCs internos), funções RPC do PostgREST (`/rest/v1/rpc/...`) e acesso direto a tabelas/views com RLS.
-2. **Inventário quantificado:** 104 server functions de produto (+1 demo), 4 handlers HTTP públicos, 106 RPCs distintas do Supabase, 32 views expostas, ~70 tabelas ativas e 5 buckets de storage.
-3. **Contagem de rotas:** 108 handlers de aplicação (104 server functions + 4 HTTP públicos); **214 endpoints endereçáveis** se os 106 RPCs forem contados. Incluindo sitemap/demo chega-se a 216 handlers.
-4. **Equivalência:** nenhum comportamento foi classificado como plenamente equivalente. Na matriz: **0 equivalentes, 19 parciais, 10 ausentes, 3 novos/fora de escopo**.
+2. **Inventário quantificado:** 104 server functions de produto (+1 demo), 4 handlers HTTP públicos, 107 RPCs distintas do Supabase, 32 views expostas, ~70 tabelas ativas e 5 buckets de storage.
+3. **Contagem de rotas:** 108 handlers de aplicação (104 server functions + 4 HTTP públicos); **215 endpoints endereçáveis** se os 107 RPCs forem contados. Incluindo sitemap/demo chega-se a 217 handlers.
+4. **Equivalência:** nenhum comportamento foi classificado como plenamente equivalente. Na matriz: **0 equivalentes, 20 parciais, 9 ausentes, 3 novos/fora de escopo**.
 5. **Principais bloqueios:** autenticação (recuperação/OTP/OAuth/importação), billing/Pagar.me, créditos, pipeline calendário→copy→design, fidelidade da geração de imagem, vídeo, feed, workspace/equipe e dados legados em JSON (`creator_state`/`extra`).
 6. **Status da #44:** **parcial / bloqueada**. O inventário de código foi produzido; a migração de comportamento, os testes de contrato por comportamento e o ETL de dados não existem.
 
@@ -48,7 +48,7 @@ CURRENT = /home/emanueljtrodrigues/Documents/LeFil/creator-backend
 | Métodos das server functions | 15 GET + 89 POST | não há PUT/PATCH/DELETE via server fn |
 | Handlers HTTP públicos | **4** em 3 arquivos | `LEGACY/src/routes/api/public/*.ts` |
 | Sitemap | 1 GET | `LEGACY/src/routes/sitemap[.]xml.ts` |
-| RPCs distintas do Supabase | **106** (89 `v2_*` + 17 globais) | chamadas `rpc("...")` |
+| RPCs distintas do Supabase | **107** (90 `v2_*` + 17 globais) | chamadas `rpc("...")` |
 | Views expostas | 32 | `LEGACY/src/integrations/supabase/types.ts` |
 | Tabelas v2 ativas | ~70 | migrations `0021`, `0022`, `0049`, `0078`, `0079`, `0100`, `0101`, etc. |
 | Buckets de storage | 5 | `generated-media`, `video-inputs`, `video-segments`, `video-frames`, `video-final` |
@@ -220,7 +220,7 @@ GET  getSitePricing                 [público] -> {plans[],prices[]} (lê Supaba
 
 Path literal: `POST /rest/v1/rpc/<nome>`; autenticação por `apikey` + `Authorization: Bearer <JWT>` (ou anon). Retorno cru em JSON; erros com mensagem textual, sem `request_id`.
 
-**106 nomes distintos** (89 `v2_*` + 17 globais):
+**107 nomes distintos** (90 `v2_*` + 17 globais):
 
 ```text
 auth_email_password_status consume_credit_lots get_workspace_role grant_credit_lot has_role
@@ -238,7 +238,7 @@ v2_get_creation_run v2_get_my_profile v2_get_plan v2_get_workspace_invite v2_get
 v2_get_workspace_team v2_history_page v2_images_by_asset v2_import_user_row v2_invite_email_info
 v2_leave_workspace v2_legacy_images_by_asset v2_link_image_charge v2_list_brands
 v2_list_campaigns v2_list_coupon_redemptions v2_list_credit_transactions v2_list_my_workspaces
-v2_list_personas v2_list_plans v2_list_profiles v2_log_activity v2_lookup_user_by_email
+v2_list_personas v2_list_plans v2_list_posts v2_list_profiles v2_log_activity v2_lookup_user_by_email
 v2_migration_status v2_my_roles v2_payment_command v2_payment_email_log v2_payment_webhook_log
 v2_record_creation_artifact v2_record_creation_run v2_record_generated_image v2_register_source_image
 v2_save_billing_customer v2_save_brand_training_analysis v2_save_workspace_settings
@@ -381,7 +381,7 @@ Isso é central para qualquer ETL:
 | Paths OpenAPI | **103** |
 | Operações OpenAPI | **227** |
 | Tabelas ORM | **51** |
-| Migrations Alembic | 6 (`0001` a `0004`, com duas `0003`) |
+| Migrations Alembic | 5 revisões ativas (`0001`, `0002`, duas `0003`, `0004`) |
 | Auth | login, signup, refresh, csrf, logout (cookies HttpOnly; sem Bearer) |
 | Envelope | `{ success, data, meta.request_id }` + `X-Request-ID` |
 | Geração assíncrona | `GenerationJob` + RQ/Redis; `Idempotency-Key` em imagens |
@@ -459,13 +459,13 @@ Status: **Equivalente** = contrato + dados + comportamento; **Parcial** = existe
 | 25 | Cupons/descontos | `coupons`, `redeem_coupon`, `previewDiscountCoupon` | `/coupons`, `/coupon-redemptions` CRUD | Parcial | sem aplicação, resgate ou regra once-per-workspace |
 | 26 | Webhooks/reconciliação Pagar.me | rotas `/api/public/pagarme-*` | ausente | **Ausente** | sem endpoint público nem adapter |
 | 27 | Notificações/e-mail | Resend, `feed_notifications`, preferences | `/notifications` CRUD | Parcial | sem envio/entrega/push/email |
-| 28 | Admin/backoffice | `admin.functions`, `admin-insights.functions` | `/users` admin | **Ausente** | sem métricas, relatórios, catálogo, webhooks, Redis, busca |
+| 28 | Admin/backoffice | `admin.functions`, `admin-insights.functions` | `/users` admin | Parcial | existe CRUD admin de usuários; faltam métricas, relatórios, catálogo, webhooks, Redis e busca |
 | 29 | Assets/upload/signed URLs | `mediaUpload.ts`, `brand-assets`, `signAssetUrls` | `/assets` metadata CRUD | Parcial | sem upload nem assinatura em lote |
 | 30 | Health/metrics | não existia | `/health`, `/metrics` | **Novo** | comportamento novo, não legado |
 | 31 | Projects | não existia | `/projects` | **Novo** | modelo transitório do backend atual |
 | 32 | Landing/legal/sitemap/frontend | rotas públicas da SPA | n/a | **Fora de escopo** | frontend, não backend |
 
-**Contagem:** 0 equivalentes, 19 parciais, 10 ausentes, 3 novos/fora de escopo.
+**Contagem:** 0 equivalentes, 20 parciais, 9 ausentes, 3 novos/fora de escopo.
 
 ---
 
@@ -510,7 +510,7 @@ Além dessas 10, há um bloqueio transversal: **não existe teste de contrato po
 
 ---
 
-## 10. Recomendação de status da #44
+## 10. Recomendação de tratamento da #44
 
 ### Critérios de aceite atuais
 
@@ -522,7 +522,7 @@ Além dessas 10, há um bloqueio transversal: **não existe teste de contrato po
 
 ### Recomendação
 
-**Não concluir a #44.** Status recomendado: **parcialmente atendida / bloqueada para migração**. Se for necessário um status binário, use **bloqueada**, não “concluída”.
+A #44 está fechada como `completed`, mas os critérios de aceite **não foram atendidos**. Não usar esse fechamento como evidência de migração. O escopo remanescente está na [#134](https://github.com/labLima/creator-backend/issues/134); se a #44 for reaberta, o status correto é **bloqueada**.
 
 Justificativa:
 
@@ -541,7 +541,7 @@ Justificativa:
 5. Separar a migração em sub-issues: auth, workspace/team, brand/strategy, planning/content, image/agent, video, feed, billing/credits, admin, ETL.
 6. Para cada comportamento, escrever contract test que reproduza o fluxo legado e linkar à #44 antes de fechar a sub-issue.
 7. Fazer dry-run de ETL com reconciliação de IDs, saldos, assinaturas, storage e contagens.
-8. Só então reavaliar se #44 pode ser fechada; hoje ela deve permanecer aberta e marcada como bloqueada.
+8. Só então reavaliar a #134; a #44 permanece referência histórica e não deve ser usada como evidência de paridade.
 
 ---
 
@@ -583,4 +583,3 @@ Justificativa:
 - `CURRENT/docs/status-do-projeto.md` — Brand Knowledge/#49, créditos/#54, COPY/CAPTION/#79 e RAG/#73–#77 pendentes.
 - `CURRENT/docs/issues/0011-source-migration-inventory.md` — critérios de aceite da #44.
 - `CURRENT/docs/spa-cookie-auth-migration.md` — cutover de cookie ainda depende de sign-off do frontend.
-</subagent>
