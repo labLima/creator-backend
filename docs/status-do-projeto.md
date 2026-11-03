@@ -46,14 +46,28 @@ A milestone `00 · Fase -1 — Correções e Fundação Técnica` foi concluída
 
 O PR #115 foi mergeado em `dev`. O CI da `dev` passou em quality, security, contract, e2e e containers. A milestone está fechada; as fases seguintes estão desbloqueadas.
 
+## Fase 1 encerrada
+
+A milestone `02 · Fase 1 — Fundação e Plataforma` foi encerrada em 2026-11-03.
+O registro de evidências, critérios e dispensas está em
+[`docs/milestones/fase-1-encerramento.md`](milestones/fase-1-encerramento.md).
+Os itens de operação de produção (#23, #24, #31, #32) foram explicitamente
+dispensados para a Fase 4; a paridade de comportamento do legado foi transferida
+para a [#134](https://github.com/labLima/creator-backend/issues/134).
+
 ## Pendências conhecidas
 
 - Consolidação estrutural complementar: 23 `service.py` ainda importam
   `creator.api`, 4 routers acessam o UoW diretamente e os 47 repositórios por
   agregado (fase 5 da ADR-023) seguem pendentes — ver
-  [0049](issues/0049-flat-layout-consolidation.md).
+  [0049](issues/0049-flat-layout-consolidation.md) / #133.
 - Backlog de segurança pré-existente S1–S13 — ver
-  [0046](issues/0046-security-backlog-after-modularization.md).
+  [0046](issues/0046-security-backlog-after-modularization.md). S1 corrigido;
+  S2–S13 abertos.
+- Paridade de comportamento com o legado e ETL — ver
+  [0050](issues/0050-legacy-behavior-parity.md) / #134.
+- Paridade de `operationId` OpenAPI — ver
+  [0051](issues/0051-openapi-operation-id-parity.md) / #135.
 - Brand Knowledge ainda não tem repositórios/casos de uso completos (#49).
 - Créditos têm schema e ledger, mas o lifecycle e os consumidores ainda precisam
   ser fechados (#54).
@@ -61,7 +75,7 @@ O PR #115 foi mergeado em `dev`. O CI da `dev` passou em quality, security, cont
   (#64).
 - Jobs COPY/CAPTION ainda não têm executores/filas (#79).
 - RAG, tool calling e ingestão por Workspace (#73–#77) não começaram.
-- CI/CD de produção, observabilidade e deploy Cloud Run (#21–#32) pendentes.
+- Operação de produção (#23, #24, #31, #32) permanece na Fase 4.
 - Cache de geração e avaliação de agentes/RAG (#53, #78) pendentes.
 
 ## Estado do CI

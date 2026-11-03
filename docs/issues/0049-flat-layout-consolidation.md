@@ -5,7 +5,8 @@
 - Issues relacionadas: [0045](0045-modular-structure-tracker.md),
   [0046](0046-security-backlog-after-modularization.md),
   [0048](0048-plain-capability-layout.md)
-- Status: em andamento
+- Issue remota: [#133](https://github.com/labLima/creator-backend/issues/133)
+- Status: em andamento (Fase 2)
 - Owner: backend/platform
 
 ## Objetivo
@@ -76,7 +77,5 @@ Execução local em 2026-11-03, branch `dev` (`cdb3696` + este incremento):
 
 ## Rastreabilidade
 
-Tracker local aceito pela regra D1 do `docs/ADR-ISSUE-TRACKER.md` enquanto a
-issue remota não for criada. O `gh` não está autenticado neste ambiente; a
-criação da issue no GitHub é um bloqueio externo a resolver antes de fechar a
-fase.
+Tracker local aceito pela regra D1 do `docs/ADR-ISSUE-TRACKER.md`. A issue
+remota é [#133](https://github.com/labLima/creator-backend/issues/133).

@@ -51,15 +51,28 @@ de implementação vinculada antes do fechamento do tracker.
 | [ADR-024](adr/0024-estrutura-plana-por-capacidade.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md), [0049](issues/0049-flat-layout-consolidation.md), [0046](issues/0046-security-backlog-after-modularization.md) (backlog relacionado) |
 
 A [0049](issues/0049-flat-layout-consolidation.md) é o tracker local da
-consolidação da estrutura plana. A issue remota ainda não foi criada porque o
-`gh` não está autenticado neste ambiente; isso é bloqueio externo, não decisão
-arquitetural.
+consolidação da estrutura plana; a issue remota é
+[#133](https://github.com/labLima/creator-backend/issues/133). A paridade de
+comportamento com o legado é a [0050](issues/0050-legacy-behavior-parity.md)
+([#134](https://github.com/labLima/creator-backend/issues/134)) e a paridade de
+`operationId` é a [0051](issues/0051-openapi-operation-id-parity.md)
+([#135](https://github.com/labLima/creator-backend/issues/135)).
+
+## Dispensas explícitas da Fase 1
+
+| Issue | Tracker / ADR | Fase de origem | Destino | Justificativa | Evidência |
+| --- | --- | --- | --- | --- | --- |
+| #23 | #34 / ADR-001 | Fase 1 | Fase 4 | Custo/consumo de IA é observabilidade de produção, não boundary de provider. | #23 permanece aberta na Fase 4. |
+| #24 | #42 / ADR-009 | Fase 1 | Fase 4 | Imagem multi-stage/readiness/SIGTERM pertence ao endurecimento de produção. | #24 permanece aberta na Fase 4. |
+| #31 | #40, #42, #43 | Fase 1 | Fase 4 | Runbooks/SLO/backup/incidentes são operação; a parte de contrato é coberta pela 0051. | #31 permanece aberta na Fase 4. |
+| #32 | #42 / ADR-009 | Fase 1 | Fase 4 | CD Cloud Run depende de decisão/credenciais de produção; ADR-009 emendada. | #32 permanece aberta na Fase 4. |
+| #44 | #43 / ADR-010 | Fase 1 | Fase 2 | Inventário de código concluído; paridade de comportamento/ETL transferida para 0050. | `docs/migration/legacy-inventory.md`, #134. |
 
 ## Regras de atualização
 
 1. Abra uma ADR antes de iniciar trabalho que altere uma decisão arquitetural material.
 2. Vincule toda issue à ADR primária no corpo e à issue tracker da ADR pelo GitHub.
-3. Não feche a issue tracker enquanto houver issues de implementação abertas; atualize o checklist de progresso.
+3. Não feche a issue tracker enquanto houver issue de implementação aberta **não dispensada explicitamente** para outra ADR, fase ou issue substituta. A dispensa exige justificativa, destino e evidência na tabela acima e no corpo da issue.
 4. Uma nova necessidade de implementação entra na ADR existente quando preserva a decisão. Crie uma nova ADR apenas quando a decisão ou seus trade-offs mudarem.
 5. Na implementação, PRs devem usar `Refs #<issue>`; somente critérios de aceite satisfeitos permitem `Closes #<issue>`.
 6. Trackers locais são aceitos (decisão D1) quando a ADR ainda não tem tracker remoto; o tracker remoto deve ser criado antes de fechar a fase correspondente.

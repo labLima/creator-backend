@@ -25,7 +25,21 @@ O pre-commit é opcional e chama os mesmos comandos de Ruff e mypy antes do comm
 
 Há uma fonte auditável no repositório mesmo quando GitHub estiver indisponível. A publicação remota exige credencial válida e não bloqueia o desenvolvimento local.
 
+## Emenda 2026-11-03 — dispensa e reatribuição de tracker
+
+Uma issue de implementação aberta pode ser **explicitamente dispensada** de um
+tracker quando:
+
+1. for reatribuída a outra ADR, fase ou issue substituta;
+2. a justificativa, a milestone de destino e a evidência estiverem registradas no
+   tracker central e no corpo da issue;
+3. o dono da fase aprovar a dispensa.
+
+Dispensa não significa declarar a issue concluída. Significa que ela deixa de
+bloquear aquele tracker. A regra 3 do tracker central é atualizada para refletir
+esse mecanismo.
+
 ## Issues vinculadas
 
-#1, #21, #26, #30, #31, #44 e [controles de qualidade](../issues/0025-quality-controls.md).
+#1, #21, #26, #30, #31, #44, [#133](https://github.com/labLima/creator-backend/issues/133), [#134](https://github.com/labLima/creator-backend/issues/134), [#135](https://github.com/labLima/creator-backend/issues/135) e [controles de qualidade](../issues/0025-quality-controls.md).
 Consulte o [tracker central](../ADR-ISSUE-TRACKER.md).
