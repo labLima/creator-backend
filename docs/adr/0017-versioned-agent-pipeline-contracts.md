@@ -28,3 +28,11 @@ from free text. Reviewer refinements remain structured and attributable. Adding 
 edge or changing a schema requires a new contract version and migration as needed.
 Provider failures remain safe to retry and are distinguishable from invalid agent
 output or unauthorized Workspace execution.
+
+## Emenda 2026-11-03 — composição de versões
+
+- Prompt v2 = specialist spec 2.0.
+- Prompt v3 = agent design 3.0 + specialist spec 2.0.
+- `prompt_template_version` = 3.0 permanece a chave de auditoria do passo.
+- Design e spec não são persistidos separadamente nesta entrega; a composição é
+  verificada em runtime e por hashes golden de teste.

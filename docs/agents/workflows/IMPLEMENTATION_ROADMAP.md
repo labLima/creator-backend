@@ -1,0 +1,71 @@
+# Plano de implementação
+
+> **Proposta.** Este plano descreve uma arquitetura-alvo independente de stack. A stack atual é Python/FastAPI/SQLAlchemy/SQLite; nada aqui autoriza migração de stack e as etapas não devem ser executadas como escritas.
+
+## Etapa P0 — infraestrutura de contratos e MVP controlado
+
+1. Cadastrar agentes/subagentes como módulos versionados, não como prompts espalhados pelo backend.
+2. Criar validação por JSON Schema, `CreationRun` persistido, inventário de assets e provenance.
+3. Implementar AGT-01 completo com 4 perfis de subagentes (podem compor uma chamada).
+4. Implementar AGT-02 com `CreativeBlueprint` fiel ao documento original; explorar três territórios antes da escolha.
+5. Implementar AGT-03 com SUB-08 e adaptador de geração, sem reinterpretar conceito.
+6. Implementar AGT-04 com pontuação server-side, bloqueios e encaminhamento.
+7. Aplicar texto/logo como overlay quando exatidão for requisito.
+8. Testar ponta a ponta com ao menos 10 briefings de marcas e estilos distintos, anotados por avaliadores humanos.
+
+**Aceite do P0:** pedido completo → contexto rastreável → blueprint válido → primeira imagem → QA → aprovação ou ação justificada, sem loop infinito ou claims inventados.
+
+## Etapa P1 — precisão e eficiência
+
+- Histórico de peças aprovadas como referência de marca com versão, permissão e similaridade controladas.
+- QA visual com checagem de zonas seguras e texto esperado.
+- Cache de contextos por hash de marca/persona/campanha/referências.
+- Reuso de componentes aprovados e edições parciais.
+- Painel interno de custo por render, taxa de aprovação na primeira tentativa e motivos de falha.
+- Feedback humano categorizado e conectado à causa do pipeline.
+
+## Etapa P2 — evolução
+
+- Experimentos A/B de direção criativa e políticas de prompt.
+- Adaptação do blueprint para vídeo e formatos multicanal, sem mudar a lógica de governança.
+- Avaliação offline de originalidade, brand fit e persona fit por rubricas calibradas com humanos.
+- Recomendações automáticas de melhoria de brand profile/persona quando briefs geram resultados genéricos repetidos.
+
+## Backlog técnico sugerido
+
+### Backend
+
+| Responsabilidade proposta | Módulo atual | Status |
+|---|---|---|
+| IDs, versões, permissões e prompts dos agentes | `src/creator/services/agents/contracts.py`; `src/creator/prompts/*` (design v3, spec v2 e prompt v3) | Equivalente |
+| Máquina de estados, limites, handoffs e contexto | `src/creator/workflow/service.py` | Equivalente |
+| Execução assíncrona do workflow | `src/creator/workers/agent_workflow.py` | Equivalente |
+| Adaptador de geração de imagem | `src/creator/services/ai/image_provider.py`; `src/creator/integrations/` | Equivalente |
+| Validação de saída dos agentes | `src/creator/services/agents/contracts.py` (modelos Pydantic e registry) | Equivalente |
+| `CreativeBlueprint` e serviço de blueprint | — | Proposta; não implementado |
+| Score/decision server-side (rubrica ponderada) | — | Proposta; não implementado |
+| Compositor determinístico (texto/logo) | — | Proposta; não implementado |
+
+### Persistência
+
+- `creative_runs` — run_id, status, workspace, gastos, limite, timestamps.
+- `creative_artifacts` — artifact_type, version, schema, URI/hash, provenance.
+- `creative_run_steps` — agente, versão, input/output IDs, duração e resultados.
+- `creative_feedback` — nota humana, falhas e categoria de correção.
+- `creative_reference_roles` — assetId, função, regras de uso/não copiar.
+
+### Telemetria
+
+- `first_render_approval_rate`
+- `average_renders_per_approved_asset`
+- `cost_per_approved_asset`
+- `blueprint_revisit_rate`
+- `brand_violation_rate`
+- `human_override_rate`
+- `time_to_first_approved_asset`
+
+Estabelecer metas de KPI somente após baseline real; evitar metas arbitrárias que mascaram falhas de qualidade.
+
+
+---
+

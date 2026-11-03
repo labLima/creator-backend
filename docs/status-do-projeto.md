@@ -73,8 +73,8 @@ para a [#134](https://github.com/labLima/creator-backend/issues/134).
 - Brand Knowledge ainda não tem repositórios/casos de uso completos (#49).
 - Créditos têm schema e ledger, mas o lifecycle e os consumidores ainda precisam
   ser fechados (#54).
-- CrewAI real ainda não é importado; o adapter atual usa o runner determinístico
-  (#64).
+- O adapter CrewAI existe atrás de `CREWAI_ENABLED`; com a flag desligada ou CrewAI não
+  instalado, o fallback é o runner determinístico/unconfigured (#64).
 - Jobs COPY/CAPTION ainda não têm executores/filas (#79).
 - RAG, tool calling e ingestão por Workspace (#73–#77) não começaram.
 - Operação de produção (#23, #24, #31, #32) permanece na Fase 4.

@@ -159,7 +159,7 @@ def consume(
         result = contract.input_schema.model_validate(envelope.payload)
     except Exception as exc:
         raise PipelineContractError("Invalid or incomplete predecessor output") from exc
-    if output_schema is not contract.output_schema and successor not in {"WRITER", "ARTIST"}:
+    if output_schema is not contract.output_schema:
         raise PipelineContractError("Output schema is incompatible with edge")
     return result
 

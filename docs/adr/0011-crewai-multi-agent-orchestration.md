@@ -14,7 +14,9 @@ Adicionar `crewai` como dependência do backend e restringir o runtime do projet
 
 ## Consequências
 
-A implementação inicial escolhe um Flow controlado pelo Creator atrás do adapter, com execução estruturada determinística por especialista. O worker resolve o orquestrador pela factory.
+Cada etapa textual executa um `Agent.kickoff()` isolado atrás do adapter. O workflow orientado a eventos, sua máquina de estados e o sequenciamento pertencem ao Creator; não há um Flow CrewAI adicional. O worker resolve o orquestrador pela factory e o Provider continua atrás da interface Creator.
+
+O adapter desativa o tracing do CrewAI no processo para impedir armazenamento ou compartilhamento adicional de prompts e outputs de Workspace. O registro de auditoria autorizado continua sendo o do Creator.
 
 O projeto fica preparado para crews e flows sem espalhar imports de CrewAI pela aplicação. Ambientes Python 3.14 passam a falhar cedo na resolução do projeto, em vez de instalar uma dependência incompatível. A primeira implementação deve preservar isolamento de Workspace, tratar entradas e saídas de agentes como dados não confiáveis e manter provider integrations atrás de interfaces.
 

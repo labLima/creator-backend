@@ -1,12 +1,24 @@
+"""Rendered agent prompts.
+
+Version composition is explicit:
+
+- prompt v3 = agent design v3.0 (``AGENT_DESIGN_VERSION``) + specialist spec v2.0
+  (``SPECIALIST_SPEC_VERSION``);
+- prompt v2 = specialist spec v2.0 only.
+
+Prompt text must not change without bumping the corresponding version and updating the
+golden hashes in ``tests/test_specialist_specs.py``.
+"""
+
 from __future__ import annotations
 
 import json
 from collections.abc import Mapping
 
 from creator.domain.agent_workflow import AgentWorkflowStepRole
+from creator.prompts.agent_designs import AGENT_DESIGN_VERSION, AGENT_DESIGNS
 from creator.prompts.base import PromptBundle, RenderedPrompt, render_prompt
-from creator.services.agents.design_specs import AGENT_DESIGNS
-from creator.services.agents.specs import SPECIALIST_SPECS
+from creator.prompts.specialist_specs import SPECIALIST_SPEC_VERSION, SPECIALIST_SPECS
 
 AGENT_PROMPT_VERSION = "3.0"
 
@@ -29,6 +41,17 @@ def build_agent_prompt(
         specialist_role = AgentWorkflowStepRole(role.upper())
         design = AGENT_DESIGNS[specialist_role]
         spec = SPECIALIST_SPECS[specialist_role]
+        if design.design_version != selected_version:
+            raise ValueError(
+                f"Prompt v{selected_version} requires agent design v{AGENT_DESIGN_VERSION}; "
+                f"found design v{design.design_version} for role {specialist_role.value}"
+            )
+        if spec.spec_version != SPECIALIST_SPEC_VERSION:
+            raise ValueError(
+                f"Prompt v{selected_version} requires specialist spec "
+                f"v{SPECIALIST_SPEC_VERSION}; found spec v{spec.spec_version} for role "
+                f"{specialist_role.value}"
+            )
         system = (
             f"Role: {design.title}. Goal: {design.goal} Backstory: {design.backstory} "
             f"Task: {design.task} Expected output: {design.expected_output} {spec.instructions}"

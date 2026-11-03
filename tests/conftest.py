@@ -18,8 +18,9 @@ if sys.platform == "win32":
             self, readers, writers, exceptional, timeout=None
         ):
             if not readers and not writers and not exceptional:
-                if timeout:
-                    time.sleep(timeout)
+                # asyncio's executor shutdown can complete on another thread;
+                # without a self-pipe, periodically wake the loop to observe it.
+                time.sleep(min(timeout, 0.001) if timeout is not None else 0.001)
                 return [], [], []
             return super()._select(readers, writers, exceptional, timeout)
 

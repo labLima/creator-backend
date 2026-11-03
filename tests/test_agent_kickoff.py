@@ -10,7 +10,9 @@ from creator.services.agents.contracts import (
     AgentExecutionContext,
     BusinessOutput,
     KickoffRequest,
+    PlannerOutput,
     WorkspaceAuthorizationContext,
+    WriterOutput,
 )
 from creator.services.agents.crewai_adapter import CrewAIMultiAgentOrchestrator
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
@@ -70,8 +72,55 @@ def test_kickoff_returns_typed_output_and_audit_metadata() -> None:
     assert len(result.input_hash) == 64
     assert len(result.output_hash) == 64
     assert result.metadata["prompt_input_hash"] == result.input_hash
-    assert result.metadata["runtime"] == "provider-direct"
-    assert '"goal": "Summarize the brand"' in result.prompt
+    assert result.metadata["runtime"] == "crewai"
+    assert result.prompt == provider.calls[0]
+    assert "Summarize the brand" in result.prompt
+
+
+@pytest.mark.parametrize(
+    ("role", "output", "model"),
+    [
+        (AgentWorkflowStepRole.BUSINESS, VALID_BUSINESS, BusinessOutput),
+        (
+            AgentWorkflowStepRole.PLANNER,
+            '{"posts":[{"theme":"Launch","objective":"Inform",'
+            '"big_idea":"Bright","main_message":"Hello"}]}',
+            PlannerOutput,
+        ),
+        (
+            AgentWorkflowStepRole.WRITER,
+            '{"caption":"Hello","direction":{"briefing":"Bright",'
+            '"copy":"Hello","visual_prompt":"Bright"}}',
+            WriterOutput,
+        ),
+    ],
+)
+def test_real_crewai_agents_execute_specialist_contracts(role, output, model, monkeypatch) -> None:
+    from creator.prompts.agent_designs import AGENT_DESIGNS
+    from creator.services.agents import crewai_adapter
+
+    agent_class = crewai_adapter.Agent
+    agents = []
+
+    def create_agent(**kwargs):
+        agent = agent_class(**kwargs)
+        agents.append(agent)
+        return agent
+
+    monkeypatch.setattr(crewai_adapter, "Agent", create_agent)
+    provider = FakeProvider(output)
+    result = CrewAIMultiAgentOrchestrator(provider).kickoff(request(role=role))
+
+    assert isinstance(result.output, model)
+    assert len(agents) == 1
+    assert agents[0].allow_delegation is False
+    assert agents[0].tools == []
+    assert agents[0].respect_context_window is False
+    assert len(provider.calls) == 1
+    assert AGENT_DESIGNS[role].title in provider.calls[0]
+    assert AGENT_DESIGNS[role].goal in provider.calls[0]
+    assert AGENT_DESIGNS[role].backstory in provider.calls[0]
+    assert result.prompt == provider.calls[0]
 
 
 @pytest.mark.parametrize(
@@ -96,6 +145,13 @@ def test_kickoff_rejects_untrusted_provider_output(
     assert raised.value.code == code
 
 
+def test_provider_json_containing_crewai_marker_is_not_truncated() -> None:
+    provider = FakeProvider(VALID_BUSINESS.replace('"Brand"', '"Final Answer: Brand"'))
+    result = CrewAIMultiAgentOrchestrator(provider).kickoff(request())
+    assert isinstance(result.output, BusinessOutput)
+    assert result.output.brand_summary == "Final Answer: Brand"
+
+
 def test_kickoff_maps_provider_failures_to_bounded_error() -> None:
     class FailingProvider(FakeProvider):
         def generate_text(self, prompt: str, temperature: float = 0.7) -> str:
@@ -113,6 +169,27 @@ def test_kickoff_maps_unconfigured_provider_to_bounded_error() -> None:
         CrewAIMultiAgentOrchestrator(UnconfiguredLLMProvider()).kickoff(request())
 
     assert raised.value.code == AgentKickoffErrorCode.PROVIDER_UNAVAILABLE
+
+
+def test_kickoff_maps_crewai_system_exit_to_input_error(monkeypatch) -> None:
+    from creator.services.agents import crewai_adapter
+
+    class ContextWindowAgent:
+        def __init__(self, **kwargs) -> None:
+            pass
+
+        def kickoff(self, prompt: str) -> None:
+            raise SystemExit(1)
+
+    monkeypatch.setattr(crewai_adapter, "Agent", ContextWindowAgent)
+    provider = FakeProvider(VALID_BUSINESS)
+
+    with pytest.raises(AgentKickoffError) as raised:
+        CrewAIMultiAgentOrchestrator(provider).kickoff(request())
+
+    assert raised.value.code == AgentKickoffErrorCode.INPUT_INVALID
+    assert str(raised.value) == "Agent prompt exceeds the provider context window"
+    assert provider.calls == []
 
 
 def test_kickoff_rejects_unauthorized_workspace_before_provider_call() -> None:
