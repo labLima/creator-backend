@@ -70,8 +70,9 @@ Execução local em 2026-11-03, branch `dev` (`cdb3696` + este incremento):
 - Teste de regressão do asset: falha antes da correção com
   `TypeError: Object of type JSONResponse is not JSON serializable` e passa
   depois.
-- CI remoto: ainda não executado para este incremento local; a `dev` de origem
-  já tinha o CI verde do PR #129.
+- CI remoto do commit `c9b0b89`: lint/type 3.12 e 3.13, security, E2E,
+  containers e OpenAPI/Docker build verdes; job de deploy Cloud Run `skipped`
+  por não ser release.
 
 ## Rastreabilidade
 
