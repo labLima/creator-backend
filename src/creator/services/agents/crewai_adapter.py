@@ -93,7 +93,7 @@ class CrewAIMultiAgentOrchestrator:
             model=result.model,
             metadata={
                 **result.metadata,
-                "runtime": "crewai-adapter",
-                "execution": "deterministic",
+                "runtime": "provider-direct",
+                "execution": "structured-single-call",
             },
         )

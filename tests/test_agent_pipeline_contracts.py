@@ -96,3 +96,32 @@ def test_reviewer_feedback_preserves_precedence_and_origin() -> None:
     assert feedback["feedback"] == ["More contrast"]
     assert feedback["precedence"] == "REVIEWER"
     assert feedback["review_hash"] == envelope.provenance.source_hash
+
+
+@pytest.mark.parametrize("field", ["schema_name", "source_step", "source_hash", "payload"])
+def test_handoff_rejects_tampered_provenance_and_payload(field: str) -> None:
+    workspace = uuid4()
+    envelope = emit(
+        role="BUSINESS",
+        output=_business(),
+        workspace_id=workspace,
+        brand_id=uuid4(),
+        correlation_id=uuid4(),
+        context_digest=context_hash({}),
+    )
+    if field == "schema_name":
+        envelope.schema_name = "PlannerOutput"
+    elif field == "source_step":
+        envelope.provenance.source_step = "WRITER"
+    elif field == "source_hash":
+        envelope.provenance.source_hash = "0" * 64
+    else:
+        envelope.payload["voice"] = "tampered"
+    with pytest.raises(PipelineContractError):
+        consume(
+            envelope,
+            predecessor="BUSINESS",
+            successor="PLANNER",
+            workspace_id=workspace,
+            output_schema=PlannerOutput,
+        )

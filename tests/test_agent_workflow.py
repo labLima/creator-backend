@@ -580,7 +580,18 @@ def test_worker_stage_checkpoints_resume_from_persisted_outputs(
     ]
 
 
-def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    ("decision", "safety_issues", "expected_rejection"),
+    [
+        ("APPROVED", [], None),
+        ("APPROVED", ["unsafe"], "REVIEW_SAFETY_REJECTED"),
+        ("REJECTED", [], "REVIEW_QUALITY_REJECTED"),
+        ("REFINE", [], "REVIEW_REFINEMENT_LIMIT"),
+    ],
+)
+def test_reviewer_stage_consumes_persisted_artist_reference(
+    monkeypatch, decision, safety_issues, expected_rejection
+) -> None:
     run_id = uuid4()
     image_id = uuid4()
     artist_step = SimpleNamespace(
@@ -642,7 +653,7 @@ def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None
         def commit(self):
             return None
 
-    review = SimpleNamespace(decision="APPROVED", score=1, feedback=[], safety_issues=[])
+    review = SimpleNamespace(decision=decision, score=1, feedback=[], safety_issues=safety_issues)
     persisted: list[object] = []
     monkeypatch.setattr(workflow_worker, "SqlAlchemyUnitOfWork", FakeUow)
     monkeypatch.setattr(
@@ -683,12 +694,21 @@ def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None
     monkeypatch.setattr(workflow_worker, "_persist_review_step", persist_review)
 
     workflow_worker._run_reviewer_stage(
-        SimpleNamespace(id=run_id, workspace_id=WORKSPACE_ID, refinement_count=0),
+        SimpleNamespace(
+            id=run_id, workspace_id=WORKSPACE_ID, refinement_count=0, max_refinements=0
+        ),
         SimpleNamespace(id=USER_ID),
         BusinessOutput(brand_summary="brand", voice="voice", visual_direction="visual"),
         SimpleNamespace(),
     )
 
+    if expected_rejection:
+        assert len(persisted) == 1
+        assert persisted[0]["terminal_image_ids"] is None
+        assert persisted[0]["terminal_rejection"][0] == expected_rejection
+        assert persisted[0]["emit_event"] is False
+        assert not transitions
+        return
     assert persisted == [
         {
             "predecessor_step_id": artist_step.id,
@@ -699,3 +719,60 @@ def test_reviewer_stage_consumes_persisted_artist_reference(monkeypatch) -> None
         }
     ]
     assert transitions[0][0] == AgentWorkflowStatus.COMPLETED
+
+
+def test_reviewer_rejection_and_event_consumption_share_a_commit(monkeypatch) -> None:
+    run = SimpleNamespace(id=uuid4(), workspace_id=WORKSPACE_ID, refinement_count=0)
+    event_id = uuid4()
+    calls: list[str] = []
+    step = SimpleNamespace(id=uuid4(), predecessor_step_id=None, output={})
+
+    class FakeUow:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        class Workflows:
+            def list_steps_internal(self, _run_id):
+                return [step]
+
+            def add_step(self, **kwargs):
+                calls.append("add_step")
+                return step
+
+            def complete_step(self, *args, **kwargs):
+                calls.append("complete_step")
+
+            def transition(self, _run_id, status, **kwargs):
+                assert status == AgentWorkflowStatus.REJECTED
+                assert kwargs["failure_code"] == "REVIEW_SAFETY_REJECTED"
+                calls.append("reject")
+
+        class Outbox:
+            def mark_consumed(self, value):
+                assert value == event_id
+                calls.append("consume")
+
+        agent_workflows = Workflows()
+        outbox = Outbox()
+
+        def commit(self):
+            calls.append("commit")
+
+    monkeypatch.setattr(workflow_worker, "SqlAlchemyUnitOfWork", FakeUow)
+    writer = WriterOutput(
+        caption="caption",
+        direction={"briefing": "brief", "copy": "copy", "visual_prompt": "visual"},
+    )
+    workflow_worker._persist_review_step(
+        run,
+        1,
+        writer,
+        {"decision": "APPROVED", "safety_issues": ["unsafe"]},
+        source_event_id=event_id,
+        emit_event=False,
+        terminal_rejection=("REVIEW_SAFETY_REJECTED", "Image failed safety review"),
+    )
+    assert calls == ["add_step", "complete_step", "reject", "consume", "commit"]
