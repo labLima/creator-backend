@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from creator.config import Settings
 from creator.domain.agent_workflow import AgentWorkflowStepRole
 from creator.integrations.gemini.image_reviewer import GeminiMultimodalImageReviewer
+from creator.services.agents.design_specs import AGENT_DESIGNS
 from creator.services.agents.specs import SPECIALIST_SPECS
 from creator.services.ai.reviewer import ImageReviewRequest
 
@@ -29,6 +30,7 @@ def test_review_uses_creative_critic_instructions_with_existing_contract() -> No
     )
     prompt = calls[0]["contents"][0]
     assert SPECIALIST_SPECS[AgentWorkflowStepRole.REVIEWER].instructions in prompt
+    assert AGENT_DESIGNS[AgentWorkflowStepRole.REVIEWER].task in prompt
     assert "untrusted data" in prompt
     assert result.decision == "REFINE"
     assert result.feedback == ("Fix crop",)

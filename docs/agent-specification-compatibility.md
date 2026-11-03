@@ -15,6 +15,16 @@ Prompt version 2 adapts the source's responsibilities to the existing workflow:
 | Artist | AGT-03 and the existing image provider |
 | Reviewer | AGT-04 and SUB-09–11 |
 
+Prompt version 3 adds a specific role, outcome, backstory, task and expected output
+for each current specialist, following the `design-agent` guidance. The eleven
+specialties have corresponding design records, but remain logical responsibilities
+within the existing stages rather than independent calls. Version 2 remains available
+to reproduce earlier text prompts. The version 3 text runner still calls the configured
+Creator LLM Provider directly; it does not instantiate a CrewAI Agent. Artist and
+Reviewer continue to use their existing image and multimodal Provider boundaries.
+RAG is retrieved by Creator under the authorized Workspace and passed as context;
+the design does not enable CrewAI memory, delegation or knowledge stores.
+
 The existing output schemas, event protocol, review decisions and persistence are unchanged.
 In particular, the proposed CreativeBlueprint, structured source evidence, deterministic
 weighted QA, exact-text compositor, four-agent execution and eleven independent subagents

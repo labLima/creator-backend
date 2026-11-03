@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/issues/0034-specialist-agent-contracts.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/issues/0034-specialist-agent-contracts.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/integrations/gemini/image_reviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/integrations/gemini/image_reviewer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/prompts/agents.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/prompts/agents.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/pipeline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agent_kickoff.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_kickoff.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agent_pipeline_contracts.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_pipeline_contracts.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_workflow.py" afterDir="false" />
-    </list>
+    <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -114,24 +103,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Kelve/PycharmProjects/creator-backend-python&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "feat/agent-specs",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/Kelve/PycharmProjects/creator-backend-python",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\Kelve\PycharmProjects\creator-backend-python\src\creator" />

@@ -5,9 +5,10 @@ from collections.abc import Mapping
 
 from creator.domain.agent_workflow import AgentWorkflowStepRole
 from creator.prompts.base import PromptBundle, RenderedPrompt, render_prompt
+from creator.services.agents.design_specs import AGENT_DESIGNS
 from creator.services.agents.specs import SPECIALIST_SPECS
 
-AGENT_PROMPT_VERSION = "2.0"
+AGENT_PROMPT_VERSION = "3.0"
 
 
 def build_agent_prompt(
@@ -24,6 +25,14 @@ def build_agent_prompt(
     elif selected_version == "2.0":
         spec = SPECIALIST_SPECS[AgentWorkflowStepRole(role.upper())]
         system = f"You are the Creator {role} specialist. Goal: {spec.goal} {spec.instructions}"
+    elif selected_version == "3.0":
+        specialist_role = AgentWorkflowStepRole(role.upper())
+        design = AGENT_DESIGNS[specialist_role]
+        spec = SPECIALIST_SPECS[specialist_role]
+        system = (
+            f"Role: {design.title}. Goal: {design.goal} Backstory: {design.backstory} "
+            f"Task: {design.task} Expected output: {design.expected_output} {spec.instructions}"
+        )
     else:
         raise ValueError("Unsupported agent prompt version")
     bundle = PromptBundle(

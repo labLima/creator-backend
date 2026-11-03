@@ -95,8 +95,8 @@ class AgentContract:
 AGENT_CONTRACTS: dict[AgentWorkflowStepRole, AgentContract] = {
     role: AgentContract(
         role=role,
-        prompt_template_id=f"agent.{role.value.lower()}.v2",
-        prompt_template_version="2.0",
+        prompt_template_id=f"agent.{role.value.lower()}.v3",
+        prompt_template_version="3.0",
         schema_version="1.0",
         output_model=output_model,
     )
