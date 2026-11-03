@@ -31,6 +31,7 @@ from creator.services.agents.contracts import (
     PlannerOutput,
     WorkspaceAuthorizationContext,
     WriterOutput,
+    contract_for_role,
 )
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
 from creator.services.agents.factory import create_multi_agent_orchestrator
@@ -521,10 +522,25 @@ def _run_reviewer_stage(
                 brand_context=business.model_dump(mode="json"),
             )
         )
-        is_terminal_approval = index == len(artist_steps) and review.decision == "APPROVED"
+        if review.decision not in {"APPROVED", "REFINE", "REJECTED"} or not (
+            0 <= review.score <= 1
+        ):
+            raise RuntimeError("REVIEW_INVALID_DECISION")
+        is_terminal_approval = (
+            index == len(artist_steps)
+            and review.decision == "APPROVED"
+            and not review.safety_issues
+        )
         terminal_image_ids = (
             [*final_image_ids, str(image_record.id)] if is_terminal_approval else None
         )
+        rejection = None
+        if review.safety_issues:
+            rejection = ("REVIEW_SAFETY_REJECTED", "Image failed safety review")
+        elif review.decision == "REJECTED":
+            rejection = ("REVIEW_QUALITY_REJECTED", "Image failed quality review")
+        elif review.decision == "REFINE" and run.refinement_count >= run.max_refinements:
+            rejection = ("REVIEW_REFINEMENT_LIMIT", "Review refinement limit reached")
         _persist_review_step(
             run,
             index,
@@ -535,11 +551,10 @@ def _run_reviewer_stage(
             emit_event=is_terminal_approval,
             event_item_count=len(artist_steps),
             terminal_image_ids=terminal_image_ids,
+            **({"terminal_rejection": rejection} if rejection else {}),
         )
-        if review.safety_issues:
-            raise RuntimeError("REVIEW_SAFETY_REJECTED")
-        if review.decision == "REJECTED":
-            raise RuntimeError("REVIEW_QUALITY_REJECTED")
+        if rejection:
+            return
         if review.decision == "REFINE":
             _request_writer_refinement(run, review, source_event_id=source_event_id or run.id)
             return
@@ -762,9 +777,9 @@ def _execute_agent_step[OutputModel: BaseModel](
                 ),
                 role=role,
                 inputs=inputs,
-                prompt_template_id=f"agent.{role.value.lower()}.v1",
-                prompt_template_version="1.0",
-                schema_version="1.0",
+                prompt_template_id=contract_for_role(role).prompt_template_id,
+                prompt_template_version=contract_for_role(role).prompt_template_version,
+                schema_version=contract_for_role(role).schema_version,
             )
         )
     except AgentKickoffError as error:
@@ -1109,6 +1124,7 @@ def _persist_review_step(
     emit_event: bool = True,
     event_item_count: int = 1,
     terminal_image_ids: list[str] | None = None,
+    terminal_rejection: tuple[str, str] | None = None,
 ) -> None:
     output = (
         review
@@ -1166,6 +1182,16 @@ def _persist_review_step(
                 current_step=current_step,
                 final_image_ids=terminal_image_ids,
             )
+        if terminal_rejection is not None:
+            unit_of_work.agent_workflows.transition(
+                run.id,
+                AgentWorkflowStatus.REJECTED,
+                current_step="REVIEWER",
+                failure_code=terminal_rejection[0],
+                failure_message=terminal_rejection[1],
+            )
+            if source_event_id is not None and outbox is not None:
+                outbox.mark_consumed(source_event_id)
         unit_of_work.commit()
 
 

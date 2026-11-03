@@ -8,6 +8,12 @@
 
 Implementar schemas e prompts versionados para Business, Planner, Writer, Artist e Reviewer, com outputs JSON validados, hash dos inputs e contexto de Brand/BrandSettings/RAG escopado por Workspace.
 
+O documento [Creator Specs Agentes v1](../Creator_Specs_Agentes_v1.md) propõe quatro
+agentes e onze especialidades. A adaptação dos prompts aos contratos atuais e seus limites
+estão descritos em [agent-specification-compatibility](../agent-specification-compatibility.md).
+Os contratos de `CreativeBlueprint`, QA ponderado e composição determinística ainda não
+foram implementados; não considerar os critérios abaixo como aceite dessas capacidades.
+
 ## Acceptance criteria
 
 - [x] Nenhum raciocínio interno é persistido ou exposto.

@@ -65,8 +65,8 @@ def test_kickoff_returns_typed_output_and_audit_metadata() -> None:
     assert isinstance(result.output, BusinessOutput)
     assert result.provider == "fake"
     assert result.model == "fake-model"
-    assert result.prompt_template_id == "agent.business.v1"
-    assert result.prompt_template_version == "1.0"
+    assert result.prompt_template_id == "agent.business.v2"
+    assert result.prompt_template_version == "2.0"
     assert len(result.input_hash) == 64
     assert len(result.output_hash) == 64
     assert result.metadata["prompt_input_hash"] == result.input_hash
@@ -140,8 +140,8 @@ def test_execute_rejects_mismatched_workspace_authorization() -> None:
                 ),
                 role=AgentWorkflowStepRole.BUSINESS,
                 inputs={"goal": "Goal"},
-                prompt_template_id="agent.business.v1",
-                prompt_template_version="1.0",
+                prompt_template_id="agent.business.v2",
+                prompt_template_version="2.0",
                 schema_version="1.0",
             )
         )

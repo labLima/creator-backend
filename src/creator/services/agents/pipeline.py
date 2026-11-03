@@ -149,6 +149,12 @@ def consume(
         raise PipelineContractError("Workspace mismatch")
     if envelope.schema_version != contract.version:
         raise PipelineContractError("Schema version mismatch")
+    if envelope.schema_name != contract.input_schema.__name__:
+        raise PipelineContractError("Schema name mismatch")
+    if envelope.provenance.source_step != predecessor:
+        raise PipelineContractError("Predecessor mismatch")
+    if envelope.provenance.source_hash != envelope.payload_hash:
+        raise PipelineContractError("Predecessor output hash mismatch")
     try:
         result = contract.input_schema.model_validate(envelope.payload)
     except Exception as exc:

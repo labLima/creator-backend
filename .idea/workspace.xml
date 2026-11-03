@@ -6,8 +6,15 @@
   <component name="ChangeListManager">
     <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/spa-cookie-auth-migration.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/spa-cookie-auth-migration.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/e2e/test_browser_cookie_auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_browser_cookie_auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/issues/0034-specialist-agent-contracts.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/issues/0034-specialist-agent-contracts.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/integrations/gemini/image_reviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/integrations/gemini/image_reviewer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/prompts/agents.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/prompts/agents.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_agent_kickoff.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_kickoff.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_agent_pipeline_contracts.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_pipeline_contracts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_workflow.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
