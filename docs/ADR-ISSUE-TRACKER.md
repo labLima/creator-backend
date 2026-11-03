@@ -58,6 +58,12 @@ comportamento com o legado é a [0050](issues/0050-legacy-behavior-parity.md)
 `operationId`/error responses é a [0051](issues/0051-openapi-operation-id-parity.md)
 ([#135](https://github.com/labLima/creator-backend/issues/135)).
 
+## Fase 1 encerrada
+
+A milestone `02 · Fase 1 — Fundação e Plataforma` foi encerrada em 2026-11-03
+no merge `1530067` do PR [#136](https://github.com/labLima/creator-backend/pull/136),
+com 0 issues abertas. Evidências: [fase-1-encerramento](milestones/fase-1-encerramento.md).
+
 ## Dispensas explícitas da Fase 1
 
 | Issue | Tipo | Tracker / ADR | Destino | Milestone destino | Justificativa | Evidência | Aprovado por/data |
