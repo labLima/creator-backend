@@ -34,10 +34,19 @@ _dotenv_setting = os.environ.get("PYTHON_DOTENV_DISABLED")
 os.environ["PYTHON_DOTENV_DISABLED"] = "true"
 try:
     from crewai import Agent, BaseLLM
-    from crewai.events.utils.console_formatter import (
-        set_suppress_console_output,
-        should_suppress_console_output,
-    )
+
+    try:
+        from crewai.events.utils.console_formatter import (
+            set_suppress_console_output,
+            should_suppress_console_output,
+        )
+    except ImportError:
+
+        def should_suppress_console_output() -> bool:
+            return False
+
+        def set_suppress_console_output(suppress: bool) -> object:
+            return None
 finally:
     if _dotenv_setting is None:
         os.environ.pop("PYTHON_DOTENV_DISABLED", None)
@@ -152,14 +161,22 @@ class CrewAIMultiAgentOrchestrator:
                 allow_delegation=False,
                 verbose=False,
                 max_retry_limit=0,
+                respect_context_window=False,
             )
             previous_suppression = should_suppress_console_output()
             set_suppress_console_output(True)
             try:
                 agent.kickoff(rendered.text)
+            except SystemExit as error:
+                raise AgentKickoffError(
+                    AgentKickoffErrorCode.INPUT_INVALID,
+                    "Agent prompt exceeds the provider context window",
+                ) from error
             finally:
                 set_suppress_console_output(previous_suppression)
             raw = llm._response
+        except AgentKickoffError:
+            raise
         except Exception as error:
             if isinstance(llm._error, ProviderNotConfiguredError):
                 raise AgentKickoffError(

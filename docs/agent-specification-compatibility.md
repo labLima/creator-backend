@@ -19,13 +19,17 @@ The adopted runtime model is the five roles and delivery lifecycle in ADR-014/01
 
 Prompt version 3 adds a specific role, outcome, backstory, task and expected output
 for each current specialist, following the `design-agent` guidance. The eleven
-specialties have corresponding design records, but remain logical responsibilities
-within the existing stages rather than independent calls. Version 2 remains available
+specialties are documented responsibilities in [docs/agents/subagents](agents/subagents/);
+`SPECIALIST_SPECS.instructions` consolidates them, and there are no separate runtime
+constants or independent calls. Version 2 remains available
 to reproduce earlier text prompts. The version 3 adapter executes Business, Planner and
 Writer with individual CrewAI Agents through the configured Creator LLM Provider. Artist and
 Reviewer continue to use their existing image and multimodal Provider boundaries.
-RAG is retrieved by Creator under the authorized Workspace and passed as context;
-the design does not enable CrewAI memory, delegation or knowledge stores.
+RAG remains a boundary rather than an active capability: Creator owns the Workspace-scoped
+retrieval interface, but the retrieval factory currently returns an unconfigured provider,
+so the knowledge base is empty until retrieval is configured. `knowledge_sources` is
+model-reported, not verified provenance. The design does not enable CrewAI memory,
+delegation or knowledge stores, and this delivery does not claim real retrieval.
 
 The v3 prompt changes do not introduce a CreativeBlueprint, structured source evidence,
 weighted QA, exact-text compositor, four-agent execution or eleven independent subagents.
@@ -39,3 +43,9 @@ part of the current behavior, not a claim of unchanged review decisions.
 No persisted schema was changed for the prompt v3 work. Artist and Reviewer remain provider
 boundaries outside `AGENT_CONTRACTS`; `ArtistOutput` is not a Pydantic model. The detailed
 proposal and current contracts are indexed in [docs/agents](agents/README.md).
+
+Version composition is explicit: prompt v2 = specialist spec 2.0; prompt v3 = agent design 3.0
++ specialist spec 2.0. The rendered prompt text is pinned by golden sha256 hashes in
+`tests/test_specialist_specs.py`, so any text change requires a version bump. The workflow-step
+audit key remains `prompt_template_version` = 3.0; design and spec versions are not persisted
+separately in this delivery.

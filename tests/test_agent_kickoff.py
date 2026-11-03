@@ -115,6 +115,7 @@ def test_real_crewai_agents_execute_specialist_contracts(role, output, model, mo
     assert len(agents) == 1
     assert agents[0].allow_delegation is False
     assert agents[0].tools == []
+    assert agents[0].respect_context_window is False
     assert len(provider.calls) == 1
     assert AGENT_DESIGNS[role].title in provider.calls[0]
     assert AGENT_DESIGNS[role].goal in provider.calls[0]
@@ -168,6 +169,27 @@ def test_kickoff_maps_unconfigured_provider_to_bounded_error() -> None:
         CrewAIMultiAgentOrchestrator(UnconfiguredLLMProvider()).kickoff(request())
 
     assert raised.value.code == AgentKickoffErrorCode.PROVIDER_UNAVAILABLE
+
+
+def test_kickoff_maps_crewai_system_exit_to_input_error(monkeypatch) -> None:
+    from creator.services.agents import crewai_adapter
+
+    class ContextWindowAgent:
+        def __init__(self, **kwargs) -> None:
+            pass
+
+        def kickoff(self, prompt: str) -> None:
+            raise SystemExit(1)
+
+    monkeypatch.setattr(crewai_adapter, "Agent", ContextWindowAgent)
+    provider = FakeProvider(VALID_BUSINESS)
+
+    with pytest.raises(AgentKickoffError) as raised:
+        CrewAIMultiAgentOrchestrator(provider).kickoff(request())
+
+    assert raised.value.code == AgentKickoffErrorCode.INPUT_INVALID
+    assert str(raised.value) == "Agent prompt exceeds the provider context window"
+    assert provider.calls == []
 
 
 def test_kickoff_rejects_unauthorized_workspace_before_provider_call() -> None:

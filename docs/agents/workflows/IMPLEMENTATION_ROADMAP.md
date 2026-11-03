@@ -1,5 +1,7 @@
 # Plano de implementação
 
+> **Proposta.** Este plano descreve uma arquitetura-alvo independente de stack. A stack atual é Python/FastAPI/SQLAlchemy/SQLite; nada aqui autoriza migração de stack e as etapas não devem ser executadas como escritas.
+
 ## Etapa P0 — infraestrutura de contratos e MVP controlado
 
 1. Cadastrar agentes/subagentes como módulos versionados, não como prompts espalhados pelo backend.
@@ -33,11 +35,16 @@
 
 ### Backend
 
-- `agents.registry.ts`: IDs, versões, permissões e prompts.
-- `orchestrator.service.ts`: máquina de estados, limites e handoffs.
-- `context.service.ts`, `blueprint.service.ts`, `production.service.ts`, `qa.service.ts`.
-- `imageProvider.adapter.ts`, `composition.service.ts`, `scoreCalculator.ts`.
-- `creativeSchemas.ts` ou schemas JSON compilados, com validação de saída.
+| Responsabilidade proposta | Módulo atual | Status |
+|---|---|---|
+| IDs, versões, permissões e prompts dos agentes | `src/creator/services/agents/contracts.py`; `src/creator/prompts/*` (design v3, spec v2 e prompt v3) | Equivalente |
+| Máquina de estados, limites, handoffs e contexto | `src/creator/workflow/service.py` | Equivalente |
+| Execução assíncrona do workflow | `src/creator/workers/agent_workflow.py` | Equivalente |
+| Adaptador de geração de imagem | `src/creator/services/ai/image_provider.py`; `src/creator/integrations/` | Equivalente |
+| Validação de saída dos agentes | `src/creator/services/agents/contracts.py` (modelos Pydantic e registry) | Equivalente |
+| `CreativeBlueprint` e serviço de blueprint | — | Proposta; não implementado |
+| Score/decision server-side (rubrica ponderada) | — | Proposta; não implementado |
+| Compositor determinístico (texto/logo) | — | Proposta; não implementado |
 
 ### Persistência
 

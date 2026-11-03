@@ -4,7 +4,6 @@ from creator.services.agents.contracts import (
     AgentExecutionResult,
     KickoffRequest,
 )
-from creator.services.agents.crewai_adapter import CrewAIMultiAgentOrchestrator
 from creator.services.agents.orchestrator import MultiAgentOrchestrator
 from creator.services.ai.factory import create_llm_provider
 
@@ -23,5 +22,9 @@ class UnconfiguredMultiAgentOrchestrator:
 
 def create_multi_agent_orchestrator(settings: Settings) -> MultiAgentOrchestrator:
     if settings.crewai_enabled:
+        # Imported lazily so the API and worker start without CrewAI when the
+        # feature is disabled and the optional dependency is not installed.
+        from creator.services.agents.crewai_adapter import CrewAIMultiAgentOrchestrator
+
         return CrewAIMultiAgentOrchestrator(create_llm_provider(settings))
     return UnconfiguredMultiAgentOrchestrator()

@@ -1,5 +1,7 @@
 # AGT-03 — Produção Visual
 
+> **Status:** proposta conceitual; não é o contrato ativo. Ver [docs/agents/README](../README.md) e o [mapa de domínio](../DOMAIN-MAPPING.md).
+
 **Papel:** Visual Production Agent  
 **Entrada:** `CreativeBlueprint + brand assets + product assets + target format`  
 **Saída:** `VisualPromptPackage + ImageAsset`  

@@ -1,5 +1,7 @@
 # AGT-01 — Inteligência Estratégica
 
+> **Status:** proposta conceitual; não é o contrato ativo. Ver [docs/agents/README](../README.md) e o [mapa de domínio](../DOMAIN-MAPPING.md).
+
 **Papel:** Strategic Context Agent  
 **Entrada:** `CreationRequest + BrandProfile + CampaignBrief + PersonaProfile + ReferenceAssets + ProductFacts`  
 **Saída:** `StrategicContext`  

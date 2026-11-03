@@ -47,7 +47,7 @@ Bloqueios são regras do produto a validar e aprovar em política; nem todos pre
 
 ## Pontuação operacional
 
-O AGT-04 propõe notas individuais, com evidências; **o backend calcula `score` e `decision`**. Se o parecer não trouxer evidência suficientemente concreta para um bloqueio, ele vai para revisão humana ou para uma checagem específica, jamais aprovação silenciosa.
+O AGT-04 propõe notas individuais, com evidências. No desenho proposto, o backend calcularia `score` e `decision`; no runtime atual o Provider devolve `ReviewOutput` (score 0–1, `APPROVED`/`REFINE`/`REJECTED`) e o Creator valida e roteia. Se o parecer não trouxer evidência suficientemente concreta para um bloqueio, ele vai para revisão humana ou para uma checagem específica, jamais aprovação silenciosa.
 
 
 ---

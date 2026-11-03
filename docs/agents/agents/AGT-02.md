@@ -1,5 +1,7 @@
 # AGT-02 — Diretor Criativo
 
+> **Status:** proposta conceitual; não é o contrato ativo. Ver [docs/agents/README](../README.md) e o [mapa de domínio](../DOMAIN-MAPPING.md).
+
 **Papel:** Senior Creative Director  
 **Entrada:** `StrategicContext validado`  
 **Saída:** `CreativeBlueprint`  

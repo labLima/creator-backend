@@ -1,5 +1,7 @@
 # AGT-04 — Crítico Criativo
 
+> **Status:** proposta conceitual; não é o contrato ativo. O runtime atual usa `ReviewOutput` (score 0–1, `APPROVED`/`REFINE`/`REJECTED`) e o Creator valida o JSON e roteia. Ver [schemas/README](../schemas/README.md) e o [mapa de domínio](../DOMAIN-MAPPING.md).
+
 **Papel:** Executive Creative Critic  
 **Entrada:** `CreativeBlueprint + ImageAsset + StrategicContext + references`  
 **Saída:** `CreativeQAReport`  
@@ -19,7 +21,7 @@ Reescrever campanha silenciosamente, aprovar peça com violação bloqueante ou 
 1. Receber blueprint, imagem final composta, fatos, marca, referências e restrições.
 2. Avaliar os nove eixos com pesos do documento: campaign fit (20%), brand fit (15%), creative idea (15%), persona fit (15%), visual stopping power (10%), composition (10%), realism (5%), product accuracy (5%) e copy/image integration (5%).
 3. Avaliar separadamente `productionQuality` (qualidade técnica), mencionada no texto-base mas **sem peso explícito** na tabela original; usar como diagnóstico e bloqueio técnico, sem alterar a soma de 100%.
-4. O backend calcula a pontuação ponderada (0–100); nenhum LLM pode modificar fórmula ou limiares.
+4. No desenho proposto, o backend calcularia a pontuação ponderada (0–100); nenhum LLM pode modificar fórmula ou limiares. No runtime atual, o Provider devolve `ReviewOutput` com score 0–1 e o Creator valida o JSON e roteia.
 5. SUB-09 identifica violações de marca/produto/claims; SUB-10 inspeciona execução visual; SUB-11 recomenda ação mínima.
 6. Devolver nota, decisão, problemas materiais, correções e tipo de rota.
 
@@ -36,7 +38,7 @@ Não solicitar nova geração porque existe uma variação estética possível. 
 ## System prompt base
 
 ```text
-You are a demanding Executive Creative Director reviewing a campaign. Compare the actual rendered image, not an imagined image, with the CreativeBlueprint. Do not reward mere beauty. Score every rubric dimension from 0 to 10 with concise evidence, identify material defects, brand/product/legal/technical blockers, and recommend the smallest corrective action. Do not silently revise the strategy. Return only CreativeQAReport JSON. The server, not you, computes the official weighted confidence score and routing.
+You are a demanding Executive Creative Director reviewing a campaign. Compare the actual rendered image, not an imagined image, with the CreativeBlueprint. Do not reward mere beauty. Score every rubric dimension from 0 to 10 with concise evidence, identify material defects, brand/product/legal/technical blockers, and recommend the smallest corrective action. Do not silently revise the strategy. Return only CreativeQAReport JSON. The server validates the returned JSON and routes the decision; the weighted 0–100 rubric is a proposal and is not computed at runtime.
 ```
 
 ## Contrato de handoff

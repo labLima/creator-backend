@@ -6,6 +6,7 @@
 
 - [Arquitetura proposta e decisões vigentes](ARCHITECTURE.md)
 - [Inventário e mapeamento normativo](AGENTS_AND_SUBAGENTS.md)
+- [Mapa de domínio: proposta × runtime atual](DOMAIN-MAPPING.md)
 - [Agentes principais](agents/)
 - [Subagentes como responsabilidades lógicas](subagents/)
 - [Contratos implementados e ausentes](schemas/README.md)

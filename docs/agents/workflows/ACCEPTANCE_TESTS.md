@@ -1,5 +1,7 @@
 # Testes de aceitação e casos de borda
 
+> **Não implementado.** Casos de aceitação da proposta; o contrato atual está em [schemas/README.md](../schemas/README.md).
+
 | Caso | Critério de aprovação |
 |---|---|
 | Marca tem manual e 3 peças antigas contraditórias | manual prevalece nas regras obrigatórias e o conflito fica registrado |

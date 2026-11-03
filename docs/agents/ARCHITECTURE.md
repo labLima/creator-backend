@@ -4,7 +4,7 @@
 
 ## Objetivo de produto
 
-Transformar uma solicitação em uma **peça publicitária planejada antes de ser renderizada**. Fluxo canônico:
+Transformar uma solicitação em uma **peça publicitária planejada antes de ser renderizada**. Fluxo proposto:
 
 `Solicitação → Contexto de marca/campanha/persona/referências → Diretor Criativo → Creative Blueprint → Copy + Arte → Prompt visual → Geração → Crítico Criativo → Decisão`.
 

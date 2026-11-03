@@ -1,6 +1,8 @@
 # Inventário de responsabilidade e handoffs
 
 > **Status:** proposta conceitual. O runtime vigente é Business → Planner → Writer → Artist → Reviewer → DELIVERY. AGT/SUB IDs são mapeamentos de responsabilidade, não agentes executados separadamente. Contratos ativos: [schemas/README.md](schemas/README.md).
+>
+> **Mapa de artefatos propostos:** [DOMAIN-MAPPING.md](DOMAIN-MAPPING.md) relaciona cada artefato da proposta ao equivalente atual (ou à ausência dele).
 
 | Proposta | Papel atual | Contrato atual | Status |
 |---|---|---|---|
@@ -11,6 +13,10 @@
 | AGT-04 / SUB-09–11 | Reviewer | `ReviewOutput` / `ImageReviewResult` | Revisão implementada; subresponsabilidades não são chamadas independentes e a rubrica ponderada não está implementada. |
 | ORC-00 | Creator Agent Workflow + Outbox | estados, steps e eventos persistidos | Implementado pelo Creator, conforme ADR-014/017/018. |
 | DELIVERY | Worker e persistência do Creator | transições e artefatos finais | Parte do workflow atual; não é um agente. |
+
+## Inventário proposto de componentes
+
+> **Proposta conceitual.** A tabela abaixo descreve o desenho alvo; não é o contrato ativo nem implica agentes/subagentes independentes no runtime.
 
 | ID | Componente | Tipo | Recebe | Entrega |
 |---|---|---|---|---|
@@ -35,7 +41,7 @@
 
 ## O que precisa persistir
 
-- Prompt e versão dos agentes: `agent_id`, `prompt_version`, `model_policy`.
+- Prompt e versão dos agentes: `agent_id`, `design_version`, `spec_version`, `prompt_template_version`, `model_policy`.
 - Cada execução: `run_id`, workspace, request, etapas, state, tentativas, consumo, erros.
 - Artefatos: context, blueprint, prompt package, assets, QA e relação entre versões.
 - Referências com `referenceRole`, origem/permissões de uso e regra de não copiar.
