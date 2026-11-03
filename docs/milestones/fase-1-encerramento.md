@@ -2,6 +2,7 @@
 
 - Milestone: `02 · Fase 1 — Fundação e Plataforma` (#3)
 - Épico: #109
+- PR: [#136](https://github.com/labLima/creator-backend/pull/136)
 - Branch: `feat/milestone-3-foundation`
 - Base: `dev` @ `108fb09`
 - Status: em validação até o merge do PR

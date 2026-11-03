@@ -51,6 +51,8 @@ O PR #115 foi mergeado em `dev`. O CI da `dev` passou em quality, security, cont
 A milestone `02 · Fase 1 — Fundação e Plataforma` foi encerrada em 2026-11-03.
 O registro de evidências, critérios e dispensas está em
 [`docs/milestones/fase-1-encerramento.md`](milestones/fase-1-encerramento.md).
+O PR de encerramento é o [#136](https://github.com/labLima/creator-backend/pull/136).
+
 Os itens de operação de produção (#23, #24, #31, #32) foram explicitamente
 dispensados para a Fase 4; a paridade de comportamento do legado foi transferida
 para a [#134](https://github.com/labLima/creator-backend/issues/134).
