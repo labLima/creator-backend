@@ -52,10 +52,10 @@ configurável por `DATABASE_URL`; o runtime é compatível com SQLite e libSQL
 
 A autenticação é própria do Creator:
 
-- `POST /api/v1/auth/signup` cria User, Workspace e Membership `owner`.
-- `POST /api/v1/auth/login` retorna access token JWT e refresh token rotativo.
-- `POST /api/v1/auth/refresh` rotaciona o refresh token e detecta reuso.
-- `POST /api/v1/auth/logout` revoga a sessão.
+- `POST /api/v1/auth/signup` cria User, Workspace e Membership `owner` e define os cookies de sessão.
+- `POST /api/v1/auth/login` autentica e define os cookies `HttpOnly` de access/refresh e o cookie CSRF; tokens não voltam no corpo.
+- `POST /api/v1/auth/refresh` rotaciona o refresh token via cookie e detecta reuso.
+- `POST /api/v1/auth/logout` revoga a sessão e limpa os cookies.
 
 Configure `AUTH_JWT_SECRET` com um valor forte. Em produção, use
 `AUTH_REQUIRED=true` e mantenha o secret em um gestor de secrets.
@@ -138,30 +138,29 @@ OpenAPI, `make e2e` e um smoke test dos containers.
 ## Arquitetura
 
 O backend é um **monolito modular por capacidade**. Toda entidade vive em um
-único diretório sob `src/creator/modules/<entidade>/`:
+único diretório sob `src/creator/<entidade>/`:
 
 ```
-modules/<entity>/
+<entity>/
+├── __init__.py
 ├── router.py       # APIRouter, apenas tradução HTTP
 ├── schemas.py      # DTOs Pydantic da entidade
-├── service.py      # casos de uso, quando há regra de negócio
+├── service.py      # casos de uso
 ├── ports.py        # Protocolos e records da entidade
-├── policy.py       # autorização específica, quando difere de role check
-├── exceptions.py   # erros próprios, quando existem
-└── adapters/
-    ├── tables.py       # ORM SQLAlchemy
-    └── repository.py   # implementação do repositório
+├── repository.py   # implementação SQLAlchemy
+└── models.py       # tabelas SQLAlchemy
 ```
 
 - `src/creator/main.py`: apenas `create_app()` (middleware, handlers, include do
   router agregador). Sem decorators de rota.
 - `src/creator/api`: composição (`router.py`), dependências, respostas, erros e
   pós-processamento OpenAPI.
-- `src/creator/core`: helpers puros — configuração, paginação, base Pydantic.
+- `src/creator/core`: helpers puros — paginação, base Pydantic e tipos.
+- `src/creator/config.py`: configuração tipada da aplicação.
 - `src/creator/domain`: vocabulário e modelos independentes de vendor.
 - `src/creator/uow.py`: `UnitOfWork`, a única costura de integração entre
   capacidades.
-- `src/creator/infrastructure`: banco, persistência, auth, runtime e providers
+- `src/creator/infrastructure`: banco, persistência, auth e runtime
   transversais.
 - `src/creator/services`, `src/creator/integrations`: adapters de IA, storage e
   vendors.
@@ -169,8 +168,14 @@ modules/<entity>/
 
 A regra de import é unidirecional e verificada por
 `tests/test_module_boundaries.py`: `router -> service -> ports/schemas -> core/domain`.
-Um módulo nunca importa o `service.py`, `router.py` ou `adapters/` de outro; a
-integração acontece via `uow.<repositorio>`.
+`models.py` e `repository.py` são os únicos arquivos, **dentro de cada
+capacidade**, que importam SQLAlchemy ou `creator.infrastructure`. Um módulo
+nunca importa o `service.py`, `router.py` ou `repository.py` de outro; a
+integração acontece via `uow.<repositorio>` e pelos `ports.py`/`schemas.py`
+compartilhados.
+
+O escopo de consolidação e as dívidas estruturais ainda abertas estão em
+[`docs/issues/0049-flat-layout-consolidation.md`](docs/issues/0049-flat-layout-consolidation.md).
 - `docs/adr`: decisões arquiteturais; `docs/issues`: issues rastreáveis.
 
 O contrato HTTP é `docs/openapi.yaml`. O teste `tests/test_openapi_contract.py`

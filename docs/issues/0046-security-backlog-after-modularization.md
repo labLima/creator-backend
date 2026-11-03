@@ -1,6 +1,11 @@
 # 0046 — Backlog de segurança exposto pela refatoração modular
 
-- ADR: [ADR-023](../adr/0023-estrutura-modular-por-capacidade.md)
+> **Caminhos atualizados.** A estrutura `modules/*/adapters` foi substituída
+> pela estrutura plana da [ADR-024](../adr/0024-estrutura-plana-por-capacidade.md).
+> Os itens abaixo continuam pré-existentes e **não** foram corrigidos pela
+> consolidação da [0049](0049-flat-layout-consolidation.md).
+
+- ADR: [ADR-023](../adr/0023-estrutura-modular-por-capacidade.md) / [ADR-024](../adr/0024-estrutura-plana-por-capacidade.md)
 - Status: aberto
 - Origem: auditoria de segurança da branch `refactor/modular-structure`
 - Owner: backend/platform + segurança
@@ -19,9 +24,9 @@ commit de uma mudança estrutural impede provar qual das duas causou uma quebra.
 
 ### S1 — Brand Settings sem vínculo entre `brand_id` e `workspace_id` (alto)
 
-`modules/brand/router.py` autoriza `payload.workspace_id`, mas o `upsert` do
+`brand/service.py` autoriza `payload.workspace_id`, mas o `upsert` do
 repositório busca a linha apenas por `brand_id`
-(`infrastructure/persistence/repositories/core.py`). Um editor de um Workspace
+(`brand/repository.py`). Um editor de um Workspace
 que conheça o UUID de uma Brand de outro Workspace pode ler ou sobrescrever as
 Brand Settings da vítima. O UUID da Brand nunca foi tratado como segredo.
 
@@ -31,7 +36,7 @@ usar o `workspace_id` resultante; ou filtrar o `upsert` por `brand_id` **e**
 
 ### S2 — Convites permitem escalada de papel (médio)
 
-`modules/workspace/router.py` aceita `role` como `str` livre e exige apenas
+`workspace/service.py` aceita `role` como `str` livre e exige apenas
 `editor` para criar/editar convites; o `update` é não escopado. Um `viewer`
 pode elevar um convite existente para `owner`. Sem endpoint de aceite hoje, o
 primitivo é latente.

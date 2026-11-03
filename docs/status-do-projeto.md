@@ -1,6 +1,6 @@
 # Status do projeto Creator
 
-Atualizado em: 2026-10-30
+Atualizado em: 2026-11-03
 
 Este documento é um **snapshot datado**. O estado canônico das issues está no
 GitHub (`labLima/creator-backend`) e no `docs/ADR-ISSUE-TRACKER.md`.
@@ -16,10 +16,12 @@ A branch `dev` é a linha de integração. A `main` é release e está atrás da
 ## O que está concluído
 
 - API versionada em `/api/v1`, envelope de sucesso/erro e `request_id`.
+- Estrutura plana por capacidade (`src/creator/<entidade>/`), conforme ADR-024
+  e PR #129; contrato HTTP e schema preservados.
 - Autenticação própria: signup, login, refresh rotativo, logout e sessões
-  revogáveis. Cookies HttpOnly, CSRF, Origin e dual-write estão implementados;
-  contrato e guia do SPA documentam a transição e o corte via
-  `AUTH_TOKEN_BODY_ENABLED` e `AUTH_LEGACY_BEARER_ENABLED`. Supabase Auth foi removido.
+  revogáveis. A API autentica exclusivamente por cookies `HttpOnly`, com CSRF e
+  validação de Origin; login, signup e refresh não retornam tokens no corpo.
+  Supabase Auth foi removido.
 - Persistência SQLAlchemy com baseline SQLite `0001_sqlite_baseline`, WAL,
   foreign keys e testes de integração em SQLite.
 - CRUD dos recursos centrais, com escopo por Workspace e Soft Delete.
@@ -46,8 +48,15 @@ O PR #115 foi mergeado em `dev`. O CI da `dev` passou em quality, security, cont
 
 ## Pendências conhecidas
 
-- Brand Knowledge e créditos têm schema, mas ainda faltam repositórios,
-  casos de uso e testes de lifecycle (#49, #54).
+- Consolidação estrutural complementar: 23 `service.py` ainda importam
+  `creator.api`, 4 routers acessam o UoW diretamente e os 47 repositórios por
+  agregado (fase 5 da ADR-023) seguem pendentes — ver
+  [0049](issues/0049-flat-layout-consolidation.md).
+- Backlog de segurança pré-existente S1–S13 — ver
+  [0046](issues/0046-security-backlog-after-modularization.md).
+- Brand Knowledge ainda não tem repositórios/casos de uso completos (#49).
+- Créditos têm schema e ledger, mas o lifecycle e os consumidores ainda precisam
+  ser fechados (#54).
 - CrewAI real ainda não é importado; o adapter atual usa o runner determinístico
   (#64).
 - Jobs COPY/CAPTION ainda não têm executores/filas (#79).
@@ -60,6 +69,7 @@ O PR #115 foi mergeado em `dev`. O CI da `dev` passou em quality, security, cont
 O job de qualidade executa `make check`; o de segurança executa `pip-audit` e
 Gitleaks; o de contrato valida a paridade OpenAPI e o build; o de E2E executa
 `make e2e`; o de containers sobe o Compose e valida health/migrations/worker.
+O PR #129 passou nesses jobs e foi mergeado em `dev` em 2026-11-03.
 
 ## Leituras principais
 

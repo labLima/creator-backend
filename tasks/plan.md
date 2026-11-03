@@ -1,5 +1,10 @@
 # Implementation Plan: Refatoração estrutural — Modular Monolith (creator-backend)
 
+> **Documento histórico.** O alvo `modules/` descrito neste plano foi
+> substituído pela estrutura plana da ADR-024. Não execute este plano. Estado
+> atual: [0048](../docs/issues/0048-plain-capability-layout.md) e
+> [0049](../docs/issues/0049-flat-layout-consolidation.md).
+
 > Gerado em 2026-10-29 a partir de: análise do @reviewer (estrutura atual, evidência arquivo-a-arquivo),
 > pesquisa do @architect (bi-fin-lefil-backend + referências da comunidade FastAPI) e plano do @planner
 > (skill planning-and-task-breakdown). Decisões de estrutura confirmadas pelo time.

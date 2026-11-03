@@ -1,6 +1,6 @@
 # ADR-023: Estrutura modular por capacidade
 
-- Status: accepted
+- Status: accepted (parcialmente substituída pela [ADR-024](0024-estrutura-plana-por-capacidade.md))
 - Data: 2026-10-30
 - Owner da decisão: arquitetura
 - Owner de manutenção: backend/platform
@@ -111,4 +111,4 @@ original.
 - [x] `make check`, `make e2e`, `make migrate-check` verdes
 - [x] ORM migrado para `modules/*/adapters/tables.py` (51 tabelas, DDL idêntico)
 - [x] `SqlAlchemyUnitOfWork` herda `UnitOfWork`; `mypy --strict` verifica paridade
-- [ ] Consolidação dos repositórios por agregado (47 → ~30)
+- [ ] Consolidação dos repositórios por agregado (47 → ~30) — transferida para a [0049](../issues/0049-flat-layout-consolidation.md)

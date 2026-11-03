@@ -47,8 +47,13 @@ de implementação vinculada antes do fechamento do tracker.
 | [ADR-020](adr/0020-self-hosted-authentication.md) | [#92](https://github.com/labLima/creator-backend/issues/92) | [#93](https://github.com/labLima/creator-backend/issues/93), [#94](https://github.com/labLima/creator-backend/issues/94), [#95](https://github.com/labLima/creator-backend/issues/95), [#96](https://github.com/labLima/creator-backend/issues/96) |
 | [ADR-021](adr/0021-sqlite-default-database.md) | [#97](https://github.com/labLima/creator-backend/issues/97) | [#98](https://github.com/labLima/creator-backend/issues/98), [#99](https://github.com/labLima/creator-backend/issues/99), [#100](https://github.com/labLima/creator-backend/issues/100), [#101](https://github.com/labLima/creator-backend/issues/101), [#102](https://github.com/labLima/creator-backend/issues/102) |
 | [ADR-022](adr/0022-cookie-auth-provider.md) | [#116](https://github.com/labLima/creator-backend/issues/116) | [0044](issues/0044-cookie-auth-provider.md) encerrada como não necessária; #118–#127; [#128](https://github.com/labLima/creator-backend/issues/128) / [0047](issues/0047-cookie-auth-cutover.md) |
-| [ADR-023](adr/0023-estrutura-modular-por-capacidade.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) |
-| [ADR-024](adr/0024-estrutura-plana-por-capacidade.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md) |
+| [ADR-023](adr/0023-estrutura-modular-por-capacidade.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) (histórico; fase 5 em [0049](issues/0049-flat-layout-consolidation.md)) |
+| [ADR-024](adr/0024-estrutura-plana-por-capacidade.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md), [0049](issues/0049-flat-layout-consolidation.md), [0046](issues/0046-security-backlog-after-modularization.md) (backlog relacionado) |
+
+A [0049](issues/0049-flat-layout-consolidation.md) é o tracker local da
+consolidação da estrutura plana. A issue remota ainda não foi criada porque o
+`gh` não está autenticado neste ambiente; isso é bloqueio externo, não decisão
+arquitetural.
 
 ## Regras de atualização
 

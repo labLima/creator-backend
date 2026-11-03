@@ -1,5 +1,10 @@
 # Issue 0047: corte de autenticação para cookies
 
+> **Nota de reconciliação (2026-11-03).** A issue remota #128 foi fechada com o
+> critério de sign-off marcado, mas não há comentário ou link de evidência no
+> GitHub. Este tracker mantém os gates abaixo como pendentes até que a evidência
+> seja anexada ou a decisão seja corrigida.
+
 - ADR primária: [ADR-022](../adr/0022-cookie-auth-provider.md)
 - Implementação: [issue #128](https://github.com/labLima/creator-backend/issues/128)
 - Dependências: [#126](https://github.com/labLima/creator-backend/issues/126), [#127](https://github.com/labLima/creator-backend/issues/127)

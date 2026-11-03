@@ -4,6 +4,7 @@
 - Data: 2026-10-30
 - Substitui parcialmente: [ADR-023](0023-estrutura-modular-por-capacidade.md) (níveis `modules/` e `adapters/`)
 - Tracker: [docs/issues/0048](../issues/0048-plain-capability-layout.md)
+- Consolidação complementar: [docs/issues/0049](../issues/0049-flat-layout-consolidation.md)
 
 ## Contexto
 
@@ -23,6 +24,7 @@ arquivos fixo:
 
 ```
 src/creator/<entidade>/
+├── __init__.py
 ├── router.py       # HTTP
 ├── service.py      # casos de uso
 ├── repository.py   # implementação SQLAlchemy
@@ -46,7 +48,8 @@ Sem `modules/`, sem `adapters/`. `creator/repositories/` e
 
 ## Consequências
 
-- 27 pastas de entidade, cada uma com os seis arquivos.
+- 27 pastas de entidade, cada uma com os sete arquivos do vocabulário
+  (incluindo `__init__.py`).
 - `main.py` continua com 161 linhas e nenhuma rota.
 - O contrato HTTP e o schema permanecem congelados: 227 operações, 51 tabelas,
   DDL byte a byte idêntico.
@@ -56,5 +59,6 @@ Sem `modules/`, sem `adapters/`. `creator/repositories/` e
 - [x] `src/creator/modules` não existe
 - [x] `src/creator/repositories` e `infrastructure/persistence/repositories` não existem
 - [x] 27 `router.py`, `service.py`, `repository.py`, `models.py`, `schemas.py`, `ports.py`
+- [x] 27 `__init__.py`; `workflow` tem DTOs e pacote próprios desde a [0049](../issues/0049-flat-layout-consolidation.md)
 - [x] 227 operações idênticas e 51 tabelas idênticas
 - [x] `make check`, `make e2e`, `make security`, `make migrate-check` verdes

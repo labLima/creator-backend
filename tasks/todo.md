@@ -1,5 +1,10 @@
 # Refactor TODO — Modular Monolith (creator-backend)
 
+> **Documento histórico.** O alvo `modules/` descrito aqui foi substituído pela
+> estrutura plana da ADR-024. Não execute este checklist. Estado atual:
+> [0048](../docs/issues/0048-plain-capability-layout.md) e
+> [0049](../docs/issues/0049-flat-layout-consolidation.md).
+
 > Checklist de execução do plano em `tasks/plan.md`. Regras: um PR por tarefa a partir de `dev`
 > (`refactor/fase-N-<slug>`), gates `make check` + `make security` + `make e2e` verdes em cada PR,
 > `git diff --exit-code docs/openapi.yaml` e `git diff --exit-code CONTEXT.md` nas fases 1+.
