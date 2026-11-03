@@ -7,15 +7,8 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from creator.application.agent_image_workflow import (
-    AgentWorkflowDecisionError,
-    AgentWorkflowIdempotencyConflictError,
-    AgentWorkflowInputError,
-    StartImageWorkflowCommand,
-    decide_image_workflow,
-    start_image_workflow,
-)
 from creator.config import Settings
+from creator.content.ports import ContentRecord
 from creator.domain.agent_workflow import (
     AgentWorkflowStatus,
     AgentWorkflowStepRole,
@@ -27,11 +20,6 @@ from creator.domain.agent_workflow import (
 )
 from creator.domain.auth import Principal, WorkspaceRole
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
-from creator.repositories import (
-    AgentWorkflowRunRecord,
-    AgentWorkflowStepRecord,
-    ContentRecord,
-)
 from creator.services.agents.contracts import (
     AgentExecutionContext,
     BusinessOutput,
@@ -44,6 +32,15 @@ from creator.services.agents.runner import StructuredAgentRunner
 from creator.services.ai.reviewer import UnconfiguredMultimodalImageReviewer
 from creator.services.storage.provider import StorageValidationError
 from creator.workers import agent_workflow as workflow_worker
+from creator.workflow.ports import AgentWorkflowRunRecord, AgentWorkflowStepRecord
+from creator.workflow.service import (
+    AgentWorkflowDecisionError,
+    AgentWorkflowIdempotencyConflictError,
+    AgentWorkflowInputError,
+    StartImageWorkflowCommand,
+    decide_image_workflow,
+    start_image_workflow,
+)
 
 WORKSPACE_ID = UUID("10000000-0000-0000-0000-000000000001")
 BRAND_ID = UUID("31000000-0000-0000-0000-000000000001")

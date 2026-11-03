@@ -121,30 +121,56 @@ make dev/stop      # para sem remover volumes
 make dev/clean     # remove containers/volumes/imagens do projeto (CONFIRM=yes)
 ```
 
+`make security` exige `pip-audit` e `gitleaks` no `PATH`. O `gitleaks` não é
+distribuído via PyPI; instale o binário antes de rodar o gate:
+
+```bash
+curl -sSL -o gitleaks.tar.gz \
+  https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.30.1_linux_x64.tar.gz
+tar -xzf gitleaks.tar.gz gitleaks
+install -m 0755 gitleaks ~/.local/bin/gitleaks
+gitleaks version
+```
+
 O CI executa `make check`, `make dependency-audit`, Gitleaks, paridade do
 OpenAPI, `make e2e` e um smoke test dos containers.
 
 ## Arquitetura
 
-- `src/creator/api`: dependências, DTOs e contratos HTTP.
+O backend é um **monolito modular por capacidade**. Toda entidade vive em um
+único diretório sob `src/creator/modules/<entidade>/`:
+
+```
+modules/<entity>/
+├── router.py       # APIRouter, apenas tradução HTTP
+├── schemas.py      # DTOs Pydantic da entidade
+├── service.py      # casos de uso, quando há regra de negócio
+├── ports.py        # Protocolos e records da entidade
+├── policy.py       # autorização específica, quando difere de role check
+├── exceptions.py   # erros próprios, quando existem
+└── adapters/
+    ├── tables.py       # ORM SQLAlchemy
+    └── repository.py   # implementação do repositório
+```
+
+- `src/creator/main.py`: apenas `create_app()` (middleware, handlers, include do
+  router agregador). Sem decorators de rota.
+- `src/creator/api`: composição (`router.py`), dependências, respostas, erros e
+  pós-processamento OpenAPI.
+- `src/creator/core`: helpers puros — configuração, paginação, base Pydantic.
 - `src/creator/domain`: vocabulário e modelos independentes de vendor.
-- `src/creator/application`: casos de uso.
-- `src/creator/infrastructure/auth`: adapter e serviços de autenticação.
-- `src/creator/infrastructure/database`: engine, schema, migrations support e
-  modelos SQLAlchemy.
-- `src/creator/infrastructure/persistence`: Unit of Work e repositórios
-  SQLAlchemy concretos.
-- `src/creator/infrastructure/runtime`: fila, storage, rate limit e
-  observabilidade.
-- `src/creator/repositories`: protocolos e records usados pela aplicação.
-- `src/creator/services`: providers de IA, storage, agentes e retrieval.
-- `src/creator/integrations`: adapters concretos de vendors.
+- `src/creator/uow.py`: `UnitOfWork`, a única costura de integração entre
+  capacidades.
+- `src/creator/infrastructure`: banco, persistência, auth, runtime e providers
+  transversais.
+- `src/creator/services`, `src/creator/integrations`: adapters de IA, storage e
+  vendors.
 - `src/creator/workers`: workers RQ.
 
-Dentro de `infrastructure`, a regra é unidirecional: `database` conhece o ORM,
-`persistence` implementa os ports em `repositories`, e `runtime` concentra
-adapters operacionais. O restante da aplicação não deve importar modelos ou
-SQLAlchemy diretamente fora dessas fronteiras.
+A regra de import é unidirecional e verificada por
+`tests/test_module_boundaries.py`: `router -> service -> ports/schemas -> core/domain`.
+Um módulo nunca importa o `service.py`, `router.py` ou `adapters/` de outro; a
+integração acontece via `uow.<repositorio>`.
 - `docs/adr`: decisões arquiteturais; `docs/issues`: issues rastreáveis.
 
 O contrato HTTP é `docs/openapi.yaml`. O teste `tests/test_openapi_contract.py`

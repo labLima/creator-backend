@@ -13,7 +13,16 @@ from alembic.config import Config
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 
-from creator.application.auth import (
+from creator.auth import models as auth_tables
+from creator.auth.ports import (
+    AccessTokenCodec,
+    AuthSessionRecord,
+    Clock,
+    CsrfTokenService,
+    RefreshTokenGenerator,
+)
+from creator.auth.repository import SqlAlchemyAuthSessionRepository
+from creator.auth.service import (
     EmailAlreadyRegisteredError,
     ExpiredTokenError,
     InvalidCredentialsError,
@@ -26,22 +35,11 @@ from creator.application.auth import (
     session_is_active,
     signup,
 )
-from creator.application.auth_ports import (
-    AccessTokenCodec,
-    Clock,
-    CsrfTokenService,
-    RefreshTokenGenerator,
-)
 from creator.config import Settings
 from creator.domain.auth import Principal
 from creator.infrastructure.auth import auth_token_services
-from creator.infrastructure.database import models
 from creator.infrastructure.database.db import create_database_engine
-from creator.infrastructure.persistence.repositories.auth_session_repositories import (
-    SqlAlchemyAuthSessionRepository,
-)
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
-from creator.repositories.auth import AuthSessionRecord
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SECRET = "test-local-auth-jwt-secret-with-32-bytes"
@@ -254,9 +252,9 @@ def test_concurrent_refresh_has_one_winner(
         active_family_sessions = (
             verification_uow._require_session()
             .scalars(
-                select(models.AuthSession).where(
-                    models.AuthSession.family_id == original.family_id,
-                    models.AuthSession.revoked_at.is_(None),
+                select(auth_tables.AuthSession).where(
+                    auth_tables.AuthSession.family_id == original.family_id,
+                    auth_tables.AuthSession.revoked_at.is_(None),
                 )
             )
             .all()
@@ -427,7 +425,7 @@ def test_cleanup_removes_refresh_expired_before_absolute_expiry(
 def test_argon2_runs_outside_auth_write_transactions(
     uow: SqlAlchemyUnitOfWork, token_services, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import creator.application.auth as auth_module
+    import creator.auth.service as auth_module
 
     original_hash = auth_module.hash_password
 

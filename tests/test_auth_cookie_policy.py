@@ -7,8 +7,8 @@ import pytest
 from starlette.responses import Response
 
 from creator.api.auth import FastApiCookieTransport, clear_auth_cookies, set_auth_cookies
-from creator.application.auth_ports import CookieSpec
-from creator.application.auth_types import IssuedSession
+from creator.auth.ports import CookieSpec
+from creator.auth.types import IssuedSession
 from creator.auth_cookie_policy import AuthCookiePolicy
 from creator.config import Settings
 from creator.domain.auth import Principal

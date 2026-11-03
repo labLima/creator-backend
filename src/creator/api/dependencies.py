@@ -6,15 +6,14 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 
-from creator.application.auth import (
+from creator.auth.ports import AuthTokenServices
+from creator.auth.service import (
     AuthConfigurationError,
     ExpiredTokenError,
     InvalidTokenError,
     principal_from_access_token,
     session_is_active,
 )
-from creator.application.auth_ports import AuthTokenServices
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.infrastructure.auth import auth_token_services
@@ -28,12 +27,22 @@ from creator.infrastructure.runtime.rate_limit import (
     create_rate_limiter,
 )
 from creator.infrastructure.runtime.storage import create_storage_provider
-from creator.repositories import UserRecord
 from creator.services.ai.factory import create_llm_provider
 from creator.services.ai.provider import LLMProvider
 from creator.services.storage.provider import StorageConfigurationError, StorageProvider
+from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
 
 logger = logging.getLogger(__name__)
+
+
+def get_auth_token_services() -> AuthTokenServices:
+    """Bind the auth token adapter behind an HTTP dependency.
+
+    Module routers depend on this, never on `creator.infrastructure`,
+    so the adapter stays replaceable at the composition boundary.
+    """
+    return auth_token_services()
 
 
 def _resolve_token_services(token_services: AuthTokenServices | None) -> AuthTokenServices:
@@ -367,14 +376,3 @@ def _optional_decode_principal(
 
 def _refresh_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-def _display_name_from_claims(principal: Principal) -> str | None:
-    user_metadata = principal.claims.get("user_metadata")
-    if not isinstance(user_metadata, dict):
-        return None
-    for key in ("display_name", "full_name", "name"):
-        value = user_metadata.get(key)
-        if isinstance(value, str) and value:
-            return value
-    return None

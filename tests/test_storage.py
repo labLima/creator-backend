@@ -6,11 +6,12 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from creator.application.image_storage import GeneratedImage, persist_generated_image
 from creator.config import Settings
+from creator.content.ports import ImageMetadata, ImageRecord
 from creator.domain.generation import GenerationJobStatus
+from creator.generation.ports import GenerationJobRecord
+from creator.generation.storage_service import GeneratedImage, persist_generated_image
 from creator.infrastructure.runtime.storage import LocalStorageProvider, SupabaseStorageProvider
-from creator.repositories import GenerationJobRecord, ImageMetadata, ImageRecord, UserRecord
 from creator.services.storage.provider import (
     StorageObjectNotFoundError,
     StorageUploadError,
@@ -21,6 +22,7 @@ from creator.services.storage.provider import (
     UploadObjectRequest,
     immutable_image_path,
 )
+from creator.user.ports import UserRecord
 
 NOW = datetime(2026, 9, 1, tzinfo=UTC)
 

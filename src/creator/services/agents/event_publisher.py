@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Protocol
 from uuid import UUID
 
-from creator.application.unit_of_work import UnitOfWork
 from creator.config import Settings, get_settings
 from creator.domain.pipeline_events import PipelineEvent
+from creator.uow import UnitOfWork
 
 
 class PipelineEventTransport(Protocol):

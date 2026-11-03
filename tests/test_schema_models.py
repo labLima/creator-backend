@@ -1,12 +1,10 @@
 import pytest
 
-from creator.api.dtos import (
-    CampaignCreateRequest,
-    NotificationCreateRequest,
-    PlanCreateRequest,
-)
-from creator.infrastructure.database import models
+from creator.campaign.schemas import CampaignCreateRequest
+from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.schema_manifest import LEGACY_TABLES, PDF_TABLES
+from creator.notification.schemas import NotificationCreateRequest
+from creator.plan.schemas import PlanCreateRequest
 
 EXPECTED_DIAGRAM_TABLES = {
     "plans",
@@ -47,23 +45,23 @@ EXPECTED_DIAGRAM_TABLES = {
 
 
 def test_pdf_schema_tables_are_registered_in_metadata() -> None:
-    assert EXPECTED_DIAGRAM_TABLES <= set(models.Base.metadata.tables)
-    assert PDF_TABLES <= set(models.Base.metadata.tables)
-    assert LEGACY_TABLES <= set(models.Base.metadata.tables)
+    assert EXPECTED_DIAGRAM_TABLES <= set(Base.metadata.tables)
+    assert PDF_TABLES <= set(Base.metadata.tables)
+    assert LEGACY_TABLES <= set(Base.metadata.tables)
 
 
 def test_core_columns_match_pdf_lengths() -> None:
-    users = models.Base.metadata.tables["users"]
-    workspaces = models.Base.metadata.tables["workspaces"]
+    users = Base.metadata.tables["users"]
+    workspaces = Base.metadata.tables["workspaces"]
     assert users.c.email.type.length == 320
     assert users.c.display_name.type.length == 50
     assert workspaces.c.name.type.length == 50
 
 
 def test_marketing_columns_match_pdf_names() -> None:
-    planning = models.Base.metadata.tables["planning"]
-    post_structure = models.Base.metadata.tables["post_structure"]
-    brand_colors = models.Base.metadata.tables["brand_colors"]
+    planning = Base.metadata.tables["planning"]
+    post_structure = Base.metadata.tables["post_structure"]
+    brand_colors = Base.metadata.tables["brand_colors"]
     assert {"persona_name", "planning_info", "planning_start_period"} <= set(planning.c.keys())
     assert {
         "post_title",
@@ -74,7 +72,7 @@ def test_marketing_columns_match_pdf_names() -> None:
     } <= set(post_structure.c.keys())
     assert "title" not in post_structure.c
     assert "format" not in post_structure.c
-    generated_image = models.Base.metadata.tables["generated_image"]
+    generated_image = Base.metadata.tables["generated_image"]
     assert "image_status" in generated_image.c
     assert "status" not in generated_image.c
     assert {

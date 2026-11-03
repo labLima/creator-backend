@@ -76,10 +76,32 @@ _Avoid_: Vendor, implementation detail
 The business state in which a resource with a `deleted_at` timestamp remains recoverable in persistence but is excluded from normal reads. Physical purge is a separate operation.
 _Avoid_: Hard delete, archive (unless the business behavior differs)
 
+**Campaign**:
+A Workspace-scoped marketing initiative with an audience, objectives, a voice, and a time window. A Planning binds to exactly one Campaign.
+_Avoid_: Project, plan (the billing concept)
+
+**Persona**:
+A Brand-scoped profile of the audience a Campaign addresses: age, gender, main goal, challenge, interests, routine, journey, and trigger.
+_Avoid_: Audience, segment, buyer
+
+**Planning**:
+A Brand-scoped content plan for a period that binds one Campaign to one Persona, sets volume targets per format (static, carousel, stories), and lists special dates. It contains Post Structures.
+_Avoid_: Calendar, schedule, editorial plan
+
+**Post Structure**:
+The specification of a single post inside a Planning: objective, big idea, main message, headline, call to action, art guidance, format, ratio, and resolution. It originates Content; it is not Content.
+_Avoid_: Post, content, template
+
+**Design Structure**:
+A one-to-one extension slot attached to a Post Structure, reserved for design parameters. It currently carries no attributes and is retained for contract compatibility.
+_Avoid_: Layout, template, design
+
 ## Boundaries
 
-- A Workspace owns Brands, Projects, Content, Generations, Generation Jobs, Images, Assets, Brand Knowledge, Credits, and Agent Workflows.
-- A Brand scopes Brand Settings, Brand Knowledge, and brand-aligned Generations.
+- A Workspace owns Brands, Projects, Content, Generations, Generation Jobs, Images, Assets, Brand Knowledge, Credits, Campaigns, Personas, Plannings, and Agent Workflows.
+- A Brand scopes Brand Settings, Brand Knowledge, Personas, and brand-aligned Generations.
+- A Campaign groups the content effort a Planning belongs to; a Planning always references one Campaign and one Persona.
+- A Post Structure belongs to a Planning and is workspace-scoped; a Post Structure is a specification, not Content.
 - A Principal reaches Workspace data only through a Membership and its Workspace Role.
 - A Generation describes intent. When execution is asynchronous, a Generation Job performs that intent.
 - A Content artifact is not an AI provider response: provider output must pass through the application boundary before becoming persisted Content.

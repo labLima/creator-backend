@@ -1,0 +1,365 @@
+"""HTTP routes for the brand capability.
+
+Extracted verbatim from `creator.main.create_app`; handler names are part of
+the published `operationId` contract and must not be renamed.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi.responses import JSONResponse
+
+from creator.api.dependencies import (
+    get_current_user,
+    get_uow,
+)
+from creator.api.responses import (
+    success_response,
+)
+from creator.brand import service
+from creator.brand.schemas import (
+    BrandAssetCreateRequest,
+    BrandAssetUpdateRequest,
+    BrandColorCreateRequest,
+    BrandColorUpdateRequest,
+    BrandCreateRequest,
+    BrandSettingsUpdateRequest,
+    BrandSettingsUpsertRequest,
+    BrandUpdateRequest,
+)
+from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
+
+router = APIRouter()
+
+
+@router.get("/api/v1/brands", tags=["Brands"])
+def list_brands(
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    workspace_id: UUID | None = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    sort: Annotated[str, Query(pattern="^-?created_at$")] = "-created_at",
+) -> JSONResponse:
+    return success_response(
+        service.list_brands(
+            uow=unit_of_work,
+            actor=current_user,
+            workspace_id=workspace_id,
+            page=page,
+            limit=limit,
+            sort=sort,
+            request=request,
+        ),
+        request,
+    )
+
+
+@router.post("/api/v1/brands", tags=["Brands"])
+def create_brand(
+    payload: BrandCreateRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.create_brand(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
+
+
+@router.get("/api/v1/brands/{id}", tags=["Brands"])
+def get_brand(
+    brand_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.get_brand(uow=unit_of_work, actor=current_user, brand_id=brand_id, request=request),
+        request,
+    )
+
+
+@router.put("/api/v1/brands/{id}", tags=["Brands"])
+def update_brand(
+    brand_id: Annotated[UUID, Path(alias="id")],
+    payload: BrandUpdateRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.update_brand(
+            uow=unit_of_work,
+            actor=current_user,
+            brand_id=brand_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
+
+
+@router.delete("/api/v1/brands/{id}", tags=["Brands"])
+def delete_brand(
+    brand_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.delete_brand(
+            uow=unit_of_work, actor=current_user, brand_id=brand_id, request=request
+        ),
+        request,
+    )
+
+
+@router.get("/api/v1/brands/{id}/settings", tags=["Brands"])
+def get_brand_settings(
+    brand_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.get_brand_settings(
+            uow=unit_of_work, actor=current_user, brand_id=brand_id, request=request
+        ),
+        request,
+    )
+
+
+@router.put("/api/v1/brands/{id}/settings", tags=["Brands"])
+def upsert_brand_settings(
+    brand_id: Annotated[UUID, Path(alias="id")],
+    payload: BrandSettingsUpsertRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.upsert_brand_settings(
+            uow=unit_of_work,
+            actor=current_user,
+            brand_id=brand_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
+
+
+@router.patch("/api/v1/brands/{id}/settings", tags=["Brands"])
+def update_brand_settings(
+    brand_id: Annotated[UUID, Path(alias="id")],
+    payload: BrandSettingsUpdateRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.update_brand_settings(
+            uow=unit_of_work,
+            actor=current_user,
+            brand_id=brand_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
+
+
+@router.delete("/api/v1/brands/{id}/settings", tags=["Brands"])
+def delete_brand_settings(
+    brand_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.delete_brand_settings(
+            uow=unit_of_work, actor=current_user, brand_id=brand_id, request=request
+        ),
+        request,
+    )
+
+
+@router.get("/api/v1/brand-assets", tags=["Brand Assets"])
+def list_brand_assets(
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    brand_id: UUID | None = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    sort: Annotated[str, Query(pattern="^-?created_at$")] = "-created_at",
+) -> JSONResponse:
+    return success_response(
+        service.list_brand_assets(
+            uow=unit_of_work,
+            actor=current_user,
+            brand_id=brand_id,
+            page=page,
+            limit=limit,
+            sort=sort,
+            request=request,
+        ),
+        request,
+    )
+
+
+@router.post("/api/v1/brand-assets", tags=["Brand Assets"])
+def create_brand_asset(
+    payload: BrandAssetCreateRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.create_brand_asset(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
+
+
+@router.get("/api/v1/brand-assets/{id}", tags=["Brand Assets"])
+def get_brand_asset(
+    asset_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.get_brand_asset(
+            uow=unit_of_work, actor=current_user, asset_id=asset_id, request=request
+        ),
+        request,
+    )
+
+
+@router.put("/api/v1/brand-assets/{id}", tags=["Brand Assets"])
+def update_brand_asset(
+    asset_id: Annotated[UUID, Path(alias="id")],
+    payload: BrandAssetUpdateRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.update_brand_asset(
+            uow=unit_of_work,
+            actor=current_user,
+            asset_id=asset_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
+
+
+@router.delete("/api/v1/brand-assets/{id}", tags=["Brand Assets"])
+def delete_brand_asset(
+    asset_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.delete_brand_asset(
+            uow=unit_of_work, actor=current_user, asset_id=asset_id, request=request
+        ),
+        request,
+    )
+
+
+@router.get("/api/v1/brand-colors", tags=["Brands"])
+def list_brand_colors(
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    brand_id: UUID | None = None,
+) -> JSONResponse:
+    return success_response(
+        service.list_brand_colors(
+            uow=unit_of_work, actor=current_user, brand_id=brand_id, request=request
+        ),
+        request,
+    )
+
+
+@router.post("/api/v1/brand-colors", tags=["Brands"])
+def create_brand_color(
+    payload: BrandColorCreateRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.create_brand_color(
+            uow=unit_of_work, actor=current_user, payload=payload, request=request
+        ),
+        request,
+        status_code=201,
+    )
+
+
+@router.get("/api/v1/brand-colors/{id}", tags=["Brands"])
+def get_brand_color(
+    color_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.get_brand_color(
+            uow=unit_of_work, actor=current_user, color_id=color_id, request=request
+        ),
+        request,
+    )
+
+
+@router.put("/api/v1/brand-colors/{id}", tags=["Brands"])
+def update_brand_color(
+    color_id: Annotated[UUID, Path(alias="id")],
+    payload: BrandColorUpdateRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.update_brand_color(
+            uow=unit_of_work,
+            actor=current_user,
+            color_id=color_id,
+            payload=payload,
+            request=request,
+        ),
+        request,
+    )
+
+
+@router.delete("/api/v1/brand-colors/{id}", tags=["Brands"])
+def delete_brand_color(
+    color_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JSONResponse:
+    return success_response(
+        service.delete_brand_color(
+            uow=unit_of_work, actor=current_user, color_id=color_id, request=request
+        ),
+        request,
+    )

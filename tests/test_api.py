@@ -18,39 +18,40 @@ from creator.api.dependencies import (
     get_storage_provider,
     get_uow,
 )
-from creator.application.image_generation import (
-    image_generation_request_fingerprint,
-    image_regeneration_request_fingerprint,
-)
+from creator.asset.ports import AssetRecord
+from creator.brand.ports import BrandRecord, BrandSettingsRecord
 from creator.config import Settings, get_settings
-from creator.domain.auth import Principal
-from creator.domain.exceptions import PersistenceError
-from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.runtime.rate_limit import RateLimitDecision
-from creator.integrations.gemini.exceptions import GeminiTimeoutError
-from creator.main import app, create_app
-from creator.repositories import (
-    AssetRecord,
-    BrandRecord,
-    BrandSettingsRecord,
+from creator.content.ports import (
     ContentDetailRecord,
     ContentFilters,
     ContentRecord,
-    CreatedWorkspaceRecord,
     GeneratedTextContentRecord,
+    ImageRecord,
+)
+from creator.core.pagination import Page, PageRequest
+from creator.domain.auth import Principal
+from creator.domain.exceptions import PersistenceError
+from creator.domain.generation import GenerationJobStatus
+from creator.generation.ports import (
     GenerationJobRecord,
     GenerationRecord,
     ImageGenerationStatusRecord,
-    ImageRecord,
-    Page,
-    ProjectRecord,
-    SettingsRecord,
-    UserRecord,
+)
+from creator.generation.service import (
+    image_generation_request_fingerprint,
+    image_regeneration_request_fingerprint,
+)
+from creator.infrastructure.runtime.rate_limit import RateLimitDecision
+from creator.integrations.gemini.exceptions import GeminiTimeoutError
+from creator.main import app, create_app
+from creator.project.ports import ProjectRecord
+from creator.services.storage.provider import StorageUrlError
+from creator.user.ports import SettingsRecord, UserRecord
+from creator.workspace.ports import (
+    CreatedWorkspaceRecord,
     WorkspaceMembershipRecord,
     WorkspaceRecord,
 )
-from creator.repositories.common import PageRequest
-from creator.services.storage.provider import StorageUrlError
 
 JWT_SECRET = "test-local-auth-jwt-secret-with-32-bytes"
 

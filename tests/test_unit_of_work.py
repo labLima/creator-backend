@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from creator.domain.exceptions import ConflictError, PersistenceError
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.uow import UnitOfWork
 
 
 class RecordingSession:
@@ -85,3 +86,18 @@ def test_unit_of_work_rejects_commit_outside_active_context() -> None:
 
     with pytest.raises(PersistenceError):
         unit_of_work.commit()
+
+
+def test_sqlalchemy_unit_of_work_implements_the_protocol() -> None:
+    """`mypy --strict` only enforces parity if the class inherits the Protocol.
+
+    Before this assertion the concrete class and `creator.uow.UnitOfWork`
+    declared the repository list twice and drifted independently, so a missing
+    repository was a runtime `AttributeError` instead of a type error.
+    """
+    annotations = set(getattr(SqlAlchemyUnitOfWork, "__annotations__", {}))
+    protocol = set(getattr(UnitOfWork, "__annotations__", {}))
+
+    assert UnitOfWork in SqlAlchemyUnitOfWork.__mro__
+    assert protocol <= annotations, protocol - annotations
+    assert len(protocol) >= 40

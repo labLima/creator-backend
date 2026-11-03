@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from creator.core.pagination import Page
 from creator.infrastructure.runtime.observability import resolve_request_id
 
 ResponseHeaders = Mapping[str, str] | Sequence[tuple[str, str]]
@@ -87,10 +88,12 @@ def error_response(
     )
 
 
-def not_implemented(request: Request) -> JSONResponse:
-    return error_response(
-        "NOT_IMPLEMENTED",
-        "Endpoint reserved by contract.",
-        status_code=501,
-        request=request,
-    )
+def page_payload(page: Page[Any], serializer: Any) -> dict[str, Any]:
+    return {
+        "items": [serializer(item) for item in page.items],
+        "pagination": {
+            "page": page.page,
+            "limit": page.limit,
+            "total": page.total,
+        },
+    }
