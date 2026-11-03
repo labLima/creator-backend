@@ -2,7 +2,7 @@
 
 - ADR: [`0011-crewai-multi-agent-orchestration`](../adr/0011-crewai-multi-agent-orchestration.md)
 - Labels: `agents`, `provider`, `implementation`
-- Status: #64 reaberta em 2026-10-26; adapter real pendente
+- Status: #64 reaberta em 2026-10-26; implementação em validação
 
 ## Goal
 
@@ -10,7 +10,7 @@ Implementar o adapter CrewAI por trás de `MultiAgentOrchestrator`, preservando 
 
 ## Acceptance criteria
 
-- O worker obtém o orquestrador pela factory; a implementação inicial escolhe um Flow controlado pelo Creator.
+- O worker obtém o orquestrador pela factory; cada etapa textual usa `Agent.kickoff()` e o Creator controla o workflow, conforme ADR-011.
 
 - O adapter concreto é o único ponto do código da aplicação que importa CrewAI.
 - Nenhum workflow multiagentes confia em Workspace informado pelo cliente sem autorização.

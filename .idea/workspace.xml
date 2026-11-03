@@ -4,7 +4,16 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="" />
+    <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/adr/0011-crewai-multi-agent-orchestration.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/adr/0011-crewai-multi-agent-orchestration.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/agent-specification-compatibility.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/agent-specification-compatibility.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/issues/0013-crewai-adapter.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/issues/0013-crewai-adapter.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/crewai_adapter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/crewai_adapter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/conftest.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/conftest.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_agent_kickoff.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_kickoff.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_providers.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_providers.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
