@@ -1,6 +1,7 @@
 import pytest
 
 from creator.config import Settings
+from creator.services.agents.crewai_adapter import CrewAIMultiAgentOrchestrator
 from creator.services.agents.factory import (
     AgentOrchestratorNotConfiguredError,
     create_multi_agent_orchestrator,
@@ -26,6 +27,11 @@ def test_unconfigured_multi_agent_orchestrator_fails_closed() -> None:
 
     with pytest.raises(AgentOrchestratorNotConfiguredError):
         orchestrator.kickoff("Plan a Workspace content campaign")
+
+
+def test_enabled_multi_agent_orchestrator_uses_crewai_adapter() -> None:
+    orchestrator = create_multi_agent_orchestrator(Settings(crewai_enabled=True))
+    assert isinstance(orchestrator, CrewAIMultiAgentOrchestrator)
 
 
 def test_unconfigured_embedding_provider_fails_closed() -> None:
