@@ -73,7 +73,7 @@ como concluídas.
 
 Execução local em 2026-11-03:
 
-- `make check`: **396 passed**, 16 e2e deselected, cobertura **73,76%**;
+- `make check`: **400 passed**, 16 e2e deselected, cobertura **73,75%**;
   Ruff check/format e mypy strict limpos; Alembic `upgrade head` + `check` sem
   operações pendentes.
 - `make security`: pip-audit sem vulnerabilidades; Gitleaks sem vazamentos.
