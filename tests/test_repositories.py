@@ -552,6 +552,26 @@ def test_brand_project_asset_generation_and_settings_repositories_crud_paths() -
     ).visual_settings == {"logo": "mark"}
 
 
+def test_brand_settings_upsert_rejects_settings_from_another_workspace() -> None:
+    session = FakeSession()
+    user = user_row()
+    workspace_a = workspace_row()
+    workspace_b = workspace_row()
+    brand = brand_row(workspace_id=workspace_a.id, user_id=user.id)
+    membership = membership_row(user, workspace_b)
+    settings = brand_settings_row(brand)
+    repository = SqlAlchemyBrandSettingsRepository(fake_session(session))
+    session.scalars_results.extend([ScalarResult(membership), ScalarResult(settings)])
+
+    with pytest.raises(EntityNotFoundError):
+        repository.upsert(
+            user_id=user.id,
+            workspace_id=workspace_b.id,
+            brand_id=brand.id,
+            voice_settings={"tone": "new"},
+        )
+
+
 def test_workspace_repository_creates_workspace_with_owner_membership() -> None:
     session = FakeSession()
     repository = SqlAlchemyWorkspaceRepository(fake_session(session))

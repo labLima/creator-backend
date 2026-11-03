@@ -137,10 +137,13 @@ def upsert_brand_settings(
     brand_id: Any,
     payload: Any,
 ) -> Any:
-    require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
+    brand = uow.brands.get_for_user(user_id=actor.id, brand_id=brand_id)
+    if brand is None or brand.workspace_id != payload.workspace_id:
+        raise not_found("Brand settings")
+    require_workspace_write(uow, user_id=actor.id, workspace_id=brand.workspace_id)
     settings = uow.brand_settings.upsert(
         user_id=actor.id,
-        workspace_id=payload.workspace_id,
+        workspace_id=brand.workspace_id,
         brand_id=brand_id,
         voice_settings=payload.voice_settings,
         visual_settings=payload.visual_settings,
