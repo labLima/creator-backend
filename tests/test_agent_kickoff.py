@@ -96,8 +96,8 @@ def test_kickoff_returns_typed_output_and_audit_metadata() -> None:
     ],
 )
 def test_real_crewai_agents_execute_specialist_contracts(role, output, model, monkeypatch) -> None:
+    from creator.prompts.agent_designs import AGENT_DESIGNS
     from creator.services.agents import crewai_adapter
-    from creator.services.agents.design_specs import AGENT_DESIGNS
 
     agent_class = crewai_adapter.Agent
     agents = []

@@ -4,9 +4,9 @@ import json
 from collections.abc import Mapping
 
 from creator.domain.agent_workflow import AgentWorkflowStepRole
+from creator.prompts.agent_designs import AGENT_DESIGNS
 from creator.prompts.base import PromptBundle, RenderedPrompt, render_prompt
-from creator.services.agents.design_specs import AGENT_DESIGNS
-from creator.services.agents.specs import SPECIALIST_SPECS
+from creator.prompts.specialist_specs import SPECIALIST_SPECS
 
 AGENT_PROMPT_VERSION = "3.0"
 

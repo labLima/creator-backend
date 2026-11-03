@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import PrivateAttr, ValidationError
 
+from creator.prompts.agent_designs import AGENT_DESIGNS
 from creator.prompts.agents import build_agent_prompt, json_output_instructions
 from creator.prompts.base import PromptValidationError, normalize_json_object
 from creator.services.agents.contracts import (
@@ -15,7 +16,6 @@ from creator.services.agents.contracts import (
     KickoffRequest,
     contract_for_role,
 )
-from creator.services.agents.design_specs import AGENT_DESIGNS
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
 from creator.services.agents.runner import (
     _stable_hash,

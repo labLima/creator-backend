@@ -3,8 +3,8 @@ from types import SimpleNamespace
 from creator.config import Settings
 from creator.domain.agent_workflow import AgentWorkflowStepRole
 from creator.integrations.gemini.image_reviewer import GeminiMultimodalImageReviewer
-from creator.services.agents.design_specs import AGENT_DESIGNS
-from creator.services.agents.specs import SPECIALIST_SPECS
+from creator.prompts.agent_designs import AGENT_DESIGNS
+from creator.prompts.specialist_specs import SPECIALIST_SPECS
 from creator.services.ai.reviewer import ImageReviewRequest
 
 

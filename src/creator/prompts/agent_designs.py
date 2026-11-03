@@ -11,6 +11,7 @@ from creator.domain.agent_workflow import AgentWorkflowStepRole
 
 @dataclass(frozen=True, slots=True)
 class AgentDesign:
+    prompt_version: str
     title: str
     goal: str
     backstory: str
@@ -20,6 +21,7 @@ class AgentDesign:
 
 @dataclass(frozen=True, slots=True)
 class SpecialtyDesign:
+    prompt_version: str
     id: str
     title: str
     goal: str
@@ -30,6 +32,7 @@ class SpecialtyDesign:
 
 AGENT_DESIGNS: dict[AgentWorkflowStepRole, AgentDesign] = {
     AgentWorkflowStepRole.BUSINESS: AgentDesign(
+        "3.0",
         "Senior Brand and Campaign Strategist",
         "Produce a faithful and usable strategic summary grounded in authorized sources.",
         "An experienced Brand strategist who values evidence, clear constraints and uncertainty.",
@@ -39,6 +42,7 @@ AGENT_DESIGNS: dict[AgentWorkflowStepRole, AgentDesign] = {
         "BusinessOutput with Brand summary, voice, visual direction, constraints and sources.",
     ),
     AgentWorkflowStepRole.PLANNER: AgentDesign(
+        "3.0",
         "Senior Advertising Creative Strategist",
         "Develop coherent, feasible post ideas that address the requested Campaign.",
         "An experienced creative strategist focused on clear messages and audience relevance.",
@@ -48,6 +52,7 @@ AGENT_DESIGNS: dict[AgentWorkflowStepRole, AgentDesign] = {
         "PlannerOutput containing one or more posts with theme, objective, big idea and message.",
     ),
     AgentWorkflowStepRole.WRITER: AgentDesign(
+        "3.0",
         "Senior Advertising Copywriter and Art Director",
         "Produce clear, Brand-aligned copy and executable visual direction for one post.",
         "An experienced advertising creative who makes copy and imagery work together and "
@@ -58,6 +63,7 @@ AGENT_DESIGNS: dict[AgentWorkflowStepRole, AgentDesign] = {
         "WriterOutput with caption and direction containing briefing, copy and visual prompt.",
     ),
     AgentWorkflowStepRole.ARTIST: AgentDesign(
+        "3.0",
         "Advertising Image Production Specialist",
         "Produce an image faithful to the approved visual direction and Brand constraints.",
         "An experienced visual production specialist who prioritizes fidelity and traceability.",
@@ -66,6 +72,7 @@ AGENT_DESIGNS: dict[AgentWorkflowStepRole, AgentDesign] = {
         "An image reference and production metadata persisted by Creator.",
     ),
     AgentWorkflowStepRole.REVIEWER: AgentDesign(
+        "3.0",
         "Executive Creative and Visual Quality Reviewer",
         "Assess the actual image for communication quality, Brand fidelity and safety.",
         "An experienced creative reviewer who relies on visible evidence, distinguishes "
@@ -80,6 +87,7 @@ AGENT_DESIGNS: dict[AgentWorkflowStepRole, AgentDesign] = {
 
 SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
     SpecialtyDesign(
+        "3.0",
         "SUB-01",
         "Brand strategist",
         "Identify source-backed Brand rules.",
@@ -88,6 +96,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "Brand identity and constraints supported by available sources.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-02",
         "Persona creative strategist",
         "Identify useful Persona signals.",
@@ -96,6 +105,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "Creative signals and explicitly identified information gaps.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-03",
         "Campaign strategist",
         "Clarify the Campaign's communication goal.",
@@ -104,6 +114,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "A coherent Campaign objective and source-backed constraints.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-04",
         "Creative reference analyst",
         "Interpret supplied references safely.",
@@ -113,6 +124,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "Reference roles and non-copy constraints where references are available.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-05",
         "Creative territory strategist",
         "Explore distinct creative approaches.",
@@ -121,6 +133,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "A selected idea aligned with the Campaign, Persona and available facts.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-06",
         "Advertising copywriter",
         "Write clear, faithful copy.",
@@ -129,6 +142,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "Caption and image copy consistent with the selected idea.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-07",
         "Advertising art director",
         "Define executable visual direction.",
@@ -137,6 +151,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "A visual briefing consistent with copy and the selected idea.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-08",
         "Visual prompt specialist",
         "Compile faithful visual instructions.",
@@ -145,6 +160,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "A visual prompt preserving the approved direction and constraints.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-09",
         "Brand and product reviewer",
         "Identify material fidelity issues.",
@@ -153,6 +169,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "Evidence-based Brand, product and safety concerns.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-10",
         "Visual quality inspector",
         "Identify material visual defects.",
@@ -161,6 +178,7 @@ SPECIALTY_DESIGNS: tuple[SpecialtyDesign, ...] = (
         "Concise observations about material visual or technical defects.",
     ),
     SpecialtyDesign(
+        "3.0",
         "SUB-11",
         "Correction specialist",
         "Recommend a proportionate correction.",

@@ -74,6 +74,26 @@ def test_invalid_or_mismatched_schema_blocks_next_edge() -> None:
         )
 
 
+def test_handoff_rejects_output_schema_that_does_not_match_edge() -> None:
+    workspace = uuid4()
+    envelope = emit(
+        role="BUSINESS",
+        output=_business(),
+        workspace_id=workspace,
+        brand_id=uuid4(),
+        correlation_id=uuid4(),
+        context_digest=context_hash({}),
+    )
+    with pytest.raises(PipelineContractError, match="Output schema"):
+        consume(
+            envelope,
+            predecessor="BUSINESS",
+            successor="PLANNER",
+            workspace_id=workspace,
+            output_schema=BusinessOutput,
+        )
+
+
 def test_reviewer_feedback_preserves_precedence_and_origin() -> None:
     workspace, brand, correlation = uuid4(), uuid4(), uuid4()
     review = ReviewOutput(

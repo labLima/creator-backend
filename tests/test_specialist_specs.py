@@ -3,10 +3,10 @@ import hashlib
 import pytest
 
 from creator.domain.agent_workflow import AgentWorkflowStepRole
+from creator.prompts.agent_designs import AGENT_DESIGNS, SPECIALTY_DESIGNS
 from creator.prompts.agents import build_agent_prompt
+from creator.prompts.specialist_specs import CREATIVE_SPECIALTIES, SPECIALIST_SPECS
 from creator.services.agents.contracts import AGENT_CONTRACTS
-from creator.services.agents.design_specs import AGENT_DESIGNS, SPECIALTY_DESIGNS
-from creator.services.agents.specs import CREATIVE_SPECIALTIES, SPECIALIST_SPECS
 
 
 def test_image_workflow_has_a_versioned_spec_for_every_specialist() -> None:
