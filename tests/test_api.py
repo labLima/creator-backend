@@ -19,7 +19,7 @@ from creator.api.dependencies import (
     get_uow,
 )
 from creator.asset.ports import AssetRecord
-from creator.brand.ports import BrandRecord, BrandSettingsRecord
+from creator.brand.ports import BrandAssetRecord, BrandRecord, BrandSettingsRecord
 from creator.config import Settings, get_settings
 from creator.content.ports import (
     ContentDetailRecord,
@@ -422,12 +422,14 @@ class FakeCrudRepository:
     def __init__(self, record: object) -> None:
         self.record = record
         self.created: list[dict[str, object]] = []
+        self.get_calls: list[dict[str, object]] = []
 
     def add(self, **kwargs: object) -> object:
         self.created.append(kwargs)
         return self.record
 
     def get_for_user(self, **kwargs: object) -> object:
+        self.get_calls.append(kwargs)
         return self.record
 
     def list_for_user(self, *, page: PageRequest, **kwargs: object) -> Page[object]:
@@ -456,6 +458,7 @@ class FakeUnitOfWork:
         settings_record: SettingsRecord | None = None,
         status: ImageGenerationStatusRecord | None = None,
         existing: ImageGenerationStatusRecord | None = None,
+        brand_asset: BrandAssetRecord | None = None,
     ) -> None:
         self.users = FakeUserRepository(existing_user)
         self.workspaces = FakeWorkspaceRepository(
@@ -472,6 +475,7 @@ class FakeUnitOfWork:
         )
         self.generations = FakeCrudRepository(generation_record())
         self.assets = FakeCrudRepository(asset_record())
+        self.brand_assets = FakeCrudRepository(brand_asset)
         self.brand_settings = FakeCrudRepository(brand_settings_record())
         self.settings = FakeSettingsRepository(settings_record)
         self.image_generations = FakeImageGenerationRepository(status=status, existing=existing)
@@ -641,6 +645,20 @@ def asset_record() -> AssetRecord:
         byte_size=123,
         checksum="sha256:abc",
         metadata={"alt": "asset"},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        deleted_at=None,
+    )
+
+
+def brand_asset_record() -> BrandAssetRecord:
+    return BrandAssetRecord(
+        id=UUID("36000000-0000-0000-0000-000000000001"),
+        brand_id=UUID("31000000-0000-0000-0000-000000000001"),
+        type="logo",
+        file_url="https://example.com/logo.png",
+        file_name="logo.png",
+        description="Brand logo",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         deleted_at=None,
@@ -1095,6 +1113,78 @@ async def test_core_resource_crud_routes_return_envelopes(
     assert expected_field in update_response.json()["data"]
     assert delete_response.json()["data"] == {"deleted": True}
     assert unit_of_work.commits == 3
+
+
+@pytest.mark.anyio
+async def test_get_asset_returns_brand_asset_without_nested_envelope() -> None:
+    """Regression: the service must return a payload, not an HTTP response.
+
+    `asset/service.py` used to wrap `_brand_asset_data` in `success_response`,
+    which the router wraps again, producing a 500 for brand asset ids.
+    """
+    brand_asset = brand_asset_record()
+    unit_of_work = FakeUnitOfWork(brand_asset=brand_asset)
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.get(f"/api/v1/assets/{brand_asset.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["id"] == str(brand_asset.id)
+    assert "success" not in body["data"]
+    assert "data" not in body["data"]
+    assert unit_of_work.brand_assets.get_calls == [
+        {"user_id": user_record().id, "asset_id": brand_asset.id}
+    ]
+    assert unit_of_work.assets.get_calls == []
+
+
+@pytest.mark.anyio
+async def test_get_plain_asset_when_no_brand_asset_matches() -> None:
+    asset = asset_record()
+    unit_of_work = FakeUnitOfWork()
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.get(f"/api/v1/assets/{asset.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["id"] == str(asset.id)
+    assert body["data"]["asset_type"] == "image"
+    assert unit_of_work.brand_assets.get_calls == [
+        {"user_id": user_record().id, "asset_id": asset.id}
+    ]
+    assert unit_of_work.assets.get_calls == [{"user_id": user_record().id, "asset_id": asset.id}]
+
+
+@pytest.mark.anyio
+async def test_get_brand_asset_returns_single_envelope() -> None:
+    brand_asset = brand_asset_record()
+    unit_of_work = FakeUnitOfWork(brand_asset=brand_asset)
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.get(f"/api/v1/brand-assets/{brand_asset.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["id"] == str(brand_asset.id)
+    assert "success" not in body["data"]
+    assert "data" not in body["data"]
 
 
 @pytest.mark.anyio

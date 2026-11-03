@@ -8,6 +8,7 @@ below are the only thing preventing `billing/router.py` from importing
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -66,8 +67,12 @@ def _resolved_imports(path: Path) -> list[tuple[int, str, tuple[str, ...]]]:
         if isinstance(node, ast.Import):
             resolved.extend((node.lineno, alias.name, ()) for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            base = package[: len(package) - (node.level - 1)] if node.level else []
-            module = ".".join([*base, node.module]) if node.module else ".".join(base)
+            if node.level:
+                base = ["creator", *package]
+                base = base[: len(base) - (node.level - 1)]
+                module = ".".join([*base, node.module]) if node.module else ".".join(base)
+            else:
+                module = node.module or ""
             resolved.append((node.lineno, module, tuple(alias.name for alias in node.names)))
     return resolved
 
@@ -89,6 +94,179 @@ def test_capability_set_is_exact() -> None:
 
     assert len(names) == 27, sorted(names)
     assert {"auth", "user", "workspace", "brand", "generation", "billing_provider"} <= names
+
+
+REQUIRED_CAPABILITY_FILES = (
+    "__init__.py",
+    "router.py",
+    "service.py",
+    "repository.py",
+    "models.py",
+    "schemas.py",
+    "ports.py",
+)
+
+
+def test_capabilities_expose_the_full_file_vocabulary() -> None:
+    """Every capability must expose the same structural vocabulary.
+
+    A missing file is usually a DTO or use case parked in the wrong package,
+    which is how `ImageWorkflowRequest` ended up in `generation/schemas.py`.
+    """
+    missing: dict[str, list[str]] = {}
+    for capability in _capabilities():
+        absent = [name for name in REQUIRED_CAPABILITY_FILES if not (capability / name).exists()]
+        if absent:
+            missing[capability.name] = absent
+
+    assert not missing, f"capabilities missing required files: {missing}"
+
+
+def test_legacy_package_layouts_are_gone() -> None:
+    """The pre-refactor catch-all packages must not come back."""
+    legacy = (
+        CREATOR_ROOT / "modules",
+        CREATOR_ROOT / "repositories",
+        CREATOR_ROOT / "infrastructure" / "persistence" / "repositories",
+    )
+    surviving = [path.relative_to(PROJECT_ROOT).as_posix() for path in legacy if path.exists()]
+    surviving.extend(
+        path.relative_to(PROJECT_ROOT).as_posix()
+        for path in CREATOR_ROOT.glob("*/adapters")
+        if path.exists()
+    )
+
+    assert not surviving, f"legacy package layout reintroduced: {surviving}"
+
+
+HTTP_RESPONSE_NAMES = frozenset(
+    {
+        "success_response",
+        "error_response",
+        "JSONResponse",
+        "Response",
+        "PlainTextResponse",
+        "StreamingResponse",
+        "FileResponse",
+        "RedirectResponse",
+        "HTMLResponse",
+        "ORJSONResponse",
+    }
+)
+HTTP_RESPONSE_MODULES = frozenset(
+    {
+        "api.responses",
+        "creator.api.responses",
+        "fastapi",
+        "fastapi.responses",
+        "starlette",
+        "starlette.responses",
+    }
+)
+
+
+def _response_aliases(tree: ast.AST) -> dict[str, str]:
+    """Map local aliases to the canonical HTTP response name."""
+    aliases: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom) or node.module not in HTTP_RESPONSE_MODULES:
+            continue
+        for alias in node.names:
+            if alias.name in HTTP_RESPONSE_NAMES:
+                aliases[alias.asname or alias.name] = alias.name
+    return aliases
+
+
+def _service_response_violations(source: str, path: str) -> list[str]:
+    tree = ast.parse(source)
+    aliases = _response_aliases(tree)
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module in HTTP_RESPONSE_MODULES:
+            for alias in node.names:
+                if alias.name in HTTP_RESPONSE_NAMES:
+                    violations.append(f"{path}:{node.lineno} imports {alias.name}")
+        elif isinstance(node, ast.Call):
+            func = node.func
+            name = (
+                func.id
+                if isinstance(func, ast.Name)
+                else func.attr
+                if isinstance(func, ast.Attribute)
+                else None
+            )
+            if name is None:
+                continue
+            canonical = aliases.get(name, name)
+            if canonical in HTTP_RESPONSE_NAMES:
+                violations.append(f"{path}:{node.lineno} calls {canonical}()")
+    return violations
+
+
+def test_services_never_build_http_responses() -> None:
+    """Services return payloads; only routers own the response envelope.
+
+    `asset/service.py` returned `success_response(...)`, which the router wrapped
+    again, turning every brand asset read into a 500 serialisation error. The
+    detector also rejects aliases, relative imports and direct response classes.
+    """
+    violations: list[str] = []
+    scanned = 0
+    for service in _python_files():
+        if not service.name.endswith("service.py"):
+            continue
+        scanned += 1
+        violations.extend(
+            _service_response_violations(
+                service.read_text(encoding="utf-8"),
+                service.relative_to(PROJECT_ROOT).as_posix(),
+            )
+        )
+
+    assert scanned >= len(_capabilities()), (
+        f"service response scan only inspected {scanned} files (vacuous?)"
+    )
+    assert not violations, "\n".join(violations)
+
+
+def test_service_response_guard_detects_aliases_and_response_classes() -> None:
+    source = """
+from creator.api.responses import success_response as ok
+from fastapi.responses import JSONResponse as Json
+from ..api.responses import error_response as bad
+from fastapi import Response as Raw
+
+def handler():
+    ok({})
+    bad({})
+    Raw({})
+    return Json({})
+"""
+    violations = _service_response_violations(source, "sample.py")
+
+    assert len(violations) == 8, violations
+    assert sum("success_response" in item for item in violations) == 2
+    assert sum("error_response" in item for item in violations) == 2
+    assert sum("JSONResponse" in item for item in violations) == 2
+    assert sum("calls Response()" in item for item in violations) == 1
+
+
+def test_relative_imports_are_anchored_on_creator(tmp_path, monkeypatch) -> None:
+    root = tmp_path / "src" / "creator"
+    (root / "asset").mkdir(parents=True)
+    service = root / "asset" / "service.py"
+    service.write_text(
+        "from .models import Asset\nfrom ..api.responses import success_response\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys.modules[__name__], "CREATOR_ROOT", root)
+
+    imports = _resolved_imports(service)
+
+    assert [module for _, module, _ in imports] == [
+        "creator.asset.models",
+        "creator.api.responses",
+    ]
 
 
 def test_pure_files_do_not_import_persistence_or_transport() -> None:

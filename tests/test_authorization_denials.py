@@ -4,9 +4,10 @@
 `raise HTTPException(status_code=403)` statements are never executed: every
 existing HTTP test either asserts 401 (no principal at all) or uses an
 `admin_app()` fixture that never reaches the guard. Since the modular
-extraction, the callers live in `modules/*/router.py`, which
-`[tool.coverage.run].omit` excludes, so a regression in an authorization guard
-is invisible to coverage *and* to `tests/test_api.py`.
+extraction, the callers live in `<capability>/service.py` (and a few routers);
+the existing HTTP tests do not exercise the 403 branches. Routers are omitted
+from coverage, but services are measured, so a regression in an authorization
+guard must be asserted explicitly here.
 
 Routes are listed explicitly, with the guard they exercise, so a rename or a
 removed guard fails here instead of silently degrading the suite.

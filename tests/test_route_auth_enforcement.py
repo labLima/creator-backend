@@ -7,7 +7,7 @@ router that uses a relative decorator path (for example
 of the 221 protected operations. Neither test executes the dependency graph of
 the other 219.
 
-After the modular extraction those 219 handlers live in `modules/*/router.py`,
+After the modular extraction those 219 handlers live in `<capability>/router.py`,
 which `[tool.coverage.run].omit` excludes, so a lost authentication dependency
 is invisible to coverage as well. This module closes that gap the cheapest way
 that gives real confidence: one unauthenticated request per operation through

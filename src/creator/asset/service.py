@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from creator.api.errors import not_found, require_workspace_write
-from creator.api.responses import page_payload, success_response
+from creator.api.responses import page_payload
 from creator.api.serializers import _asset_data, _brand_asset_data
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
@@ -79,7 +79,7 @@ def get_asset(
         else None
     )
     if brand_asset is not None:
-        return success_response(_brand_asset_data(brand_asset), request)
+        return _brand_asset_data(brand_asset)
     asset = uow.assets.get_for_user(user_id=actor.id, asset_id=asset_id)
     if asset is None:
         raise not_found("Asset")

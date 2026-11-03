@@ -24,12 +24,12 @@ from creator.config import Settings, get_settings
 from creator.domain.agent_workflow import WorkflowDecision
 from creator.domain.exceptions import EntityNotFoundError
 from creator.generation.ports import GenerationQueue
-from creator.generation.schemas import (
+from creator.uow import UnitOfWork
+from creator.user.ports import UserRecord
+from creator.workflow.schemas import (
     ImageWorkflowDecisionRequest,
     ImageWorkflowRequest,
 )
-from creator.uow import UnitOfWork
-from creator.user.ports import UserRecord
 from creator.workflow.service import (
     AgentWorkflowDecisionError,
     AgentWorkflowIdempotencyConflictError,
