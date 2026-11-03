@@ -310,6 +310,8 @@ class SqlAlchemyBrandSettingsRepository:
                 brand_tables.BrandSettings.brand_id == brand_id
             )
         ).one_or_none()
+        if row is not None and row.workspace_id != workspace_id:
+            raise EntityNotFoundError("Brand settings not found")
         if row is None:
             row = brand_tables.BrandSettings(
                 workspace_id=workspace_id,

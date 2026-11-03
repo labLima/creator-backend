@@ -423,6 +423,7 @@ class FakeCrudRepository:
         self.record = record
         self.created: list[dict[str, object]] = []
         self.get_calls: list[dict[str, object]] = []
+        self.upsert_calls: list[dict[str, object]] = []
 
     def add(self, **kwargs: object) -> object:
         self.created.append(kwargs)
@@ -442,6 +443,7 @@ class FakeCrudRepository:
         return None
 
     def upsert(self, **kwargs: object) -> object:
+        self.upsert_calls.append(kwargs)
         return self.record
 
 
@@ -1217,6 +1219,86 @@ async def test_brand_settings_crud_routes_use_brand_subresource() -> None:
     assert update_response.json()["data"]["voice_settings"] == {"tone": "clear"}
     assert delete_response.json()["data"] == {"deleted": True}
     assert unit_of_work.commits == 3
+
+
+@pytest.mark.anyio
+async def test_brand_settings_upsert_rejects_brand_from_other_workspace() -> None:
+    """An editor cannot use a Brand id from another Workspace.
+
+    Regression for S1 in docs/issues/0046-security-backlog-after-modularization.md:
+    the service must resolve the Brand through the authorized user path and use
+    the Brand's Workspace, not the client-supplied workspace_id.
+    """
+    other_workspace_id = UUID("10000000-0000-0000-0000-000000000002")
+    unit_of_work = FakeUnitOfWork()
+    unit_of_work.brands = FakeCrudRepository(
+        replace(brand_record(), workspace_id=other_workspace_id)
+    )
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.put(
+            "/api/v1/brands/31000000-0000-0000-0000-000000000001/settings",
+            json={
+                "workspace_id": "10000000-0000-0000-0000-000000000001",
+                "voice_settings": {"tone": "clear"},
+            },
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "BRAND_SETTINGS_NOT_FOUND"
+    assert unit_of_work.brand_settings.upsert_calls == []
+    assert unit_of_work.commits == 0
+
+
+@pytest.mark.anyio
+async def test_brand_settings_upsert_rejects_viewer_role() -> None:
+    unit_of_work = FakeUnitOfWork(workspace_access=False)
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.put(
+            "/api/v1/brands/31000000-0000-0000-0000-000000000001/settings",
+            json={
+                "workspace_id": "10000000-0000-0000-0000-000000000001",
+                "voice_settings": {"tone": "clear"},
+            },
+        )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "WORKSPACE_ACCESS_DENIED"
+    assert unit_of_work.brand_settings.upsert_calls == []
+    assert unit_of_work.commits == 0
+
+
+@pytest.mark.anyio
+async def test_brand_settings_upsert_rejects_brand_not_visible_to_user() -> None:
+    unit_of_work = FakeUnitOfWork()
+    unit_of_work.brands = FakeCrudRepository(None)
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.put(
+            "/api/v1/brands/31000000-0000-0000-0000-000000000001/settings",
+            json={
+                "workspace_id": "10000000-0000-0000-0000-000000000001",
+                "voice_settings": {"tone": "clear"},
+            },
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "BRAND_SETTINGS_NOT_FOUND"
+    assert unit_of_work.brand_settings.upsert_calls == []
+    assert unit_of_work.commits == 0
 
 
 @pytest.mark.anyio

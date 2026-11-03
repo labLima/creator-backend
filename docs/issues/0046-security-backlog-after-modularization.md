@@ -22,7 +22,12 @@ commit de uma mudança estrutural impede provar qual das duas causou uma quebra.
 
 ## Itens
 
-### S1 — Brand Settings sem vínculo entre `brand_id` e `workspace_id` (alto)
+### S1 — Brand Settings sem vínculo entre `brand_id` e `workspace_id` (alto) — corrigido
+
+> **Correção 2026-11-03:** `brand/service.py` resolve a Brand pelo caminho
+> autorizado (`brands.get_for_user`) e usa o `workspace_id` da Brand; o
+> `brand/repository.py` também rejeita uma linha existente de outro Workspace.
+> Testes de regressão em `tests/test_api.py` e `tests/test_repositories.py`.
 
 `brand/service.py` autoriza `payload.workspace_id`, mas o `upsert` do
 repositório busca a linha apenas por `brand_id`
