@@ -81,7 +81,7 @@ Execução local em 2026-11-03:
 - `git diff --exit-code docs/openapi.yaml`: sem diff.
 - `git diff --exit-code CONTEXT.md`: sem diff.
 - `tests/test_schema_migration_matrix.py`: cobre todas as 51 tabelas.
-- CI remoto: executar no head final do PR #136 antes do merge.
+- CI remoto do commit `f466667`: lint/type 3.12 e 3.13, security, E2E, containers e OpenAPI/Docker build verdes; deploy Cloud Run `skipped`.
 
 ## Rollback
 
