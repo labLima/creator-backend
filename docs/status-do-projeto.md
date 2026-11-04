@@ -78,8 +78,8 @@ Issues reescritas ou corrigidas:
 - Backlog de segurança pré-existente S1–S13 — ver
   [0046](issues/0046-security-backlog-after-modularization.md). S1 corrigido;
   S2–S13 abertos.
-- Paridade de `operationId`/error responses do OpenAPI implementada na branch
-  `feat/135-openapi-operation-ids`; aguarda revisão/merge — ver
+- Paridade de `operationId`/error responses do OpenAPI implementada e mergeada
+  no PR [#138](https://github.com/labLima/creator-backend/pull/138) — ver
   [0051](issues/0051-openapi-operation-id-parity.md) / #135.
 - Brand Knowledge e RAG ainda não têm schema ativo, ingestão nem retriever
   configurado (#49, #74–#77).

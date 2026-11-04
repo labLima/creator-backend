@@ -2,8 +2,8 @@
 
 - ADR primária: [ADR-007](../adr/0007-openapi-first.md)
 - Issue remota: [#135](https://github.com/labLima/creator-backend/issues/135)
-- Status: implementação concluída na branch `feat/135-openapi-operation-ids`;
-  aguardando revisão/merge (Fase 2)
+- Status: concluída e mergeada no PR
+  [#138](https://github.com/labLima/creator-backend/pull/138) (Fase 2)
 - Owner: backend/platform
 - Decisão: **2026-11-04 — opção 1 aprovada**
 
