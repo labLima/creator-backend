@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
@@ -15,15 +14,16 @@ from creator.api.auth import (
     set_csrf_cookie,
 )
 from creator.api.dependencies import (
+    get_auth_application,
     get_auth_token_services,
     get_optional_current_user,
     get_optional_principal,
-    get_uow,
 )
 from creator.api.responses import success_response
 from creator.auth.ports import AuthTokenServices
 from creator.auth.schemas import AuthLoginRequest, AuthSignupRequest
 from creator.auth.service import (
+    AuthApplication,
     AuthConfigurationError,
     EmailAlreadyRegisteredError,
     ExpiredTokenError,
@@ -32,25 +32,11 @@ from creator.auth.service import (
     LocalSignupResult,
     RefreshInProgressError,
     RevokedSessionError,
-    session_is_active,
-)
-from creator.auth.service import (
-    login as login_local,
-)
-from creator.auth.service import (
-    logout as logout_local,
-)
-from creator.auth.service import (
-    refresh as refresh_local,
-)
-from creator.auth.service import (
-    signup as signup_local,
 )
 from creator.auth.types import AuthSignupResult, IssuedSession
 from creator.config import Settings, get_settings
 from creator.domain.auth import Principal
 from creator.domain.exceptions import PersistenceError
-from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 from creator.workspace.ports import WorkspaceMembershipRecord, WorkspaceRecord
 
@@ -143,13 +129,12 @@ def _signup_data(
 def login_with_password(
     payload: AuthLoginRequest,
     request: Request,
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AuthApplication, Depends(get_auth_application)],
     settings: Annotated[Settings, Depends(get_settings)],
     token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
     try:
-        session = login_local(
-            unit_of_work=unit_of_work,
+        session = application.login(
             settings=settings,
             email=payload.email,
             password=payload.password,
@@ -186,13 +171,12 @@ def login_with_password(
 def signup_with_password(
     payload: AuthSignupRequest,
     request: Request,
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AuthApplication, Depends(get_auth_application)],
     settings: Annotated[Settings, Depends(get_settings)],
     token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
     try:
-        result: LocalSignupResult = signup_local(
-            unit_of_work=unit_of_work,
+        result: LocalSignupResult = application.signup(
             settings=settings,
             email=payload.email,
             password=payload.password,
@@ -256,14 +240,13 @@ def signup_with_password(
 @router.post("/refresh")
 def refresh_session(
     request: Request,
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AuthApplication, Depends(get_auth_application)],
     settings: Annotated[Settings, Depends(get_settings)],
     token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
     refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
     try:
-        session = refresh_local(
-            unit_of_work=unit_of_work,
+        session = application.refresh(
             settings=settings,
             refresh_token=refresh_token or "",
             user_agent=request.headers.get("user-agent"),
@@ -301,7 +284,7 @@ def refresh_session(
 def csrf_token(
     request: Request,
     principal: Annotated[Principal | None, Depends(get_optional_principal)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AuthApplication, Depends(get_auth_application)],
     settings: Annotated[Settings, Depends(get_settings)],
     token_services: Annotated[AuthTokenServices, Depends(get_auth_token_services)],
 ) -> JSONResponse:
@@ -311,19 +294,17 @@ def csrf_token(
             candidate = UUID(principal.session_id)
         except ValueError:
             candidate = None
-        if candidate is not None and session_is_active(
-            unit_of_work=unit_of_work, session_id=candidate, clock=token_services.clock
+        if candidate is not None and application.session_is_active(
+            session_id=candidate, clock=token_services.clock
         ):
             session_id = candidate
 
     if session_id is None:
         refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
         if refresh_token:
-            record = unit_of_work.auth_sessions.get_by_refresh_hash(
-                hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
-            )
-            if record is not None and session_is_active(
-                unit_of_work=unit_of_work, session_id=record.id, clock=token_services.clock
+            record = application.session_for_refresh_token(refresh_token)
+            if record is not None and application.session_is_active(
+                session_id=record.id, clock=token_services.clock
             ):
                 session_id = record.id
 
@@ -344,7 +325,7 @@ def logout_session(
     request: Request,
     current_user: Annotated[UserRecord | None, Depends(get_optional_current_user)],
     principal: Annotated[Principal | None, Depends(get_optional_principal)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AuthApplication, Depends(get_auth_application)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> JSONResponse:
     session_id: UUID | None = None
@@ -360,9 +341,7 @@ def logout_session(
     if session_id is None:
         refresh_token = request.cookies.get(settings.auth_cookie_refresh_name)
         if refresh_token:
-            record = unit_of_work.auth_sessions.get_by_refresh_hash(
-                hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
-            )
+            record = application.session_for_refresh_token(refresh_token)
             if record is not None:
                 session_id = record.id
     if session_id is None and principal is not None and principal.session_id is not None:
@@ -374,7 +353,7 @@ def logout_session(
                 detail={"code": "AUTHENTICATION_INVALID", "message": "Invalid session"},
             ) from error
     if session_id is not None:
-        logout_local(unit_of_work=unit_of_work, session_id=session_id)
+        application.logout(session_id=session_id)
     response = _success({"logged_out": True}, request)
     clear_auth_cookies(FastApiCookieTransport(response), settings=settings)
     response.headers["Cache-Control"] = "no-store"

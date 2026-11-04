@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from creator.api.errors import not_found, require_workspace_write
-from creator.api.responses import page_payload
-from creator.api.serializers import (
+from creator.application.errors import not_found, require_workspace_write
+from creator.application.pagination import page_payload
+from creator.application.serializers import (
     _workspace_data,
     _workspace_invite_data,
     _workspace_invite_usage_data,
@@ -28,7 +28,7 @@ def list_workspaces(
     limit: Any,
     sort: Any,
 ) -> Any:
-    workspaces = uow.workspaces.list_for_user(
+    workspaces = uow.workspace.workspaces.list_for_user(
         user_id=actor.id,
         page=page_request(page, limit, sort),
     )
@@ -43,7 +43,7 @@ def create_workspace(
     request: Any,
     payload: Any,
 ) -> Any:
-    created = uow.workspaces.create_for_user(
+    created = uow.workspace.workspaces.create_for_user(
         user_id=actor.id,
         name=payload.name,
     )
@@ -62,7 +62,7 @@ def get_workspace(
     request: Any,
     workspace_id: Any,
 ) -> Any:
-    workspace = uow.workspaces.get_for_user(
+    workspace = uow.workspace.workspaces.get_for_user(
         user_id=actor.id,
         workspace_id=workspace_id,
     )
@@ -81,7 +81,7 @@ def update_workspace(
     payload: Any,
 ) -> Any:
     try:
-        workspace = uow.workspaces.update(
+        workspace = uow.workspace.workspaces.update(
             user_id=actor.id,
             workspace_id=workspace_id,
             name=payload.name,
@@ -101,7 +101,7 @@ def delete_workspace(
     workspace_id: Any,
 ) -> Any:
     try:
-        workspace = uow.workspaces.soft_delete_for_user(
+        workspace = uow.workspace.workspaces.soft_delete_for_user(
             user_id=actor.id,
             workspace_id=workspace_id,
         )
@@ -122,7 +122,7 @@ def list_workspace_invites(
     return {
         "items": [
             _workspace_invite_data(x)
-            for x in uow.workspace_invites.list_for_user(
+            for x in uow.workspace.invites.list_for_user(
                 user_id=actor.id, workspace_id=workspace_id
             )
         ]
@@ -137,7 +137,7 @@ def create_workspace_invite(
     payload: Any,
 ) -> Any:
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
-    item = uow.workspace_invites.add(**payload.model_dump(), created_by=actor.id, token=uuid4().hex)
+    item = uow.workspace.invites.add(**payload.model_dump(), created_by=actor.id, token=uuid4().hex)
     uow.commit()
 
     return _workspace_invite_data(item)
@@ -150,7 +150,7 @@ def get_workspace_invite(
     request: Any,
     invite_id: Any,
 ) -> Any:
-    item = uow.workspace_invites.get_for_user(user_id=actor.id, invite_id=invite_id)
+    item = uow.workspace.invites.get_for_user(user_id=actor.id, invite_id=invite_id)
     if item is None:
         raise not_found("Workspace invite")
 
@@ -165,9 +165,9 @@ def update_workspace_invite(
     invite_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.workspace_invites.get_for_user(user_id=actor.id, invite_id=invite_id) is None:
+    if uow.workspace.invites.get_for_user(user_id=actor.id, invite_id=invite_id) is None:
         raise not_found("Workspace invite")
-    item = uow.workspace_invites.update(
+    item = uow.workspace.invites.update(
         invite_id=invite_id, fields=payload.model_dump(exclude_unset=True)
     )
     uow.commit()
@@ -182,9 +182,9 @@ def delete_workspace_invite(
     request: Any,
     invite_id: Any,
 ) -> Any:
-    if uow.workspace_invites.get_for_user(user_id=actor.id, invite_id=invite_id) is None:
+    if uow.workspace.invites.get_for_user(user_id=actor.id, invite_id=invite_id) is None:
         raise not_found("Workspace invite")
-    uow.workspace_invites.soft_delete(invite_id=invite_id)
+    uow.workspace.invites.soft_delete(invite_id=invite_id)
     uow.commit()
 
     return {"deleted": True}
@@ -200,7 +200,7 @@ def list_workspace_invite_usages(
     return {
         "items": [
             _workspace_invite_usage_data(x)
-            for x in uow.workspace_invite_usages.list_for_user(
+            for x in uow.workspace.invite_usages.list_for_user(
                 user_id=actor.id, workspace_id=workspace_id
             )
         ]
@@ -215,7 +215,7 @@ def create_workspace_invite_usage(
     payload: Any,
 ) -> Any:
     payload["user_id"] = actor.id
-    item = uow.workspace_invite_usages.add(fields=payload)
+    item = uow.workspace.invite_usages.add(fields=payload)
     uow.commit()
 
     return _workspace_invite_usage_data(item)
@@ -228,7 +228,7 @@ def get_workspace_invite_usage(
     request: Any,
     usage_id: Any,
 ) -> Any:
-    item = uow.workspace_invite_usages.get_for_user(user_id=actor.id, usage_id=usage_id)
+    item = uow.workspace.invite_usages.get_for_user(user_id=actor.id, usage_id=usage_id)
     if item is None:
         raise not_found("Workspace invite usage")
 
@@ -243,9 +243,9 @@ def update_workspace_invite_usage(
     usage_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.workspace_invite_usages.get_for_user(user_id=actor.id, usage_id=usage_id) is None:
+    if uow.workspace.invite_usages.get_for_user(user_id=actor.id, usage_id=usage_id) is None:
         raise not_found("Workspace invite usage")
-    item = uow.workspace_invite_usages.update(usage_id=usage_id, fields=payload)
+    item = uow.workspace.invite_usages.update(usage_id=usage_id, fields=payload)
     uow.commit()
 
     return _workspace_invite_usage_data(item)
@@ -258,9 +258,9 @@ def delete_workspace_invite_usage(
     request: Any,
     usage_id: Any,
 ) -> Any:
-    if uow.workspace_invite_usages.get_for_user(user_id=actor.id, usage_id=usage_id) is None:
+    if uow.workspace.invite_usages.get_for_user(user_id=actor.id, usage_id=usage_id) is None:
         raise not_found("Workspace invite usage")
-    uow.workspace_invite_usages.soft_delete(usage_id=usage_id)
+    uow.workspace.invite_usages.soft_delete(usage_id=usage_id)
     uow.commit()
 
     return {"deleted": True}

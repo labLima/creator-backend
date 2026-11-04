@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -90,6 +91,7 @@ class FakeImageGenerationRepository:
 class FakeUnitOfWork:
     def __init__(self, repository: FakeImageGenerationRepository) -> None:
         self.image_generations = repository
+        self.generation = SimpleNamespace(image_jobs=repository)
         self.commits = 0
 
     def __enter__(self) -> FakeUnitOfWork:

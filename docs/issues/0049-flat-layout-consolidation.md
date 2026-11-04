@@ -6,7 +6,7 @@
   [0046](0046-security-backlog-after-modularization.md),
   [0048](0048-plain-capability-layout.md)
 - Issue remota: [#133](https://github.com/labLima/creator-backend/issues/133)
-- Status: em andamento (Fase 2)
+- Status: implementação e gates locais concluídos; aguardando CI
 - Owner: backend/platform
 
 ## Objetivo
@@ -26,21 +26,21 @@ preservando o contrato HTTP e o schema, e registrar explicitamente o que ainda
 - Alinhar README, AGENTS, status, ADRs e issues ao layout plano.
 - Registrar as dívidas que permanecem fora deste incremento.
 
-## Fora de escopo / dívidas deferidas
+## Resultado da consolidação
 
-Estas dívidas não impedem o funcionamento atual e permanecem rastreadas aqui:
+As dívidas estruturais deste incremento foram resolvidas:
 
-- **23 de 27 `service.py` importam `creator.api`** (erros HTTP, respostas e
-  serializers). A separação completa entre aplicação e transporte exige um
-  incremento próprio.
-- **4 routers ainda acessam o UoW diretamente**: `auth`, `content`, `generation`
-  e `workflow`. Em `content` e `generation`, parte do CRUD e da autorização
-  ainda vive no router.
-- **47 repositórios por agregado**: a fase 5 da ADR-023 (consolidar 47 em ~30)
-  continua pendente e foi transferida para esta issue.
-- **Backlog de segurança S1–S13** da [0046](0046-security-backlog-after-modularization.md):
-  itens pré-existentes, incluindo o S1 (cross-tenant Brand Settings), fora do
-  escopo da consolidação estrutural.
+- Nenhum `service.py` importa `creator.api`; erros, paginação e serializers de
+  aplicação agora vivem em `creator.application`, e o transporte mantém a
+  tradução para respostas HTTP.
+- Os routers `auth`, `content`, `generation` e `workflow` recebem casos de uso
+  pela composição e não acessam UoW nem repositórios.
+- Os 47 contratos de repositório antes expostos como atributos planos foram
+  agrupados em 28 interfaces de agregado no UoW. Auth Sessions e Outbox
+  continuam independentes por seus ciclos de vida próprios; os grupos mantêm a
+  mesma sessão e fronteira transacional.
+- O backlog de segurança S1–S13 da
+  [0046](0046-security-backlog-after-modularization.md) continua fora de escopo.
 
 ## Critérios de aceite
 
@@ -52,28 +52,37 @@ Estas dívidas não impedem o funcionamento atual e permanecem rastreadas aqui:
       `src/creator/infrastructure/persistence/repositories` não existem.
 - [x] Nenhum `service.py` chama `success_response()` ou `error_response()`.
 - [x] `docs/openapi.yaml` e `CONTEXT.md` sem diff.
-- [x] `make check`, `make security` e `make e2e` verdes.
+- [x] Nenhum `service.py` importa `creator.api`.
+- [x] Nenhum router de `auth`, `content`, `generation` e `workflow` acessa UoW
+      ou repositórios.
+- [x] Interfaces de repositório agrupadas por agregado; regressões de
+      persistência, isolamento e transação cobertas.
+- [x] `make check` e `make e2e` verdes.
+- [x] `make security` verde no ambiente isolado do projeto; o pip-audit ignorou
+      apenas as quatro vulnerabilidades já configuradas e Gitleaks não encontrou
+      vazamentos.
 - [x] README, AGENTS, status, 0045, 0046, 0048 e tracker consistentes com a
       estrutura plana.
 - [x] Dívidas deferidas acima registradas com caminhos e contagens verificáveis.
 
 ## Evidência
 
-Execução local em 2026-11-03, branch `dev` (`cdb3696` + este incremento):
+Execução local em 2026-11-04, branch `codex/0049-application-boundaries`:
 
-- `make check`: **391 passed**, 16 e2e deselected, cobertura **73,75%**;
-  Ruff check/format e mypy strict limpos; Alembic `upgrade head` + `check` sem
+- `make check PYTHON=.venv/Scripts/python.exe`: Ruff check/format e mypy limpos;
+  **451 passed**, cobertura **74,17%**; Alembic `upgrade head` + `check` sem
   operações pendentes.
-- `make security`: pip-audit sem vulnerabilidades; Gitleaks sem vazamentos.
-- `make e2e`: **16 passed** (inclui o teste de cookies em Chromium).
+- `make e2e PYTHON=.venv/Scripts/python.exe`: **15 passed, 1 skipped**.
+- `make security PYTHON=.venv/Scripts/python.exe`: pip-audit sem vulnerabilidades
+  não ignoradas; Gitleaks em container examinou 136 commits e não encontrou
+  vazamentos. O ambiente isolado foi resolvido a partir de `pyproject.toml`;
+  nenhuma dependência ou item do backlog 0046 foi alterado.
+- `docker build -t creator-backend-python:0049 .`: concluído.
 - `git diff --exit-code docs/openapi.yaml`: sem diff.
 - `git diff --exit-code CONTEXT.md`: sem diff.
-- Teste de regressão do asset: falha antes da correção com
-  `TypeError: Object of type JSONResponse is not JSON serializable` e passa
-  depois.
-- CI remoto do commit `c9b0b89`: lint/type 3.12 e 3.13, security, E2E,
-  containers e OpenAPI/Docker build verdes; job de deploy Cloud Run `skipped`
-  por não ser release.
+- `tests/test_module_boundaries.py`: guardas verificam imports de transporte
+  nos services e acessos de persistência nos quatro routers.
+- Os caminhos de módulos dos workers persistidos em Redis não foram renomeados.
 
 ## Rastreabilidade
 

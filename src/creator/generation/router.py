@@ -14,13 +14,12 @@ from fastapi.responses import JSONResponse
 
 from creator.api.dependencies import (
     get_current_user,
+    get_generation_application,
     get_generation_queue,
     get_storage_provider,
-    get_uow,
 )
 from creator.api.errors import (
     not_found,
-    require_workspace_write,
 )
 from creator.api.responses import (
     page_payload,
@@ -44,13 +43,11 @@ from creator.generation.schemas import (
     RegenerateImageRequest,
 )
 from creator.generation.service import (
+    GenerationApplication,
     IdempotencyConflictError,
     QueueEnqueueError,
-    submit_image_generation,
-    submit_image_regeneration,
 )
 from creator.services.storage.provider import StorageProvider, StorageUrlError
-from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
 router = APIRouter()
@@ -60,14 +57,14 @@ router = APIRouter()
 def list_generations(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
     workspace_id: UUID | None = None,
     content_id: UUID | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     sort: Annotated[str, Query(pattern="^-?created_at$")] = "-created_at",
 ) -> JSONResponse:
-    generations = unit_of_work.generations.list_for_user(
+    generations = application.list_generations(
         user_id=current_user.id,
         workspace_id=workspace_id,
         content_id=content_id,
@@ -81,15 +78,12 @@ def create_generation(
     payload: GenerationCreateRequest,
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
 ) -> JSONResponse:
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=payload.workspace_id
-    )
-    generation = unit_of_work.generations.add(
+    generation = application.create_generation(
+        user=current_user,
         workspace_id=payload.workspace_id,
         content_id=payload.content_id,
-        requested_by_user_id=current_user.id,
         generation_type=payload.type,
         brand_id=payload.brand_id,
         project_id=payload.project_id,
@@ -97,7 +91,6 @@ def create_generation(
         prompt=payload.prompt,
         parameters=payload.parameters,
     )
-    unit_of_work.commit()
     return success_response(_generation_data(generation), request, status_code=201)
 
 
@@ -106,9 +99,9 @@ def get_generation(
     generation_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
 ) -> JSONResponse:
-    generation = unit_of_work.generations.get_for_user(
+    generation = application.get_generation(
         user_id=current_user.id,
         generation_id=generation_id,
     )
@@ -123,10 +116,10 @@ def update_generation(
     payload: GenerationUpdateRequest,
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
 ) -> JSONResponse:
     try:
-        generation = unit_of_work.generations.update(
+        generation = application.update_generation(
             user_id=current_user.id,
             generation_id=generation_id,
             model=payload.model,
@@ -135,7 +128,6 @@ def update_generation(
         )
     except EntityNotFoundError as error:
         raise not_found("Generation") from error
-    unit_of_work.commit()
     return success_response(_generation_data(generation), request)
 
 
@@ -144,13 +136,12 @@ def delete_generation(
     generation_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
 ) -> JSONResponse:
     try:
-        unit_of_work.generations.soft_delete(user_id=current_user.id, generation_id=generation_id)
+        application.delete_generation(user_id=current_user.id, generation_id=generation_id)
     except EntityNotFoundError as error:
         raise not_found("Generation") from error
-    unit_of_work.commit()
     return success_response({"deleted": True}, request)
 
 
@@ -159,9 +150,9 @@ def get_generated_image(
     image_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
 ) -> JSONResponse:
-    image = unit_of_work.generated_images.get_for_user(user_id=current_user.id, image_id=image_id)
+    image = application.get_generated_image(user_id=current_user.id, image_id=image_id)
     if image is None:
         raise not_found("Generated image")
     return success_response(_generated_image_data(image), request)
@@ -174,13 +165,12 @@ def generate_image(
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=128)],
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
     queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
 ) -> JSONResponse:
     try:
         request_id = request_id_for(request)
-        status = submit_image_generation(
-            unit_of_work=unit_of_work,
+        status = application.submit_image_generation(
             queue=queue,
             settings=settings,
             user=current_user,
@@ -222,13 +212,12 @@ def regenerate_image(
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=128)],
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
     queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
 ) -> JSONResponse:
     try:
         request_id = request_id_for(request)
-        status = submit_image_regeneration(
-            unit_of_work=unit_of_work,
+        status = application.submit_image_regeneration(
             queue=queue,
             settings=settings,
             user=current_user,
@@ -267,18 +256,13 @@ def get_image(
     job_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
     storage: Annotated[StorageProvider, Depends(get_storage_provider)],
 ) -> JSONResponse:
-    generated_images = getattr(unit_of_work, "generated_images", None)
-    generated_image = (
-        generated_images.get_for_user(user_id=current_user.id, image_id=job_id)
-        if generated_images is not None
-        else None
-    )
+    generated_image = application.get_generated_image(user_id=current_user.id, image_id=job_id)
     if generated_image is not None:
         return success_response(_generated_image_data(generated_image), request)
-    status = unit_of_work.image_generations.get_status_for_user(
+    status = application.get_image_generation_status(
         user_id=current_user.id,
         job_id=job_id,
     )

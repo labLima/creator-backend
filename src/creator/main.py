@@ -19,6 +19,7 @@ from creator.api.responses import (
     success_response,
 )
 from creator.api.router import api_router
+from creator.application.errors import ApplicationError
 from creator.config import get_settings
 from creator.infrastructure.runtime.metrics import MetricsRegistry
 from creator.infrastructure.runtime.observability import (
@@ -120,6 +121,25 @@ def create_app() -> FastAPI:
             message = str(detail.get("message", "Request failed"))
         else:
             code = "HTTP_ERROR"
+            message = "Request failed"
+        return error_response(
+            code,
+            message,
+            status_code=exc.status_code,
+            request=request,
+            headers=exc.headers,
+        )
+
+    @application.exception_handler(ApplicationError)
+    async def application_exception_handler(
+        request: Request, exc: ApplicationError
+    ) -> JSONResponse:
+        detail = exc.detail
+        if isinstance(detail, dict):
+            code = str(detail.get("code", "APPLICATION_ERROR"))
+            message = str(detail.get("message", "Request failed"))
+        else:
+            code = "APPLICATION_ERROR"
             message = "Request failed"
         return error_response(
             code,

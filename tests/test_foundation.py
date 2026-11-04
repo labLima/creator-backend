@@ -115,7 +115,7 @@ def test_current_user_requires_active_session() -> None:
             )
 
     class FakeUnitOfWork:
-        users = FakeUsers()
+        user = SimpleNamespace(users=FakeUsers())
         auth_sessions = FakeAuthSessions()
 
     principal = Principal(
@@ -139,7 +139,7 @@ def test_current_user_rejects_revoked_session() -> None:
             )
 
     class FakeUnitOfWork:
-        users = FakeUsers()
+        user = SimpleNamespace(users=FakeUsers())
         auth_sessions = FakeAuthSessions()
 
     with pytest.raises(HTTPException) as error:

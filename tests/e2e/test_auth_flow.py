@@ -7,9 +7,8 @@ import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from creator.auth import router as auth_routes
 from creator.auth.ports import AuthSessionRecord
-from creator.auth.service import RefreshInProgressError
+from creator.auth.service import AuthApplication, RefreshInProgressError
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from tests.e2e.conftest import SECRET, signup_payload
 
@@ -379,10 +378,10 @@ async def test_refresh_rotation_in_progress_maps_to_409(
         csrf = client.cookies.get("creator_csrf")
         assert csrf is not None
 
-        def raise_refresh_in_progress(**_: object) -> None:
+        def raise_refresh_in_progress(self: AuthApplication, **_: object) -> None:
             raise RefreshInProgressError("refresh rotation is already in progress")
 
-        monkeypatch.setattr(auth_routes, "refresh_local", raise_refresh_in_progress)
+        monkeypatch.setattr(AuthApplication, "refresh", raise_refresh_in_progress)
         response = await client.post(
             "/api/v1/auth/refresh",
             headers={"Origin": "http://test", "X-CSRF-Token": csrf},

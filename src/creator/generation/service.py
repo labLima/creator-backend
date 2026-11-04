@@ -5,10 +5,17 @@ import json
 from typing import cast
 from uuid import UUID
 
+from creator.application.errors import require_workspace_write
 from creator.config import Settings
 from creator.content.ports import ContentRecord
+from creator.core.pagination import Page, PageRequest
 from creator.domain.exceptions import ConflictError, EntityNotFoundError
-from creator.generation.ports import GenerationQueue, ImageGenerationStatusRecord
+from creator.generation.ports import (
+    GeneratedImageRecord,
+    GenerationQueue,
+    GenerationRecord,
+    ImageGenerationStatusRecord,
+)
 from creator.prompts import (
     RenderedPrompt,
     build_advertising_image_prompt,
@@ -18,6 +25,101 @@ from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
 MAX_GENERATION_PROMPT_LENGTH = 20_000
+
+
+class GenerationApplication:
+    """Application boundary for Generation and image job operations."""
+
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        self._unit_of_work = unit_of_work
+
+    def list_generations(
+        self,
+        *,
+        user_id: UUID,
+        workspace_id: UUID | None,
+        content_id: UUID | None,
+        page: PageRequest,
+    ) -> Page[GenerationRecord]:
+        return self._unit_of_work.generation.generations.list_for_user(
+            user_id=user_id, workspace_id=workspace_id, content_id=content_id, page=page
+        )
+
+    def create_generation(
+        self,
+        *,
+        user: UserRecord,
+        workspace_id: UUID,
+        content_id: UUID,
+        generation_type: str,
+        brand_id: UUID | None,
+        project_id: UUID | None,
+        model: str,
+        prompt: str,
+        parameters: dict[str, object] | None,
+    ) -> GenerationRecord:
+        require_workspace_write(self._unit_of_work, user_id=user.id, workspace_id=workspace_id)
+        record = self._unit_of_work.generation.generations.add(
+            workspace_id=workspace_id,
+            content_id=content_id,
+            requested_by_user_id=user.id,
+            generation_type=generation_type,
+            brand_id=brand_id,
+            project_id=project_id,
+            model=model,
+            prompt=prompt,
+            parameters=parameters,
+        )
+        self._unit_of_work.commit()
+        return record
+
+    def get_generation(self, *, user_id: UUID, generation_id: UUID) -> GenerationRecord | None:
+        return self._unit_of_work.generation.generations.get_for_user(
+            user_id=user_id, generation_id=generation_id
+        )
+
+    def update_generation(
+        self,
+        *,
+        user_id: UUID,
+        generation_id: UUID,
+        model: str | None,
+        prompt: str | None,
+        parameters: dict[str, object] | None,
+    ) -> GenerationRecord:
+        record = self._unit_of_work.generation.generations.update(
+            user_id=user_id,
+            generation_id=generation_id,
+            model=model,
+            prompt=prompt,
+            parameters=parameters,
+        )
+        self._unit_of_work.commit()
+        return record
+
+    def delete_generation(self, *, user_id: UUID, generation_id: UUID) -> None:
+        self._unit_of_work.generation.generations.soft_delete(
+            user_id=user_id, generation_id=generation_id
+        )
+        self._unit_of_work.commit()
+
+    def get_generated_image(self, *, user_id: UUID, image_id: UUID) -> GeneratedImageRecord | None:
+        return self._unit_of_work.generation.generated_images.get_for_user(
+            user_id=user_id, image_id=image_id
+        )
+
+    def get_image_generation_status(
+        self, *, user_id: UUID, job_id: UUID
+    ) -> ImageGenerationStatusRecord | None:
+        return self._unit_of_work.generation.image_jobs.get_status_for_user(
+            user_id=user_id, job_id=job_id
+        )
+
+    def submit_image_generation(self, **kwargs: object) -> ImageGenerationStatusRecord:
+        return submit_image_generation(unit_of_work=self._unit_of_work, **kwargs)  # type: ignore[arg-type]
+
+    def submit_image_regeneration(self, **kwargs: object) -> ImageGenerationStatusRecord:
+        return submit_image_regeneration(unit_of_work=self._unit_of_work, **kwargs)  # type: ignore[arg-type]
 
 
 class IdempotencyConflictError(ConflictError):
@@ -39,14 +141,14 @@ def submit_image_generation(
     idempotency_key: str,
     request_id: UUID,
 ) -> ImageGenerationStatusRecord:
-    stored_settings = unit_of_work.settings.get_by_user_id(user.id)
+    stored_settings = unit_of_work.user.settings.get_by_user_id(user.id)
     resolved_style = style or (stored_settings.visual_style if stored_settings else "photographic")
     external_id = image_generation_external_id(user.id, idempotency_key)
     request_fingerprint = image_generation_request_fingerprint(
         content_id=content_id,
         style=resolved_style,
     )
-    existing = unit_of_work.image_generations.get_status_by_external_id_for_user(
+    existing = unit_of_work.generation.image_jobs.get_status_by_external_id_for_user(
         user_id=user.id,
         external_id=external_id,
     )
@@ -82,7 +184,7 @@ def submit_image_generation(
     generation_parameters = cast(dict[str, object], parameters)
 
     try:
-        job = unit_of_work.image_generations.create_image_generation(
+        job = unit_of_work.generation.image_jobs.create_image_generation(
             workspace_id=content.workspace_id,
             content_id=content.id,
             requested_by_user_id=user.id,
@@ -95,7 +197,7 @@ def submit_image_generation(
         )
     except ConflictError:
         unit_of_work.rollback()
-        existing = unit_of_work.image_generations.get_status_by_external_id_for_user(
+        existing = unit_of_work.generation.image_jobs.get_status_by_external_id_for_user(
             user_id=user.id,
             external_id=external_id,
         )
@@ -125,14 +227,14 @@ def submit_image_regeneration(
     idempotency_key: str,
     request_id: UUID,
 ) -> ImageGenerationStatusRecord:
-    original_image = unit_of_work.image_generations.get_image_for_user(
+    original_image = unit_of_work.generation.image_jobs.get_image_for_user(
         user_id=user.id,
         image_id=image_id,
     )
     if original_image is None:
         raise EntityNotFoundError("Image not found")
 
-    stored_settings = unit_of_work.settings.get_by_user_id(user.id)
+    stored_settings = unit_of_work.user.settings.get_by_user_id(user.id)
     resolved_style = (
         style
         or _style_from_metadata(original_image.metadata)
@@ -143,7 +245,7 @@ def submit_image_regeneration(
         image_id=image_id,
         style=resolved_style,
     )
-    existing = unit_of_work.image_generations.get_status_by_external_id_for_user(
+    existing = unit_of_work.generation.image_jobs.get_status_by_external_id_for_user(
         user_id=user.id,
         external_id=external_id,
     )
@@ -172,7 +274,7 @@ def submit_image_regeneration(
     generation_parameters = cast(dict[str, object], parameters)
 
     try:
-        job = unit_of_work.image_generations.create_image_generation(
+        job = unit_of_work.generation.image_jobs.create_image_generation(
             workspace_id=original_image.workspace_id,
             content_id=original_image.content_id,
             requested_by_user_id=user.id,
@@ -185,7 +287,7 @@ def submit_image_regeneration(
         )
     except ConflictError:
         unit_of_work.rollback()
-        existing = unit_of_work.image_generations.get_status_by_external_id_for_user(
+        existing = unit_of_work.generation.image_jobs.get_status_by_external_id_for_user(
             user_id=user.id,
             external_id=external_id,
         )

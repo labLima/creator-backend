@@ -84,8 +84,9 @@ capacidades em tempo de execução: um módulo lê dados de outro via
 - Mais arquivos e um nível extra (`adapters/`) em cada módulo.
 - Routers ficam fora da meta de cobertura de unidade (medidos por e2e), como já
   acontecia com `creator.api` e `creator.main` antes.
-- O `UnitOfWork` continua agregando muitos atributos; a consolidação por
-  agregado é trabalho incremental, não um big bang.
+- A consolidação dos 47 contratos de repositório em 28 interfaces de agregado
+  foi concluída pela [issue 0049](../issues/0049-flat-layout-consolidation.md),
+  mantendo Auth Sessions e Outbox como componentes independentes.
 
 ### Não-objetivos
 
@@ -111,4 +112,5 @@ original.
 - [x] `make check`, `make e2e`, `make migrate-check` verdes
 - [x] ORM migrado para `modules/*/adapters/tables.py` (51 tabelas, DDL idêntico)
 - [x] `SqlAlchemyUnitOfWork` herda `UnitOfWork`; `mypy --strict` verifica paridade
-- [ ] Consolidação dos repositórios por agregado (47 → ~30) — transferida para a [0049](../issues/0049-flat-layout-consolidation.md)
+- [x] Consolidação dos repositórios por agregado (47 → 28) — implementada na
+      [0049](../issues/0049-flat-layout-consolidation.md)

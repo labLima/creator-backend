@@ -18,7 +18,7 @@ from creator.domain.pipeline_events import (
 from creator.prompts.base import normalize_json_object
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
-from creator.workflow.ports import AgentWorkflowRunRecord
+from creator.workflow.ports import AgentWorkflowRunRecord, AgentWorkflowStepRecord
 
 
 class AgentWorkflowQueue(Protocol):
@@ -43,6 +43,65 @@ class AgentWorkflowQueueError(RuntimeError):
     """Compatibility error; Outbox-backed workflow acceptance no longer raises it."""
 
 
+class AgentWorkflowApplication:
+    """Application boundary for Agent Workflow use cases and queries."""
+
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        self._unit_of_work = unit_of_work
+
+    def start(
+        self,
+        *,
+        queue: AgentWorkflowQueue,
+        settings: Settings,
+        user: UserRecord,
+        command: StartImageWorkflowCommand,
+    ) -> AgentWorkflowRunRecord:
+        return start_image_workflow(
+            unit_of_work=self._unit_of_work,
+            queue=queue,
+            settings=settings,
+            user=user,
+            command=command,
+        )
+
+    def decide(
+        self,
+        *,
+        queue: AgentWorkflowQueue,
+        run_id: UUID,
+        user: UserRecord,
+        request_id: UUID,
+        decision: WorkflowDecision,
+        feedback: str | None,
+    ) -> AgentWorkflowRunRecord:
+        return decide_image_workflow(
+            unit_of_work=self._unit_of_work,
+            queue=queue,
+            run_id=run_id,
+            user=user,
+            request_id=request_id,
+            decision=decision,
+            feedback=feedback,
+        )
+
+    def get_run(self, *, user_id: UUID, run_id: UUID) -> AgentWorkflowRunRecord:
+        run = self._unit_of_work.agent_workflow.workflows.get_for_user(
+            user_id=user_id, run_id=run_id
+        )
+        if run is None:
+            raise EntityNotFoundError("Agent workflow not found")
+        return run
+
+    def list_steps(self, *, user_id: UUID, run_id: UUID) -> list[AgentWorkflowStepRecord]:
+        steps = self._unit_of_work.agent_workflow.workflows.list_steps_for_user(
+            user_id=user_id, run_id=run_id
+        )
+        if steps is None:
+            raise EntityNotFoundError("Agent workflow not found")
+        return steps
+
+
 @dataclass(frozen=True, slots=True)
 class StartImageWorkflowCommand:
     brand_id: UUID
@@ -65,10 +124,10 @@ def start_image_workflow(
     user: UserRecord,
     command: StartImageWorkflowCommand,
 ) -> AgentWorkflowRunRecord:
-    brand = unit_of_work.brands.get_for_user(user_id=user.id, brand_id=command.brand_id)
+    brand = unit_of_work.brand.brands.get_for_user(user_id=user.id, brand_id=command.brand_id)
     if brand is None:
         raise EntityNotFoundError("Brand not found")
-    existing = unit_of_work.agent_workflows.get_by_idempotency(
+    existing = unit_of_work.agent_workflow.workflows.get_by_idempotency(
         user_id=user.id,
         workspace_id=brand.workspace_id,
         idempotency_key=command.idempotency_key,
@@ -107,7 +166,7 @@ def start_image_workflow(
             "workflow_input": input_payload,
         },
     )
-    run = unit_of_work.agent_workflows.create_run(
+    run = unit_of_work.agent_workflow.workflows.create_run(
         user_id=user.id,
         workspace_id=brand.workspace_id,
         content_id=content.id,
@@ -147,7 +206,7 @@ def decide_image_workflow(
     decision: WorkflowDecision,
     feedback: str | None,
 ) -> AgentWorkflowRunRecord:
-    run = unit_of_work.agent_workflows.get_for_user(user_id=user.id, run_id=run_id)
+    run = unit_of_work.agent_workflow.workflows.get_for_user(user_id=user.id, run_id=run_id)
     if run is None:
         raise EntityNotFoundError("Agent workflow not found")
     if run.status != AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW:
@@ -155,13 +214,13 @@ def decide_image_workflow(
     if decision == WorkflowDecision.REFINE and not feedback:
         raise AgentWorkflowDecisionError("Feedback is required to refine a workflow")
     if decision == WorkflowDecision.APPROVE:
-        updated = unit_of_work.agent_workflows.transition(
+        updated = unit_of_work.agent_workflow.workflows.transition(
             run_id, AgentWorkflowStatus.COMPLETED, current_step="DELIVERY"
         )
         unit_of_work.commit()
         return updated
     if decision == WorkflowDecision.REJECT:
-        updated = unit_of_work.agent_workflows.transition(
+        updated = unit_of_work.agent_workflow.workflows.transition(
             run_id, AgentWorkflowStatus.REJECTED, current_step="DELIVERY"
         )
         unit_of_work.commit()
@@ -171,8 +230,8 @@ def decide_image_workflow(
         raise AgentWorkflowDecisionError("Maximum workflow refinements reached")
     updated_input = dict(run.input)
     updated_input["human_feedback"] = feedback
-    unit_of_work.agent_workflows.update_input(run_id, updated_input)
-    updated = unit_of_work.agent_workflows.transition(
+    unit_of_work.agent_workflow.workflows.update_input(run_id, updated_input)
+    updated = unit_of_work.agent_workflow.workflows.transition(
         run_id,
         AgentWorkflowStatus.REFINING,
         current_step="WRITER",

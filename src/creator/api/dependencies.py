@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from creator.auth.ports import AuthTokenServices
 from creator.auth.service import (
+    AuthApplication,
     AuthConfigurationError,
     ExpiredTokenError,
     InvalidTokenError,
@@ -15,7 +16,9 @@ from creator.auth.service import (
     session_is_active,
 )
 from creator.config import Settings, get_settings
+from creator.content.service import ContentApplication
 from creator.domain.auth import Principal
+from creator.generation.service import GenerationApplication
 from creator.infrastructure.auth import auth_token_services
 from creator.infrastructure.persistence.unit_of_work import get_unit_of_work
 from creator.infrastructure.runtime.metrics import MetricsRegistry
@@ -32,6 +35,7 @@ from creator.services.ai.provider import LLMProvider
 from creator.services.storage.provider import StorageConfigurationError, StorageProvider
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
+from creator.workflow.service import AgentWorkflowApplication
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +100,30 @@ def get_uow(
     return unit_of_work
 
 
+def get_agent_workflow_application(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> AgentWorkflowApplication:
+    return AgentWorkflowApplication(unit_of_work)
+
+
+def get_generation_application(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> GenerationApplication:
+    return GenerationApplication(unit_of_work)
+
+
+def get_content_application(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> ContentApplication:
+    return ContentApplication(unit_of_work)
+
+
+def get_auth_application(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+) -> AuthApplication:
+    return AuthApplication(unit_of_work)
+
+
 def get_current_user(
     principal: Annotated[Principal | None, Depends(get_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
@@ -113,7 +141,7 @@ def get_current_user(
         unit_of_work=unit_of_work, session_id=session_id, clock=token_services.clock
     ):
         raise _invalid_auth_exception()
-    existing = unit_of_work.users.get_by_id(user_id, include_deleted=True)
+    existing = unit_of_work.user.users.get_by_id(user_id, include_deleted=True)
     if existing is None or existing.deleted_at is not None:
         raise _invalid_auth_exception()
     return existing
@@ -136,7 +164,7 @@ def get_optional_current_user(
         unit_of_work=unit_of_work, session_id=session_id, clock=token_services.clock
     ):
         return None
-    existing = unit_of_work.users.get_by_id(user_id, include_deleted=True)
+    existing = unit_of_work.user.users.get_by_id(user_id, include_deleted=True)
     if existing is None or existing.deleted_at is not None:
         return None
     return existing
