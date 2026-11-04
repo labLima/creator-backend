@@ -1634,14 +1634,18 @@ paths:
           x-error-codes: [AUTHENTICATION_INVALID]
   /api/v1/notification-preferences/{id}:
     get:
-      operationId: listAssets
+      operationId: getNotificationPreference
       tags:
-      - Assets
+      - Notifications
       security:
       - CreatorSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
-          description: Paginated Assets visible by Workspace Membership.
+          description: Notification preference detail.
+        '404':
+          $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]

@@ -2,8 +2,9 @@
 
 - ADR primária: [ADR-007](../adr/0007-openapi-first.md)
 - Issue remota: [#135](https://github.com/labLima/creator-backend/issues/135)
-- Status: aberta (Fase 2)
+- Status: em implementação (Fase 2)
 - Owner: backend/platform
+- Decisão: **2026-11-04 — opção 1 aprovada**
 
 ## Contexto
 
@@ -22,36 +23,45 @@ Exemplo de divergência:
 - `docs/openapi.yaml`: `loginWithPassword`
 - `app.openapi()`: `login_with_password_api_v1_auth_login_post`
 
-## Objetivo
+## Decisão
 
-Definir a fonte autoritativa dos operationIds e das respostas de erro, remover
-duplicatas e reconciliar os dois documentos.
+Adotar a **opção 1**: `docs/openapi.yaml` é autoritativo e cada rota FastAPI
+publica explicitamente o mesmo `operationId`. Os nomes camelCase já publicados
+são preservados (`loginWithPassword`, `listContents`, `getBrand`); nenhum ID é
+derivado do nome do handler.
 
-## Opções
+Política de error responses:
 
-1. Tornar `docs/openapi.yaml` autoritativo e fixar `operation_id` explícito em
-   cada rota FastAPI.
-2. Tornar `app.openapi()` autoritativo e atualizar o YAML (breaking change
-   documentado).
-3. Manter a divergência com justificativa e um teste que a torne explícita.
+- `403`, `404`, `409` e `422`: comparados por operação entre YAML e
+  `app.openapi()`, incluindo `x-error-codes` quando presentes.
+- `401`, `429` e `500`: convenções globais exigidas em todas as operações
+  `/api/v1` e nos dois documentos; não são repetidas manualmente por handler.
+- Exceções: somente com justificativa nesta issue e teste explícito; nenhuma
+  exceção silenciosa.
+
+Comunicação: a mudança é breaking apenas para consumidores que geram clientes
+diretamente de `app.openapi()`. Consumidores do YAML preservam os nomes. Não há
+consumidor conhecido de `app.openapi()` no repositório; a nota deve constar no PR
+e no changelog da release.
 
 ## Critérios de aceite
 
-- [ ] Decisão registrada em ADR-007 (ou nova ADR).
-- [ ] Operação com `operationId` idêntico nos dois documentos, ou divergência
-      explicitamente documentada e testada.
+- [x] Decisão registrada em ADR-007.
+- [ ] Operação com `operationId` idêntico nos dois documentos.
 - [ ] Nenhum `operationId` duplicado no YAML.
-- [ ] Error responses (ao menos 403/404/409/422/429/500) comparadas entre YAML e
-      app, ou exceção documentada.
+- [ ] `403/404/409/422` comparadas por operação; `401/429/500` globais.
 - [ ] `docs/openapi.yaml` sem drift de paths/methods/segurança.
 - [ ] `make check` verde.
-- [ ] Plano de comunicação se a mudança for breaking.
+- [x] Plano de comunicação registrado (sem consumidor conhecido de `app.openapi()`).
 
 ## Evidência atual
 
 - 106 divergências de operationId (ex.:
   `login_with_password_api_v1_auth_login_post` vs `loginWithPassword`).
-- `listAssets` duplicado no YAML.
+- `listAssets` duplicado no YAML; o GET de
+  `/api/v1/notification-preferences/{id}` deve ser `getNotificationPreference`,
+  tag `Notifications`, parâmetro `ResourceId` e 404.
 - `tests/test_openapi_contract.py` compara paths/methods; não compara respostas
   de erro.
-- `tests/test_route_table_contract.py` congela os IDs gerados.
+- `tests/test_route_table_contract.py` congela os IDs gerados e hoje ignora
+  operationIds de propósito.
