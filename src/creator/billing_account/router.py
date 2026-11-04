@@ -32,7 +32,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/billing-addresses", tags=["Billing"])
+@router.get(
+    "/api/v1/billing-addresses",
+    tags=["Billing"],
+    operation_id="list_billing_addresses_api_v1_billing_addresses_get",
+)
 def list_billing_addresses(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -50,7 +54,11 @@ def list_billing_addresses(
     )
 
 
-@router.post("/api/v1/billing-addresses", tags=["Billing"])
+@router.post(
+    "/api/v1/billing-addresses",
+    tags=["Billing"],
+    operation_id="create_billing_address_api_v1_billing_addresses_post",
+)
 def create_billing_address(
     payload: BillingAddressCreateRequest,
     request: Request,
@@ -66,7 +74,11 @@ def create_billing_address(
     )
 
 
-@router.get("/api/v1/billing-addresses/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/billing-addresses/{id}",
+    tags=["Billing"],
+    operation_id="get_billing_address_api_v1_billing_addresses__id__get",
+)
 def get_billing_address(
     address_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -81,7 +93,11 @@ def get_billing_address(
     )
 
 
-@router.put("/api/v1/billing-addresses/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/billing-addresses/{id}",
+    tags=["Billing"],
+    operation_id="update_billing_address_api_v1_billing_addresses__id__put",
+)
 def update_billing_address(
     address_id: Annotated[UUID, Path(alias="id")],
     payload: BillingAddressUpdateRequest,
@@ -101,7 +117,11 @@ def update_billing_address(
     )
 
 
-@router.delete("/api/v1/billing-addresses/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/billing-addresses/{id}",
+    tags=["Billing"],
+    operation_id="delete_billing_address_api_v1_billing_addresses__id__delete",
+)
 def delete_billing_address(
     address_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -116,7 +136,11 @@ def delete_billing_address(
     )
 
 
-@router.get("/api/v1/billing-accounts", tags=["Billing"])
+@router.get(
+    "/api/v1/billing-accounts",
+    tags=["Billing"],
+    operation_id="list_billing_accounts_api_v1_billing_accounts_get",
+)
 def list_billing_accounts(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -128,7 +152,11 @@ def list_billing_accounts(
     )
 
 
-@router.post("/api/v1/billing-accounts", tags=["Billing"])
+@router.post(
+    "/api/v1/billing-accounts",
+    tags=["Billing"],
+    operation_id="create_billing_account_api_v1_billing_accounts_post",
+)
 def create_billing_account(
     payload: BillingAccountCreateRequest,
     request: Request,
@@ -144,7 +172,11 @@ def create_billing_account(
     )
 
 
-@router.get("/api/v1/billing-accounts/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/billing-accounts/{id}",
+    tags=["Billing"],
+    operation_id="get_billing_account_api_v1_billing_accounts__id__get",
+)
 def get_billing_account(
     account_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -159,7 +191,11 @@ def get_billing_account(
     )
 
 
-@router.put("/api/v1/billing-accounts/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/billing-accounts/{id}",
+    tags=["Billing"],
+    operation_id="update_billing_account_api_v1_billing_accounts__id__put",
+)
 def update_billing_account(
     account_id: Annotated[UUID, Path(alias="id")],
     payload: BillingAccountUpdateRequest,
@@ -179,7 +215,11 @@ def update_billing_account(
     )
 
 
-@router.delete("/api/v1/billing-accounts/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/billing-accounts/{id}",
+    tags=["Billing"],
+    operation_id="delete_billing_account_api_v1_billing_accounts__id__delete",
+)
 def delete_billing_account(
     account_id: Annotated[UUID, Path(alias="id")],
     request: Request,

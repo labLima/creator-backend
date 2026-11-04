@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/personas", tags=["Personas"])
+@router.get("/api/v1/personas", tags=["Personas"], operation_id="listPersonas")
 def list_personas(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -54,7 +54,9 @@ def list_personas(
     )
 
 
-@router.post("/api/v1/personas", tags=["Personas"])
+@router.post(
+    "/api/v1/personas", tags=["Personas"], operation_id="create_persona_api_v1_personas_post"
+)
 def create_persona(
     payload: PersonaCreateRequest,
     request: Request,
@@ -70,7 +72,7 @@ def create_persona(
     )
 
 
-@router.get("/api/v1/personas/{id}", tags=["Personas"])
+@router.get("/api/v1/personas/{id}", tags=["Personas"], operation_id="getPersona")
 def get_persona(
     persona_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -85,7 +87,7 @@ def get_persona(
     )
 
 
-@router.put("/api/v1/personas/{id}", tags=["Personas"])
+@router.put("/api/v1/personas/{id}", tags=["Personas"], operation_id="updatePersona")
 def update_persona(
     persona_id: Annotated[UUID, Path(alias="id")],
     payload: PersonaUpdateRequest,
@@ -105,7 +107,7 @@ def update_persona(
     )
 
 
-@router.delete("/api/v1/personas/{id}", tags=["Personas"])
+@router.delete("/api/v1/personas/{id}", tags=["Personas"], operation_id="deletePersona")
 def delete_persona(
     persona_id: Annotated[UUID, Path(alias="id")],
     request: Request,

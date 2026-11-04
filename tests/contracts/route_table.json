@@ -2,7 +2,7 @@
   {
     "method": "GET",
     "path": "/api/v1/assets",
-    "operation_id": "list_assets_api_v1_assets_get",
+    "operation_id": "listAssets",
     "tags": [
       "Assets"
     ]
@@ -10,7 +10,7 @@
   {
     "method": "POST",
     "path": "/api/v1/assets",
-    "operation_id": "create_asset_api_v1_assets_post",
+    "operation_id": "createAsset",
     "tags": [
       "Assets"
     ]
@@ -18,7 +18,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/assets/{id}",
-    "operation_id": "delete_asset_api_v1_assets__id__delete",
+    "operation_id": "deleteAsset",
     "tags": [
       "Assets"
     ]
@@ -26,7 +26,7 @@
   {
     "method": "GET",
     "path": "/api/v1/assets/{id}",
-    "operation_id": "get_asset_api_v1_assets__id__get",
+    "operation_id": "getAsset",
     "tags": [
       "Assets"
     ]
@@ -34,7 +34,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/assets/{id}",
-    "operation_id": "update_asset_api_v1_assets__id__put",
+    "operation_id": "updateAsset",
     "tags": [
       "Assets"
     ]
@@ -42,7 +42,7 @@
   {
     "method": "GET",
     "path": "/api/v1/auth/csrf",
-    "operation_id": "csrf_token_api_v1_auth_csrf_get",
+    "operation_id": "csrfToken",
     "tags": [
       "Auth"
     ]
@@ -50,7 +50,7 @@
   {
     "method": "POST",
     "path": "/api/v1/auth/login",
-    "operation_id": "login_with_password_api_v1_auth_login_post",
+    "operation_id": "loginWithPassword",
     "tags": [
       "Auth"
     ]
@@ -58,7 +58,7 @@
   {
     "method": "POST",
     "path": "/api/v1/auth/logout",
-    "operation_id": "logout_session_api_v1_auth_logout_post",
+    "operation_id": "logoutSession",
     "tags": [
       "Auth"
     ]
@@ -66,7 +66,7 @@
   {
     "method": "POST",
     "path": "/api/v1/auth/refresh",
-    "operation_id": "refresh_session_api_v1_auth_refresh_post",
+    "operation_id": "refreshSession",
     "tags": [
       "Auth"
     ]
@@ -74,7 +74,7 @@
   {
     "method": "POST",
     "path": "/api/v1/auth/signup",
-    "operation_id": "signup_with_password_api_v1_auth_signup_post",
+    "operation_id": "signupWithPassword",
     "tags": [
       "Auth"
     ]
@@ -202,7 +202,7 @@
   {
     "method": "GET",
     "path": "/api/v1/brand-assets",
-    "operation_id": "list_brand_assets_api_v1_brand_assets_get",
+    "operation_id": "listBrandAssets",
     "tags": [
       "Brand Assets"
     ]
@@ -210,7 +210,7 @@
   {
     "method": "POST",
     "path": "/api/v1/brand-assets",
-    "operation_id": "create_brand_asset_api_v1_brand_assets_post",
+    "operation_id": "createBrandAsset",
     "tags": [
       "Brand Assets"
     ]
@@ -218,7 +218,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/brand-assets/{id}",
-    "operation_id": "delete_brand_asset_api_v1_brand_assets__id__delete",
+    "operation_id": "deleteBrandAsset",
     "tags": [
       "Brand Assets"
     ]
@@ -226,7 +226,7 @@
   {
     "method": "GET",
     "path": "/api/v1/brand-assets/{id}",
-    "operation_id": "get_brand_asset_api_v1_brand_assets__id__get",
+    "operation_id": "getBrandAsset",
     "tags": [
       "Brand Assets"
     ]
@@ -234,7 +234,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/brand-assets/{id}",
-    "operation_id": "update_brand_asset_api_v1_brand_assets__id__put",
+    "operation_id": "updateBrandAsset",
     "tags": [
       "Brand Assets"
     ]
@@ -282,7 +282,7 @@
   {
     "method": "GET",
     "path": "/api/v1/brands",
-    "operation_id": "list_brands_api_v1_brands_get",
+    "operation_id": "listBrands",
     "tags": [
       "Brands"
     ]
@@ -290,7 +290,7 @@
   {
     "method": "POST",
     "path": "/api/v1/brands",
-    "operation_id": "create_brand_api_v1_brands_post",
+    "operation_id": "createBrand",
     "tags": [
       "Brands"
     ]
@@ -298,7 +298,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/brands/{id}",
-    "operation_id": "delete_brand_api_v1_brands__id__delete",
+    "operation_id": "deleteBrand",
     "tags": [
       "Brands"
     ]
@@ -306,7 +306,7 @@
   {
     "method": "GET",
     "path": "/api/v1/brands/{id}",
-    "operation_id": "get_brand_api_v1_brands__id__get",
+    "operation_id": "getBrand",
     "tags": [
       "Brands"
     ]
@@ -314,7 +314,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/brands/{id}",
-    "operation_id": "update_brand_api_v1_brands__id__put",
+    "operation_id": "updateBrand",
     "tags": [
       "Brands"
     ]
@@ -322,7 +322,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/brands/{id}/settings",
-    "operation_id": "delete_brand_settings_api_v1_brands__id__settings_delete",
+    "operation_id": "deleteBrandSettings",
     "tags": [
       "Brands"
     ]
@@ -330,7 +330,7 @@
   {
     "method": "GET",
     "path": "/api/v1/brands/{id}/settings",
-    "operation_id": "get_brand_settings_api_v1_brands__id__settings_get",
+    "operation_id": "getBrandSettings",
     "tags": [
       "Brands"
     ]
@@ -338,7 +338,7 @@
   {
     "method": "PATCH",
     "path": "/api/v1/brands/{id}/settings",
-    "operation_id": "update_brand_settings_api_v1_brands__id__settings_patch",
+    "operation_id": "updateBrandSettings",
     "tags": [
       "Brands"
     ]
@@ -346,7 +346,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/brands/{id}/settings",
-    "operation_id": "upsert_brand_settings_api_v1_brands__id__settings_put",
+    "operation_id": "upsertBrandSettings",
     "tags": [
       "Brands"
     ]
@@ -354,7 +354,7 @@
   {
     "method": "GET",
     "path": "/api/v1/campaigns",
-    "operation_id": "list_campaigns_api_v1_campaigns_get",
+    "operation_id": "listCampaigns",
     "tags": [
       "Campaigns"
     ]
@@ -362,7 +362,7 @@
   {
     "method": "POST",
     "path": "/api/v1/campaigns",
-    "operation_id": "create_campaign_api_v1_campaigns_post",
+    "operation_id": "createCampaign",
     "tags": [
       "Campaigns"
     ]
@@ -370,7 +370,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/campaigns/{id}",
-    "operation_id": "delete_campaign_api_v1_campaigns__id__delete",
+    "operation_id": "deleteCampaign",
     "tags": [
       "Campaigns"
     ]
@@ -378,7 +378,7 @@
   {
     "method": "GET",
     "path": "/api/v1/campaigns/{id}",
-    "operation_id": "get_campaign_api_v1_campaigns__id__get",
+    "operation_id": "getCampaign",
     "tags": [
       "Campaigns"
     ]
@@ -386,7 +386,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/campaigns/{id}",
-    "operation_id": "update_campaign_api_v1_campaigns__id__put",
+    "operation_id": "updateCampaign",
     "tags": [
       "Campaigns"
     ]
@@ -434,7 +434,7 @@
   {
     "method": "GET",
     "path": "/api/v1/content",
-    "operation_id": "list_content_api_v1_content_get",
+    "operation_id": "listContent",
     "tags": [
       "Contents"
     ]
@@ -442,7 +442,7 @@
   {
     "method": "POST",
     "path": "/api/v1/content/generate",
-    "operation_id": "generate_text_content_api_v1_content_generate_post",
+    "operation_id": "generateContent",
     "tags": [
       "Contents"
     ]
@@ -450,7 +450,7 @@
   {
     "method": "POST",
     "path": "/api/v1/content/improve",
-    "operation_id": "improve_text_content_api_v1_content_improve_post",
+    "operation_id": "improveContent",
     "tags": [
       "Contents"
     ]
@@ -458,7 +458,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/content/{id}",
-    "operation_id": "delete_content_api_v1_content__id__delete",
+    "operation_id": "deleteContent",
     "tags": [
       "Contents"
     ]
@@ -466,7 +466,7 @@
   {
     "method": "GET",
     "path": "/api/v1/content/{id}",
-    "operation_id": "get_content_api_v1_content__id__get",
+    "operation_id": "getContent",
     "tags": [
       "Contents"
     ]
@@ -474,7 +474,7 @@
   {
     "method": "GET",
     "path": "/api/v1/contents",
-    "operation_id": "list_content_api_v1_contents_get",
+    "operation_id": "listContents",
     "tags": [
       "Contents"
     ]
@@ -482,7 +482,7 @@
   {
     "method": "POST",
     "path": "/api/v1/contents",
-    "operation_id": "create_content_api_v1_contents_post",
+    "operation_id": "createContent",
     "tags": [
       "Contents"
     ]
@@ -490,7 +490,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/contents/{id}",
-    "operation_id": "delete_content_api_v1_contents__id__delete",
+    "operation_id": "deleteContentCanonical",
     "tags": [
       "Contents"
     ]
@@ -498,7 +498,7 @@
   {
     "method": "GET",
     "path": "/api/v1/contents/{id}",
-    "operation_id": "get_content_api_v1_contents__id__get",
+    "operation_id": "getContentCanonical",
     "tags": [
       "Contents"
     ]
@@ -506,7 +506,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/contents/{id}",
-    "operation_id": "update_content_api_v1_contents__id__put",
+    "operation_id": "updateContent",
     "tags": [
       "Contents"
     ]
@@ -674,7 +674,7 @@
   {
     "method": "GET",
     "path": "/api/v1/generated-images/{id}",
-    "operation_id": "get_generated_image_api_v1_generated_images__id__get",
+    "operation_id": "getGeneratedImage",
     "tags": [
       "Images"
     ]
@@ -682,7 +682,7 @@
   {
     "method": "GET",
     "path": "/api/v1/generations",
-    "operation_id": "list_generations_api_v1_generations_get",
+    "operation_id": "listGenerations",
     "tags": [
       "Generations"
     ]
@@ -690,7 +690,7 @@
   {
     "method": "POST",
     "path": "/api/v1/generations",
-    "operation_id": "create_generation_api_v1_generations_post",
+    "operation_id": "createGeneration",
     "tags": [
       "Generations"
     ]
@@ -698,7 +698,7 @@
   {
     "method": "POST",
     "path": "/api/v1/generations/image-workflows",
-    "operation_id": "create_image_workflow_api_v1_generations_image_workflows_post",
+    "operation_id": "createImageAgentWorkflow",
     "tags": [
       "Generations"
     ]
@@ -706,7 +706,7 @@
   {
     "method": "GET",
     "path": "/api/v1/generations/image-workflows/{id}",
-    "operation_id": "get_image_workflow_api_v1_generations_image_workflows__id__get",
+    "operation_id": "getImageAgentWorkflow",
     "tags": [
       "Generations"
     ]
@@ -714,7 +714,7 @@
   {
     "method": "POST",
     "path": "/api/v1/generations/image-workflows/{id}/decision",
-    "operation_id": "decide_image_workflow_route_api_v1_generations_image_workflows__id__decision_post",
+    "operation_id": "decideImageAgentWorkflow",
     "tags": [
       "Generations"
     ]
@@ -722,7 +722,7 @@
   {
     "method": "GET",
     "path": "/api/v1/generations/image-workflows/{id}/steps",
-    "operation_id": "list_image_workflow_steps_api_v1_generations_image_workflows__id__steps_get",
+    "operation_id": "listImageAgentWorkflowSteps",
     "tags": [
       "Generations"
     ]
@@ -730,7 +730,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/generations/{id}",
-    "operation_id": "delete_generation_api_v1_generations__id__delete",
+    "operation_id": "deleteGeneration",
     "tags": [
       "Generations"
     ]
@@ -738,7 +738,7 @@
   {
     "method": "GET",
     "path": "/api/v1/generations/{id}",
-    "operation_id": "get_generation_api_v1_generations__id__get",
+    "operation_id": "getGeneration",
     "tags": [
       "Generations"
     ]
@@ -746,7 +746,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/generations/{id}",
-    "operation_id": "update_generation_api_v1_generations__id__put",
+    "operation_id": "updateGeneration",
     "tags": [
       "Generations"
     ]
@@ -754,7 +754,7 @@
   {
     "method": "POST",
     "path": "/api/v1/images/generate",
-    "operation_id": "generate_image_api_v1_images_generate_post",
+    "operation_id": "generateImage",
     "tags": [
       "Images"
     ]
@@ -762,7 +762,7 @@
   {
     "method": "GET",
     "path": "/api/v1/images/{id}",
-    "operation_id": "get_image_api_v1_images__id__get",
+    "operation_id": "getImage",
     "tags": [
       "Images"
     ]
@@ -770,7 +770,7 @@
   {
     "method": "POST",
     "path": "/api/v1/images/{id}/regenerate",
-    "operation_id": "regenerate_image_api_v1_images__id__regenerate_post",
+    "operation_id": "regenerateImage",
     "tags": [
       "Images"
     ]
@@ -818,7 +818,7 @@
   {
     "method": "GET",
     "path": "/api/v1/notification-preferences",
-    "operation_id": "list_notification_preferences_api_v1_notification_preferences_get",
+    "operation_id": "listNotificationPreferences",
     "tags": [
       "Notifications"
     ]
@@ -826,7 +826,7 @@
   {
     "method": "POST",
     "path": "/api/v1/notification-preferences",
-    "operation_id": "create_notification_preference_api_v1_notification_preferences_post",
+    "operation_id": "createNotificationPreference",
     "tags": [
       "Notifications"
     ]
@@ -834,7 +834,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/notification-preferences/{id}",
-    "operation_id": "delete_notification_preference_api_v1_notification_preferences__id__delete",
+    "operation_id": "deleteNotificationPreference",
     "tags": [
       "Notifications"
     ]
@@ -842,7 +842,7 @@
   {
     "method": "GET",
     "path": "/api/v1/notification-preferences/{id}",
-    "operation_id": "get_notification_preference_api_v1_notification_preferences__id__get",
+    "operation_id": "getNotificationPreference",
     "tags": [
       "Notifications"
     ]
@@ -850,7 +850,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/notification-preferences/{id}",
-    "operation_id": "update_notification_preference_api_v1_notification_preferences__id__put",
+    "operation_id": "updateNotificationPreference",
     "tags": [
       "Notifications"
     ]
@@ -898,7 +898,7 @@
   {
     "method": "GET",
     "path": "/api/v1/notifications",
-    "operation_id": "list_notifications_api_v1_notifications_get",
+    "operation_id": "listNotifications",
     "tags": [
       "Notifications"
     ]
@@ -906,7 +906,7 @@
   {
     "method": "POST",
     "path": "/api/v1/notifications",
-    "operation_id": "create_notification_api_v1_notifications_post",
+    "operation_id": "createNotification",
     "tags": [
       "Notifications"
     ]
@@ -914,7 +914,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/notifications/{id}",
-    "operation_id": "delete_notification_api_v1_notifications__id__delete",
+    "operation_id": "deleteNotification",
     "tags": [
       "Notifications"
     ]
@@ -922,7 +922,7 @@
   {
     "method": "GET",
     "path": "/api/v1/notifications/{id}",
-    "operation_id": "get_notification_api_v1_notifications__id__get",
+    "operation_id": "getNotification",
     "tags": [
       "Notifications"
     ]
@@ -930,7 +930,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/notifications/{id}",
-    "operation_id": "update_notification_api_v1_notifications__id__put",
+    "operation_id": "updateNotification",
     "tags": [
       "Notifications"
     ]
@@ -978,7 +978,7 @@
   {
     "method": "GET",
     "path": "/api/v1/personas",
-    "operation_id": "list_personas_api_v1_personas_get",
+    "operation_id": "listPersonas",
     "tags": [
       "Personas"
     ]
@@ -994,7 +994,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/personas/{id}",
-    "operation_id": "delete_persona_api_v1_personas__id__delete",
+    "operation_id": "deletePersona",
     "tags": [
       "Personas"
     ]
@@ -1002,7 +1002,7 @@
   {
     "method": "GET",
     "path": "/api/v1/personas/{id}",
-    "operation_id": "get_persona_api_v1_personas__id__get",
+    "operation_id": "getPersona",
     "tags": [
       "Personas"
     ]
@@ -1010,7 +1010,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/personas/{id}",
-    "operation_id": "update_persona_api_v1_personas__id__put",
+    "operation_id": "updatePersona",
     "tags": [
       "Personas"
     ]
@@ -1018,7 +1018,7 @@
   {
     "method": "GET",
     "path": "/api/v1/plan-items",
-    "operation_id": "list_plan_items_api_v1_plan_items_get",
+    "operation_id": "listPlanItems",
     "tags": [
       "Billing"
     ]
@@ -1026,7 +1026,7 @@
   {
     "method": "POST",
     "path": "/api/v1/plan-items",
-    "operation_id": "create_plan_item_api_v1_plan_items_post",
+    "operation_id": "createPlanItem",
     "tags": [
       "Billing"
     ]
@@ -1034,7 +1034,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/plan-items/{id}",
-    "operation_id": "delete_plan_item_api_v1_plan_items__id__delete",
+    "operation_id": "deletePlanItem",
     "tags": [
       "Billing"
     ]
@@ -1042,7 +1042,7 @@
   {
     "method": "GET",
     "path": "/api/v1/plan-items/{id}",
-    "operation_id": "get_plan_item_api_v1_plan_items__id__get",
+    "operation_id": "getPlanItem",
     "tags": [
       "Billing"
     ]
@@ -1050,7 +1050,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/plan-items/{id}",
-    "operation_id": "update_plan_item_api_v1_plan_items__id__put",
+    "operation_id": "updatePlanItem",
     "tags": [
       "Billing"
     ]
@@ -1058,7 +1058,7 @@
   {
     "method": "GET",
     "path": "/api/v1/planning",
-    "operation_id": "list_planning_api_v1_planning_get",
+    "operation_id": "listPlanning",
     "tags": [
       "Planning"
     ]
@@ -1074,7 +1074,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/planning/{id}",
-    "operation_id": "delete_planning_api_v1_planning__id__delete",
+    "operation_id": "deletePlanning",
     "tags": [
       "Planning"
     ]
@@ -1082,7 +1082,7 @@
   {
     "method": "GET",
     "path": "/api/v1/planning/{id}",
-    "operation_id": "get_planning_api_v1_planning__id__get",
+    "operation_id": "getPlanning",
     "tags": [
       "Planning"
     ]
@@ -1090,7 +1090,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/planning/{id}",
-    "operation_id": "update_planning_api_v1_planning__id__put",
+    "operation_id": "updatePlanning",
     "tags": [
       "Planning"
     ]
@@ -1138,7 +1138,7 @@
   {
     "method": "GET",
     "path": "/api/v1/post-structures",
-    "operation_id": "list_post_structures_api_v1_post_structures_get",
+    "operation_id": "listPostStructures",
     "tags": [
       "Post Structures"
     ]
@@ -1146,7 +1146,7 @@
   {
     "method": "POST",
     "path": "/api/v1/post-structures",
-    "operation_id": "create_post_structure_api_v1_post_structures_post",
+    "operation_id": "createPostStructure",
     "tags": [
       "Post Structures"
     ]
@@ -1154,7 +1154,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/post-structures/{id}",
-    "operation_id": "delete_post_structure_api_v1_post_structures__id__delete",
+    "operation_id": "deletePostStructure",
     "tags": [
       "Post Structures"
     ]
@@ -1162,7 +1162,7 @@
   {
     "method": "GET",
     "path": "/api/v1/post-structures/{id}",
-    "operation_id": "get_post_structure_api_v1_post_structures__id__get",
+    "operation_id": "getPostStructure",
     "tags": [
       "Post Structures"
     ]
@@ -1170,7 +1170,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/post-structures/{id}",
-    "operation_id": "update_post_structure_api_v1_post_structures__id__put",
+    "operation_id": "updatePostStructure",
     "tags": [
       "Post Structures"
     ]
@@ -1178,7 +1178,7 @@
   {
     "method": "GET",
     "path": "/api/v1/projects",
-    "operation_id": "list_projects_api_v1_projects_get",
+    "operation_id": "listProjects",
     "tags": [
       "Projects"
     ]
@@ -1186,7 +1186,7 @@
   {
     "method": "POST",
     "path": "/api/v1/projects",
-    "operation_id": "create_project_api_v1_projects_post",
+    "operation_id": "createProject",
     "tags": [
       "Projects"
     ]
@@ -1194,7 +1194,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/projects/{id}",
-    "operation_id": "delete_project_api_v1_projects__id__delete",
+    "operation_id": "deleteProject",
     "tags": [
       "Projects"
     ]
@@ -1202,7 +1202,7 @@
   {
     "method": "GET",
     "path": "/api/v1/projects/{id}",
-    "operation_id": "get_project_api_v1_projects__id__get",
+    "operation_id": "getProject",
     "tags": [
       "Projects"
     ]
@@ -1210,7 +1210,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/projects/{id}",
-    "operation_id": "update_project_api_v1_projects__id__put",
+    "operation_id": "updateProject",
     "tags": [
       "Projects"
     ]
@@ -1458,7 +1458,7 @@
   {
     "method": "GET",
     "path": "/api/v1/settings",
-    "operation_id": "get_my_settings_api_v1_settings_get",
+    "operation_id": "getMySettings",
     "tags": [
       "Settings"
     ]
@@ -1466,7 +1466,7 @@
   {
     "method": "PATCH",
     "path": "/api/v1/settings",
-    "operation_id": "update_my_settings_api_v1_settings_patch",
+    "operation_id": "updateMySettings",
     "tags": [
       "Settings"
     ]
@@ -1554,7 +1554,7 @@
   {
     "method": "GET",
     "path": "/api/v1/user-devices",
-    "operation_id": "list_user_devices_api_v1_user_devices_get",
+    "operation_id": "listUserDevices",
     "tags": [
       "Notifications"
     ]
@@ -1562,7 +1562,7 @@
   {
     "method": "POST",
     "path": "/api/v1/user-devices",
-    "operation_id": "create_user_device_api_v1_user_devices_post",
+    "operation_id": "createUserDevice",
     "tags": [
       "Notifications"
     ]
@@ -1570,7 +1570,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/user-devices/{id}",
-    "operation_id": "delete_user_device_api_v1_user_devices__id__delete",
+    "operation_id": "deleteUserDevice",
     "tags": [
       "Notifications"
     ]
@@ -1578,7 +1578,7 @@
   {
     "method": "GET",
     "path": "/api/v1/user-devices/{id}",
-    "operation_id": "get_user_device_api_v1_user_devices__id__get",
+    "operation_id": "getUserDevice",
     "tags": [
       "Notifications"
     ]
@@ -1586,7 +1586,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/user-devices/{id}",
-    "operation_id": "update_user_device_api_v1_user_devices__id__put",
+    "operation_id": "updateUserDevice",
     "tags": [
       "Notifications"
     ]
@@ -1594,7 +1594,7 @@
   {
     "method": "GET",
     "path": "/api/v1/users",
-    "operation_id": "list_users_api_v1_users_get",
+    "operation_id": "listUsers",
     "tags": [
       "Users"
     ]
@@ -1602,7 +1602,7 @@
   {
     "method": "POST",
     "path": "/api/v1/users",
-    "operation_id": "create_user_api_v1_users_post",
+    "operation_id": "createUser",
     "tags": [
       "Users"
     ]
@@ -1610,7 +1610,7 @@
   {
     "method": "GET",
     "path": "/api/v1/users/me",
-    "operation_id": "get_my_profile_api_v1_users_me_get",
+    "operation_id": "getMyProfile",
     "tags": [
       "Users"
     ]
@@ -1618,7 +1618,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/users/{id}",
-    "operation_id": "delete_user_api_v1_users__id__delete",
+    "operation_id": "deleteUser",
     "tags": [
       "Users"
     ]
@@ -1626,7 +1626,7 @@
   {
     "method": "GET",
     "path": "/api/v1/users/{id}",
-    "operation_id": "get_user_api_v1_users__id__get",
+    "operation_id": "getUser",
     "tags": [
       "Users"
     ]
@@ -1634,7 +1634,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/users/{id}",
-    "operation_id": "update_user_api_v1_users__id__put",
+    "operation_id": "updateUser",
     "tags": [
       "Users"
     ]
@@ -1754,7 +1754,7 @@
   {
     "method": "GET",
     "path": "/api/v1/workspaces",
-    "operation_id": "list_workspaces_api_v1_workspaces_get",
+    "operation_id": "listWorkspaces",
     "tags": [
       "Workspaces"
     ]
@@ -1762,7 +1762,7 @@
   {
     "method": "POST",
     "path": "/api/v1/workspaces",
-    "operation_id": "create_workspace_api_v1_workspaces_post",
+    "operation_id": "createWorkspace",
     "tags": [
       "Workspaces"
     ]
@@ -1770,7 +1770,7 @@
   {
     "method": "DELETE",
     "path": "/api/v1/workspaces/{id}",
-    "operation_id": "delete_workspace_api_v1_workspaces__id__delete",
+    "operation_id": "deleteWorkspace",
     "tags": [
       "Workspaces"
     ]
@@ -1778,7 +1778,7 @@
   {
     "method": "GET",
     "path": "/api/v1/workspaces/{id}",
-    "operation_id": "get_workspace_api_v1_workspaces__id__get",
+    "operation_id": "getWorkspace",
     "tags": [
       "Workspaces"
     ]
@@ -1786,7 +1786,7 @@
   {
     "method": "PUT",
     "path": "/api/v1/workspaces/{id}",
-    "operation_id": "update_workspace_api_v1_workspaces__id__put",
+    "operation_id": "updateWorkspace",
     "tags": [
       "Workspaces"
     ]
@@ -1794,7 +1794,7 @@
   {
     "method": "GET",
     "path": "/health",
-    "operation_id": "health_health_get",
+    "operation_id": "getHealth",
     "tags": [
       "System"
     ]
@@ -1802,7 +1802,7 @@
   {
     "method": "GET",
     "path": "/health/live",
-    "operation_id": "live_health_health_live_get",
+    "operation_id": "liveHealth",
     "tags": [
       "System"
     ]
@@ -1810,7 +1810,7 @@
   {
     "method": "GET",
     "path": "/metrics",
-    "operation_id": "metrics_metrics_get",
+    "operation_id": "getMetrics",
     "tags": [
       "System"
     ]

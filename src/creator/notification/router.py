@@ -33,7 +33,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/notification-recipients", tags=["Notifications"])
+@router.get(
+    "/api/v1/notification-recipients",
+    tags=["Notifications"],
+    operation_id="list_notification_recipients_api_v1_notification_recipients_get",
+)
 def list_notification_recipients(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -45,7 +49,11 @@ def list_notification_recipients(
     )
 
 
-@router.post("/api/v1/notification-recipients", tags=["Notifications"])
+@router.post(
+    "/api/v1/notification-recipients",
+    tags=["Notifications"],
+    operation_id="create_notification_recipient_api_v1_notification_recipients_post",
+)
 def create_notification_recipient(
     payload: dict[str, Any],
     request: Request,
@@ -61,7 +69,11 @@ def create_notification_recipient(
     )
 
 
-@router.get("/api/v1/notification-recipients/{id}", tags=["Notifications"])
+@router.get(
+    "/api/v1/notification-recipients/{id}",
+    tags=["Notifications"],
+    operation_id="get_notification_recipient_api_v1_notification_recipients__id__get",
+)
 def get_notification_recipient(
     recipient_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -76,7 +88,11 @@ def get_notification_recipient(
     )
 
 
-@router.put("/api/v1/notification-recipients/{id}", tags=["Notifications"])
+@router.put(
+    "/api/v1/notification-recipients/{id}",
+    tags=["Notifications"],
+    operation_id="update_notification_recipient_api_v1_notification_recipients__id__put",
+)
 def update_notification_recipient(
     recipient_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -96,7 +112,11 @@ def update_notification_recipient(
     )
 
 
-@router.delete("/api/v1/notification-recipients/{id}", tags=["Notifications"])
+@router.delete(
+    "/api/v1/notification-recipients/{id}",
+    tags=["Notifications"],
+    operation_id="delete_notification_recipient_api_v1_notification_recipients__id__delete",
+)
 def delete_notification_recipient(
     recipient_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -111,7 +131,7 @@ def delete_notification_recipient(
     )
 
 
-@router.get("/api/v1/notifications", tags=["Notifications"])
+@router.get("/api/v1/notifications", tags=["Notifications"], operation_id="listNotifications")
 def list_notifications(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -126,7 +146,7 @@ def list_notifications(
     )
 
 
-@router.post("/api/v1/notifications", tags=["Notifications"])
+@router.post("/api/v1/notifications", tags=["Notifications"], operation_id="createNotification")
 def create_notification(
     payload: NotificationCreateRequest,
     request: Request,
@@ -142,7 +162,7 @@ def create_notification(
     )
 
 
-@router.get("/api/v1/notifications/{id}", tags=["Notifications"])
+@router.get("/api/v1/notifications/{id}", tags=["Notifications"], operation_id="getNotification")
 def get_notification(
     notification_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -157,7 +177,7 @@ def get_notification(
     )
 
 
-@router.put("/api/v1/notifications/{id}", tags=["Notifications"])
+@router.put("/api/v1/notifications/{id}", tags=["Notifications"], operation_id="updateNotification")
 def update_notification(
     notification_id: Annotated[UUID, Path(alias="id")],
     payload: NotificationUpdateRequest,
@@ -177,7 +197,9 @@ def update_notification(
     )
 
 
-@router.delete("/api/v1/notifications/{id}", tags=["Notifications"])
+@router.delete(
+    "/api/v1/notifications/{id}", tags=["Notifications"], operation_id="deleteNotification"
+)
 def delete_notification(
     notification_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -192,7 +214,7 @@ def delete_notification(
     )
 
 
-@router.get("/api/v1/user-devices", tags=["Notifications"])
+@router.get("/api/v1/user-devices", tags=["Notifications"], operation_id="listUserDevices")
 def list_user_devices(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -204,7 +226,7 @@ def list_user_devices(
     )
 
 
-@router.post("/api/v1/user-devices", tags=["Notifications"])
+@router.post("/api/v1/user-devices", tags=["Notifications"], operation_id="createUserDevice")
 def create_user_device(
     payload: UserDeviceCreateRequest,
     request: Request,
@@ -220,7 +242,7 @@ def create_user_device(
     )
 
 
-@router.get("/api/v1/user-devices/{id}", tags=["Notifications"])
+@router.get("/api/v1/user-devices/{id}", tags=["Notifications"], operation_id="getUserDevice")
 def get_user_device(
     device_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -235,7 +257,7 @@ def get_user_device(
     )
 
 
-@router.put("/api/v1/user-devices/{id}", tags=["Notifications"])
+@router.put("/api/v1/user-devices/{id}", tags=["Notifications"], operation_id="updateUserDevice")
 def update_user_device(
     device_id: Annotated[UUID, Path(alias="id")],
     payload: UserDeviceUpdateRequest,
@@ -255,7 +277,7 @@ def update_user_device(
     )
 
 
-@router.delete("/api/v1/user-devices/{id}", tags=["Notifications"])
+@router.delete("/api/v1/user-devices/{id}", tags=["Notifications"], operation_id="deleteUserDevice")
 def delete_user_device(
     device_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -270,7 +292,11 @@ def delete_user_device(
     )
 
 
-@router.get("/api/v1/notification-preferences", tags=["Notifications"])
+@router.get(
+    "/api/v1/notification-preferences",
+    tags=["Notifications"],
+    operation_id="listNotificationPreferences",
+)
 def list_notification_preferences(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -284,7 +310,11 @@ def list_notification_preferences(
     )
 
 
-@router.post("/api/v1/notification-preferences", tags=["Notifications"])
+@router.post(
+    "/api/v1/notification-preferences",
+    tags=["Notifications"],
+    operation_id="createNotificationPreference",
+)
 def create_notification_preference(
     payload: NotificationPreferenceRequest,
     request: Request,
@@ -300,7 +330,11 @@ def create_notification_preference(
     )
 
 
-@router.get("/api/v1/notification-preferences/{id}", tags=["Notifications"])
+@router.get(
+    "/api/v1/notification-preferences/{id}",
+    tags=["Notifications"],
+    operation_id="getNotificationPreference",
+)
 def get_notification_preference(
     preference_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -315,7 +349,11 @@ def get_notification_preference(
     )
 
 
-@router.put("/api/v1/notification-preferences/{id}", tags=["Notifications"])
+@router.put(
+    "/api/v1/notification-preferences/{id}",
+    tags=["Notifications"],
+    operation_id="updateNotificationPreference",
+)
 def update_notification_preference(
     preference_id: Annotated[UUID, Path(alias="id")],
     payload: NotificationPreferenceRequest,
@@ -335,7 +373,11 @@ def update_notification_preference(
     )
 
 
-@router.delete("/api/v1/notification-preferences/{id}", tags=["Notifications"])
+@router.delete(
+    "/api/v1/notification-preferences/{id}",
+    tags=["Notifications"],
+    operation_id="deleteNotificationPreference",
+)
 def delete_notification_preference(
     preference_id: Annotated[UUID, Path(alias="id")],
     request: Request,

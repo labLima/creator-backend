@@ -69,7 +69,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.post("/api/v1/contents", tags=["Contents"])
+@router.post("/api/v1/contents", tags=["Contents"], operation_id="createContent")
 def create_content(
     payload: ContentCreateRequest,
     request: Request,
@@ -119,8 +119,8 @@ def create_content(
     return success_response(_content_data(content), request, status_code=201)
 
 
-@router.get("/api/v1/contents/{id}", tags=["Contents"])
-@router.get("/api/v1/content/{id}", tags=["Contents"])
+@router.get("/api/v1/contents/{id}", tags=["Contents"], operation_id="getContentCanonical")
+@router.get("/api/v1/content/{id}", tags=["Contents"], operation_id="getContent")
 def get_content(
     content_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -145,7 +145,7 @@ def get_content(
     return success_response(_content_detail_data(detail), request)
 
 
-@router.put("/api/v1/contents/{id}", tags=["Contents"])
+@router.put("/api/v1/contents/{id}", tags=["Contents"], operation_id="updateContent")
 def update_content(
     content_id: Annotated[UUID, Path(alias="id")],
     payload: ContentUpdateRequest,
@@ -211,8 +211,8 @@ def update_content(
     return success_response(_content_data(content), request)
 
 
-@router.delete("/api/v1/contents/{id}", tags=["Contents"])
-@router.delete("/api/v1/content/{id}", tags=["Contents"])
+@router.delete("/api/v1/contents/{id}", tags=["Contents"], operation_id="deleteContentCanonical")
+@router.delete("/api/v1/content/{id}", tags=["Contents"], operation_id="deleteContent")
 def delete_content(
     content_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -251,7 +251,7 @@ def delete_content(
     return success_response({"deleted": True}, request)
 
 
-@router.post("/api/v1/content/generate", tags=["Contents"])
+@router.post("/api/v1/content/generate", tags=["Contents"], operation_id="generateContent")
 def generate_text_content(
     payload: GenerateContentRequest,
     request: Request,
@@ -359,7 +359,7 @@ def generate_text_content(
     )
 
 
-@router.post("/api/v1/content/improve", tags=["Contents"])
+@router.post("/api/v1/content/improve", tags=["Contents"], operation_id="improveContent")
 def improve_text_content(
     payload: ImproveContentRequest,
     request: Request,
@@ -456,8 +456,8 @@ def improve_text_content(
     return success_response(_improved_content_data(preview), request)
 
 
-@router.get("/api/v1/content", tags=["Contents"])
-@router.get("/api/v1/contents", tags=["Contents"])
+@router.get("/api/v1/content", tags=["Contents"], operation_id="listContent")
+@router.get("/api/v1/contents", tags=["Contents"], operation_id="listContents")
 def list_content(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],

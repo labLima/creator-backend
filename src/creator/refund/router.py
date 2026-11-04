@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/refunds", tags=["Billing"])
+@router.get("/api/v1/refunds", tags=["Billing"], operation_id="list_refunds_api_v1_refunds_get")
 def list_refunds(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -42,7 +42,7 @@ def list_refunds(
     )
 
 
-@router.post("/api/v1/refunds", tags=["Billing"])
+@router.post("/api/v1/refunds", tags=["Billing"], operation_id="create_refund_api_v1_refunds_post")
 def create_refund(
     payload: RefundCreateRequest,
     request: Request,
@@ -58,7 +58,9 @@ def create_refund(
     )
 
 
-@router.get("/api/v1/refunds/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/refunds/{id}", tags=["Billing"], operation_id="get_refund_api_v1_refunds__id__get"
+)
 def get_refund(
     refund_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -73,7 +75,9 @@ def get_refund(
     )
 
 
-@router.put("/api/v1/refunds/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/refunds/{id}", tags=["Billing"], operation_id="update_refund_api_v1_refunds__id__put"
+)
 def update_refund(
     refund_id: Annotated[UUID, Path(alias="id")],
     payload: RefundUpdateRequest,
@@ -93,7 +97,11 @@ def update_refund(
     )
 
 
-@router.delete("/api/v1/refunds/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/refunds/{id}",
+    tags=["Billing"],
+    operation_id="delete_refund_api_v1_refunds__id__delete",
+)
 def delete_refund(
     refund_id: Annotated[UUID, Path(alias="id")],
     request: Request,

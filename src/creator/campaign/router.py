@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/campaigns", tags=["Campaigns"])
+@router.get("/api/v1/campaigns", tags=["Campaigns"], operation_id="listCampaigns")
 def list_campaigns(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -54,7 +54,7 @@ def list_campaigns(
     )
 
 
-@router.post("/api/v1/campaigns", tags=["Campaigns"])
+@router.post("/api/v1/campaigns", tags=["Campaigns"], operation_id="createCampaign")
 def create_campaign(
     payload: CampaignCreateRequest,
     request: Request,
@@ -70,7 +70,7 @@ def create_campaign(
     )
 
 
-@router.get("/api/v1/campaigns/{id}", tags=["Campaigns"])
+@router.get("/api/v1/campaigns/{id}", tags=["Campaigns"], operation_id="getCampaign")
 def get_campaign(
     campaign_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -85,7 +85,7 @@ def get_campaign(
     )
 
 
-@router.put("/api/v1/campaigns/{id}", tags=["Campaigns"])
+@router.put("/api/v1/campaigns/{id}", tags=["Campaigns"], operation_id="updateCampaign")
 def update_campaign(
     campaign_id: Annotated[UUID, Path(alias="id")],
     payload: CampaignUpdateRequest,
@@ -105,7 +105,7 @@ def update_campaign(
     )
 
 
-@router.delete("/api/v1/campaigns/{id}", tags=["Campaigns"])
+@router.delete("/api/v1/campaigns/{id}", tags=["Campaigns"], operation_id="deleteCampaign")
 def delete_campaign(
     campaign_id: Annotated[UUID, Path(alias="id")],
     request: Request,

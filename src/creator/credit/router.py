@@ -29,7 +29,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/workspace-credit-transactions", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspace-credit-transactions",
+    tags=["Workspaces"],
+    operation_id="list_workspace_credit_transactions_api_v1_workspace_credit_transactions_get",
+)
 def list_workspace_credit_transactions(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -44,7 +48,11 @@ def list_workspace_credit_transactions(
     )
 
 
-@router.post("/api/v1/workspace-credit-transactions", tags=["Workspaces"])
+@router.post(
+    "/api/v1/workspace-credit-transactions",
+    tags=["Workspaces"],
+    operation_id="create_workspace_credit_transaction_api_v1_workspace_credit_transactions_post",
+)
 def create_workspace_credit_transaction(
     payload: WorkspaceCreditTransactionCreateRequest,
     request: Request,
@@ -60,7 +68,11 @@ def create_workspace_credit_transaction(
     )
 
 
-@router.get("/api/v1/workspace-credit-transactions/{id}", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspace-credit-transactions/{id}",
+    tags=["Workspaces"],
+    operation_id="get_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__get",
+)
 def get_workspace_credit_transaction(
     transaction_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -75,7 +87,11 @@ def get_workspace_credit_transaction(
     )
 
 
-@router.delete("/api/v1/workspace-credit-transactions/{id}", tags=["Workspaces"])
+@router.delete(
+    "/api/v1/workspace-credit-transactions/{id}",
+    tags=["Workspaces"],
+    operation_id="delete_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__delete",
+)
 def delete_workspace_credit_transaction(
     transaction_id: Annotated[UUID, Path(alias="id")],
     request: Request,

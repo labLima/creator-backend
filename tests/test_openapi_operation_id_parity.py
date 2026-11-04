@@ -5,10 +5,15 @@ ADR-007 (amendment 2026-11-04) makes `docs/openapi.yaml` authoritative for
 silently overrides another operation in generated clients, and an operation
 without an identifier cannot be generated at all.
 
-These checks read the YAML as data only: they must fail for contract reasons,
-never because importing the application changed. The application/runtime side of
-the parity lives in `tests/test_openapi_contract.py` and
-`tests/test_route_table_contract.py`.
+The static checks read the YAML as data only. `operationId` parity against the
+running application is compared through the published `app.openapi()` document,
+which is the only seam that distinguishes the identifier a generated client
+would receive from the one the YAML declares; `APIRoute.operation_id` is filled
+by FastAPI even when it is derived automatically, so it cannot tell an explicit
+id from a generated one.
+
+The broader path/method/security parity lives in `tests/test_openapi_contract.py`
+and the frozen route table in `tests/test_route_table_contract.py`.
 """
 
 from __future__ import annotations
@@ -17,6 +22,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from creator.main import app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_PATH = PROJECT_ROOT / "docs" / "openapi.yaml"
@@ -46,6 +53,82 @@ def _documented_operations() -> list[tuple[str, str, dict[str, Any]]]:
         for method, operation in item.items()
         if method in HTTP_METHODS
     ]
+
+
+def _operations_by_slug(document: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    """Index `(path, method)` to its operation object for one OpenAPI document."""
+    return {
+        (path, method): operation
+        for path, item in document["paths"].items()
+        for method, operation in item.items()
+        if method in HTTP_METHODS
+    }
+
+
+def test_generated_operation_id_matches_static_contract() -> None:
+    """Every shared `(path, method)` must publish the YAML's `operationId` verbatim.
+
+    ADR-007 (amendment 2026-11-04) makes `docs/openapi.yaml` authoritative: a
+    client generated from the static contract and one generated from
+    `app.openapi()` must expose the same method names. All divergences are
+    reported together so a fix is not validated one operation at a time.
+    """
+    static_operations = _operations_by_slug(_static_contract())
+    generated_operations = _operations_by_slug(app.openapi())
+
+    compared = sorted(set(static_operations) & set(generated_operations))
+    divergences = [
+        (
+            f"{method.upper()} {path}: "
+            f"docs/openapi.yaml={static_operations[(path, method)].get('operationId')!r} "
+            f"app.openapi()={generated_operations[(path, method)].get('operationId')!r}"
+        )
+        for path, method in compared
+        if static_operations[(path, method)].get("operationId")
+        != generated_operations[(path, method)].get("operationId")
+    ]
+
+    assert not divergences, (
+        f"{len(divergences)} of {len(compared)} operations publish a different "
+        "operationId in app.openapi() than in docs/openapi.yaml (ADR-007 makes the "
+        "YAML authoritative):\n" + "\n".join(divergences)
+    )
+
+
+def test_operation_id_parity_compares_every_documented_operation() -> None:
+    """Guard the parity test against passing vacuously on an empty intersection.
+
+    The parity test intersects both documents. If a path or method disappeared
+    from `app.openapi()`, the intersection would shrink and the assertion would
+    keep passing while silently covering less. The compared set must therefore
+    equal the complete YAML surface, which is frozen at
+    `EXPECTED_OPERATION_COUNT` (224 `/api/v1` operations plus three System ones).
+    """
+    static_operations = _operations_by_slug(_static_contract())
+    generated_operations = _operations_by_slug(app.openapi())
+
+    unnoted = sorted(
+        f"{method.upper()} {path}"
+        for path, method in static_operations.keys() - generated_operations.keys()
+    )
+    assert not unnoted, (
+        "docs/openapi.yaml documents operations that app.openapi() does not publish; "
+        f"operationId parity cannot cover them: {unnoted}"
+    )
+
+    extra = sorted(
+        f"{method.upper()} {path}"
+        for path, method in generated_operations.keys() - static_operations.keys()
+    )
+    assert not extra, (
+        "app.openapi() publishes operations absent from docs/openapi.yaml; they would "
+        f"escape operationId parity: {extra}"
+    )
+
+    assert len(static_operations) == EXPECTED_OPERATION_COUNT, (
+        f"the compared surface has {len(static_operations)} operations, "
+        f"expected the frozen {EXPECTED_OPERATION_COUNT}; the contract moved"
+    )
 
 
 def test_static_contract_has_unique_operation_ids() -> None:

@@ -56,7 +56,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/generations", tags=["Generations"])
+@router.get("/api/v1/generations", tags=["Generations"], operation_id="listGenerations")
 def list_generations(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -76,7 +76,7 @@ def list_generations(
     return success_response(page_payload(generations, _generation_data), request)
 
 
-@router.post("/api/v1/generations", tags=["Generations"])
+@router.post("/api/v1/generations", tags=["Generations"], operation_id="createGeneration")
 def create_generation(
     payload: GenerationCreateRequest,
     request: Request,
@@ -101,7 +101,7 @@ def create_generation(
     return success_response(_generation_data(generation), request, status_code=201)
 
 
-@router.get("/api/v1/generations/{id}", tags=["Generations"])
+@router.get("/api/v1/generations/{id}", tags=["Generations"], operation_id="getGeneration")
 def get_generation(
     generation_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -117,7 +117,7 @@ def get_generation(
     return success_response(_generation_data(generation), request)
 
 
-@router.put("/api/v1/generations/{id}", tags=["Generations"])
+@router.put("/api/v1/generations/{id}", tags=["Generations"], operation_id="updateGeneration")
 def update_generation(
     generation_id: Annotated[UUID, Path(alias="id")],
     payload: GenerationUpdateRequest,
@@ -139,7 +139,7 @@ def update_generation(
     return success_response(_generation_data(generation), request)
 
 
-@router.delete("/api/v1/generations/{id}", tags=["Generations"])
+@router.delete("/api/v1/generations/{id}", tags=["Generations"], operation_id="deleteGeneration")
 def delete_generation(
     generation_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -154,7 +154,7 @@ def delete_generation(
     return success_response({"deleted": True}, request)
 
 
-@router.get("/api/v1/generated-images/{id}", tags=["Images"])
+@router.get("/api/v1/generated-images/{id}", tags=["Images"], operation_id="getGeneratedImage")
 def get_generated_image(
     image_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -167,7 +167,7 @@ def get_generated_image(
     return success_response(_generated_image_data(image), request)
 
 
-@router.post("/api/v1/images/generate", tags=["Images"])
+@router.post("/api/v1/images/generate", tags=["Images"], operation_id="generateImage")
 def generate_image(
     payload: GenerateImageRequest,
     request: Request,
@@ -214,7 +214,7 @@ def generate_image(
     return success_response(_image_generation_status_data(status), request, status_code=202)
 
 
-@router.post("/api/v1/images/{id}/regenerate", tags=["Images"])
+@router.post("/api/v1/images/{id}/regenerate", tags=["Images"], operation_id="regenerateImage")
 def regenerate_image(
     image_id: Annotated[UUID, Path(alias="id")],
     payload: RegenerateImageRequest,
@@ -262,7 +262,7 @@ def regenerate_image(
     return success_response(_image_generation_status_data(status), request, status_code=202)
 
 
-@router.get("/api/v1/images/{id}", tags=["Images"])
+@router.get("/api/v1/images/{id}", tags=["Images"], operation_id="getImage")
 def get_image(
     job_id: Annotated[UUID, Path(alias="id")],
     request: Request,

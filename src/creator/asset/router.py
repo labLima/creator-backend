@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/assets", tags=["Assets"])
+@router.get("/api/v1/assets", tags=["Assets"], operation_id="listAssets")
 def list_assets(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -60,7 +60,7 @@ def list_assets(
     )
 
 
-@router.post("/api/v1/assets", tags=["Assets"])
+@router.post("/api/v1/assets", tags=["Assets"], operation_id="createAsset")
 def create_asset(
     payload: AssetCreateRequest,
     request: Request,
@@ -76,7 +76,7 @@ def create_asset(
     )
 
 
-@router.get("/api/v1/assets/{id}", tags=["Assets"])
+@router.get("/api/v1/assets/{id}", tags=["Assets"], operation_id="getAsset")
 def get_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -89,7 +89,7 @@ def get_asset(
     )
 
 
-@router.put("/api/v1/assets/{id}", tags=["Assets"])
+@router.put("/api/v1/assets/{id}", tags=["Assets"], operation_id="updateAsset")
 def update_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     payload: AssetUpdateRequest,
@@ -109,7 +109,7 @@ def update_asset(
     )
 
 
-@router.delete("/api/v1/assets/{id}", tags=["Assets"])
+@router.delete("/api/v1/assets/{id}", tags=["Assets"], operation_id="deleteAsset")
 def delete_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     request: Request,

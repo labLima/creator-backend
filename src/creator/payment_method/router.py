@@ -30,7 +30,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/billing-payment-methods", tags=["Billing"])
+@router.get(
+    "/api/v1/billing-payment-methods",
+    tags=["Billing"],
+    operation_id="list_payment_methods_api_v1_billing_payment_methods_get",
+)
 def list_payment_methods(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -48,7 +52,11 @@ def list_payment_methods(
     )
 
 
-@router.post("/api/v1/billing-payment-methods", tags=["Billing"])
+@router.post(
+    "/api/v1/billing-payment-methods",
+    tags=["Billing"],
+    operation_id="create_payment_method_api_v1_billing_payment_methods_post",
+)
 def create_payment_method(
     payload: PaymentMethodCreateRequest,
     request: Request,
@@ -64,7 +72,11 @@ def create_payment_method(
     )
 
 
-@router.get("/api/v1/billing-payment-methods/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/billing-payment-methods/{id}",
+    tags=["Billing"],
+    operation_id="get_payment_method_api_v1_billing_payment_methods__id__get",
+)
 def get_payment_method(
     method_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -79,7 +91,11 @@ def get_payment_method(
     )
 
 
-@router.put("/api/v1/billing-payment-methods/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/billing-payment-methods/{id}",
+    tags=["Billing"],
+    operation_id="update_payment_method_api_v1_billing_payment_methods__id__put",
+)
 def update_payment_method(
     method_id: Annotated[UUID, Path(alias="id")],
     payload: PaymentMethodUpdateRequest,
@@ -99,7 +115,11 @@ def update_payment_method(
     )
 
 
-@router.delete("/api/v1/billing-payment-methods/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/billing-payment-methods/{id}",
+    tags=["Billing"],
+    operation_id="delete_payment_method_api_v1_billing_payment_methods__id__delete",
+)
 def delete_payment_method(
     method_id: Annotated[UUID, Path(alias="id")],
     request: Request,

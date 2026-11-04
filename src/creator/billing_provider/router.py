@@ -32,7 +32,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/provider-customers", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-customers",
+    tags=["Billing"],
+    operation_id="list_provider_customers_api_v1_provider_customers_get",
+)
 def list_provider_customers(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -44,7 +48,11 @@ def list_provider_customers(
     )
 
 
-@router.post("/api/v1/provider-customers", tags=["Billing"])
+@router.post(
+    "/api/v1/provider-customers",
+    tags=["Billing"],
+    operation_id="create_provider_customer_api_v1_provider_customers_post",
+)
 def create_provider_customer(
     payload: ProviderCustomerCreateRequest,
     request: Request,
@@ -60,7 +68,11 @@ def create_provider_customer(
     )
 
 
-@router.get("/api/v1/provider-customers/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-customers/{id}",
+    tags=["Billing"],
+    operation_id="get_provider_customer_api_v1_provider_customers__id__get",
+)
 def get_provider_customer(
     record_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -75,7 +87,11 @@ def get_provider_customer(
     )
 
 
-@router.delete("/api/v1/provider-customers/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/provider-customers/{id}",
+    tags=["Billing"],
+    operation_id="delete_provider_customer_api_v1_provider_customers__id__delete",
+)
 def delete_provider_customer(
     record_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -90,7 +106,11 @@ def delete_provider_customer(
     )
 
 
-@router.put("/api/v1/provider-customers/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/provider-customers/{id}",
+    tags=["Billing"],
+    operation_id="update_provider_customer_api_v1_provider_customers__id__put",
+)
 def update_provider_customer(
     record_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -110,7 +130,11 @@ def update_provider_customer(
     )
 
 
-@router.get("/api/v1/provider-subscriptions", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-subscriptions",
+    tags=["Billing"],
+    operation_id="list_provider_subscriptions_api_v1_provider_subscriptions_get",
+)
 def list_provider_subscriptions(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -122,7 +146,11 @@ def list_provider_subscriptions(
     )
 
 
-@router.post("/api/v1/provider-subscriptions", tags=["Billing"])
+@router.post(
+    "/api/v1/provider-subscriptions",
+    tags=["Billing"],
+    operation_id="create_provider_subscription_api_v1_provider_subscriptions_post",
+)
 def create_provider_subscription(
     payload: ProviderSubscriptionCreateRequest,
     request: Request,
@@ -138,7 +166,11 @@ def create_provider_subscription(
     )
 
 
-@router.get("/api/v1/provider-subscriptions/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-subscriptions/{id}",
+    tags=["Billing"],
+    operation_id="get_provider_subscription_api_v1_provider_subscriptions__id__get",
+)
 def get_provider_subscription(
     record_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -153,7 +185,11 @@ def get_provider_subscription(
     )
 
 
-@router.delete("/api/v1/provider-subscriptions/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/provider-subscriptions/{id}",
+    tags=["Billing"],
+    operation_id="delete_provider_subscription_api_v1_provider_subscriptions__id__delete",
+)
 def delete_provider_subscription(
     record_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -168,7 +204,11 @@ def delete_provider_subscription(
     )
 
 
-@router.get("/api/v1/provider-webhook-events", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-webhook-events",
+    tags=["Billing"],
+    operation_id="list_provider_webhook_events_api_v1_provider_webhook_events_get",
+)
 def list_provider_webhook_events(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -180,7 +220,11 @@ def list_provider_webhook_events(
     )
 
 
-@router.post("/api/v1/provider-webhook-events", tags=["Billing"])
+@router.post(
+    "/api/v1/provider-webhook-events",
+    tags=["Billing"],
+    operation_id="create_provider_webhook_event_api_v1_provider_webhook_events_post",
+)
 def create_provider_webhook_event(
     payload: dict[str, Any],
     request: Request,
@@ -196,7 +240,11 @@ def create_provider_webhook_event(
     )
 
 
-@router.get("/api/v1/provider-webhook-events/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-webhook-events/{id}",
+    tags=["Billing"],
+    operation_id="get_provider_webhook_event_api_v1_provider_webhook_events__id__get",
+)
 def get_provider_webhook_event(
     event_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -211,7 +259,11 @@ def get_provider_webhook_event(
     )
 
 
-@router.put("/api/v1/provider-webhook-events/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/provider-webhook-events/{id}",
+    tags=["Billing"],
+    operation_id="update_provider_webhook_event_api_v1_provider_webhook_events__id__put",
+)
 def update_provider_webhook_event(
     event_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -231,7 +283,11 @@ def update_provider_webhook_event(
     )
 
 
-@router.delete("/api/v1/provider-webhook-events/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/provider-webhook-events/{id}",
+    tags=["Billing"],
+    operation_id="delete_provider_webhook_event_api_v1_provider_webhook_events__id__delete",
+)
 def delete_provider_webhook_event(
     event_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -246,7 +302,11 @@ def delete_provider_webhook_event(
     )
 
 
-@router.get("/api/v1/provider-idempotency-keys", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-idempotency-keys",
+    tags=["Billing"],
+    operation_id="list_provider_idempotency_keys_api_v1_provider_idempotency_keys_get",
+)
 def list_provider_idempotency_keys(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -260,7 +320,11 @@ def list_provider_idempotency_keys(
     )
 
 
-@router.post("/api/v1/provider-idempotency-keys", tags=["Billing"])
+@router.post(
+    "/api/v1/provider-idempotency-keys",
+    tags=["Billing"],
+    operation_id="create_provider_idempotency_key_api_v1_provider_idempotency_keys_post",
+)
 def create_provider_idempotency_key(
     payload: dict[str, Any],
     request: Request,
@@ -276,7 +340,11 @@ def create_provider_idempotency_key(
     )
 
 
-@router.get("/api/v1/provider-idempotency-keys/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-idempotency-keys/{id}",
+    tags=["Billing"],
+    operation_id="get_provider_idempotency_key_api_v1_provider_idempotency_keys__id__get",
+)
 def get_provider_idempotency_key(
     key_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -291,7 +359,11 @@ def get_provider_idempotency_key(
     )
 
 
-@router.put("/api/v1/provider-idempotency-keys/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/provider-idempotency-keys/{id}",
+    tags=["Billing"],
+    operation_id="update_provider_idempotency_key_api_v1_provider_idempotency_keys__id__put",
+)
 def update_provider_idempotency_key(
     key_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -307,7 +379,11 @@ def update_provider_idempotency_key(
     )
 
 
-@router.delete("/api/v1/provider-idempotency-keys/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/provider-idempotency-keys/{id}",
+    tags=["Billing"],
+    operation_id="delete_provider_idempotency_key_api_v1_provider_idempotency_keys__id__delete",
+)
 def delete_provider_idempotency_key(
     key_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -322,7 +398,11 @@ def delete_provider_idempotency_key(
     )
 
 
-@router.put("/api/v1/provider-subscriptions/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/provider-subscriptions/{id}",
+    tags=["Billing"],
+    operation_id="update_provider_subscription_api_v1_provider_subscriptions__id__put",
+)
 def update_provider_subscription(
     record_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -342,7 +422,11 @@ def update_provider_subscription(
     )
 
 
-@router.get("/api/v1/provider-disputes", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-disputes",
+    tags=["Billing"],
+    operation_id="list_provider_disputes_api_v1_provider_disputes_get",
+)
 def list_provider_disputes(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -354,7 +438,11 @@ def list_provider_disputes(
     )
 
 
-@router.post("/api/v1/provider-disputes", tags=["Billing"])
+@router.post(
+    "/api/v1/provider-disputes",
+    tags=["Billing"],
+    operation_id="create_provider_dispute_api_v1_provider_disputes_post",
+)
 def create_provider_dispute(
     payload: ProviderDisputeCreateRequest,
     request: Request,
@@ -370,7 +458,11 @@ def create_provider_dispute(
     )
 
 
-@router.get("/api/v1/provider-disputes/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/provider-disputes/{id}",
+    tags=["Billing"],
+    operation_id="get_provider_dispute_api_v1_provider_disputes__id__get",
+)
 def get_provider_dispute(
     dispute_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -385,7 +477,11 @@ def get_provider_dispute(
     )
 
 
-@router.put("/api/v1/provider-disputes/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/provider-disputes/{id}",
+    tags=["Billing"],
+    operation_id="update_provider_dispute_api_v1_provider_disputes__id__put",
+)
 def update_provider_dispute(
     dispute_id: Annotated[UUID, Path(alias="id")],
     payload: ProviderDisputeUpdateRequest,
@@ -405,7 +501,11 @@ def update_provider_dispute(
     )
 
 
-@router.delete("/api/v1/provider-disputes/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/provider-disputes/{id}",
+    tags=["Billing"],
+    operation_id="delete_provider_dispute_api_v1_provider_disputes__id__delete",
+)
 def delete_provider_dispute(
     dispute_id: Annotated[UUID, Path(alias="id")],
     request: Request,

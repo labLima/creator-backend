@@ -42,7 +42,11 @@ from creator.workflow.service import (
 router = APIRouter()
 
 
-@router.post("/api/v1/generations/image-workflows", tags=["Generations"])
+@router.post(
+    "/api/v1/generations/image-workflows",
+    tags=["Generations"],
+    operation_id="createImageAgentWorkflow",
+)
 def create_image_workflow(
     payload: ImageWorkflowRequest,
     request: Request,
@@ -86,7 +90,11 @@ def create_image_workflow(
     return success_response(_agent_workflow_data(run), request, status_code=202)
 
 
-@router.get("/api/v1/generations/image-workflows/{id}", tags=["Generations"])
+@router.get(
+    "/api/v1/generations/image-workflows/{id}",
+    tags=["Generations"],
+    operation_id="getImageAgentWorkflow",
+)
 def get_image_workflow(
     workflow_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -99,7 +107,11 @@ def get_image_workflow(
     return success_response(_agent_workflow_data(run), request)
 
 
-@router.get("/api/v1/generations/image-workflows/{id}/steps", tags=["Generations"])
+@router.get(
+    "/api/v1/generations/image-workflows/{id}/steps",
+    tags=["Generations"],
+    operation_id="listImageAgentWorkflowSteps",
+)
 def list_image_workflow_steps(
     workflow_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -114,7 +126,11 @@ def list_image_workflow_steps(
     return success_response({"items": [_agent_workflow_step_data(step) for step in steps]}, request)
 
 
-@router.post("/api/v1/generations/image-workflows/{id}/decision", tags=["Generations"])
+@router.post(
+    "/api/v1/generations/image-workflows/{id}/decision",
+    tags=["Generations"],
+    operation_id="decideImageAgentWorkflow",
+)
 def decide_image_workflow_route(
     workflow_id: Annotated[UUID, Path(alias="id")],
     payload: ImageWorkflowDecisionRequest,
