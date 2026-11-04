@@ -5,6 +5,7 @@
 - ADR tracker: [#38](https://github.com/labLima/creator-backend/issues/38)
 - GitHub: [#54](https://github.com/labLima/creator-backend/issues/54)
 - Labels: `backend`, `database`, `architecture`, `priority-high`, `adr-005`
+- Milestone: Fase 4 (movida da Fase 2 em 2026-11-04; depende da correlação com #23).
 - Status: **aberta em 2026-11-04; schema antigo removido, ledger real pendente**
 
 ## Contexto

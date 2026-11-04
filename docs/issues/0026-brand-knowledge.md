@@ -4,6 +4,7 @@
 - ADR tracker: [`docs/issues/0021`](0021-langchain-rag-tool-calling.md)
 - GitHub: [#49](https://github.com/labLima/creator-backend/issues/49)
 - Labels: `backend`, `database`, `architecture`, `priority-high`, `adr-012`
+- Milestone: Fase 3 (movida da Fase 2 em 2026-11-04; depende de #74–#77).
 - Status: **aberta em 2026-11-04; schema anterior removido, reintrodução pendente**
 
 ## Contexto
