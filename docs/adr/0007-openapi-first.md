@@ -33,11 +33,15 @@ para as respostas de erro documentadas por operação.
 - Os nomes publicados em camelCase (`loginWithPassword`, `listContents`,
   `getBrand`) são contrato imutável. Não derivar `operationId` do nome do
   handler Python.
-- `403`, `404`, `409` e `422` são comparados por operação entre YAML e
+- `403`, `404` e `409` são comparados por operação entre YAML e
   `app.openapi()`, incluindo `x-error-codes` quando presentes.
-- `401`, `429` e `500` são convenções globais: precisam existir em todas as
-  operações `/api/v1` e nos dois documentos, mas não são repetidos manualmente
-  como responsabilidade individual de cada handler.
+- `401`, `422`, `429` e `500` são convenções globais. O app injeta `401`, `429`
+  e `500` em todas as operações `/api/v1`; o YAML documenta `401` por operação,
+  `429` no bloco global `x-rate-limit` e `500` pelo componente canônico. `422`
+  é gerado pelo FastAPI para operações com validação e documentado no YAML
+  quando aplicável, sem comparação de presença por operação. O shape canônico
+  do erro continua sendo o envelope `ErrorResponse`/`ValidationFailed`, não o
+  `HTTPValidationError` padrão do FastAPI.
 - Exceções de error response exigem justificativa registrada na
   [0051](../issues/0051-openapi-operation-id-parity.md); não pode haver exceção
   silenciosa.

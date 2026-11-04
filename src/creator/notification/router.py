@@ -334,6 +334,7 @@ def create_notification_preference(
     "/api/v1/notification-preferences/{id}",
     tags=["Notifications"],
     operation_id="getNotificationPreference",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
 )
 def get_notification_preference(
     preference_id: Annotated[UUID, Path(alias="id")],

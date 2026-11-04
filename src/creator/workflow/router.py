@@ -46,6 +46,10 @@ router = APIRouter()
     "/api/v1/generations/image-workflows",
     tags=["Generations"],
     operation_id="createImageAgentWorkflow",
+    responses={
+        "404": {"$ref": "#/components/responses/NotFound"},
+        "409": {"$ref": "#/components/responses/Conflict"},
+    },
 )
 def create_image_workflow(
     payload: ImageWorkflowRequest,
@@ -94,6 +98,7 @@ def create_image_workflow(
     "/api/v1/generations/image-workflows/{id}",
     tags=["Generations"],
     operation_id="getImageAgentWorkflow",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
 )
 def get_image_workflow(
     workflow_id: Annotated[UUID, Path(alias="id")],
@@ -111,6 +116,7 @@ def get_image_workflow(
     "/api/v1/generations/image-workflows/{id}/steps",
     tags=["Generations"],
     operation_id="listImageAgentWorkflowSteps",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
 )
 def list_image_workflow_steps(
     workflow_id: Annotated[UUID, Path(alias="id")],
@@ -130,6 +136,10 @@ def list_image_workflow_steps(
     "/api/v1/generations/image-workflows/{id}/decision",
     tags=["Generations"],
     operation_id="decideImageAgentWorkflow",
+    responses={
+        "404": {"$ref": "#/components/responses/NotFound"},
+        "409": {"$ref": "#/components/responses/Conflict"},
+    },
 )
 def decide_image_workflow_route(
     workflow_id: Annotated[UUID, Path(alias="id")],

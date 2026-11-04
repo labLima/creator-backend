@@ -60,7 +60,12 @@ def list_brands(
     )
 
 
-@router.post("/api/v1/brands", tags=["Brands"], operation_id="createBrand")
+@router.post(
+    "/api/v1/brands",
+    tags=["Brands"],
+    operation_id="createBrand",
+    responses={"403": {"$ref": "#/components/responses/WorkspaceAccessDenied"}},
+)
 def create_brand(
     payload: BrandCreateRequest,
     request: Request,
@@ -76,7 +81,12 @@ def create_brand(
     )
 
 
-@router.get("/api/v1/brands/{id}", tags=["Brands"], operation_id="getBrand")
+@router.get(
+    "/api/v1/brands/{id}",
+    tags=["Brands"],
+    operation_id="getBrand",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_brand(
     brand_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -89,7 +99,12 @@ def get_brand(
     )
 
 
-@router.put("/api/v1/brands/{id}", tags=["Brands"], operation_id="updateBrand")
+@router.put(
+    "/api/v1/brands/{id}",
+    tags=["Brands"],
+    operation_id="updateBrand",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_brand(
     brand_id: Annotated[UUID, Path(alias="id")],
     payload: BrandUpdateRequest,
@@ -109,7 +124,12 @@ def update_brand(
     )
 
 
-@router.delete("/api/v1/brands/{id}", tags=["Brands"], operation_id="deleteBrand")
+@router.delete(
+    "/api/v1/brands/{id}",
+    tags=["Brands"],
+    operation_id="deleteBrand",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_brand(
     brand_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -124,7 +144,12 @@ def delete_brand(
     )
 
 
-@router.get("/api/v1/brands/{id}/settings", tags=["Brands"], operation_id="getBrandSettings")
+@router.get(
+    "/api/v1/brands/{id}/settings",
+    tags=["Brands"],
+    operation_id="getBrandSettings",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_brand_settings(
     brand_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -234,7 +259,12 @@ def create_brand_asset(
     )
 
 
-@router.get("/api/v1/brand-assets/{id}", tags=["Brand Assets"], operation_id="getBrandAsset")
+@router.get(
+    "/api/v1/brand-assets/{id}",
+    tags=["Brand Assets"],
+    operation_id="getBrandAsset",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_brand_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -249,7 +279,12 @@ def get_brand_asset(
     )
 
 
-@router.put("/api/v1/brand-assets/{id}", tags=["Brand Assets"], operation_id="updateBrandAsset")
+@router.put(
+    "/api/v1/brand-assets/{id}",
+    tags=["Brand Assets"],
+    operation_id="updateBrandAsset",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_brand_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     payload: BrandAssetUpdateRequest,
@@ -269,7 +304,12 @@ def update_brand_asset(
     )
 
 
-@router.delete("/api/v1/brand-assets/{id}", tags=["Brand Assets"], operation_id="deleteBrandAsset")
+@router.delete(
+    "/api/v1/brand-assets/{id}",
+    tags=["Brand Assets"],
+    operation_id="deleteBrandAsset",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_brand_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     request: Request,

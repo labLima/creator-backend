@@ -70,7 +70,12 @@ def update_my_settings(
     )
 
 
-@router.get("/api/v1/users", tags=["Users"], operation_id="listUsers")
+@router.get(
+    "/api/v1/users",
+    tags=["Users"],
+    operation_id="listUsers",
+    responses={"403": {"$ref": "#/components/responses/Forbidden"}},
+)
 def list_users(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -87,7 +92,12 @@ def list_users(
     )
 
 
-@router.post("/api/v1/users", tags=["Users"], operation_id="createUser")
+@router.post(
+    "/api/v1/users",
+    tags=["Users"],
+    operation_id="createUser",
+    responses={"403": {"$ref": "#/components/responses/Forbidden"}},
+)
 def create_user(
     payload: UserCreateRequest,
     request: Request,
@@ -101,7 +111,15 @@ def create_user(
     )
 
 
-@router.get("/api/v1/users/{id}", tags=["Users"], operation_id="getUser")
+@router.get(
+    "/api/v1/users/{id}",
+    tags=["Users"],
+    operation_id="getUser",
+    responses={
+        "403": {"$ref": "#/components/responses/Forbidden"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def get_user(
     user_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -114,7 +132,15 @@ def get_user(
     )
 
 
-@router.put("/api/v1/users/{id}", tags=["Users"], operation_id="updateUser")
+@router.put(
+    "/api/v1/users/{id}",
+    tags=["Users"],
+    operation_id="updateUser",
+    responses={
+        "403": {"$ref": "#/components/responses/Forbidden"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def update_user(
     user_id: Annotated[UUID, Path(alias="id")],
     payload: UserUpdateRequest,
@@ -130,7 +156,15 @@ def update_user(
     )
 
 
-@router.delete("/api/v1/users/{id}", tags=["Users"], operation_id="deleteUser")
+@router.delete(
+    "/api/v1/users/{id}",
+    tags=["Users"],
+    operation_id="deleteUser",
+    responses={
+        "403": {"$ref": "#/components/responses/Forbidden"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def delete_user(
     user_id: Annotated[UUID, Path(alias="id")],
     request: Request,

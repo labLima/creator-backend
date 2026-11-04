@@ -65,7 +65,12 @@ def create_workspace(
     )
 
 
-@router.get("/api/v1/workspaces/{id}", tags=["Workspaces"], operation_id="getWorkspace")
+@router.get(
+    "/api/v1/workspaces/{id}",
+    tags=["Workspaces"],
+    operation_id="getWorkspace",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_workspace(
     workspace_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -80,7 +85,12 @@ def get_workspace(
     )
 
 
-@router.put("/api/v1/workspaces/{id}", tags=["Workspaces"], operation_id="updateWorkspace")
+@router.put(
+    "/api/v1/workspaces/{id}",
+    tags=["Workspaces"],
+    operation_id="updateWorkspace",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_workspace(
     workspace_id: Annotated[UUID, Path(alias="id")],
     payload: WorkspaceUpdateRequest,
@@ -100,7 +110,12 @@ def update_workspace(
     )
 
 
-@router.delete("/api/v1/workspaces/{id}", tags=["Workspaces"], operation_id="deleteWorkspace")
+@router.delete(
+    "/api/v1/workspaces/{id}",
+    tags=["Workspaces"],
+    operation_id="deleteWorkspace",
+    responses={"404": {"$ref": "#/components/responses/WorkspaceNotFound"}},
+)
 def delete_workspace(
     workspace_id: Annotated[UUID, Path(alias="id")],
     request: Request,

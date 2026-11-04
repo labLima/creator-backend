@@ -154,7 +154,12 @@ def delete_generation(
     return success_response({"deleted": True}, request)
 
 
-@router.get("/api/v1/generated-images/{id}", tags=["Images"], operation_id="getGeneratedImage")
+@router.get(
+    "/api/v1/generated-images/{id}",
+    tags=["Images"],
+    operation_id="getGeneratedImage",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_generated_image(
     image_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -167,7 +172,15 @@ def get_generated_image(
     return success_response(_generated_image_data(image), request)
 
 
-@router.post("/api/v1/images/generate", tags=["Images"], operation_id="generateImage")
+@router.post(
+    "/api/v1/images/generate",
+    tags=["Images"],
+    operation_id="generateImage",
+    responses={
+        "404": {"$ref": "#/components/responses/NotFound"},
+        "409": {"$ref": "#/components/responses/Conflict"},
+    },
+)
 def generate_image(
     payload: GenerateImageRequest,
     request: Request,
@@ -214,7 +227,15 @@ def generate_image(
     return success_response(_image_generation_status_data(status), request, status_code=202)
 
 
-@router.post("/api/v1/images/{id}/regenerate", tags=["Images"], operation_id="regenerateImage")
+@router.post(
+    "/api/v1/images/{id}/regenerate",
+    tags=["Images"],
+    operation_id="regenerateImage",
+    responses={
+        "404": {"$ref": "#/components/responses/NotFound"},
+        "409": {"$ref": "#/components/responses/Conflict"},
+    },
+)
 def regenerate_image(
     image_id: Annotated[UUID, Path(alias="id")],
     payload: RegenerateImageRequest,
@@ -262,7 +283,12 @@ def regenerate_image(
     return success_response(_image_generation_status_data(status), request, status_code=202)
 
 
-@router.get("/api/v1/images/{id}", tags=["Images"], operation_id="getImage")
+@router.get(
+    "/api/v1/images/{id}",
+    tags=["Images"],
+    operation_id="getImage",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_image(
     job_id: Annotated[UUID, Path(alias="id")],
     request: Request,

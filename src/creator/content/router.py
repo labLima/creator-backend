@@ -120,7 +120,12 @@ def create_content(
 
 
 @router.get("/api/v1/contents/{id}", tags=["Contents"], operation_id="getContentCanonical")
-@router.get("/api/v1/content/{id}", tags=["Contents"], operation_id="getContent")
+@router.get(
+    "/api/v1/content/{id}",
+    tags=["Contents"],
+    operation_id="getContent",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_content(
     content_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -212,7 +217,12 @@ def update_content(
 
 
 @router.delete("/api/v1/contents/{id}", tags=["Contents"], operation_id="deleteContentCanonical")
-@router.delete("/api/v1/content/{id}", tags=["Contents"], operation_id="deleteContent")
+@router.delete(
+    "/api/v1/content/{id}",
+    tags=["Contents"],
+    operation_id="deleteContent",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_content(
     content_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -251,7 +261,12 @@ def delete_content(
     return success_response({"deleted": True}, request)
 
 
-@router.post("/api/v1/content/generate", tags=["Contents"], operation_id="generateContent")
+@router.post(
+    "/api/v1/content/generate",
+    tags=["Contents"],
+    operation_id="generateContent",
+    responses={"403": {"$ref": "#/components/responses/WorkspaceAccessDenied"}},
+)
 def generate_text_content(
     payload: GenerateContentRequest,
     request: Request,
@@ -359,7 +374,15 @@ def generate_text_content(
     )
 
 
-@router.post("/api/v1/content/improve", tags=["Contents"], operation_id="improveContent")
+@router.post(
+    "/api/v1/content/improve",
+    tags=["Contents"],
+    operation_id="improveContent",
+    responses={
+        "403": {"$ref": "#/components/responses/WorkspaceAccessDenied"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def improve_text_content(
     payload: ImproveContentRequest,
     request: Request,

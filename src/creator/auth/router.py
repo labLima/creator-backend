@@ -182,7 +182,12 @@ def login_with_password(
     return response
 
 
-@router.post("/signup", status_code=201, operation_id="signupWithPassword")
+@router.post(
+    "/signup",
+    status_code=201,
+    operation_id="signupWithPassword",
+    responses={"409": {"$ref": "#/components/responses/EmailAlreadyRegistered"}},
+)
 def signup_with_password(
     payload: AuthSignupRequest,
     request: Request,

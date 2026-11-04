@@ -72,7 +72,12 @@ def create_persona(
     )
 
 
-@router.get("/api/v1/personas/{id}", tags=["Personas"], operation_id="getPersona")
+@router.get(
+    "/api/v1/personas/{id}",
+    tags=["Personas"],
+    operation_id="getPersona",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_persona(
     persona_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -87,7 +92,12 @@ def get_persona(
     )
 
 
-@router.put("/api/v1/personas/{id}", tags=["Personas"], operation_id="updatePersona")
+@router.put(
+    "/api/v1/personas/{id}",
+    tags=["Personas"],
+    operation_id="updatePersona",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_persona(
     persona_id: Annotated[UUID, Path(alias="id")],
     payload: PersonaUpdateRequest,
@@ -107,7 +117,12 @@ def update_persona(
     )
 
 
-@router.delete("/api/v1/personas/{id}", tags=["Personas"], operation_id="deletePersona")
+@router.delete(
+    "/api/v1/personas/{id}",
+    tags=["Personas"],
+    operation_id="deletePersona",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_persona(
     persona_id: Annotated[UUID, Path(alias="id")],
     request: Request,

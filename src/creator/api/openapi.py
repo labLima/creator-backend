@@ -30,6 +30,17 @@ OPENAPI_TAGS = [
 ]
 
 
+def _error_response(description: str, *, error_codes: list[str] | None = None) -> dict[str, Any]:
+    """Build a named error response that resolves to the canonical `ErrorResponse`."""
+    response: dict[str, Any] = {
+        "description": description,
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
+    }
+    if error_codes:
+        response["x-error-codes"] = error_codes
+    return response
+
+
 def _install_rate_limit_openapi(application: FastAPI) -> None:
     original_openapi = application.openapi
 
@@ -169,6 +180,42 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 ],
             },
         )
+        # Components referenced per operation by `docs/openapi.yaml` (ADR-007,
+        # amendment 2026-11-04). Descriptions mirror the static contract so a
+        # client generated from `app.openapi()` resolves the same error surface.
+        for component_name, description in (
+            ("Conflict", "The request conflicts with an existing resource."),
+            ("EmailAlreadyRegistered", "The email is already registered."),
+            (
+                "Forbidden",
+                "The authenticated Principal is valid but lacks the required role.",
+            ),
+            (
+                "NotFound",
+                "The requested resource does not exist or is not visible to the authenticated "
+                "user.",
+            ),
+            (
+                "ValidationFailed",
+                "The request body, path, query, or headers failed validation.",
+            ),
+            (
+                "WorkspaceAccessDenied",
+                "The authenticated user does not have an active Membership for the Workspace.",
+            ),
+            (
+                "WorkspaceNotFound",
+                "The Workspace does not exist or the authenticated Principal cannot manage it.",
+            ),
+        ):
+            responses.setdefault(component_name, _error_response(description))
+        responses.setdefault(
+            "RefreshInProgress",
+            _error_response(
+                "A concurrent request is already rotating this Auth Session.",
+                error_codes=["REFRESH_IN_PROGRESS"],
+            ),
+        )
 
         generation_paths = {
             "/api/v1/content/generate",
@@ -208,6 +255,14 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                             "x-error-codes": ["AUTHENTICATION_INVALID"],
                         },
                     )
+                    # `422` is a global convention: FastAPI derives it from request
+                    # validation with `HTTPValidationError`, but the published
+                    # contract keeps the canonical `ValidationFailed` envelope.
+                    validation = operation["responses"].get("422")
+                    if not isinstance(validation, dict) or "$ref" not in validation:
+                        operation["responses"]["422"] = {
+                            "$ref": "#/components/responses/ValidationFailed"
+                        }
                     if path == "/api/v1/auth/refresh":
                         operation["responses"]["401"]["x-error-codes"] = ["INVALID_REFRESH_TOKEN"]
                     operation["responses"].setdefault(

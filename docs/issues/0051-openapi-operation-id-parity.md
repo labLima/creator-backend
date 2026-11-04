@@ -32,10 +32,14 @@ derivado do nome do handler.
 
 Política de error responses:
 
-- `403`, `404`, `409` e `422`: comparados por operação entre YAML e
+- `403`, `404` e `409`: comparados por operação entre YAML e
   `app.openapi()`, incluindo `x-error-codes` quando presentes.
-- `401`, `429` e `500`: convenções globais exigidas em todas as operações
-  `/api/v1` e nos dois documentos; não são repetidas manualmente por handler.
+- `401`, `422`, `429` e `500`: convenções globais. O app exige `401`, `429` e
+  `500` em todas as operações `/api/v1`; o YAML documenta `401` por operação,
+  `429` em `x-rate-limit` e `500` pelo componente canônico. `422` é gerado pelo
+  FastAPI em operações com validação; o YAML o documenta onde aplicável, mas não
+  há comparação de presença por operação. O shape canônico continua sendo
+  `ErrorResponse`/`ValidationFailed`.
 - Exceções: somente com justificativa nesta issue e teste explícito; nenhuma
   exceção silenciosa.
 
@@ -49,7 +53,7 @@ e no changelog da release.
 - [x] Decisão registrada em ADR-007.
 - [ ] Operação com `operationId` idêntico nos dois documentos.
 - [ ] Nenhum `operationId` duplicado no YAML.
-- [ ] `403/404/409/422` comparadas por operação; `401/429/500` globais.
+- [ ] `403/404/409` comparadas por operação; `401/422/429/500` tratadas como convenções globais.
 - [ ] `docs/openapi.yaml` sem drift de paths/methods/segurança.
 - [ ] `make check` verde.
 - [x] Plano de comunicação registrado (sem consumidor conhecido de `app.openapi()`).

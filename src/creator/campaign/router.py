@@ -70,7 +70,12 @@ def create_campaign(
     )
 
 
-@router.get("/api/v1/campaigns/{id}", tags=["Campaigns"], operation_id="getCampaign")
+@router.get(
+    "/api/v1/campaigns/{id}",
+    tags=["Campaigns"],
+    operation_id="getCampaign",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_campaign(
     campaign_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -85,7 +90,12 @@ def get_campaign(
     )
 
 
-@router.put("/api/v1/campaigns/{id}", tags=["Campaigns"], operation_id="updateCampaign")
+@router.put(
+    "/api/v1/campaigns/{id}",
+    tags=["Campaigns"],
+    operation_id="updateCampaign",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_campaign(
     campaign_id: Annotated[UUID, Path(alias="id")],
     payload: CampaignUpdateRequest,
@@ -105,7 +115,12 @@ def update_campaign(
     )
 
 
-@router.delete("/api/v1/campaigns/{id}", tags=["Campaigns"], operation_id="deleteCampaign")
+@router.delete(
+    "/api/v1/campaigns/{id}",
+    tags=["Campaigns"],
+    operation_id="deleteCampaign",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_campaign(
     campaign_id: Annotated[UUID, Path(alias="id")],
     request: Request,

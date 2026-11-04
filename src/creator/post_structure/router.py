@@ -73,7 +73,10 @@ def create_post_structure(
 
 
 @router.get(
-    "/api/v1/post-structures/{id}", tags=["Post Structures"], operation_id="getPostStructure"
+    "/api/v1/post-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="getPostStructure",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
 )
 def get_post_structure(
     post_structure_id: Annotated[UUID, Path(alias="id")],
@@ -93,7 +96,10 @@ def get_post_structure(
 
 
 @router.put(
-    "/api/v1/post-structures/{id}", tags=["Post Structures"], operation_id="updatePostStructure"
+    "/api/v1/post-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="updatePostStructure",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
 )
 def update_post_structure(
     post_structure_id: Annotated[UUID, Path(alias="id")],
@@ -115,7 +121,10 @@ def update_post_structure(
 
 
 @router.delete(
-    "/api/v1/post-structures/{id}", tags=["Post Structures"], operation_id="deletePostStructure"
+    "/api/v1/post-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="deletePostStructure",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
 )
 def delete_post_structure(
     post_structure_id: Annotated[UUID, Path(alias="id")],

@@ -12,6 +12,11 @@ would receive from the one the YAML declares; `APIRoute.operation_id` is filled
 by FastAPI even when it is derived automatically, so it cannot tell an explicit
 id from a generated one.
 
+The error-response checks below read the same two public seams. `403`, `404` and
+`409` are compared per operation; `401`, `429` and `500` are document-wide
+conventions. Response component names are normalized to the last segment of
+their `$ref` so `#/components/responses/Forbidden` and `Forbidden` compare equal.
+
 The broader path/method/security parity lives in `tests/test_openapi_contract.py`
 and the frozen route table in `tests/test_route_table_contract.py`.
 """
@@ -34,6 +39,30 @@ EXPECTED_OPERATION_COUNT = 227
 
 NOTIFICATION_PREFERENCE_PATH = "/api/v1/notification-preferences/{id}"
 RESOURCE_ID_REF = {"$ref": "#/components/parameters/ResourceId"}
+
+# ADR-007 (amendment 2026-11-04): these statuses are compared per operation.
+PER_OPERATION_ERROR_STATUSES = ("403", "404", "409")
+# ADR-007 (amendment 2026-11-04): these are required on every `/api/v1` operation.
+GLOBAL_ERROR_STATUSES = ("401", "429", "500")
+CANONICAL_VALIDATION_RESPONSE = "ValidationFailed"
+CANONICAL_ERROR_SCHEMA = "ErrorResponse"
+# Response components referenced by `docs/openapi.yaml` that `app.openapi()` must
+# publish for generated clients to resolve the same error surface.
+REQUIRED_ERROR_RESPONSE_COMPONENTS = frozenset(
+    {
+        "Forbidden",
+        "NotFound",
+        "Conflict",
+        "ValidationFailed",
+        "WorkspaceNotFound",
+        "WorkspaceAccessDenied",
+        "EmailAlreadyRegistered",
+        "RefreshInProgress",
+        "Unauthorized",
+        "RateLimitExceeded",
+        "InternalServerError",
+    }
+)
 
 
 def _static_contract() -> dict[str, Any]:
@@ -63,6 +92,51 @@ def _operations_by_slug(document: dict[str, Any]) -> dict[tuple[str, str], dict[
         for method, operation in item.items()
         if method in HTTP_METHODS
     }
+
+
+def _api_v1_operations(document: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    """Index the operations covered by the global `/api/v1` error conventions."""
+    return {
+        (path, method): operation
+        for (path, method), operation in _operations_by_slug(document).items()
+        if path.startswith("/api/v1/")
+    }
+
+
+def _component_name(response: Any) -> str:
+    """Normalize a response to the component name its `$ref` points at.
+
+    `#/components/responses/Forbidden` becomes `Forbidden`. Responses without a
+    `$ref` are reported as `<inline>`, which never matches a named component.
+    """
+    if not isinstance(response, dict):
+        return repr(response)
+    ref = response.get("$ref")
+    if not isinstance(ref, str):
+        return "<inline>"
+    return ref.rsplit("/", 1)[-1]
+
+
+def _error_responses_by_status(
+    operation: dict[str, Any], statuses: tuple[str, ...]
+) -> dict[str, str]:
+    """Map each documented status in `statuses` to its normalized component name."""
+    responses = operation.get("responses", {})
+    documented = (status for status in statuses if status in responses)
+    return {status: _component_name(responses[status]) for status in documented}
+
+
+def _inline_schema_name(response: Any) -> str | None:
+    """Return the schema component for an inline JSON response, if any."""
+    if not isinstance(response, dict):
+        return None
+    schema = response.get("content", {}).get("application/json", {}).get("schema")
+    if not isinstance(schema, dict):
+        return None
+    ref = schema.get("$ref")
+    if not isinstance(ref, str):
+        return None
+    return ref.rsplit("/", 1)[-1]
 
 
 def test_generated_operation_id_matches_static_contract() -> None:
@@ -202,4 +276,166 @@ def test_notification_preference_get_is_a_get_operation() -> None:
     )
     assert "asset" not in success_description, (
         f"the 200 description was copied from the Assets collection: {success_description!r}"
+    )
+
+
+def test_error_responses_403_404_409_match_static_contract() -> None:
+    """`403`, `404` and `409` must match per operation, including the component.
+
+    ADR-007 (amendment 2026-11-04) compares these statuses per operation because
+    they describe resource-specific failures (forbidden, missing, conflicting)
+    that cannot be inferred globally. The comparison normalizes each response to
+    the last segment of its `$ref`, so `Forbidden`, `NotFound`,
+    `WorkspaceNotFound`, `Conflict`, `EmailAlreadyRegistered` and
+    `RefreshInProgress` are distinguishable. All divergences are reported
+    together so a fix is not validated one operation at a time.
+    """
+    static_operations = _operations_by_slug(_static_contract())
+    generated_operations = _operations_by_slug(app.openapi())
+
+    compared = sorted(set(static_operations) & set(generated_operations))
+    divergences: list[str] = []
+    for path, method in compared:
+        static_problems = _error_responses_by_status(
+            static_operations[(path, method)], PER_OPERATION_ERROR_STATUSES
+        )
+        generated_problems = _error_responses_by_status(
+            generated_operations[(path, method)], PER_OPERATION_ERROR_STATUSES
+        )
+        if static_problems == generated_problems:
+            continue
+        differences = [
+            f"{status} docs/openapi.yaml={static_problems.get(status)!r} "
+            f"app.openapi()={generated_problems.get(status)!r}"
+            for status in PER_OPERATION_ERROR_STATUSES
+            if static_problems.get(status) != generated_problems.get(status)
+        ]
+        divergences.append(f"{method.upper()} {path}: " + "; ".join(differences))
+
+    assert not divergences, (
+        f"{len(divergences)} of {len(compared)} operations document a different "
+        "403/404/409 surface in app.openapi() than in docs/openapi.yaml (ADR-007 "
+        "compares these statuses per operation; names are the last segment of the "
+        "$ref):\n" + "\n".join(divergences)
+    )
+
+
+def test_global_error_conventions_are_documented() -> None:
+    """Global error conventions are declared once instead of per operation in the YAML.
+
+    The app publishes `401`, `429` and `500` on every `/api/v1` operation because
+    FastAPI attaches them to each generated route. The YAML documents `401` per
+    operation, but `429` and `500` are document-wide conventions:
+    `x-rate-limit.response` points at `RateLimitExceeded`, and
+    `components.responses.InternalServerError` carries the 500 envelope. Repeating
+    those two on all 224 `/api/v1` operations would add hundreds of artificial
+    blocks, so the convention is a single declaration. `422` is intentionally
+    excluded here: FastAPI emits it for operations with validation and the YAML
+    documents it where applicable, without a presence comparison.
+    """
+    static = _static_contract()
+    generated = app.openapi()
+
+    missing_from_app = [
+        f"app.openapi() {method.upper()} {path} lacks {status}"
+        for (path, method), operation in sorted(_api_v1_operations(generated).items())
+        for status in GLOBAL_ERROR_STATUSES
+        if status not in operation.get("responses", {})
+    ]
+    missing_from_yaml = [
+        f"docs/openapi.yaml {method.upper()} {path} lacks 401"
+        for (path, method), operation in sorted(_api_v1_operations(static).items())
+        if "401" not in operation.get("responses", {})
+    ]
+
+    rate_limit_response = static.get("x-rate-limit", {}).get("response", {})
+    assert rate_limit_response.get("$ref") == "#/components/responses/RateLimitExceeded", (
+        "docs/openapi.yaml must document the global 429 convention through "
+        "`x-rate-limit.response.$ref = '#/components/responses/RateLimitExceeded'`: "
+        f"{rate_limit_response!r}"
+    )
+
+    static_responses = static.get("components", {}).get("responses", {})
+    assert "InternalServerError" in static_responses, (
+        "docs/openapi.yaml must document the global 500 convention through the "
+        f"`InternalServerError` response component; available: {sorted(static_responses)}"
+    )
+
+    assert not missing_from_app, (
+        f"{len(missing_from_app)} /api/v1 operation/status pairs in app.openapi() "
+        "lack a globally required error response (401, 429 and 500 are attached to "
+        "every generated /api/v1 operation):\n" + "\n".join(missing_from_app)
+    )
+    assert not missing_from_yaml, (
+        f"{len(missing_from_yaml)} /api/v1 operations in docs/openapi.yaml lack the "
+        "per-operation 401 response:\n" + "\n".join(missing_from_yaml)
+    )
+
+
+def test_yaml_422_responses_are_covered_by_generated_document() -> None:
+    """A `422` documented in the YAML must also exist in `app.openapi()`.
+
+    Presence is not compared in the other direction: FastAPI adds `422` to every
+    operation with request validation, while the YAML documents it only where it
+    is relevant. But the YAML must never promise a validation response the
+    application does not publish.
+    """
+    static_operations = _operations_by_slug(_static_contract())
+    generated_operations = _operations_by_slug(app.openapi())
+
+    uncovered = sorted(
+        f"{method.upper()} {path}"
+        for (path, method), operation in static_operations.items()
+        if "422" in operation.get("responses", {})
+        and "422" not in generated_operations.get((path, method), {}).get("responses", {})
+    )
+
+    assert not uncovered, (
+        "docs/openapi.yaml documents a 422 response that app.openapi() does not "
+        f"publish: {uncovered}"
+    )
+
+
+def test_generated_validation_errors_use_canonical_error_envelope() -> None:
+    """Every generated `422` must use the canonical `ErrorResponse` envelope.
+
+    ADR-007 (amendment 2026-11-04) keeps `ErrorResponse`/`ValidationFailed` as the
+    canonical error shape. FastAPI's default `HTTPValidationError` is a different
+    envelope and must not leak into the published contract.
+    """
+    non_canonical: list[str] = []
+    for (path, method), operation in sorted(_operations_by_slug(app.openapi()).items()):
+        response = operation.get("responses", {}).get("422")
+        if response is None:
+            continue
+        component = _component_name(response)
+        if component == CANONICAL_VALIDATION_RESPONSE:
+            continue
+        schema_name = _inline_schema_name(response)
+        if component == "<inline>" and schema_name == CANONICAL_ERROR_SCHEMA:
+            continue
+        shape = component if component != "<inline>" else f"inline:{schema_name}"
+        non_canonical.append(f"{method.upper()} {path}: 422 resolves to {shape!r}")
+
+    assert not non_canonical, (
+        f"{len(non_canonical)} generated 422 responses do not use the canonical "
+        f"{CANONICAL_VALIDATION_RESPONSE!r}/{CANONICAL_ERROR_SCHEMA!r} envelope:\n"
+        + "\n".join(non_canonical)
+    )
+
+
+def test_error_response_components_exist_in_generated_document() -> None:
+    """`app.openapi()` must publish the response components `docs/openapi.yaml` references.
+
+    A client generated from the app cannot resolve `#/components/responses/NotFound`
+    or `#/components/responses/ValidationFailed` if the component is absent, even
+    when the per-operation status codes line up.
+    """
+    generated = app.openapi()
+    available = set(generated.get("components", {}).get("responses", {}))
+    missing = sorted(REQUIRED_ERROR_RESPONSE_COMPONENTS - available)
+
+    assert not missing, (
+        f"app.openapi() is missing {len(missing)} error response components "
+        f"referenced by docs/openapi.yaml: {missing}"
     )
