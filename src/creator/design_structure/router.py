@@ -29,7 +29,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/design-structures", tags=["Post Structures"])
+@router.get(
+    "/api/v1/design-structures",
+    tags=["Post Structures"],
+    operation_id="list_design_structures_api_v1_design_structures_get",
+)
 def list_design_structures(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -41,7 +45,11 @@ def list_design_structures(
     )
 
 
-@router.post("/api/v1/design-structures", tags=["Post Structures"])
+@router.post(
+    "/api/v1/design-structures",
+    tags=["Post Structures"],
+    operation_id="create_design_structure_api_v1_design_structures_post",
+)
 def create_design_structure(
     payload: DesignStructureCreateRequest,
     request: Request,
@@ -57,7 +65,11 @@ def create_design_structure(
     )
 
 
-@router.get("/api/v1/design-structures/{id}", tags=["Post Structures"])
+@router.get(
+    "/api/v1/design-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="get_design_structure_api_v1_design_structures__id__get",
+)
 def get_design_structure(
     design_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -72,7 +84,11 @@ def get_design_structure(
     )
 
 
-@router.put("/api/v1/design-structures/{id}", tags=["Post Structures"])
+@router.put(
+    "/api/v1/design-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="update_design_structure_api_v1_design_structures__id__put",
+)
 def update_design_structure(
     design_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -92,7 +108,11 @@ def update_design_structure(
     )
 
 
-@router.delete("/api/v1/design-structures/{id}", tags=["Post Structures"])
+@router.delete(
+    "/api/v1/design-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="delete_design_structure_api_v1_design_structures__id__delete",
+)
 def delete_design_structure(
     design_id: Annotated[UUID, Path(alias="id")],
     request: Request,

@@ -32,7 +32,7 @@ from creator.workspace.schemas import (
 router = APIRouter()
 
 
-@router.get("/api/v1/workspaces", tags=["Workspaces"])
+@router.get("/api/v1/workspaces", tags=["Workspaces"], operation_id="listWorkspaces")
 def list_workspaces(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -49,7 +49,7 @@ def list_workspaces(
     )
 
 
-@router.post("/api/v1/workspaces", tags=["Workspaces"])
+@router.post("/api/v1/workspaces", tags=["Workspaces"], operation_id="createWorkspace")
 def create_workspace(
     payload: WorkspaceCreateRequest,
     request: Request,
@@ -65,7 +65,12 @@ def create_workspace(
     )
 
 
-@router.get("/api/v1/workspaces/{id}", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspaces/{id}",
+    tags=["Workspaces"],
+    operation_id="getWorkspace",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_workspace(
     workspace_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -80,7 +85,12 @@ def get_workspace(
     )
 
 
-@router.put("/api/v1/workspaces/{id}", tags=["Workspaces"])
+@router.put(
+    "/api/v1/workspaces/{id}",
+    tags=["Workspaces"],
+    operation_id="updateWorkspace",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_workspace(
     workspace_id: Annotated[UUID, Path(alias="id")],
     payload: WorkspaceUpdateRequest,
@@ -100,7 +110,12 @@ def update_workspace(
     )
 
 
-@router.delete("/api/v1/workspaces/{id}", tags=["Workspaces"])
+@router.delete(
+    "/api/v1/workspaces/{id}",
+    tags=["Workspaces"],
+    operation_id="deleteWorkspace",
+    responses={"404": {"$ref": "#/components/responses/WorkspaceNotFound"}},
+)
 def delete_workspace(
     workspace_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -115,7 +130,11 @@ def delete_workspace(
     )
 
 
-@router.get("/api/v1/workspace-invites", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspace-invites",
+    tags=["Workspaces"],
+    operation_id="list_workspace_invites_api_v1_workspace_invites_get",
+)
 def list_workspace_invites(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -130,7 +149,11 @@ def list_workspace_invites(
     )
 
 
-@router.post("/api/v1/workspace-invites", tags=["Workspaces"])
+@router.post(
+    "/api/v1/workspace-invites",
+    tags=["Workspaces"],
+    operation_id="create_workspace_invite_api_v1_workspace_invites_post",
+)
 def create_workspace_invite(
     payload: WorkspaceInviteCreateRequest,
     request: Request,
@@ -146,7 +169,11 @@ def create_workspace_invite(
     )
 
 
-@router.get("/api/v1/workspace-invites/{id}", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspace-invites/{id}",
+    tags=["Workspaces"],
+    operation_id="get_workspace_invite_api_v1_workspace_invites__id__get",
+)
 def get_workspace_invite(
     invite_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -161,7 +188,11 @@ def get_workspace_invite(
     )
 
 
-@router.put("/api/v1/workspace-invites/{id}", tags=["Workspaces"])
+@router.put(
+    "/api/v1/workspace-invites/{id}",
+    tags=["Workspaces"],
+    operation_id="update_workspace_invite_api_v1_workspace_invites__id__put",
+)
 def update_workspace_invite(
     invite_id: Annotated[UUID, Path(alias="id")],
     payload: WorkspaceInviteUpdateRequest,
@@ -181,7 +212,11 @@ def update_workspace_invite(
     )
 
 
-@router.delete("/api/v1/workspace-invites/{id}", tags=["Workspaces"])
+@router.delete(
+    "/api/v1/workspace-invites/{id}",
+    tags=["Workspaces"],
+    operation_id="delete_workspace_invite_api_v1_workspace_invites__id__delete",
+)
 def delete_workspace_invite(
     invite_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -196,7 +231,11 @@ def delete_workspace_invite(
     )
 
 
-@router.get("/api/v1/workspace-invite-usages", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspace-invite-usages",
+    tags=["Workspaces"],
+    operation_id="list_workspace_invite_usages_api_v1_workspace_invite_usages_get",
+)
 def list_workspace_invite_usages(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -211,7 +250,11 @@ def list_workspace_invite_usages(
     )
 
 
-@router.post("/api/v1/workspace-invite-usages", tags=["Workspaces"])
+@router.post(
+    "/api/v1/workspace-invite-usages",
+    tags=["Workspaces"],
+    operation_id="create_workspace_invite_usage_api_v1_workspace_invite_usages_post",
+)
 def create_workspace_invite_usage(
     payload: dict[str, Any],
     request: Request,
@@ -227,7 +270,11 @@ def create_workspace_invite_usage(
     )
 
 
-@router.get("/api/v1/workspace-invite-usages/{id}", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspace-invite-usages/{id}",
+    tags=["Workspaces"],
+    operation_id="get_workspace_invite_usage_api_v1_workspace_invite_usages__id__get",
+)
 def get_workspace_invite_usage(
     usage_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -242,7 +289,11 @@ def get_workspace_invite_usage(
     )
 
 
-@router.put("/api/v1/workspace-invite-usages/{id}", tags=["Workspaces"])
+@router.put(
+    "/api/v1/workspace-invite-usages/{id}",
+    tags=["Workspaces"],
+    operation_id="update_workspace_invite_usage_api_v1_workspace_invite_usages__id__put",
+)
 def update_workspace_invite_usage(
     usage_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -262,7 +313,11 @@ def update_workspace_invite_usage(
     )
 
 
-@router.delete("/api/v1/workspace-invite-usages/{id}", tags=["Workspaces"])
+@router.delete(
+    "/api/v1/workspace-invite-usages/{id}",
+    tags=["Workspaces"],
+    operation_id="delete_workspace_invite_usage_api_v1_workspace_invite_usages__id__delete",
+)
 def delete_workspace_invite_usage(
     usage_id: Annotated[UUID, Path(alias="id")],
     request: Request,

@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/planning", tags=["Planning"])
+@router.get("/api/v1/planning", tags=["Planning"], operation_id="listPlanning")
 def list_planning(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -54,7 +54,9 @@ def list_planning(
     )
 
 
-@router.post("/api/v1/planning", tags=["Planning"])
+@router.post(
+    "/api/v1/planning", tags=["Planning"], operation_id="create_planning_api_v1_planning_post"
+)
 def create_planning(
     payload: PlanningCreateRequest,
     request: Request,
@@ -70,7 +72,12 @@ def create_planning(
     )
 
 
-@router.get("/api/v1/planning/{id}", tags=["Planning"])
+@router.get(
+    "/api/v1/planning/{id}",
+    tags=["Planning"],
+    operation_id="getPlanning",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_planning(
     planning_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -85,7 +92,12 @@ def get_planning(
     )
 
 
-@router.put("/api/v1/planning/{id}", tags=["Planning"])
+@router.put(
+    "/api/v1/planning/{id}",
+    tags=["Planning"],
+    operation_id="updatePlanning",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_planning(
     planning_id: Annotated[UUID, Path(alias="id")],
     payload: PlanningUpdateRequest,
@@ -105,7 +117,12 @@ def update_planning(
     )
 
 
-@router.delete("/api/v1/planning/{id}", tags=["Planning"])
+@router.delete(
+    "/api/v1/planning/{id}",
+    tags=["Planning"],
+    operation_id="deletePlanning",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_planning(
     planning_id: Annotated[UUID, Path(alias="id")],
     request: Request,
