@@ -2,8 +2,10 @@
 
 - ADR primária: [ADR-007](../adr/0007-openapi-first.md)
 - Issue remota: [#135](https://github.com/labLima/creator-backend/issues/135)
-- Status: aberta (Fase 2)
+- Status: concluída e mergeada no PR
+  [#138](https://github.com/labLima/creator-backend/pull/138) (Fase 2)
 - Owner: backend/platform
+- Decisão: **2026-11-04 — opção 1 aprovada**
 
 ## Contexto
 
@@ -22,36 +24,69 @@ Exemplo de divergência:
 - `docs/openapi.yaml`: `loginWithPassword`
 - `app.openapi()`: `login_with_password_api_v1_auth_login_post`
 
-## Objetivo
+## Decisão
 
-Definir a fonte autoritativa dos operationIds e das respostas de erro, remover
-duplicatas e reconciliar os dois documentos.
+Adotar a **opção 1**: `docs/openapi.yaml` é autoritativo e cada rota FastAPI
+publica explicitamente o mesmo `operationId`. Os nomes camelCase já publicados
+são preservados (`loginWithPassword`, `listContents`, `getBrand`); nenhum ID é
+derivado do nome do handler.
 
-## Opções
+Política de error responses:
 
-1. Tornar `docs/openapi.yaml` autoritativo e fixar `operation_id` explícito em
-   cada rota FastAPI.
-2. Tornar `app.openapi()` autoritativo e atualizar o YAML (breaking change
-   documentado).
-3. Manter a divergência com justificativa e um teste que a torne explícita.
+- `403`, `404` e `409`: comparados por operação entre YAML e
+  `app.openapi()`, incluindo `x-error-codes` quando presentes.
+- `401`, `422`, `429` e `500`: convenções globais. O app exige `401`, `429` e
+  `500` em todas as operações `/api/v1`; o YAML documenta `401` por operação,
+  `429` em `x-rate-limit` e `500` pelo componente canônico. `422` é gerado pelo
+  FastAPI em operações com validação; o YAML o documenta onde aplicável, mas não
+  há comparação de presença por operação. O shape canônico continua sendo
+  `ErrorResponse`/`ValidationFailed`.
+- Exceções: somente com justificativa nesta issue e teste explícito; nenhuma
+  exceção silenciosa.
+
+Comunicação: a mudança é breaking apenas para consumidores que geram clientes
+diretamente de `app.openapi()`. Consumidores do YAML preservam os nomes. Não há
+consumidor conhecido de `app.openapi()` no repositório; a nota deve constar no PR
+e no changelog da release.
 
 ## Critérios de aceite
 
-- [ ] Decisão registrada em ADR-007 (ou nova ADR).
-- [ ] Operação com `operationId` idêntico nos dois documentos, ou divergência
-      explicitamente documentada e testada.
-- [ ] Nenhum `operationId` duplicado no YAML.
-- [ ] Error responses (ao menos 403/404/409/422/429/500) comparadas entre YAML e
-      app, ou exceção documentada.
-- [ ] `docs/openapi.yaml` sem drift de paths/methods/segurança.
-- [ ] `make check` verde.
-- [ ] Plano de comunicação se a mudança for breaking.
+- [x] Decisão registrada em ADR-007.
+- [x] Operação com `operationId` idêntico nos dois documentos (227/227).
+- [x] Nenhum `operationId` duplicado no YAML.
+- [x] `403/404/409` comparadas por operação; `401/422/429/500` tratadas como convenções globais.
+- [x] `docs/openapi.yaml` sem drift de paths/methods/segurança.
+- [x] `make check` verde.
+- [x] Plano de comunicação registrado (sem consumidor conhecido de `app.openapi()`).
+
+## Exceções explícitas (2026-11-04)
+
+A #135 garante paridade **documento-vs-documento** para `operationId`,
+`403/404/409` e shape canônico de `422`. Ela não é uma auditoria completa de
+todo erro de runtime. As exceções abaixo são deliberadas e rastreadas:
+
+| Exceção | Motivo | Destino |
+| --- | --- | --- |
+| `429`/`500` com componentes específicos no YAML (`AuthRateLimited`, `LlmProviderRateLimited`, `SignupFailed`, etc.) e componentes globais no app (`RateLimitExceeded`, `InternalServerError`) | Ambos usam o envelope `ErrorResponse`; o app aplica a convenção global e o YAML distingue a causa do provider. Os `x-error-codes` específicos ainda não estão na união das operações. | Comparação por componente fica fora da #135; rastrear em #15 (limites/documentação da API) e #31 (operação). |
+| `403` de CSRF em mutações `/api/v1` | O middleware global `enforce_cookie_security` pode retornar `CsrfRejected` em qualquer mutação, não só refresh/logout. | Documentado em `CsrfRejected` e no security scheme; comparação por operação fica na #15. |
+| `403/404` de runtime ainda ausentes no contrato em alguns recursos (ex.: plans/coupons `403`, assets/notifications `404`, brand settings `403/404`) | A #135 reconciliou o contrato existente; uma auditoria runtime-vs-contrato completa exige varrer guards e `not_found` de todos os serviços. | #20 (autorização por endpoint) e #15 (endurecimento/documentação). |
+| `401` de signup documentado | O handler de signup não levanta 401; a resposta permanece como convenção de auth no contrato estático. | Remover ou justificar na #15. |
+| `502/503/504` de geração e workflow (storage, fila, provider, rate limiter) | O runtime pode emitir códigos distintos; o contrato não enumera a união e o teste atual proíbe documentar o 503 nos workflows. | #15 (limites/headers) e #31 (runbooks/contrato operacional). |
+| `X-Request-ID` e headers de CSRF nos componentes de erro `$ref` | O runtime sempre envia `X-Request-ID`; parte dos componentes compartilhados ainda não o declara. | #15 (headers/observabilidade do contrato). |
+| `CsrfTokenResponse.csrf_token` como `writeOnly` | Defeito pré-existente do schema de resposta, fora do diff de operationIds. | #15. |
+| `RefreshCookie.required: false` e `security: []` em refresh/csrf | O handler exige cookie, mas o contrato não marca a obrigatoriedade; logout é público por design. | #15/#20. |
+
+Login foi alinhado: o runtime retorna `LOGIN_REJECTED`, e YAML, componente e
+`app.openapi()` agora publicam `LOGIN_REJECTED`.
 
 ## Evidência atual
 
 - 106 divergências de operationId (ex.:
   `login_with_password_api_v1_auth_login_post` vs `loginWithPassword`).
-- `listAssets` duplicado no YAML.
+- `listAssets` duplicado no YAML; o GET de
+  `/api/v1/notification-preferences/{id}` deve ser `getNotificationPreference`,
+  tag `Notifications`, parâmetro `ResourceId` e 404.
 - `tests/test_openapi_contract.py` compara paths/methods; não compara respostas
   de erro.
-- `tests/test_route_table_contract.py` congela os IDs gerados.
+- `tests/test_route_table_contract.py` congela os IDs gerados e hoje ignora
+  operationIds de propósito.

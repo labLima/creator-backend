@@ -6,7 +6,8 @@
   [0046](0046-security-backlog-after-modularization.md),
   [0048](0048-plain-capability-layout.md)
 - Issue remota: [#133](https://github.com/labLima/creator-backend/issues/133)
-- Status: implementação e gates locais concluídos; aguardando CI
+- Status: concluída e mergeada no PR
+  [#137](https://github.com/labLima/creator-backend/pull/137)
 - Owner: backend/platform
 
 ## Objetivo

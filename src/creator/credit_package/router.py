@@ -30,7 +30,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/credit-packages", tags=["Billing"])
+@router.get(
+    "/api/v1/credit-packages",
+    tags=["Billing"],
+    operation_id="list_credit_packages_api_v1_credit_packages_get",
+)
 def list_credit_packages(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -42,7 +46,11 @@ def list_credit_packages(
     )
 
 
-@router.post("/api/v1/credit-packages", tags=["Billing"])
+@router.post(
+    "/api/v1/credit-packages",
+    tags=["Billing"],
+    operation_id="create_credit_package_api_v1_credit_packages_post",
+)
 def create_credit_package(
     payload: CreditPackageCreateRequest,
     request: Request,
@@ -58,7 +66,11 @@ def create_credit_package(
     )
 
 
-@router.get("/api/v1/credit-packages/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/credit-packages/{id}",
+    tags=["Billing"],
+    operation_id="get_credit_package_api_v1_credit_packages__id__get",
+)
 def get_credit_package(
     package_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -73,7 +85,11 @@ def get_credit_package(
     )
 
 
-@router.put("/api/v1/credit-packages/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/credit-packages/{id}",
+    tags=["Billing"],
+    operation_id="update_credit_package_api_v1_credit_packages__id__put",
+)
 def update_credit_package(
     package_id: Annotated[UUID, Path(alias="id")],
     payload: CreditPackageUpdateRequest,
@@ -93,7 +109,11 @@ def update_credit_package(
     )
 
 
-@router.delete("/api/v1/credit-packages/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/credit-packages/{id}",
+    tags=["Billing"],
+    operation_id="delete_credit_package_api_v1_credit_packages__id__delete",
+)
 def delete_credit_package(
     package_id: Annotated[UUID, Path(alias="id")],
     request: Request,

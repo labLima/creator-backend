@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/charges", tags=["Billing"])
+@router.get("/api/v1/charges", tags=["Billing"], operation_id="list_charges_api_v1_charges_get")
 def list_charges(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -42,7 +42,7 @@ def list_charges(
     )
 
 
-@router.post("/api/v1/charges", tags=["Billing"])
+@router.post("/api/v1/charges", tags=["Billing"], operation_id="create_charge_api_v1_charges_post")
 def create_charge(
     payload: ChargeCreateRequest,
     request: Request,
@@ -58,7 +58,9 @@ def create_charge(
     )
 
 
-@router.get("/api/v1/charges/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/charges/{id}", tags=["Billing"], operation_id="get_charge_api_v1_charges__id__get"
+)
 def get_charge(
     charge_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -73,7 +75,9 @@ def get_charge(
     )
 
 
-@router.put("/api/v1/charges/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/charges/{id}", tags=["Billing"], operation_id="update_charge_api_v1_charges__id__put"
+)
 def update_charge(
     charge_id: Annotated[UUID, Path(alias="id")],
     payload: ChargeUpdateRequest,
@@ -93,7 +97,11 @@ def update_charge(
     )
 
 
-@router.delete("/api/v1/charges/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/charges/{id}",
+    tags=["Billing"],
+    operation_id="delete_charge_api_v1_charges__id__delete",
+)
 def delete_charge(
     charge_id: Annotated[UUID, Path(alias="id")],
     request: Request,

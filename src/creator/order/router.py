@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/orders", tags=["Billing"])
+@router.get("/api/v1/orders", tags=["Billing"], operation_id="list_orders_api_v1_orders_get")
 def list_orders(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -42,7 +42,7 @@ def list_orders(
     )
 
 
-@router.post("/api/v1/orders", tags=["Billing"])
+@router.post("/api/v1/orders", tags=["Billing"], operation_id="create_order_api_v1_orders_post")
 def create_order(
     payload: OrderCreateRequest,
     request: Request,
@@ -58,7 +58,9 @@ def create_order(
     )
 
 
-@router.get("/api/v1/orders/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/orders/{id}", tags=["Billing"], operation_id="get_order_api_v1_orders__id__get"
+)
 def get_order(
     order_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -71,7 +73,9 @@ def get_order(
     )
 
 
-@router.put("/api/v1/orders/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/orders/{id}", tags=["Billing"], operation_id="update_order_api_v1_orders__id__put"
+)
 def update_order(
     order_id: Annotated[UUID, Path(alias="id")],
     payload: OrderUpdateRequest,
@@ -91,7 +95,9 @@ def update_order(
     )
 
 
-@router.delete("/api/v1/orders/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/orders/{id}", tags=["Billing"], operation_id="delete_order_api_v1_orders__id__delete"
+)
 def delete_order(
     order_id: Annotated[UUID, Path(alias="id")],
     request: Request,

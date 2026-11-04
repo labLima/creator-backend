@@ -36,7 +36,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/brands", tags=["Brands"])
+@router.get("/api/v1/brands", tags=["Brands"], operation_id="listBrands")
 def list_brands(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -60,7 +60,12 @@ def list_brands(
     )
 
 
-@router.post("/api/v1/brands", tags=["Brands"])
+@router.post(
+    "/api/v1/brands",
+    tags=["Brands"],
+    operation_id="createBrand",
+    responses={"403": {"$ref": "#/components/responses/WorkspaceAccessDenied"}},
+)
 def create_brand(
     payload: BrandCreateRequest,
     request: Request,
@@ -76,7 +81,12 @@ def create_brand(
     )
 
 
-@router.get("/api/v1/brands/{id}", tags=["Brands"])
+@router.get(
+    "/api/v1/brands/{id}",
+    tags=["Brands"],
+    operation_id="getBrand",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_brand(
     brand_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -89,7 +99,12 @@ def get_brand(
     )
 
 
-@router.put("/api/v1/brands/{id}", tags=["Brands"])
+@router.put(
+    "/api/v1/brands/{id}",
+    tags=["Brands"],
+    operation_id="updateBrand",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_brand(
     brand_id: Annotated[UUID, Path(alias="id")],
     payload: BrandUpdateRequest,
@@ -109,7 +124,12 @@ def update_brand(
     )
 
 
-@router.delete("/api/v1/brands/{id}", tags=["Brands"])
+@router.delete(
+    "/api/v1/brands/{id}",
+    tags=["Brands"],
+    operation_id="deleteBrand",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_brand(
     brand_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -124,7 +144,12 @@ def delete_brand(
     )
 
 
-@router.get("/api/v1/brands/{id}/settings", tags=["Brands"])
+@router.get(
+    "/api/v1/brands/{id}/settings",
+    tags=["Brands"],
+    operation_id="getBrandSettings",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_brand_settings(
     brand_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -139,7 +164,7 @@ def get_brand_settings(
     )
 
 
-@router.put("/api/v1/brands/{id}/settings", tags=["Brands"])
+@router.put("/api/v1/brands/{id}/settings", tags=["Brands"], operation_id="upsertBrandSettings")
 def upsert_brand_settings(
     brand_id: Annotated[UUID, Path(alias="id")],
     payload: BrandSettingsUpsertRequest,
@@ -159,7 +184,7 @@ def upsert_brand_settings(
     )
 
 
-@router.patch("/api/v1/brands/{id}/settings", tags=["Brands"])
+@router.patch("/api/v1/brands/{id}/settings", tags=["Brands"], operation_id="updateBrandSettings")
 def update_brand_settings(
     brand_id: Annotated[UUID, Path(alias="id")],
     payload: BrandSettingsUpdateRequest,
@@ -179,7 +204,7 @@ def update_brand_settings(
     )
 
 
-@router.delete("/api/v1/brands/{id}/settings", tags=["Brands"])
+@router.delete("/api/v1/brands/{id}/settings", tags=["Brands"], operation_id="deleteBrandSettings")
 def delete_brand_settings(
     brand_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -194,7 +219,7 @@ def delete_brand_settings(
     )
 
 
-@router.get("/api/v1/brand-assets", tags=["Brand Assets"])
+@router.get("/api/v1/brand-assets", tags=["Brand Assets"], operation_id="listBrandAssets")
 def list_brand_assets(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -218,7 +243,7 @@ def list_brand_assets(
     )
 
 
-@router.post("/api/v1/brand-assets", tags=["Brand Assets"])
+@router.post("/api/v1/brand-assets", tags=["Brand Assets"], operation_id="createBrandAsset")
 def create_brand_asset(
     payload: BrandAssetCreateRequest,
     request: Request,
@@ -234,7 +259,12 @@ def create_brand_asset(
     )
 
 
-@router.get("/api/v1/brand-assets/{id}", tags=["Brand Assets"])
+@router.get(
+    "/api/v1/brand-assets/{id}",
+    tags=["Brand Assets"],
+    operation_id="getBrandAsset",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_brand_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -249,7 +279,12 @@ def get_brand_asset(
     )
 
 
-@router.put("/api/v1/brand-assets/{id}", tags=["Brand Assets"])
+@router.put(
+    "/api/v1/brand-assets/{id}",
+    tags=["Brand Assets"],
+    operation_id="updateBrandAsset",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_brand_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     payload: BrandAssetUpdateRequest,
@@ -269,7 +304,12 @@ def update_brand_asset(
     )
 
 
-@router.delete("/api/v1/brand-assets/{id}", tags=["Brand Assets"])
+@router.delete(
+    "/api/v1/brand-assets/{id}",
+    tags=["Brand Assets"],
+    operation_id="deleteBrandAsset",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_brand_asset(
     asset_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -284,7 +324,11 @@ def delete_brand_asset(
     )
 
 
-@router.get("/api/v1/brand-colors", tags=["Brands"])
+@router.get(
+    "/api/v1/brand-colors",
+    tags=["Brands"],
+    operation_id="list_brand_colors_api_v1_brand_colors_get",
+)
 def list_brand_colors(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -299,7 +343,11 @@ def list_brand_colors(
     )
 
 
-@router.post("/api/v1/brand-colors", tags=["Brands"])
+@router.post(
+    "/api/v1/brand-colors",
+    tags=["Brands"],
+    operation_id="create_brand_color_api_v1_brand_colors_post",
+)
 def create_brand_color(
     payload: BrandColorCreateRequest,
     request: Request,
@@ -315,7 +363,11 @@ def create_brand_color(
     )
 
 
-@router.get("/api/v1/brand-colors/{id}", tags=["Brands"])
+@router.get(
+    "/api/v1/brand-colors/{id}",
+    tags=["Brands"],
+    operation_id="get_brand_color_api_v1_brand_colors__id__get",
+)
 def get_brand_color(
     color_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -330,7 +382,11 @@ def get_brand_color(
     )
 
 
-@router.put("/api/v1/brand-colors/{id}", tags=["Brands"])
+@router.put(
+    "/api/v1/brand-colors/{id}",
+    tags=["Brands"],
+    operation_id="update_brand_color_api_v1_brand_colors__id__put",
+)
 def update_brand_color(
     color_id: Annotated[UUID, Path(alias="id")],
     payload: BrandColorUpdateRequest,
@@ -350,7 +406,11 @@ def update_brand_color(
     )
 
 
-@router.delete("/api/v1/brand-colors/{id}", tags=["Brands"])
+@router.delete(
+    "/api/v1/brand-colors/{id}",
+    tags=["Brands"],
+    operation_id="delete_brand_color_api_v1_brand_colors__id__delete",
+)
 def delete_brand_color(
     color_id: Annotated[UUID, Path(alias="id")],
     request: Request,
