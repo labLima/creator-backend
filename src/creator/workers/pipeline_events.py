@@ -113,7 +113,7 @@ def _consume(
             if record is None:
                 return
             persisted = PipelineEvent.model_validate(record.payload)
-            run = unit_of_work.agent_workflows.get_internal(event.run_id)
+            run = unit_of_work.agent_workflow.workflows.get_internal(event.run_id)
             if persisted != event:
                 raise InvalidPipelineEvent("Queued payload differs from the durable event")
             if record.aggregate_id != event.run_id:
@@ -140,7 +140,7 @@ def _consume(
 def _validate_predecessor(unit_of_work: SqlAlchemyUnitOfWork, event: PipelineEvent) -> None:
     if event.predecessor_step_id is None:
         return
-    steps = unit_of_work.agent_workflows.list_steps_internal(event.run_id)
+    steps = unit_of_work.agent_workflow.workflows.list_steps_internal(event.run_id)
     predecessor = next((step for step in steps if step.id == event.predecessor_step_id), None)
     if predecessor is None or predecessor.workspace_id != event.workspace_id:
         raise InvalidPipelineEvent("Event predecessor is missing or cross-Workspace")
@@ -158,13 +158,13 @@ def _record_consumer_failure(event: PipelineEvent, error: Exception) -> None:
             retry_intervals=tuple(settings.pipeline_event_retry_interval_seconds),
         )
         if dead_lettered:
-            run = unit_of_work.agent_workflows.get_internal(event.run_id)
+            run = unit_of_work.agent_workflow.workflows.get_internal(event.run_id)
             if run is not None and run.status not in {
                 AgentWorkflowStatus.COMPLETED,
                 AgentWorkflowStatus.REJECTED,
                 AgentWorkflowStatus.FAILED,
             }:
-                unit_of_work.agent_workflows.transition(
+                unit_of_work.agent_workflow.workflows.transition(
                     event.run_id,
                     AgentWorkflowStatus.FAILED,
                     current_step=run.current_step,
@@ -183,13 +183,13 @@ def _record_consumer_failure(event: PipelineEvent, error: Exception) -> None:
 def _dead_letter(event: PipelineEvent, reason: str) -> None:
     with SqlAlchemyUnitOfWork() as unit_of_work:
         unit_of_work.outbox.dead_letter(event.event_id, phase="VALIDATE", reason=reason)
-        run = unit_of_work.agent_workflows.get_internal(event.run_id)
+        run = unit_of_work.agent_workflow.workflows.get_internal(event.run_id)
         if run is not None and run.status not in {
             AgentWorkflowStatus.COMPLETED,
             AgentWorkflowStatus.REJECTED,
             AgentWorkflowStatus.FAILED,
         }:
-            unit_of_work.agent_workflows.transition(
+            unit_of_work.agent_workflow.workflows.transition(
                 event.run_id,
                 AgentWorkflowStatus.FAILED,
                 current_step=run.current_step,

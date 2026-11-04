@@ -447,6 +447,19 @@ class FakeCrudRepository:
         return self.record
 
 
+class _FakeRepositoryGroup:
+    def __init__(self, owner: object, fields: dict[str, str]) -> None:
+        self.owner = owner
+        self.fields = fields
+
+    def __getattr__(self, name: str) -> object:
+        try:
+            attribute = self.fields[name]
+        except KeyError as error:
+            raise AttributeError(name) from error
+        return getattr(self.owner, attribute)
+
+
 class FakeUnitOfWork:
     def __init__(
         self,
@@ -481,6 +494,25 @@ class FakeUnitOfWork:
         self.brand_settings = FakeCrudRepository(brand_settings_record())
         self.settings = FakeSettingsRepository(settings_record)
         self.image_generations = FakeImageGenerationRepository(status=status, existing=existing)
+        self.user = _FakeRepositoryGroup(self, {"users": "users", "settings": "settings"})
+        self.workspace = _FakeRepositoryGroup(self, {"workspaces": "workspaces"})
+        self.brand = _FakeRepositoryGroup(
+            self,
+            {
+                "brands": "brands",
+                "assets": "brand_assets",
+                "settings": "brand_settings",
+            },
+        )
+        self.generation = _FakeRepositoryGroup(
+            self,
+            {
+                "generations": "generations",
+                "image_jobs": "image_generations",
+            },
+        )
+        self.generation.generated_images = FakeCrudRepository(None)
+        self.post_structures = FakeCrudRepository(None)
         self.commits = 0
         self.rollbacks = 0
 

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from types import TracebackType
 from typing import Protocol, Self
 
@@ -54,54 +55,109 @@ from creator.workspace.ports import (
 )
 
 
-class UnitOfWork(Protocol):
+@dataclass(frozen=True, slots=True)
+class UserRepositories:
     users: UserRepository
-    auth_sessions: AuthSessionRepository
     settings: SettingsRepository
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceRepositories:
     workspaces: WorkspaceRepository
+    invites: WorkspaceInviteRepository
+    invite_usages: WorkspaceInviteUsageRepository
+
+
+@dataclass(frozen=True, slots=True)
+class BrandRepositories:
     brands: BrandRepository
+    assets: BrandAssetRepository
+    settings: BrandSettingsRepository
+    colors: BrandColorRepository
+
+
+@dataclass(frozen=True, slots=True)
+class GenerationRepositories:
+    generations: GenerationRepository
+    generated_images: GeneratedImageRepository
+    image_jobs: ImageGenerationRepository
+
+
+@dataclass(frozen=True, slots=True)
+class NotificationRepositories:
+    devices: UserDeviceRepository
+    preferences: NotificationPreferenceRepository
+    notifications: NotificationRepository
+    recipients: NotificationRecipientRepository
+
+
+@dataclass(frozen=True, slots=True)
+class PlanRepositories:
+    plans: PlanRepository
+    items: PlanItemRepository
+
+
+@dataclass(frozen=True, slots=True)
+class BillingAccountRepositories:
+    accounts: BillingAccountRepository
+    addresses: BillingAddressRepository
+
+
+@dataclass(frozen=True, slots=True)
+class BillingProviderRepositories:
+    customers: ProviderCustomerRepository
+    disputes: ProviderDisputeRepository
+    idempotency_keys: ProviderIdempotencyKeyRepository
+    subscriptions: ProviderSubscriptionRepository
+    webhook_events: ProviderWebhookEventRepository
+
+
+@dataclass(frozen=True, slots=True)
+class CouponRepositories:
+    coupons: CouponRepository
+    redemptions: CouponRedemptionRepository
+
+
+@dataclass(frozen=True, slots=True)
+class SubscriptionRepositories:
+    subscriptions: SubscriptionRepository
+    history: SubscriptionHistoryRepository
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowRepositories:
+    workflows: AgentWorkflowRepository
+
+
+class UnitOfWork(Protocol):
+    auth_sessions: AuthSessionRepository
+    user: UserRepositories
+    workspace: WorkspaceRepositories
+    brand: BrandRepositories
     projects: ProjectRepository
     contents: ContentRepository
-    generations: GenerationRepository
+    generation: GenerationRepositories
     assets: AssetRepository
-    brand_settings: BrandSettingsRepository
-    image_generations: ImageGenerationRepository
-    agent_workflows: AgentWorkflowRepository
+    agent_workflow: WorkflowRepositories
     campaigns: CampaignRepository
     post_structures: PostStructureRepository
     planning: PlanningRepository
     personas: PersonaRepository
-    generated_images: GeneratedImageRepository
-    brand_assets: BrandAssetRepository
     outbox: OutboxRepository
-    user_devices: UserDeviceRepository
-    notification_preferences: NotificationPreferenceRepository
-    notifications: NotificationRepository
-    notification_recipients: NotificationRecipientRepository
-    plans: PlanRepository
-    plan_items: PlanItemRepository
-    billing_accounts: BillingAccountRepository
-    subscriptions: SubscriptionRepository
+    notification: NotificationRepositories
+    plan: PlanRepositories
+    billing_account: BillingAccountRepositories
+    billing_provider: BillingProviderRepositories
+    coupon: CouponRepositories
+    subscription: SubscriptionRepositories
     invoices: InvoiceRepository
     charges: ChargeRepository
-    workspace_invites: WorkspaceInviteRepository
-    billing_addresses: BillingAddressRepository
     billing_payment_methods: BillingPaymentMethodRepository
-    coupons: CouponRepository
     credit_packages: CreditPackageRepository
     orders: OrderRepository
-    coupon_redemptions: CouponRedemptionRepository
     workspace_credit_transactions: WorkspaceCreditTransactionRepository
     refunds: RefundRepository
-    provider_disputes: ProviderDisputeRepository
-    provider_customers: ProviderCustomerRepository
-    provider_subscriptions: ProviderSubscriptionRepository
-    provider_webhook_events: ProviderWebhookEventRepository
-    provider_idempotency_keys: ProviderIdempotencyKeyRepository
     design_structures: DesignStructureRepository
-    brand_colors: BrandColorRepository
-    subscription_history: SubscriptionHistoryRepository
-    workspace_invite_usages: WorkspaceInviteUsageRepository
 
     def __enter__(self) -> Self: ...
 

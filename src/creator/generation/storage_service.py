@@ -37,11 +37,11 @@ def persist_generated_image(
     user: UserRecord,
     image: GeneratedImage,
 ) -> ImageRecord:
-    existing = unit_of_work.image_generations.get_image_by_generation_id(job.generation_id)
+    existing = unit_of_work.generation.image_jobs.get_image_by_generation_id(job.generation_id)
     if existing is not None:
         return existing
 
-    version_number = unit_of_work.image_generations.reserve_image_version(job.id)
+    version_number = unit_of_work.generation.image_jobs.reserve_image_version(job.id)
     storage_path = immutable_image_path(
         user_external_id=user.external_id,
         content_id=job.content_id,
@@ -75,7 +75,7 @@ def persist_generated_image(
             checksum_sha256=checksum_sha256,
         )
         if recovered_object is None:
-            unit_of_work.image_generations.fail_job(
+            unit_of_work.generation.image_jobs.fail_job(
                 job.id,
                 failure_code="STORAGE_UPLOAD_FAILED",
                 failure_message="Generated image could not be persisted",
@@ -86,7 +86,7 @@ def persist_generated_image(
         uploaded_now = False
 
     try:
-        completed = unit_of_work.image_generations.complete_job(
+        completed = unit_of_work.generation.image_jobs.complete_job(
             job.id,
             ImageMetadata(
                 storage_path=stored_object.path,

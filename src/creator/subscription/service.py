@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from creator.api.errors import not_found, require_workspace_write
-from creator.api.serializers import _subscription_data, _subscription_history_data
+from creator.application.errors import not_found, require_workspace_write
+from creator.application.serializers import _subscription_data, _subscription_history_data
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -19,7 +19,7 @@ def list_subscription_history(
     return {
         "items": [
             _subscription_history_data(x)
-            for x in uow.subscription_history.list_for_user(user_id=actor.id)
+            for x in uow.subscription.history.list_for_user(user_id=actor.id)
         ]
     }
 
@@ -34,10 +34,13 @@ def create_subscription_history(
     subscription_id = payload.get("subscription_id")
     if (
         subscription_id is None
-        or uow.subscriptions.get_for_user(user_id=actor.id, subscription_id=subscription_id) is None
+        or uow.subscription.subscriptions.get_for_user(
+            user_id=actor.id, subscription_id=subscription_id
+        )
+        is None
     ):
         raise not_found("Subscription")
-    item = uow.subscription_history.add(fields=payload)
+    item = uow.subscription.history.add(fields=payload)
     uow.commit()
 
     return _subscription_history_data(item)
@@ -50,7 +53,7 @@ def get_subscription_history(
     request: Any,
     history_id: Any,
 ) -> Any:
-    item = uow.subscription_history.get_for_user(user_id=actor.id, history_id=history_id)
+    item = uow.subscription.history.get_for_user(user_id=actor.id, history_id=history_id)
     if item is None:
         raise not_found("Subscription history")
 
@@ -65,9 +68,9 @@ def update_subscription_history(
     history_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.subscription_history.get_for_user(user_id=actor.id, history_id=history_id) is None:
+    if uow.subscription.history.get_for_user(user_id=actor.id, history_id=history_id) is None:
         raise not_found("Subscription history")
-    item = uow.subscription_history.update(history_id=history_id, fields=payload)
+    item = uow.subscription.history.update(history_id=history_id, fields=payload)
     uow.commit()
 
     return _subscription_history_data(item)
@@ -80,9 +83,9 @@ def delete_subscription_history(
     request: Any,
     history_id: Any,
 ) -> Any:
-    if uow.subscription_history.get_for_user(user_id=actor.id, history_id=history_id) is None:
+    if uow.subscription.history.get_for_user(user_id=actor.id, history_id=history_id) is None:
         raise not_found("Subscription history")
-    uow.subscription_history.soft_delete(history_id=history_id)
+    uow.subscription.history.soft_delete(history_id=history_id)
     uow.commit()
 
     return {"deleted": True}
@@ -95,7 +98,10 @@ def list_subscriptions(
     request: Any,
 ) -> Any:
     return {
-        "items": [_subscription_data(x) for x in uow.subscriptions.list_for_user(user_id=actor.id)]
+        "items": [
+            _subscription_data(x)
+            for x in uow.subscription.subscriptions.list_for_user(user_id=actor.id)
+        ]
     }
 
 
@@ -107,14 +113,16 @@ def create_subscription(
     payload: Any,
 ) -> Any:
     if (
-        uow.billing_accounts.get_for_user(user_id=actor.id, account_id=payload.billing_account_id)
+        uow.billing_account.accounts.get_for_user(
+            user_id=actor.id, account_id=payload.billing_account_id
+        )
         is None
     ):
         raise not_found("Billing account")
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
-    if uow.plans.get(plan_id=payload.plan_id) is None:
+    if uow.plan.plans.get(plan_id=payload.plan_id) is None:
         raise not_found("Plan")
-    item = uow.subscriptions.add(**payload.model_dump())
+    item = uow.subscription.subscriptions.add(**payload.model_dump())
     uow.commit()
 
     return _subscription_data(item)
@@ -127,7 +135,9 @@ def get_subscription(
     request: Any,
     subscription_id: Any,
 ) -> Any:
-    item = uow.subscriptions.get_for_user(user_id=actor.id, subscription_id=subscription_id)
+    item = uow.subscription.subscriptions.get_for_user(
+        user_id=actor.id, subscription_id=subscription_id
+    )
     if item is None:
         raise not_found("Subscription")
 
@@ -142,9 +152,14 @@ def update_subscription(
     subscription_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.subscriptions.get_for_user(user_id=actor.id, subscription_id=subscription_id) is None:
+    if (
+        uow.subscription.subscriptions.get_for_user(
+            user_id=actor.id, subscription_id=subscription_id
+        )
+        is None
+    ):
         raise not_found("Subscription")
-    item = uow.subscriptions.update(
+    item = uow.subscription.subscriptions.update(
         subscription_id=subscription_id, fields=payload.model_dump(exclude_unset=True)
     )
     uow.commit()
@@ -159,9 +174,14 @@ def delete_subscription(
     request: Any,
     subscription_id: Any,
 ) -> Any:
-    if uow.subscriptions.get_for_user(user_id=actor.id, subscription_id=subscription_id) is None:
+    if (
+        uow.subscription.subscriptions.get_for_user(
+            user_id=actor.id, subscription_id=subscription_id
+        )
+        is None
+    ):
         raise not_found("Subscription")
-    uow.subscriptions.soft_delete(subscription_id=subscription_id)
+    uow.subscription.subscriptions.soft_delete(subscription_id=subscription_id)
     uow.commit()
 
     return {"deleted": True}

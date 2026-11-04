@@ -31,11 +31,7 @@ test:
 	$(PYTEST) -m "not e2e"
 
 migrate-check:
-	@mkdir -p .local/db
-	@rm -f .local/db/alembic-check.db
-	DATABASE_URL=sqlite+pysqlite:///$(CURDIR)/.local/db/alembic-check.db $(PYTHON) -m alembic upgrade head
-	DATABASE_URL=sqlite+pysqlite:///$(CURDIR)/.local/db/alembic-check.db $(PYTHON) -m alembic check
-	@rm -f .local/db/alembic-check.db
+	$(PYTHON) scripts/check_migrations.py
 
 snapshot-contract:
 	$(PYTHON) scripts/snapshot_contract.py
@@ -44,7 +40,7 @@ e2e:
 	$(PYTEST) -m e2e --no-cov
 
 dependency-audit:
-	$(PYTHON) -m pip_audit \
+	$(PYTHON) -m pip_audit --skip-editable \
 		--ignore-vuln PYSEC-2026-311 \
 		--ignore-vuln PYSEC-2026-3813 \
 		--ignore-vuln PYSEC-2026-3814 \

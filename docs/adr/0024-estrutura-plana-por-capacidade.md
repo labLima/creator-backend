@@ -53,6 +53,10 @@ Sem `modules/`, sem `adapters/`. `creator/repositories/` e
 - `main.py` continua com 161 linhas e nenhuma rota.
 - O contrato HTTP e o schema permanecem congelados: 227 operações, 51 tabelas,
   DDL byte a byte idêntico.
+- A separação entre aplicação e transporte, a migração dos quatro routers e a
+  consolidação dos repositórios por agregado foram concluídas na
+  [issue 0049](../issues/0049-flat-layout-consolidation.md), sem alterar o
+  contrato HTTP ou os caminhos persistidos dos workers.
 
 ## Critérios de aceite
 

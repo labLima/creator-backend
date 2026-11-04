@@ -48,7 +48,7 @@ def generate_content(
     ):
         raise WorkspaceAccessDeniedError("Workspace access denied")
 
-    stored_settings = unit_of_work.settings.get_by_user_id(user.id)
+    stored_settings = unit_of_work.user.settings.get_by_user_id(user.id)
     settings_preferences = (
         {
             "brand_name": stored_settings.brand_name,

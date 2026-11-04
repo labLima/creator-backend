@@ -146,7 +146,7 @@ def recover_stale_processing_jobs() -> int:
         seconds=settings.image_generation_stale_processing_seconds
     )
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        recovered = unit_of_work.image_generations.fail_stale_processing(
+        recovered = unit_of_work.generation.image_jobs.fail_stale_processing(
             older_than=older_than,
             failure_code="IMAGE_GENERATION_STALE_PROCESSING",
             failure_message="Image generation did not finish before the processing timeout",
@@ -162,7 +162,7 @@ def recover_stale_processing_jobs() -> int:
 
 def _claim_work_item(job_id: UUID) -> ImageGenerationWorkItem | None:
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        work_item = unit_of_work.image_generations.claim_pending_by_id(job_id)
+        work_item = unit_of_work.generation.image_jobs.claim_pending_by_id(job_id)
         if work_item is None:
             return None
         unit_of_work.commit()
@@ -172,7 +172,7 @@ def _claim_work_item(job_id: UUID) -> ImageGenerationWorkItem | None:
 def _fail_job(job_id: UUID, failure_code: str) -> None:
     with SqlAlchemyUnitOfWork() as unit_of_work:
         try:
-            unit_of_work.image_generations.fail_job(
+            unit_of_work.generation.image_jobs.fail_job(
                 job_id,
                 failure_code=failure_code,
                 failure_message="Image generation failed",

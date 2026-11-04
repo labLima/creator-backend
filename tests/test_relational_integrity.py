@@ -584,12 +584,12 @@ def test_outbox_next_event_and_consumption_rollback_together(
 
 def test_repositories_create_and_update_user_settings(migrated_engine: Engine) -> None:
     with uow_for_engine(migrated_engine) as unit_of_work:
-        user = unit_of_work.users.add(
+        user = unit_of_work.user.users.add(
             external_id=f"local:{uuid4()}",
             email="repository-user@example.com",
             display_name="Repository User",
         )
-        settings = unit_of_work.settings.create_for_user(
+        settings = unit_of_work.user.settings.create_for_user(
             user.id,
             brand_name="Lefil",
             default_preferences={"theme": "light"},
@@ -597,8 +597,8 @@ def test_repositories_create_and_update_user_settings(migrated_engine: Engine) -
         unit_of_work.commit()
 
     with uow_for_engine(migrated_engine) as unit_of_work:
-        stored_user = unit_of_work.users.get_by_external_id(user.external_id)
-        updated_settings = unit_of_work.settings.update_partial(
+        stored_user = unit_of_work.user.users.get_by_external_id(user.external_id)
+        updated_settings = unit_of_work.user.settings.update_partial(
             user.id,
             {"default_preferences": {"theme": "dark"}},
         )
@@ -656,7 +656,7 @@ def test_content_mutations_and_image_generation_hide_other_users_resources(
                 user_id=other["user_id"], content_id=owner["content_id"]
             )
         with pytest.raises(EntityNotFoundError):
-            unit_of_work.image_generations.create_image_generation(
+            unit_of_work.generation.image_jobs.create_image_generation(
                 workspace_id=owner["workspace_id"],
                 content_id=owner["content_id"],
                 requested_by_user_id=other["user_id"],
@@ -675,7 +675,7 @@ def test_generation_cannot_reference_content_from_another_workspace(
 
     with uow_for_engine(migrated_engine) as unit_of_work:
         with pytest.raises(EntityNotFoundError):
-            unit_of_work.generations.add(
+            unit_of_work.generation.generations.add(
                 workspace_id=other["workspace_id"],
                 content_id=owner["content_id"],
                 requested_by_user_id=other["user_id"],
@@ -720,7 +720,7 @@ def test_image_generation_repository_completes_job_and_lists_history(
         ids = seed_user_workspace_content(connection)
 
     with uow_for_engine(migrated_engine) as unit_of_work:
-        created = unit_of_work.image_generations.create_image_generation(
+        created = unit_of_work.generation.image_jobs.create_image_generation(
             workspace_id=ids["workspace_id"],
             content_id=ids["content_id"],
             requested_by_user_id=ids["user_id"],
@@ -728,11 +728,11 @@ def test_image_generation_repository_completes_job_and_lists_history(
             prompt="Generate a campaign image",
             external_id="provider-history-1",
         )
-        claimed = unit_of_work.image_generations.claim_next_pending(
+        claimed = unit_of_work.generation.image_jobs.claim_next_pending(
             workspace_id=ids["workspace_id"]
         )
         assert claimed is not None
-        image = unit_of_work.image_generations.complete_job(
+        image = unit_of_work.generation.image_jobs.complete_job(
             claimed.id,
             ImageMetadata(
                 storage_path=f"{ids['workspace_id']}/{uuid4()}.png",
@@ -744,7 +744,7 @@ def test_image_generation_repository_completes_job_and_lists_history(
                 prompt="Generate a campaign image",
             ),
         )
-        history = unit_of_work.image_generations.list_history_for_user(
+        history = unit_of_work.generation.image_jobs.list_history_for_user(
             user_id=ids["user_id"],
             filters=GenerationHistoryFilters(status=GenerationJobStatus.COMPLETED),
         )
@@ -764,7 +764,7 @@ def test_image_generation_claim_next_pending_is_atomic(
         ids = seed_user_workspace_content(connection)
 
     with uow_for_engine(migrated_engine) as unit_of_work:
-        created = unit_of_work.image_generations.create_image_generation(
+        created = unit_of_work.generation.image_jobs.create_image_generation(
             workspace_id=ids["workspace_id"],
             content_id=ids["content_id"],
             requested_by_user_id=ids["user_id"],
@@ -780,7 +780,7 @@ def test_image_generation_claim_next_pending_is_atomic(
     def first_worker() -> None:
         try:
             with uow_for_engine(migrated_engine) as unit_of_work:
-                claim = unit_of_work.image_generations.claim_next_pending(
+                claim = unit_of_work.generation.image_jobs.claim_next_pending(
                     workspace_id=ids["workspace_id"]
                 )
                 claims.append(claim)
@@ -793,7 +793,7 @@ def test_image_generation_claim_next_pending_is_atomic(
         try:
             first_claimed.wait(timeout=5)
             with uow_for_engine(migrated_engine) as unit_of_work:
-                claim = unit_of_work.image_generations.claim_next_pending(
+                claim = unit_of_work.generation.image_jobs.claim_next_pending(
                     workspace_id=ids["workspace_id"]
                 )
                 claims.append(claim)

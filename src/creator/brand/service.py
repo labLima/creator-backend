@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from creator.api.errors import not_found, require_workspace_write
-from creator.api.responses import page_payload
-from creator.api.serializers import (
+from creator.application.errors import not_found, require_workspace_write
+from creator.application.pagination import page_payload
+from creator.application.serializers import (
     _brand_asset_data,
     _brand_color_data,
     _brand_data,
@@ -28,7 +28,7 @@ def list_brands(
     limit: Any,
     sort: Any,
 ) -> Any:
-    brands = uow.brands.list_for_user(
+    brands = uow.brand.brands.list_for_user(
         user_id=actor.id,
         workspace_id=workspace_id,
         page=page_request(page, limit, sort),
@@ -45,7 +45,7 @@ def create_brand(
     payload: Any,
 ) -> Any:
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
-    brand = uow.brands.add(
+    brand = uow.brand.brands.add(
         workspace_id=payload.workspace_id,
         created_by_user_id=actor.id,
         name=payload.name,
@@ -65,7 +65,7 @@ def get_brand(
     request: Any,
     brand_id: Any,
 ) -> Any:
-    brand = uow.brands.get_for_user(user_id=actor.id, brand_id=brand_id)
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=brand_id)
     if brand is None:
         raise not_found("Brand")
 
@@ -81,7 +81,7 @@ def update_brand(
     payload: Any,
 ) -> Any:
     try:
-        brand = uow.brands.update(
+        brand = uow.brand.brands.update(
             user_id=actor.id,
             brand_id=brand_id,
             name=payload.name,
@@ -104,7 +104,7 @@ def delete_brand(
     brand_id: Any,
 ) -> Any:
     try:
-        uow.brands.soft_delete(user_id=actor.id, brand_id=brand_id)
+        uow.brand.brands.soft_delete(user_id=actor.id, brand_id=brand_id)
     except EntityNotFoundError as error:
         raise not_found("Brand") from error
     uow.commit()
@@ -119,7 +119,7 @@ def get_brand_settings(
     request: Any,
     brand_id: Any,
 ) -> Any:
-    settings = uow.brand_settings.get_for_user(
+    settings = uow.brand.settings.get_for_user(
         user_id=actor.id,
         brand_id=brand_id,
     )
@@ -137,12 +137,12 @@ def upsert_brand_settings(
     brand_id: Any,
     payload: Any,
 ) -> Any:
-    brand = uow.brands.get_for_user(user_id=actor.id, brand_id=brand_id)
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=brand_id)
     if brand is None or brand.workspace_id != payload.workspace_id:
         raise not_found("Brand settings")
     require_workspace_write(uow, user_id=actor.id, workspace_id=brand.workspace_id)
     try:
-        settings = uow.brand_settings.upsert(
+        settings = uow.brand.settings.upsert(
             user_id=actor.id,
             workspace_id=brand.workspace_id,
             brand_id=brand_id,
@@ -167,7 +167,7 @@ def update_brand_settings(
     payload: Any,
 ) -> Any:
     try:
-        settings = uow.brand_settings.update(
+        settings = uow.brand.settings.update(
             user_id=actor.id,
             brand_id=brand_id,
             voice_settings=payload.voice_settings,
@@ -190,7 +190,7 @@ def delete_brand_settings(
     brand_id: Any,
 ) -> Any:
     try:
-        uow.brand_settings.soft_delete(user_id=actor.id, brand_id=brand_id)
+        uow.brand.settings.soft_delete(user_id=actor.id, brand_id=brand_id)
     except EntityNotFoundError as error:
         raise not_found("Brand settings") from error
     uow.commit()
@@ -208,7 +208,7 @@ def list_brand_assets(
     limit: Any,
     sort: Any,
 ) -> Any:
-    result = uow.brand_assets.list_for_user(
+    result = uow.brand.assets.list_for_user(
         user_id=actor.id,
         brand_id=brand_id,
         page=page_request(page, limit, sort),
@@ -224,11 +224,11 @@ def create_brand_asset(
     request: Any,
     payload: Any,
 ) -> Any:
-    brand = uow.brands.get_for_user(user_id=actor.id, brand_id=payload.brand_id)
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=payload.brand_id)
     if brand is None:
         raise not_found("Brand")
     require_workspace_write(uow, user_id=actor.id, workspace_id=brand.workspace_id)
-    asset = uow.brand_assets.add(
+    asset = uow.brand.assets.add(
         brand_id=payload.brand_id,
         type=payload.type,
         file_url=payload.file_url,
@@ -247,7 +247,7 @@ def get_brand_asset(
     request: Any,
     asset_id: Any,
 ) -> Any:
-    asset = uow.brand_assets.get_for_user(user_id=actor.id, asset_id=asset_id)
+    asset = uow.brand.assets.get_for_user(user_id=actor.id, asset_id=asset_id)
     if asset is None:
         raise not_found("Brand asset")
 
@@ -262,14 +262,14 @@ def update_brand_asset(
     asset_id: Any,
     payload: Any,
 ) -> Any:
-    existing = uow.brand_assets.get_for_user(user_id=actor.id, asset_id=asset_id)
+    existing = uow.brand.assets.get_for_user(user_id=actor.id, asset_id=asset_id)
     if existing is None:
         raise not_found("Brand asset")
-    brand = uow.brands.get_for_user(user_id=actor.id, brand_id=existing.brand_id)
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=existing.brand_id)
     if brand is None:
         raise not_found("Brand asset")
     require_workspace_write(uow, user_id=actor.id, workspace_id=brand.workspace_id)
-    updated = uow.brand_assets.update(
+    updated = uow.brand.assets.update(
         asset_id=asset_id, fields=payload.model_dump(exclude_unset=True)
     )
     uow.commit()
@@ -284,14 +284,14 @@ def delete_brand_asset(
     request: Any,
     asset_id: Any,
 ) -> Any:
-    existing = uow.brand_assets.get_for_user(user_id=actor.id, asset_id=asset_id)
+    existing = uow.brand.assets.get_for_user(user_id=actor.id, asset_id=asset_id)
     if existing is None:
         raise not_found("Brand asset")
-    brand = uow.brands.get_for_user(user_id=actor.id, brand_id=existing.brand_id)
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=existing.brand_id)
     if brand is None:
         raise not_found("Brand asset")
     require_workspace_write(uow, user_id=actor.id, workspace_id=brand.workspace_id)
-    uow.brand_assets.soft_delete(asset_id=asset_id)
+    uow.brand.assets.soft_delete(asset_id=asset_id)
     uow.commit()
 
     return {"deleted": True}
@@ -307,7 +307,7 @@ def list_brand_colors(
     return {
         "items": [
             _brand_color_data(x)
-            for x in uow.brand_colors.list_for_user(user_id=actor.id, brand_id=brand_id)
+            for x in uow.brand.colors.list_for_user(user_id=actor.id, brand_id=brand_id)
         ]
     }
 
@@ -322,7 +322,7 @@ def create_brand_color(
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
     data = payload.model_dump()
     data["created_by"] = actor.id
-    item = uow.brand_colors.add(fields=data)
+    item = uow.brand.colors.add(fields=data)
     uow.commit()
 
     return _brand_color_data(item)
@@ -335,7 +335,7 @@ def get_brand_color(
     request: Any,
     color_id: Any,
 ) -> Any:
-    item = uow.brand_colors.get_for_user(user_id=actor.id, color_id=color_id)
+    item = uow.brand.colors.get_for_user(user_id=actor.id, color_id=color_id)
     if item is None:
         raise not_found("Brand color")
 
@@ -350,9 +350,9 @@ def update_brand_color(
     color_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.brand_colors.get_for_user(user_id=actor.id, color_id=color_id) is None:
+    if uow.brand.colors.get_for_user(user_id=actor.id, color_id=color_id) is None:
         raise not_found("Brand color")
-    item = uow.brand_colors.update(color_id=color_id, fields=payload.model_dump(exclude_unset=True))
+    item = uow.brand.colors.update(color_id=color_id, fields=payload.model_dump(exclude_unset=True))
     uow.commit()
 
     return _brand_color_data(item)
@@ -365,9 +365,9 @@ def delete_brand_color(
     request: Any,
     color_id: Any,
 ) -> Any:
-    if uow.brand_colors.get_for_user(user_id=actor.id, color_id=color_id) is None:
+    if uow.brand.colors.get_for_user(user_id=actor.id, color_id=color_id) is None:
         raise not_found("Brand color")
-    uow.brand_colors.soft_delete(color_id=color_id)
+    uow.brand.colors.soft_delete(color_id=color_id)
     uow.commit()
 
     return {"deleted": True}

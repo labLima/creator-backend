@@ -100,4 +100,23 @@ def test_sqlalchemy_unit_of_work_implements_the_protocol() -> None:
 
     assert UnitOfWork in SqlAlchemyUnitOfWork.__mro__
     assert protocol <= annotations, protocol - annotations
-    assert len(protocol) >= 40
+    assert len(protocol) == 28
+
+
+def test_unit_of_work_exposes_grouped_repositories_without_flat_aliases() -> None:
+    with SqlAlchemyUnitOfWork(lambda: session_factory(RecordingSession())) as unit_of_work:
+        assert unit_of_work.user.users is not None
+        assert unit_of_work.user.settings is not None
+        assert unit_of_work.workspace.invites is not None
+        assert unit_of_work.brand.assets is not None
+        assert unit_of_work.generation.image_jobs is not None
+        assert unit_of_work.notification.preferences is not None
+        assert unit_of_work.billing_account.addresses is not None
+        assert unit_of_work.billing_provider.webhook_events is not None
+        assert unit_of_work.coupon.redemptions is not None
+        assert unit_of_work.subscription.history is not None
+        assert unit_of_work.agent_workflow.workflows is not None
+        assert unit_of_work.auth_sessions is not None
+        assert unit_of_work.outbox is not None
+        assert not hasattr(unit_of_work, "brands")
+        assert not hasattr(unit_of_work, "image_generations")

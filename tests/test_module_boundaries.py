@@ -129,7 +129,11 @@ def test_legacy_package_layouts_are_gone() -> None:
         CREATOR_ROOT / "repositories",
         CREATOR_ROOT / "infrastructure" / "persistence" / "repositories",
     )
-    surviving = [path.relative_to(PROJECT_ROOT).as_posix() for path in legacy if path.exists()]
+    surviving = [
+        path.relative_to(PROJECT_ROOT).as_posix()
+        for path in legacy
+        if path.exists() and any(child.name != "__pycache__" for child in path.iterdir())
+    ]
     surviving.extend(
         path.relative_to(PROJECT_ROOT).as_posix()
         for path in CREATOR_ROOT.glob("*/adapters")
@@ -226,6 +230,41 @@ def test_services_never_build_http_responses() -> None:
     assert scanned >= len(_capabilities()), (
         f"service response scan only inspected {scanned} files (vacuous?)"
     )
+    assert not violations, "\n".join(violations)
+
+
+def test_services_never_import_the_transport_package() -> None:
+    violations = [
+        f"{path.relative_to(PROJECT_ROOT)}:{lineno} -> {module}"
+        for path in _python_files()
+        if path.name.endswith("service.py")
+        for lineno, module, _ in _resolved_imports(path)
+        if module == "creator.api" or module.startswith("creator.api.")
+    ]
+
+    assert not violations, "\n".join(violations)
+
+
+def test_auth_content_generation_and_workflow_routers_do_not_access_persistence() -> None:
+    violations: list[str] = []
+    for capability in ("auth", "content", "generation", "workflow"):
+        router = CREATOR_ROOT / capability / "router.py"
+        tree = ast.parse(router.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and node.id in {"UnitOfWork", "get_uow"}:
+                violations.append(
+                    f"{router.relative_to(PROJECT_ROOT)}:{node.lineno} uses {node.id}"
+                )
+            if isinstance(node, ast.Attribute) and node.attr in {
+                "unit_of_work",
+                "uow",
+                "repositories",
+                "repository",
+            }:
+                violations.append(
+                    f"{router.relative_to(PROJECT_ROOT)}:{node.lineno} accesses .{node.attr}"
+                )
+
     assert not violations, "\n".join(violations)
 
 

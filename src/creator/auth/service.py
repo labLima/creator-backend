@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
-from creator.auth.ports import AuthTokenServices, Clock
+from creator.auth.ports import AuthSessionRecord, AuthTokenServices, Clock
 from creator.auth.types import AuthSignupResult, IssuedSession
 from creator.config import Settings
 from creator.domain.auth import Principal
@@ -144,16 +144,16 @@ def signup(
     clock = _resolve_clock(token_services, clock)
     normalized = normalize_email(email)
     password_hash = hash_password(password, settings)
-    if unit_of_work.users.get_by_email(normalized, include_deleted=True) is not None:
+    if unit_of_work.user.users.get_by_email(normalized, include_deleted=True) is not None:
         raise EmailAlreadyRegisteredError("email is already registered")
     try:
-        user = unit_of_work.users.add(
+        user = unit_of_work.user.users.add(
             external_id=f"local:{uuid4().hex}",
             email=normalized,
             password_hash=password_hash,
             display_name=None,
         )
-        workspace = unit_of_work.workspaces.create_for_user(
+        workspace = unit_of_work.workspace.workspaces.create_for_user(
             user_id=user.id,
             name=workspace_name,
         )
@@ -210,7 +210,7 @@ def login(
     clock: Clock | None = None,
 ) -> IssuedSession:
     clock = _resolve_clock(token_services, clock)
-    user = unit_of_work.users.get_by_email(normalize_email(email))
+    user = unit_of_work.user.users.get_by_email(normalize_email(email))
     # End the read transaction before the deliberately expensive password check.
     unit_of_work.rollback()
     if user is None or not verify_password(password, user.password_hash):
@@ -274,7 +274,7 @@ def refresh(
         unit_of_work.commit()
         raise ExpiredTokenError("refresh token is expired")
 
-    user = unit_of_work.users.get_by_id(record.user_id)
+    user = unit_of_work.user.users.get_by_id(record.user_id)
     if user is None:
         raise InvalidTokenError("refresh token user is invalid")
     new_token = token_services.refresh.generate()
@@ -345,3 +345,30 @@ def _resolve_clock(
     if candidate is None:
         raise AuthConfigurationError("authentication clock is not configured")
     return cast(Clock, candidate)
+
+
+class AuthApplication:
+    """Application boundary for authentication and session lifecycle use cases."""
+
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        self._unit_of_work = unit_of_work
+
+    def login(self, **kwargs: object) -> IssuedSession:
+        return login(unit_of_work=self._unit_of_work, **kwargs)  # type: ignore[arg-type]
+
+    def signup(self, **kwargs: object) -> LocalSignupResult:
+        return signup(unit_of_work=self._unit_of_work, **kwargs)  # type: ignore[arg-type]
+
+    def refresh(self, **kwargs: object) -> IssuedSession:
+        return refresh(unit_of_work=self._unit_of_work, **kwargs)  # type: ignore[arg-type]
+
+    def logout(self, *, session_id: UUID) -> None:
+        logout(unit_of_work=self._unit_of_work, session_id=session_id)
+
+    def session_is_active(self, *, session_id: UUID, clock: Clock) -> bool:
+        return session_is_active(
+            unit_of_work=self._unit_of_work, session_id=session_id, clock=clock
+        )
+
+    def session_for_refresh_token(self, token: str) -> AuthSessionRecord | None:
+        return self._unit_of_work.auth_sessions.get_by_refresh_hash(_refresh_hash(token))

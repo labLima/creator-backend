@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from creator.api.errors import not_found, require_global_billing_admin
-from creator.api.serializers import _plan_data, _plan_item_data
+from creator.application.errors import not_found, require_global_billing_admin
+from creator.application.serializers import _plan_data, _plan_item_data
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -18,7 +18,7 @@ def list_plans(
 ) -> Any:
     require_global_billing_admin(actor)
 
-    return {"items": [_plan_data(item) for item in uow.plans.list()]}
+    return {"items": [_plan_data(item) for item in uow.plan.plans.list()]}
 
 
 def create_plan(
@@ -29,7 +29,7 @@ def create_plan(
     payload: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    item = uow.plans.add(**payload.model_dump())
+    item = uow.plan.plans.add(**payload.model_dump())
     uow.commit()
 
     return _plan_data(item)
@@ -43,7 +43,7 @@ def get_plan(
     plan_id: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    item = uow.plans.get(plan_id=plan_id)
+    item = uow.plan.plans.get(plan_id=plan_id)
     if item is None:
         raise not_found("Plan")
 
@@ -59,9 +59,9 @@ def update_plan(
     payload: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    if uow.plans.get(plan_id=plan_id) is None:
+    if uow.plan.plans.get(plan_id=plan_id) is None:
         raise not_found("Plan")
-    item = uow.plans.update(plan_id=plan_id, fields=payload.model_dump(exclude_unset=True))
+    item = uow.plan.plans.update(plan_id=plan_id, fields=payload.model_dump(exclude_unset=True))
     uow.commit()
 
     return _plan_data(item)
@@ -75,9 +75,9 @@ def delete_plan(
     plan_id: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    if uow.plans.get(plan_id=plan_id) is None:
+    if uow.plan.plans.get(plan_id=plan_id) is None:
         raise not_found("Plan")
-    uow.plans.soft_delete(plan_id=plan_id)
+    uow.plan.plans.soft_delete(plan_id=plan_id)
     uow.commit()
 
     return {"deleted": True}
@@ -91,7 +91,7 @@ def list_plan_items(
     plan_id: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    items = uow.plan_items.list(plan_id=plan_id)
+    items = uow.plan.items.list(plan_id=plan_id)
 
     return {"items": [_plan_item_data(item) for item in items]}
 
@@ -104,9 +104,9 @@ def create_plan_item(
     payload: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    if uow.plans.get(plan_id=payload.plan_id) is None:
+    if uow.plan.plans.get(plan_id=payload.plan_id) is None:
         raise not_found("Plan")
-    item = uow.plan_items.add(**payload.model_dump())
+    item = uow.plan.items.add(**payload.model_dump())
     uow.commit()
 
     return _plan_item_data(item)
@@ -120,7 +120,7 @@ def get_plan_item(
     item_id: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    item = uow.plan_items.get(item_id=item_id)
+    item = uow.plan.items.get(item_id=item_id)
     if item is None:
         raise not_found("Plan item")
 
@@ -136,9 +136,9 @@ def update_plan_item(
     payload: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    if uow.plan_items.get(item_id=item_id) is None:
+    if uow.plan.items.get(item_id=item_id) is None:
         raise not_found("Plan item")
-    item = uow.plan_items.update(item_id=item_id, fields=payload.model_dump(exclude_unset=True))
+    item = uow.plan.items.update(item_id=item_id, fields=payload.model_dump(exclude_unset=True))
     uow.commit()
 
     return _plan_item_data(item)
@@ -152,9 +152,9 @@ def delete_plan_item(
     item_id: Any,
 ) -> Any:
     require_global_billing_admin(actor)
-    if uow.plan_items.get(item_id=item_id) is None:
+    if uow.plan.items.get(item_id=item_id) is None:
         raise not_found("Plan item")
-    uow.plan_items.soft_delete(item_id=item_id)
+    uow.plan.items.soft_delete(item_id=item_id)
     uow.commit()
 
     return {"deleted": True}

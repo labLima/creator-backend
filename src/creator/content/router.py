@@ -6,20 +6,19 @@ the published `operationId` contract and must not be renamed.
 
 from __future__ import annotations
 
-from typing import Annotated, cast
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse
 
 from creator.api.dependencies import (
+    get_content_application,
     get_current_user,
     get_llm_provider,
-    get_uow,
 )
 from creator.api.errors import (
     not_found,
-    require_workspace_write,
 )
 from creator.api.responses import (
     page_payload,
@@ -37,12 +36,10 @@ from creator.content.generation_service import (
     ContentGenerationPersistenceError,
     GenerateContentCommand,
     WorkspaceAccessDeniedError,
-    generate_content,
 )
 from creator.content.improvement_service import (
     ContentImprovementInvalidResponseError,
     ImproveContentCommand,
-    improve_content,
 )
 from creator.content.ports import ContentFilters
 from creator.content.schemas import (
@@ -51,6 +48,7 @@ from creator.content.schemas import (
     GenerateContentRequest,
     ImproveContentRequest,
 )
+from creator.content.service import ContentApplication
 from creator.core.pagination import PageRequest, page_request
 from creator.domain.exceptions import EntityNotFoundError
 from creator.integrations.gemini.exceptions import (
@@ -62,8 +60,8 @@ from creator.integrations.gemini.exceptions import (
     GeminiTimeoutError,
     GeminiTransientError,
 )
+from creator.post_structure.ports import PostStructureRecord
 from creator.services.ai.provider import LLMProvider, ProviderNotConfiguredError
-from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
 router = APIRouter()
@@ -74,49 +72,21 @@ def create_content(
     payload: ContentCreateRequest,
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
 ) -> JSONResponse:
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=payload.workspace_id
-    )
-    if payload.planning_id is not None:
-        post_fields = {
-            key: value
-            for key, value in payload.payload.items()
-            if key
-            in {
-                "objective",
-                "big_idea",
-                "main_message",
-                "headline",
-                "image_cta",
-                "art_guiding",
-                "status",
-                "format",
-                "ratio",
-                "resolution",
-            }
-        }
-        post_structure = unit_of_work.post_structures.add(
-            workspace_id=payload.workspace_id,
-            planning_id=payload.planning_id,
-            created_by=current_user.id,
-            title=payload.title,
-            **cast(dict[str, str | None], post_fields),
-        )
-        unit_of_work.commit()
-        return success_response(_post_structure_data(post_structure), request, status_code=201)
-    content = unit_of_work.contents.add(
+    record = application.create_content(
+        user=current_user,
         workspace_id=payload.workspace_id,
-        created_by_user_id=current_user.id,
         content_type=payload.type,
         brand_id=payload.brand_id,
         project_id=payload.project_id,
         title=payload.title,
         payload=payload.payload,
+        planning_id=payload.planning_id,
     )
-    unit_of_work.commit()
-    return success_response(_content_data(content), request, status_code=201)
+    if isinstance(record, PostStructureRecord):
+        return success_response(_post_structure_data(record), request, status_code=201)
+    return success_response(_content_data(record), request, status_code=201)
 
 
 @router.get("/api/v1/contents/{id}", tags=["Contents"])
@@ -125,21 +95,12 @@ def get_content(
     content_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
 ) -> JSONResponse:
-    post_structures = getattr(unit_of_work, "post_structures", None)
-    post_structure = (
-        post_structures.get_for_user(user_id=current_user.id, post_structure_id=content_id)
-        if post_structures is not None
-        else None
-    )
+    post_structure = application.get_post_structure(user_id=current_user.id, item_id=content_id)
     if post_structure is not None:
-        assert post_structures is not None
         return success_response(_post_structure_data(post_structure), request)
-    detail = unit_of_work.contents.get_detail_by_id_for_user(
-        user_id=current_user.id,
-        content_id=content_id,
-    )
+    detail = application.get_detail(user_id=current_user.id, content_id=content_id)
     if detail is None:
         raise not_found("Content")
     return success_response(_content_detail_data(detail), request)
@@ -151,55 +112,18 @@ def update_content(
     payload: ContentUpdateRequest,
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
 ) -> JSONResponse:
-    post_structures = getattr(unit_of_work, "post_structures", None)
-    post_structure = (
-        post_structures.get_for_user(user_id=current_user.id, post_structure_id=content_id)
-        if post_structures is not None
-        else None
-    )
+    post_structure = application.get_post_structure(user_id=current_user.id, item_id=content_id)
     if post_structure is not None:
-        assert post_structures is not None
-        require_workspace_write(
-            unit_of_work, user_id=current_user.id, workspace_id=post_structure.workspace_id
+        updated = application.update_post_structure(
+            user=current_user, item_id=content_id, title=payload.title, payload=payload.payload
         )
-        allowed_fields = {
-            "objective",
-            "big_idea",
-            "main_message",
-            "headline",
-            "image_cta",
-            "art_guiding",
-            "status",
-            "format",
-            "ratio",
-            "resolution",
-        }
-        fields = {
-            key: value for key, value in (payload.payload or {}).items() if key in allowed_fields
-        }
-        if payload.title is not None:
-            fields["title"] = payload.title
-        updated = post_structures.update(
-            post_structure_id=content_id,
-            fields=cast(dict[str, str | None], fields),
-        )
-        unit_of_work.commit()
         return success_response(_post_structure_data(updated), request)
-    existing = unit_of_work.contents.get_by_id_for_user(
-        user_id=current_user.id,
-        content_id=content_id,
-    )
-    if existing is None:
-        raise not_found("Content")
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=existing.workspace_id
-    )
     try:
-        content = unit_of_work.contents.update(
-            content_id,
-            user_id=current_user.id,
+        content = application.update_content(
+            user=current_user,
+            content_id=content_id,
             brand_id=payload.brand_id,
             project_id=payload.project_id,
             title=payload.title,
@@ -207,7 +131,6 @@ def update_content(
         )
     except EntityNotFoundError as error:
         raise not_found("Content") from error
-    unit_of_work.commit()
     return success_response(_content_data(content), request)
 
 
@@ -217,37 +140,16 @@ def delete_content(
     content_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
 ) -> JSONResponse:
-    post_structures = getattr(unit_of_work, "post_structures", None)
-    post_structure = (
-        post_structures.get_for_user(user_id=current_user.id, post_structure_id=content_id)
-        if post_structures is not None
-        else None
-    )
+    post_structure = application.get_post_structure(user_id=current_user.id, item_id=content_id)
     if post_structure is not None:
-        assert post_structures is not None
-        require_workspace_write(
-            unit_of_work, user_id=current_user.id, workspace_id=post_structure.workspace_id
-        )
-        post_structures.soft_delete(post_structure_id=content_id)
-        unit_of_work.commit()
+        application.delete_post_structure(user=current_user, item_id=content_id)
         return success_response({"deleted": True}, request)
-    existing = unit_of_work.contents.get_by_id_for_user(
-        user_id=current_user.id,
-        content_id=content_id,
-        include_deleted=True,
-    )
-    if existing is None:
-        raise not_found("Content")
-    require_workspace_write(
-        unit_of_work, user_id=current_user.id, workspace_id=existing.workspace_id
-    )
     try:
-        unit_of_work.contents.soft_delete(user_id=current_user.id, content_id=content_id)
+        application.delete_content(user=current_user, content_id=content_id)
     except EntityNotFoundError as error:
         raise not_found("Content") from error
-    unit_of_work.commit()
     return success_response({"deleted": True}, request)
 
 
@@ -257,12 +159,11 @@ def generate_text_content(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
     llm_provider: Annotated[LLMProvider, Depends(get_llm_provider)],
 ) -> JSONResponse:
     try:
-        generated = generate_content(
-            unit_of_work=unit_of_work,
+        generated = application.generate_content(
             settings=settings,
             llm_provider=llm_provider,
             user=current_user,
@@ -365,12 +266,11 @@ def improve_text_content(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
     llm_provider: Annotated[LLMProvider, Depends(get_llm_provider)],
 ) -> JSONResponse:
     try:
-        preview = improve_content(
-            unit_of_work=unit_of_work,
+        preview = application.improve_content(
             settings=settings,
             llm_provider=llm_provider,
             user=current_user,
@@ -461,7 +361,7 @@ def improve_text_content(
 def list_content(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
     page: Annotated[int, Query(ge=1)] = 1,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     sort: Annotated[str, Query(pattern="^-?created_at$")] = "-created_at",
@@ -473,13 +373,13 @@ def list_content(
     ] = None,
 ) -> JSONResponse:
     if planning_id is not None:
-        structures = unit_of_work.post_structures.list_for_user(
+        structures = application.list_post_structures(
             user_id=current_user.id,
             planning_id=planning_id,
             page=page_request(page, limit, sort),
         )
         return success_response(page_payload(structures, _post_structure_data), request)
-    content_page = unit_of_work.contents.list_for_user(
+    content_page = application.list_content(
         user_id=current_user.id,
         filters=ContentFilters(content_type=content_type, query=q),
         page=PageRequest(

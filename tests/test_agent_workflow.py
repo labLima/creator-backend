@@ -153,6 +153,8 @@ class FakeUow:
         self.contents = FakeContents()
         self.agent_workflows = FakeWorkflowRepository(run)
         self.outbox = FakeOutbox()
+        self.brand = SimpleNamespace(brands=self.brands)
+        self.agent_workflow = SimpleNamespace(workflows=self.agent_workflows)
         self.commits = 0
 
     def commit(self) -> None:
@@ -511,6 +513,11 @@ class WorkerUow:
             create_image_generation=lambda **kwargs: SimpleNamespace(id=uuid4()),
             claim_pending_by_id=lambda job_id: SimpleNamespace(job=SimpleNamespace(id=job_id)),
         )
+        self.agent_workflow = SimpleNamespace(workflows=self.agent_workflows)
+        self.user = SimpleNamespace(users=self.users)
+        self.workspace = SimpleNamespace(workspaces=self.workspaces)
+        self.brand = SimpleNamespace(brands=self.brands, settings=self.brand_settings)
+        self.generation = SimpleNamespace(image_jobs=self.image_generations)
 
     def __enter__(self) -> WorkerUow:
         return self
@@ -648,6 +655,8 @@ def test_reviewer_stage_consumes_persisted_artist_reference(
 
         agent_workflows = Workflows()
         image_generations = Images()
+        agent_workflow = SimpleNamespace(workflows=agent_workflows)
+        generation = SimpleNamespace(image_jobs=image_generations)
         outbox = FakeOutbox()
 
         def commit(self):
@@ -757,6 +766,7 @@ def test_reviewer_rejection_and_event_consumption_share_a_commit(monkeypatch) ->
 
         agent_workflows = Workflows()
         outbox = Outbox()
+        agent_workflow = SimpleNamespace(workflows=agent_workflows)
 
         def commit(self):
             calls.append("commit")

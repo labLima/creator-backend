@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from creator.api.errors import not_found, require_admin
-from creator.api.responses import page_payload
-from creator.api.serializers import _settings_data, _user_data
+from creator.application.errors import not_found, require_admin
+from creator.application.pagination import page_payload
+from creator.application.serializers import _settings_data, _user_data
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
 from creator.uow import UnitOfWork
@@ -28,7 +28,7 @@ def get_my_settings(
     actor: UserRecord,
     request: Any,
 ) -> Any:
-    settings = uow.settings.get_or_create_for_user(actor.id)
+    settings = uow.user.settings.get_or_create_for_user(actor.id)
     uow.commit()
 
     return _settings_data(settings)
@@ -41,9 +41,9 @@ def update_my_settings(
     request: Any,
     payload: Any,
 ) -> Any:
-    uow.settings.get_or_create_for_user(actor.id)
+    uow.user.settings.get_or_create_for_user(actor.id)
     changes = payload.model_dump(exclude_unset=True)
-    settings = uow.settings.update_partial(actor.id, changes)
+    settings = uow.user.settings.update_partial(actor.id, changes)
     uow.commit()
 
     return _settings_data(settings)
@@ -59,7 +59,7 @@ def list_users(
     sort: Any,
 ) -> Any:
     require_admin(actor)
-    users = uow.users.list(page=page_request(page, limit, sort))
+    users = uow.user.users.list(page=page_request(page, limit, sort))
 
     return page_payload(users, _user_data)
 
@@ -72,7 +72,7 @@ def create_user(
     payload: Any,
 ) -> Any:
     require_admin(actor)
-    user = uow.users.add(
+    user = uow.user.users.add(
         external_id=payload.external_id,
         email=payload.email,
         display_name=payload.display_name,
@@ -91,7 +91,7 @@ def get_user(
     user_id: Any,
 ) -> Any:
     require_admin(actor)
-    user = uow.users.get_by_id(user_id)
+    user = uow.user.users.get_by_id(user_id)
     if user is None:
         raise not_found("User")
 
@@ -108,7 +108,7 @@ def update_user(
 ) -> Any:
     require_admin(actor)
     try:
-        user = uow.users.update(
+        user = uow.user.users.update(
             user_id,
             email=payload.email,
             display_name=payload.display_name,
@@ -130,7 +130,7 @@ def delete_user(
 ) -> Any:
     require_admin(actor)
     try:
-        uow.users.soft_delete(user_id)
+        uow.user.users.soft_delete(user_id)
     except EntityNotFoundError as error:
         raise not_found("User") from error
     uow.commit()

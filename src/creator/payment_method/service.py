@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from creator.api.errors import not_found
-from creator.api.serializers import _payment_method_data
+from creator.application.errors import not_found
+from creator.application.serializers import _payment_method_data
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -35,7 +35,9 @@ def create_payment_method(
     payload: Any,
 ) -> Any:
     if (
-        uow.billing_accounts.get_for_user(user_id=actor.id, account_id=payload.billing_account_id)
+        uow.billing_account.accounts.get_for_user(
+            user_id=actor.id, account_id=payload.billing_account_id
+        )
         is None
     ):
         raise not_found("Billing account")

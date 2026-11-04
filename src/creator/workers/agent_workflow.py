@@ -88,7 +88,7 @@ def _run_image_agent_workflow(
     except ValueError:
         correlation_id = parsed_run_id
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        run = unit_of_work.agent_workflows.get_internal(parsed_run_id)
+        run = unit_of_work.agent_workflow.workflows.get_internal(parsed_run_id)
         if run is None or run.status in {
             AgentWorkflowStatus.COMPLETED,
             AgentWorkflowStatus.REJECTED,
@@ -291,18 +291,18 @@ def run_pipeline_stage(
             final_image_ids.append(str(accepted_image))
 
         with SqlAlchemyUnitOfWork() as unit_of_work:
-            latest = unit_of_work.agent_workflows.get_internal(run.id)
+            latest = unit_of_work.agent_workflow.workflows.get_internal(run.id)
             if latest is None:
                 return
             if latest.human_review.value == "OPTIONAL":
-                unit_of_work.agent_workflows.transition(
+                unit_of_work.agent_workflow.workflows.transition(
                     run.id,
                     AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW,
                     current_step="REVIEWER",
                     final_image_ids=final_image_ids,
                 )
             else:
-                unit_of_work.agent_workflows.transition(
+                unit_of_work.agent_workflow.workflows.transition(
                     run.id,
                     AgentWorkflowStatus.COMPLETED,
                     current_step="DELIVERY",
@@ -328,7 +328,7 @@ def _claim_run(
     run_id: UUID, *, stage: str | None = None
 ) -> tuple[AgentWorkflowRunRecord | None, UserRecord | None]:
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        run = unit_of_work.agent_workflows.get_internal(run_id)
+        run = unit_of_work.agent_workflow.workflows.get_internal(run_id)
         if run is None:
             return None, None
         allowed_statuses = {AgentWorkflowStatus.PENDING, AgentWorkflowStatus.REFINING}
@@ -337,14 +337,14 @@ def _claim_run(
         if run.status not in allowed_statuses:
             return None, None
         user = (
-            unit_of_work.users.get_by_id(run.requested_by_user_id)
+            unit_of_work.user.users.get_by_id(run.requested_by_user_id)
             if run.requested_by_user_id
             else None
         )
         if user is None:
             return None, None
         if run.status != AgentWorkflowStatus.RUNNING:
-            run = unit_of_work.agent_workflows.transition(
+            run = unit_of_work.agent_workflow.workflows.transition(
                 run_id, AgentWorkflowStatus.RUNNING, current_step=stage or "BUSINESS"
             )
             unit_of_work.commit()
@@ -355,7 +355,7 @@ def _completed_stage_output(
     run_id: UUID, role: AgentWorkflowStepRole
 ) -> BusinessOutput | PlannerOutput | None:
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        steps = unit_of_work.agent_workflows.list_steps_internal(run_id)
+        steps = unit_of_work.agent_workflow.workflows.list_steps_internal(run_id)
     for step in reversed(steps):
         if step.role == role and step.status.value == "COMPLETED" and step.output:
             if role == AgentWorkflowStepRole.BUSINESS:
@@ -366,7 +366,7 @@ def _completed_stage_output(
 
 def _advance_stage(run_id: UUID, status: AgentWorkflowStatus, current_step: str) -> None:
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        unit_of_work.agent_workflows.transition(run_id, status, current_step=current_step)
+        unit_of_work.agent_workflow.workflows.transition(run_id, status, current_step=current_step)
         unit_of_work.commit()
 
 
@@ -384,7 +384,7 @@ def _run_artist_stage(
     with SqlAlchemyUnitOfWork() as unit_of_work:
         writer_steps = [
             step
-            for step in unit_of_work.agent_workflows.list_steps_internal(run.id)
+            for step in unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)
             if step.role == AgentWorkflowStepRole.WRITER
             and step.status.value == "COMPLETED"
             and step.output
@@ -396,7 +396,7 @@ def _run_artist_stage(
         with SqlAlchemyUnitOfWork() as unit_of_work:
             existing_artist = [
                 candidate
-                for candidate in unit_of_work.agent_workflows.list_steps_internal(run.id)
+                for candidate in unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)
                 if candidate.role == AgentWorkflowStepRole.ARTIST
                 and candidate.status.value == "COMPLETED"
                 and candidate.predecessor_step_id == step.id
@@ -419,7 +419,7 @@ def _run_artist_stage(
     with SqlAlchemyUnitOfWork() as unit_of_work:
         artist_steps = [
             step
-            for step in unit_of_work.agent_workflows.list_steps_internal(run.id)
+            for step in unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)
             if step.role == AgentWorkflowStepRole.ARTIST
             and step.status.value == "COMPLETED"
             and step.attempt == run.refinement_count + 1
@@ -444,7 +444,7 @@ def _run_artist_stage(
                 event=event,
             )
         unit_of_work.outbox.mark_consumed(source_event_id or run.id)
-        unit_of_work.agent_workflows.transition(
+        unit_of_work.agent_workflow.workflows.transition(
             run.id, AgentWorkflowStatus.RUNNING, current_step="REVIEWER"
         )
         unit_of_work.commit()
@@ -465,7 +465,7 @@ def _run_reviewer_stage(
     with SqlAlchemyUnitOfWork() as unit_of_work:
         artist_steps = [
             step
-            for step in unit_of_work.agent_workflows.list_steps_internal(run.id)
+            for step in unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)
             if step.role == AgentWorkflowStepRole.ARTIST
             and step.status.value == "COMPLETED"
             and step.output
@@ -473,7 +473,7 @@ def _run_reviewer_stage(
         ]
         writer_steps = [
             step
-            for step in unit_of_work.agent_workflows.list_steps_internal(run.id)
+            for step in unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)
             if step.role == AgentWorkflowStepRole.WRITER
             and step.status.value == "COMPLETED"
             and step.output
@@ -481,7 +481,7 @@ def _run_reviewer_stage(
         ]
         reviewer_steps = [
             step
-            for step in unit_of_work.agent_workflows.list_steps_internal(run.id)
+            for step in unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)
             if step.role == AgentWorkflowStepRole.REVIEWER
             and step.status.value == "COMPLETED"
             and getattr(step, "source_event_id", None) == (source_event_id or run.id)
@@ -495,7 +495,7 @@ def _run_reviewer_stage(
     for index, artist_step in enumerate(artist_steps, start=1):
         image_id = UUID(str(artist_step.output["image_id"]))
         with SqlAlchemyUnitOfWork() as unit_of_work:
-            image_record = unit_of_work.image_generations.get_image_for_user(
+            image_record = unit_of_work.generation.image_jobs.get_image_for_user(
                 user_id=user.id, image_id=image_id
             )
         if image_record is None or image_record.workspace_id != run.workspace_id:
@@ -565,7 +565,7 @@ def _run_reviewer_stage(
     if terminal_persisted:
         return
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        latest = unit_of_work.agent_workflows.get_internal(run.id)
+        latest = unit_of_work.agent_workflow.workflows.get_internal(run.id)
         if latest is None:
             raise RuntimeError("Agent workflow not found")
         target = (
@@ -576,10 +576,10 @@ def _run_reviewer_stage(
         current_step = (
             "REVIEWER" if target == AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW else "DELIVERY"
         )
-        unit_of_work.agent_workflows.transition(
+        unit_of_work.agent_workflow.workflows.transition(
             run.id, target, current_step=current_step, final_image_ids=final_image_ids
         )
-        steps = unit_of_work.agent_workflows.list_steps_internal(run.id)
+        steps = unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)
         latest_review = next(
             step
             for step in reversed(steps)
@@ -615,8 +615,8 @@ def _request_writer_refinement(
     with SqlAlchemyUnitOfWork() as unit_of_work:
         updated_input = dict(run.input)
         updated_input["human_feedback"] = feedback
-        unit_of_work.agent_workflows.update_input(run.id, updated_input)
-        updated = unit_of_work.agent_workflows.transition(
+        unit_of_work.agent_workflow.workflows.update_input(run.id, updated_input)
+        updated = unit_of_work.agent_workflow.workflows.transition(
             run.id,
             AgentWorkflowStatus.REFINING,
             current_step="WRITER",
@@ -654,10 +654,10 @@ def _load_brand_context(
     run: AgentWorkflowRunRecord, user_id: UUID
 ) -> tuple[JsonObject, JsonObject]:
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        brand = unit_of_work.brands.get_for_user(user_id=user_id, brand_id=run.brand_id)
+        brand = unit_of_work.brand.brands.get_for_user(user_id=user_id, brand_id=run.brand_id)
         if brand is None or brand.workspace_id != run.workspace_id:
             raise RuntimeError("Brand is outside the workflow Workspace")
-        settings = unit_of_work.brand_settings.get_for_user(user_id=user_id, brand_id=run.brand_id)
+        settings = unit_of_work.brand.settings.get_for_user(user_id=user_id, brand_id=run.brand_id)
         return (
             {
                 "id": str(brand.id),
@@ -703,25 +703,28 @@ def _execute_agent_step[OutputModel: BaseModel](
     event_item_count: int = 1,
 ) -> OutputModel:
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        run = unit_of_work.agent_workflows.get_internal(run_id)
+        run = unit_of_work.agent_workflow.workflows.get_internal(run_id)
         if run is None:
             raise RuntimeError("Agent workflow not found")
-        if run.requested_by_user_id is None or not unit_of_work.workspaces.user_has_workspace_role(
-            user_id=run.requested_by_user_id,
-            workspace_id=run.workspace_id,
-            minimum_role="editor",
+        if (
+            run.requested_by_user_id is None
+            or not unit_of_work.workspace.workspaces.user_has_workspace_role(
+                user_id=run.requested_by_user_id,
+                workspace_id=run.workspace_id,
+                minimum_role="editor",
+            )
         ):
             raise AgentKickoffError(
                 AgentKickoffErrorCode.WORKSPACE_UNAUTHORIZED,
                 "Workspace is not authorized for agent execution",
             )
-        principal_record = unit_of_work.users.get_by_id(run.requested_by_user_id)
+        principal_record = unit_of_work.user.users.get_by_id(run.requested_by_user_id)
         if principal_record is None:
             raise AgentKickoffError(
                 AgentKickoffErrorCode.WORKSPACE_UNAUTHORIZED,
                 "Principal is not available for agent execution",
             )
-        existing_steps = unit_of_work.agent_workflows.list_steps_internal(run_id)
+        existing_steps = unit_of_work.agent_workflow.workflows.list_steps_internal(run_id)
         if source_event_id is not None:
             completed = next(
                 (
@@ -754,7 +757,7 @@ def _execute_agent_step[OutputModel: BaseModel](
                 except Exception as exc:
                     raise RuntimeError("Completed pipeline output is invalid") from exc
         sequence = len(existing_steps) + 1
-        step = unit_of_work.agent_workflows.add_step(
+        step = unit_of_work.agent_workflow.workflows.add_step(
             run_id=run_id,
             workspace_id=run.workspace_id,
             sequence_number=sequence,
@@ -784,14 +787,14 @@ def _execute_agent_step[OutputModel: BaseModel](
         )
     except AgentKickoffError as error:
         with SqlAlchemyUnitOfWork() as unit_of_work:
-            unit_of_work.agent_workflows.fail_step(
+            unit_of_work.agent_workflow.workflows.fail_step(
                 step.id, error_code=error.code.value, error_message=str(error)
             )
             unit_of_work.commit()
         raise
     except Exception:
         with SqlAlchemyUnitOfWork() as unit_of_work:
-            unit_of_work.agent_workflows.fail_step(
+            unit_of_work.agent_workflow.workflows.fail_step(
                 step.id,
                 error_code=AgentKickoffErrorCode.PROVIDER_FAILURE.value,
                 error_message="Specialist agent failed",
@@ -799,7 +802,7 @@ def _execute_agent_step[OutputModel: BaseModel](
             unit_of_work.commit()
         raise
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        persisted_steps = unit_of_work.agent_workflows.list_steps_internal(run_id)
+        persisted_steps = unit_of_work.agent_workflow.workflows.list_steps_internal(run_id)
         predecessor = next(
             (
                 candidate
@@ -808,7 +811,7 @@ def _execute_agent_step[OutputModel: BaseModel](
             ),
             None,
         )
-        unit_of_work.agent_workflows.complete_step(
+        unit_of_work.agent_workflow.workflows.complete_step(
             step.id,
             output=result.output.model_dump(mode="json"),
             prompt=result.prompt,
@@ -949,13 +952,13 @@ def _run_post_until_accepted(
             "; ".join(review.feedback) or "Improve adherence to the briefing and brand direction."
         )
         with SqlAlchemyUnitOfWork() as unit_of_work:
-            unit_of_work.agent_workflows.transition(
+            unit_of_work.agent_workflow.workflows.transition(
                 run.id,
                 AgentWorkflowStatus.REFINING,
                 current_step="WRITER",
                 refinement_count=refinement_count,
             )
-            unit_of_work.agent_workflows.transition(
+            unit_of_work.agent_workflow.workflows.transition(
                 run.id, AgentWorkflowStatus.RUNNING, current_step="WRITER"
             )
             unit_of_work.commit()
@@ -984,13 +987,13 @@ def _generate_workflow_image(
     }
     external_id = f"agent-workflow:{run.id}:{index}:{refinement_count}"
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        existing = unit_of_work.image_generations.get_status_by_external_id_for_user(
+        existing = unit_of_work.generation.image_jobs.get_status_by_external_id_for_user(
             user_id=user.id, external_id=external_id
         )
         job = (
             existing.job
             if existing is not None
-            else unit_of_work.image_generations.create_image_generation(
+            else unit_of_work.generation.image_jobs.create_image_generation(
                 workspace_id=run.workspace_id,
                 content_id=run.content_id,
                 requested_by_user_id=user.id,
@@ -1030,7 +1033,7 @@ def _generate_workflow_image(
             metadata=image_record.metadata,
         )
     with SqlAlchemyUnitOfWork() as unit_of_work:
-        work_item = unit_of_work.image_generations.claim_pending_by_id(job.id)
+        work_item = unit_of_work.generation.image_jobs.claim_pending_by_id(job.id)
         unit_of_work.commit()
     if work_item is None:
         raise RuntimeError("Image Generation Job could not be claimed")
@@ -1092,7 +1095,7 @@ def _persist_artist_step(
             source_event_id=source_event_id,
             stage_item=index,
         )
-        step = unit_of_work.agent_workflows.list_steps_internal(run.id)[-1]
+        step = unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)[-1]
         outbox = getattr(unit_of_work, "outbox", None)
         if emit_event and outbox is not None:
             outbox.add(
@@ -1148,7 +1151,7 @@ def _persist_review_step(
             source_event_id=source_event_id,
             stage_item=index,
         )
-        step = unit_of_work.agent_workflows.list_steps_internal(run.id)[-1]
+        step = unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)[-1]
         outbox = getattr(unit_of_work, "outbox", None)
         if emit_event and outbox is not None:
             outbox.add(
@@ -1176,14 +1179,14 @@ def _persist_review_step(
             current_step = (
                 "REVIEWER" if target == AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW else "DELIVERY"
             )
-            unit_of_work.agent_workflows.transition(
+            unit_of_work.agent_workflow.workflows.transition(
                 run.id,
                 target,
                 current_step=current_step,
                 final_image_ids=terminal_image_ids,
             )
         if terminal_rejection is not None:
-            unit_of_work.agent_workflows.transition(
+            unit_of_work.agent_workflow.workflows.transition(
                 run.id,
                 AgentWorkflowStatus.REJECTED,
                 current_step="REVIEWER",
@@ -1206,17 +1209,17 @@ def _execute_artifact_step(
     source_event_id: UUID | None = None,
     stage_item: int = 0,
 ) -> None:
-    step = unit_of_work.agent_workflows.add_step(
+    step = unit_of_work.agent_workflow.workflows.add_step(
         run_id=run.id,
         workspace_id=run.workspace_id,
-        sequence_number=len(unit_of_work.agent_workflows.list_steps_internal(run.id)) + 1,
+        sequence_number=len(unit_of_work.agent_workflow.workflows.list_steps_internal(run.id)) + 1,
         role=role,
         attempt=run.refinement_count + 1,
         input=input,
         source_event_id=source_event_id,
         stage_item=stage_item,
     )
-    unit_of_work.agent_workflows.complete_step(
+    unit_of_work.agent_workflow.workflows.complete_step(
         step.id,
         output=output,
         decision=str(output.get("decision", "")) or None,
@@ -1227,14 +1230,14 @@ def _execute_artifact_step(
 def _fail_workflow(run_id: UUID, code: str, message: str) -> None:
     try:
         with SqlAlchemyUnitOfWork() as unit_of_work:
-            run = unit_of_work.agent_workflows.get_internal(run_id)
+            run = unit_of_work.agent_workflow.workflows.get_internal(run_id)
             if run is None or run.status in {
                 AgentWorkflowStatus.COMPLETED,
                 AgentWorkflowStatus.REJECTED,
                 AgentWorkflowStatus.FAILED,
             }:
                 return
-            unit_of_work.agent_workflows.transition(
+            unit_of_work.agent_workflow.workflows.transition(
                 run_id,
                 AgentWorkflowStatus.FAILED,
                 current_step=run.current_step,
@@ -1251,14 +1254,14 @@ def _fail_workflow(run_id: UUID, code: str, message: str) -> None:
 def _reject_workflow(run_id: UUID, code: str, message: str) -> None:
     try:
         with SqlAlchemyUnitOfWork() as unit_of_work:
-            run = unit_of_work.agent_workflows.get_internal(run_id)
+            run = unit_of_work.agent_workflow.workflows.get_internal(run_id)
             if run is None or run.status in {
                 AgentWorkflowStatus.COMPLETED,
                 AgentWorkflowStatus.REJECTED,
                 AgentWorkflowStatus.FAILED,
             }:
                 return
-            unit_of_work.agent_workflows.transition(
+            unit_of_work.agent_workflow.workflows.transition(
                 run_id,
                 AgentWorkflowStatus.REJECTED,
                 current_step=run.current_step,

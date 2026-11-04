@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from creator.api.errors import HTTPException, not_found
-from creator.api.serializers import _billing_account_data, _billing_address_data
+from creator.application.errors import HTTPException, not_found
+from creator.application.serializers import _billing_account_data, _billing_address_data
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -20,7 +20,7 @@ def list_billing_addresses(
     return {
         "items": [
             _billing_address_data(x)
-            for x in uow.billing_addresses.list_for_user(
+            for x in uow.billing_account.addresses.list_for_user(
                 user_id=actor.id, account_id=billing_account_id
             )
         ]
@@ -35,13 +35,15 @@ def create_billing_address(
     payload: Any,
 ) -> Any:
     if (
-        uow.billing_accounts.get_for_user(user_id=actor.id, account_id=payload.billing_account_id)
+        uow.billing_account.accounts.get_for_user(
+            user_id=actor.id, account_id=payload.billing_account_id
+        )
         is None
     ):
         raise not_found("Billing account")
     data = payload.model_dump()
     account_id = data.pop("billing_account_id")
-    item = uow.billing_addresses.add(billing_account_id=account_id, fields=data)
+    item = uow.billing_account.addresses.add(billing_account_id=account_id, fields=data)
     uow.commit()
 
     return _billing_address_data(item)
@@ -54,7 +56,7 @@ def get_billing_address(
     request: Any,
     address_id: Any,
 ) -> Any:
-    item = uow.billing_addresses.get_for_user(user_id=actor.id, address_id=address_id)
+    item = uow.billing_account.addresses.get_for_user(user_id=actor.id, address_id=address_id)
     if item is None:
         raise not_found("Billing address")
 
@@ -69,9 +71,9 @@ def update_billing_address(
     address_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.billing_addresses.get_for_user(user_id=actor.id, address_id=address_id) is None:
+    if uow.billing_account.addresses.get_for_user(user_id=actor.id, address_id=address_id) is None:
         raise not_found("Billing address")
-    item = uow.billing_addresses.update(
+    item = uow.billing_account.addresses.update(
         address_id=address_id, fields=payload.model_dump(exclude_unset=True)
     )
     uow.commit()
@@ -86,9 +88,9 @@ def delete_billing_address(
     request: Any,
     address_id: Any,
 ) -> Any:
-    if uow.billing_addresses.get_for_user(user_id=actor.id, address_id=address_id) is None:
+    if uow.billing_account.addresses.get_for_user(user_id=actor.id, address_id=address_id) is None:
         raise not_found("Billing address")
-    uow.billing_addresses.soft_delete(address_id=address_id)
+    uow.billing_account.addresses.soft_delete(address_id=address_id)
     uow.commit()
 
     return {"deleted": True}
@@ -100,7 +102,7 @@ def list_billing_accounts(
     actor: UserRecord,
     request: Any,
 ) -> Any:
-    items = uow.billing_accounts.list_for_user(user_id=actor.id)
+    items = uow.billing_account.accounts.list_for_user(user_id=actor.id)
 
     return {"items": [_billing_account_data(item) for item in items]}
 
@@ -114,7 +116,7 @@ def create_billing_account(
 ) -> Any:
     if payload.user_id != actor.id:
         raise HTTPException(status_code=403, detail="Billing account belongs to another Principal")
-    item = uow.billing_accounts.add(
+    item = uow.billing_account.accounts.add(
         user_id=actor.id,
         payer_type=payload.payer_type,
         name=payload.name,
@@ -135,7 +137,7 @@ def get_billing_account(
     request: Any,
     account_id: Any,
 ) -> Any:
-    item = uow.billing_accounts.get_for_user(user_id=actor.id, account_id=account_id)
+    item = uow.billing_account.accounts.get_for_user(user_id=actor.id, account_id=account_id)
     if item is None:
         raise not_found("Billing account")
 
@@ -150,9 +152,9 @@ def update_billing_account(
     account_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.billing_accounts.get_for_user(user_id=actor.id, account_id=account_id) is None:
+    if uow.billing_account.accounts.get_for_user(user_id=actor.id, account_id=account_id) is None:
         raise not_found("Billing account")
-    item = uow.billing_accounts.update(
+    item = uow.billing_account.accounts.update(
         user_id=actor.id,
         account_id=account_id,
         fields=payload.model_dump(exclude_unset=True),
@@ -169,9 +171,9 @@ def delete_billing_account(
     request: Any,
     account_id: Any,
 ) -> Any:
-    if uow.billing_accounts.get_for_user(user_id=actor.id, account_id=account_id) is None:
+    if uow.billing_account.accounts.get_for_user(user_id=actor.id, account_id=account_id) is None:
         raise not_found("Billing account")
-    uow.billing_accounts.soft_delete(user_id=actor.id, account_id=account_id)
+    uow.billing_account.accounts.soft_delete(user_id=actor.id, account_id=account_id)
     uow.commit()
 
     return {"deleted": True}

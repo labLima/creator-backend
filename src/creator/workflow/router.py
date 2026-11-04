@@ -13,9 +13,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 
 from creator.api.dependencies import (
+    get_agent_workflow_application,
     get_current_user,
     get_generation_queue,
-    get_uow,
 )
 from creator.api.errors import not_found
 from creator.api.responses import request_id_for, success_response
@@ -24,19 +24,17 @@ from creator.config import Settings, get_settings
 from creator.domain.agent_workflow import WorkflowDecision
 from creator.domain.exceptions import EntityNotFoundError
 from creator.generation.ports import GenerationQueue
-from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 from creator.workflow.schemas import (
     ImageWorkflowDecisionRequest,
     ImageWorkflowRequest,
 )
 from creator.workflow.service import (
+    AgentWorkflowApplication,
     AgentWorkflowDecisionError,
     AgentWorkflowIdempotencyConflictError,
     AgentWorkflowInputError,
     StartImageWorkflowCommand,
-    decide_image_workflow,
-    start_image_workflow,
 )
 
 router = APIRouter()
@@ -49,12 +47,11 @@ def create_image_workflow(
     idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=128)],
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AgentWorkflowApplication, Depends(get_agent_workflow_application)],
     queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
 ) -> JSONResponse:
     try:
-        run = start_image_workflow(
-            unit_of_work=unit_of_work,
+        run = application.start(
             queue=queue,
             settings=settings,
             user=current_user,
@@ -91,11 +88,12 @@ def get_image_workflow(
     workflow_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AgentWorkflowApplication, Depends(get_agent_workflow_application)],
 ) -> JSONResponse:
-    run = unit_of_work.agent_workflows.get_for_user(user_id=current_user.id, run_id=workflow_id)
-    if run is None:
-        raise not_found("Agent workflow")
+    try:
+        run = application.get_run(user_id=current_user.id, run_id=workflow_id)
+    except EntityNotFoundError as error:
+        raise not_found("Agent workflow") from error
     return success_response(_agent_workflow_data(run), request)
 
 
@@ -104,13 +102,12 @@ def list_image_workflow_steps(
     workflow_id: Annotated[UUID, Path(alias="id")],
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AgentWorkflowApplication, Depends(get_agent_workflow_application)],
 ) -> JSONResponse:
-    steps = unit_of_work.agent_workflows.list_steps_for_user(
-        user_id=current_user.id, run_id=workflow_id
-    )
-    if steps is None:
-        raise not_found("Agent workflow")
+    try:
+        steps = application.list_steps(user_id=current_user.id, run_id=workflow_id)
+    except EntityNotFoundError as error:
+        raise not_found("Agent workflow") from error
     return success_response({"items": [_agent_workflow_step_data(step) for step in steps]}, request)
 
 
@@ -120,12 +117,11 @@ def decide_image_workflow_route(
     payload: ImageWorkflowDecisionRequest,
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
+    application: Annotated[AgentWorkflowApplication, Depends(get_agent_workflow_application)],
     queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
 ) -> JSONResponse:
     try:
-        run = decide_image_workflow(
-            unit_of_work=unit_of_work,
+        run = application.decide(
             queue=queue,
             run_id=workflow_id,
             user=current_user,

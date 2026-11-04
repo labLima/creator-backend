@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from creator.api.errors import not_found, require_workspace_write
-from creator.api.serializers import (
+from creator.application.errors import not_found, require_workspace_write
+from creator.application.serializers import (
     _notification_data,
     _notification_preference_data,
     _notification_recipient_data,
@@ -24,7 +24,7 @@ def list_notification_recipients(
     return {
         "items": [
             _notification_recipient_data(x)
-            for x in uow.notification_recipients.list_for_user(user_id=actor.id)
+            for x in uow.notification.recipients.list_for_user(user_id=actor.id)
         ]
     }
 
@@ -37,7 +37,7 @@ def create_notification_recipient(
     payload: Any,
 ) -> Any:
     payload["user_id"] = actor.id
-    item = uow.notification_recipients.add(fields=payload)
+    item = uow.notification.recipients.add(fields=payload)
     uow.commit()
 
     return _notification_recipient_data(item)
@@ -50,7 +50,7 @@ def get_notification_recipient(
     request: Any,
     recipient_id: Any,
 ) -> Any:
-    item = uow.notification_recipients.get_for_user(user_id=actor.id, recipient_id=recipient_id)
+    item = uow.notification.recipients.get_for_user(user_id=actor.id, recipient_id=recipient_id)
     if item is None:
         raise not_found("Notification recipient")
 
@@ -66,11 +66,11 @@ def update_notification_recipient(
     payload: Any,
 ) -> Any:
     if (
-        uow.notification_recipients.get_for_user(user_id=actor.id, recipient_id=recipient_id)
+        uow.notification.recipients.get_for_user(user_id=actor.id, recipient_id=recipient_id)
         is None
     ):
         raise not_found("Notification recipient")
-    item = uow.notification_recipients.update(recipient_id=recipient_id, fields=payload)
+    item = uow.notification.recipients.update(recipient_id=recipient_id, fields=payload)
     uow.commit()
 
     return _notification_recipient_data(item)
@@ -84,11 +84,11 @@ def delete_notification_recipient(
     recipient_id: Any,
 ) -> Any:
     if (
-        uow.notification_recipients.get_for_user(user_id=actor.id, recipient_id=recipient_id)
+        uow.notification.recipients.get_for_user(user_id=actor.id, recipient_id=recipient_id)
         is None
     ):
         raise not_found("Notification recipient")
-    uow.notification_recipients.soft_delete(recipient_id=recipient_id)
+    uow.notification.recipients.soft_delete(recipient_id=recipient_id)
     uow.commit()
 
     return {"deleted": True}
@@ -101,7 +101,9 @@ def list_notifications(
     request: Any,
     workspace_id: Any,
 ) -> Any:
-    items = uow.notifications.list_for_user(user_id=actor.id, workspace_id=workspace_id)
+    items = uow.notification.notifications.list_for_user(
+        user_id=actor.id, workspace_id=workspace_id
+    )
 
     return {"items": [_notification_data(item) for item in items]}
 
@@ -114,7 +116,7 @@ def create_notification(
     payload: Any,
 ) -> Any:
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
-    item = uow.notifications.add(
+    item = uow.notification.notifications.add(
         workspace_id=payload.workspace_id,
         created_by=actor.id,
         type=payload.type,
@@ -136,7 +138,9 @@ def get_notification(
     request: Any,
     notification_id: Any,
 ) -> Any:
-    item = uow.notifications.get_for_user(user_id=actor.id, notification_id=notification_id)
+    item = uow.notification.notifications.get_for_user(
+        user_id=actor.id, notification_id=notification_id
+    )
     if item is None:
         raise not_found("Notification")
 
@@ -151,11 +155,13 @@ def update_notification(
     notification_id: Any,
     payload: Any,
 ) -> Any:
-    existing = uow.notifications.get_for_user(user_id=actor.id, notification_id=notification_id)
+    existing = uow.notification.notifications.get_for_user(
+        user_id=actor.id, notification_id=notification_id
+    )
     if existing is None:
         raise not_found("Notification")
     require_workspace_write(uow, user_id=actor.id, workspace_id=existing.workspace_id)
-    item = uow.notifications.update(
+    item = uow.notification.notifications.update(
         notification_id=notification_id, fields=payload.model_dump(exclude_unset=True)
     )
     uow.commit()
@@ -170,11 +176,13 @@ def delete_notification(
     request: Any,
     notification_id: Any,
 ) -> Any:
-    existing = uow.notifications.get_for_user(user_id=actor.id, notification_id=notification_id)
+    existing = uow.notification.notifications.get_for_user(
+        user_id=actor.id, notification_id=notification_id
+    )
     if existing is None:
         raise not_found("Notification")
     require_workspace_write(uow, user_id=actor.id, workspace_id=existing.workspace_id)
-    uow.notifications.soft_delete(notification_id=notification_id)
+    uow.notification.notifications.soft_delete(notification_id=notification_id)
     uow.commit()
 
     return {"deleted": True}
@@ -186,7 +194,7 @@ def list_user_devices(
     actor: UserRecord,
     request: Any,
 ) -> Any:
-    items = uow.user_devices.list_for_user(user_id=actor.id)
+    items = uow.notification.devices.list_for_user(user_id=actor.id)
 
     return {"items": [_user_device_data(item) for item in items]}
 
@@ -198,7 +206,7 @@ def create_user_device(
     request: Any,
     payload: Any,
 ) -> Any:
-    item = uow.user_devices.add(
+    item = uow.notification.devices.add(
         user_id=actor.id, platform=payload.platform, fcm_token=payload.fcm_token
     )
     uow.commit()
@@ -213,7 +221,7 @@ def get_user_device(
     request: Any,
     device_id: Any,
 ) -> Any:
-    item = uow.user_devices.get_for_user(user_id=actor.id, device_id=device_id)
+    item = uow.notification.devices.get_for_user(user_id=actor.id, device_id=device_id)
     if item is None:
         raise not_found("User device")
 
@@ -228,9 +236,9 @@ def update_user_device(
     device_id: Any,
     payload: Any,
 ) -> Any:
-    if uow.user_devices.get_for_user(user_id=actor.id, device_id=device_id) is None:
+    if uow.notification.devices.get_for_user(user_id=actor.id, device_id=device_id) is None:
         raise not_found("User device")
-    item = uow.user_devices.update(
+    item = uow.notification.devices.update(
         user_id=actor.id,
         device_id=device_id,
         fields=payload.model_dump(exclude_unset=True),
@@ -247,9 +255,9 @@ def delete_user_device(
     request: Any,
     device_id: Any,
 ) -> Any:
-    if uow.user_devices.get_for_user(user_id=actor.id, device_id=device_id) is None:
+    if uow.notification.devices.get_for_user(user_id=actor.id, device_id=device_id) is None:
         raise not_found("User device")
-    uow.user_devices.soft_delete(user_id=actor.id, device_id=device_id)
+    uow.notification.devices.soft_delete(user_id=actor.id, device_id=device_id)
     uow.commit()
 
     return {"deleted": True}
@@ -261,7 +269,7 @@ def list_notification_preferences(
     actor: UserRecord,
     request: Any,
 ) -> Any:
-    items = uow.notification_preferences.list_for_user(user_id=actor.id)
+    items = uow.notification.preferences.list_for_user(user_id=actor.id)
 
     return {"items": [_notification_preference_data(item) for item in items]}
 
@@ -273,7 +281,7 @@ def create_notification_preference(
     request: Any,
     payload: Any,
 ) -> Any:
-    item = uow.notification_preferences.add(
+    item = uow.notification.preferences.add(
         user_id=actor.id,
         type=payload.type,
         channel=payload.channel,
@@ -291,7 +299,7 @@ def get_notification_preference(
     request: Any,
     preference_id: Any,
 ) -> Any:
-    item = uow.notification_preferences.get_for_user(user_id=actor.id, preference_id=preference_id)
+    item = uow.notification.preferences.get_for_user(user_id=actor.id, preference_id=preference_id)
     if item is None:
         raise not_found("Notification preference")
 
@@ -307,11 +315,11 @@ def update_notification_preference(
     payload: Any,
 ) -> Any:
     if (
-        uow.notification_preferences.get_for_user(user_id=actor.id, preference_id=preference_id)
+        uow.notification.preferences.get_for_user(user_id=actor.id, preference_id=preference_id)
         is None
     ):
         raise not_found("Notification preference")
-    item = uow.notification_preferences.update(
+    item = uow.notification.preferences.update(
         user_id=actor.id,
         preference_id=preference_id,
         fields=payload.model_dump(exclude_unset=True),
@@ -329,11 +337,11 @@ def delete_notification_preference(
     preference_id: Any,
 ) -> Any:
     if (
-        uow.notification_preferences.get_for_user(user_id=actor.id, preference_id=preference_id)
+        uow.notification.preferences.get_for_user(user_id=actor.id, preference_id=preference_id)
         is None
     ):
         raise not_found("Notification preference")
-    uow.notification_preferences.soft_delete(user_id=actor.id, preference_id=preference_id)
+    uow.notification.preferences.soft_delete(user_id=actor.id, preference_id=preference_id)
     uow.commit()
 
     return {"deleted": True}
