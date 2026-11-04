@@ -11,7 +11,7 @@ Creator é um backend Python/FastAPI multi-tenant, contract-first, com isolament
 por Workspace, autenticação própria, SQLite como banco padrão e providers
 externos atrás de interfaces.
 
-A branch `dev` é a linha de integração. A `main` é release, está 116 commits
+A branch `dev` é a linha de integração. A `main` é release, está 117 commits
 atrás da `dev` e o CI remoto atual dela está vermelho; o HEAD da `dev` está
 verde.
 
@@ -96,8 +96,9 @@ Issues reescritas ou corrigidas:
 O job de qualidade executa `make check`; o de segurança executa `pip-audit` e
 Gitleaks; o de contrato valida a paridade OpenAPI e o build; o de E2E executa
 `make e2e`; o de containers sobe o Compose e valida health/migrations/worker.
-O HEAD da `dev` (`33518ea`) passou nesses jobs. A `main` está atrás e com CI
-vermelho; a release precisa de um PR `dev → main` quando for decidida.
+Os commits `33518ea` (base da auditoria) e `21456f6` (CONTEXT/docs) passaram
+nesses jobs. A `main` está atrás e com CI vermelho; a release precisa de um PR
+`dev → main` quando for decidida.
 
 ## Leituras principais
 
