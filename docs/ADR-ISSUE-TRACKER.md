@@ -124,7 +124,7 @@ dispensa abaixo; nenhuma decisão arquitetural nova é aberta por estas linhas.
 | #106 | Deixa de depender de ETL/legado; foco em constraints, índices, models legados e cobertura OpenAPI. |
 | #110 | Critérios da Fase 2 atualizados para Planning/Content feedback/Activity/Credits. |
 | #111 | Critérios da Fase 3 atualizados; event-driven pipeline e CrewAI já entregues. |
-| #133 | Consolidação de repositórios concluída (27 arquivos); restam 23 `service.py` e 4 routers. |
+| #133 | Concluída no PR [#137](https://github.com/labLima/creator-backend/pull/137): nenhum `service.py` importa `creator.api` e os routers não acessam UoW diretamente. |
 
 ## Regras de atualização
 

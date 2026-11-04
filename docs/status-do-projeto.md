@@ -67,14 +67,12 @@ Issues reescritas ou corrigidas:
 - #49 — Brand Knowledge volta a ser pendente; o schema anterior foi removido.
 - #54 — créditos voltam a ser pendentes; o schema antigo foi removido e o ledger
   real (wallet/saldo/preços/idempotência) não existe.
-- #133 — consolidação de repositórios concluída (27 arquivos); restam 23
-  `service.py` que importam `creator.api` e 4 routers que usam o UoW.
+- #133 — consolidação estrutural concluída no PR
+  [#137](https://github.com/labLima/creator-backend/pull/137): nenhum
+  `service.py` importa `creator.api` e os routers não acessam UoW diretamente.
 
 ## Pendências conhecidas
 
-- Consolidação estrutural complementar: 23 `service.py` ainda importam
-  `creator.api`; 4 routers acessam o UoW diretamente — ver
-  [0049](issues/0049-flat-layout-consolidation.md) / #133.
 - Backlog de segurança pré-existente S1–S13 — ver
   [0046](issues/0046-security-backlog-after-modularization.md). S1 corrigido;
   S2–S13 abertos.
