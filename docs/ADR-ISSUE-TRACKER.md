@@ -103,7 +103,7 @@ dispensa abaixo; nenhuma decisão arquitetural nova é aberta por estas linhas.
 | --- | --- | --- | --- |
 | #53 | #34 / ADR-001 | Fase 5 | Cache é performance/avaliação, não boundary de Provider. |
 | #79, #80 | #36 / ADR-003 + ADR-016 | Fase 3 | A generalização do Generation Job é decisão da ADR-016; executores seguem na Fase 3. |
-| #50, #51, #54, #106 | #38 / ADR-005 | Fase 2 | A decisão SQLAlchemy/Alembic permanece; o trabalho restante é de produto/schema. |
+| #50, #51, #54 | #38 / ADR-005 | Fase 2 | A decisão SQLAlchemy/Alembic permanece; o trabalho restante é de produto/schema. |
 | #135 | #40 / ADR-007 | Fase 2 | Paridade de operationId/error responses é implementação do contrato, não nova decisão. |
 | #52 | #43 / ADR-010 | Fase 2 | Activity timeline é implementação de governança, não nova decisão. |
 | #15, #20 | #37 / ADR-004 | Fase 2 | ADR-004 foi substituída pela ADR-020; auth/segurança seguem na Fase 2. |
