@@ -19,4 +19,6 @@ defaults PostgreSQL no runtime da aplicação.
 
 ## Issues vinculadas
 
-#2, #3, #5, #6, #12, #19 e #29. Consulte o [tracker central](../ADR-ISSUE-TRACKER.md).
+#2, #3, #5, #6, #12, #19 e #29 (fechada como não planejada em 2026-11-04, pois
+PostgreSQL/Testcontainers foram substituídos pela ADR-021/SQLite). Consulte o
+[tracker central](../ADR-ISSUE-TRACKER.md).

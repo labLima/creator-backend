@@ -1,6 +1,6 @@
 # Status do projeto Creator
 
-Atualizado em: 2026-11-03
+Atualizado em: 2026-11-04
 
 Este documento é um **snapshot datado**. O estado canônico das issues está no
 GitHub (`labLima/creator-backend`) e no `docs/ADR-ISSUE-TRACKER.md`.
@@ -11,7 +11,9 @@ Creator é um backend Python/FastAPI multi-tenant, contract-first, com isolament
 por Workspace, autenticação própria, SQLite como banco padrão e providers
 externos atrás de interfaces.
 
-A branch `dev` é a linha de integração. A `main` é release e está atrás da `dev`.
+A branch `dev` é a linha de integração. A `main` é release, está mais de 100
+commits atrás da `dev` e o CI remoto atual dela está vermelho; o HEAD da `dev`
+está verde.
 
 ## O que está concluído
 
@@ -29,67 +31,78 @@ A branch `dev` é a linha de integração. A `main` é release e está atrás da
   Supabase opcional, RQ e idempotência.
 - Workflow multiagente Business → Planner → Writer → Artist → Reviewer, com
   runs/steps persistidos, reviewer multimodal e pipeline tipado.
+- Configurações v3 dos agentes (goal, backstory, task, expected output) e
+  adapter CrewAI atrás da factory; flag desligada falha fechada.
 - Rate limiting distribuído, métricas Prometheus, Ruff, mypy e pytest.
-- Contrato OpenAPI estático em paridade com `app.openapi()` (teste de CI).
+- Contrato OpenAPI estático em paridade de paths/methods/security com
+  `app.openapi()`; operationIds e error responses ainda divergem (#135).
 
-## Fase -1 concluída
+## Fases encerradas
 
-A milestone `00 · Fase -1 — Correções e Fundação Técnica` foi concluída em 2026-10-26 (22/22 issues). Ela entregou:
+- `00 · Fase -1 — Correções e Fundação Técnica`: 22/22 issues.
+- `01 · Fase 0 — Arquitetura e Governança`: 2/2 issues.
+- `02 · Fase 1 — Fundação e Plataforma`: 18/18 issues; evidências em
+  [`docs/milestones/fase-1-encerramento.md`](milestones/fase-1-encerramento.md).
+- `07 · Auth JWT em cookies`: 13/13 issues.
 
-- security gate, lint/type e E2E no CI;
-- Docker Compose com SQLite em volume, Redis, API, worker e migrations;
-- `make dev/start`, `dev/stop`, `dev/clean`;
-- autenticação própria (ADR-020);
-- SQLite e tipos portáveis (ADR-021);
-- correção do entrypoint `creator-worker`;
-- documentação e governança.
+## Auditoria de issues de 2026-11-04
 
-O PR #115 foi mergeado em `dev`. O CI da `dev` passou em quality, security, contract, e2e e containers. A milestone está fechada; as fases seguintes estão desbloqueadas.
+Encerramentos por implementação ou obsolescência:
 
-## Fase 1 encerrada
+- #29 — testes PostgreSQL/Testcontainers: obsoleta pela ADR-021 (SQLite);
+  testes de repositório/integridade já existem em SQLite.
+- #63 — configurações reais dos agentes: entregue em `AGENT_DESIGNS` v3.0 e
+  testes golden.
+- #64 — integração CrewAI: entregue no adapter, factory e worker, com testes.
+- #66 — boundary Artist/Reviewer: registrado em ADR-014 e na documentação de
+  compatibilidade.
+- #134 — paridade com Create Bloom/ETL: encerrada como não planejada; o produto
+  está sendo construído com arquitetura nova (ver
+  [0050](issues/0050-legacy-behavior-parity.md)).
 
-A milestone `02 · Fase 1 — Fundação e Plataforma` foi encerrada em 2026-11-03
-no merge `1530067` do PR [#136](https://github.com/labLima/creator-backend/pull/136).
-Ela está com 0 issues abertas e 18 fechadas. O registro de evidências, critérios e
-dispensas está em [`docs/milestones/fase-1-encerramento.md`](milestones/fase-1-encerramento.md).
+Issues reescritas ou corrigidas:
 
-Os itens de operação de produção (#23, #24, #31, #32) foram explicitamente
-dispensados para a Fase 4; a paridade de comportamento do legado foi transferida
-para a [#134](https://github.com/labLima/creator-backend/issues/134).
+- #50 — passou de “calendário editorial” para lifecycle de Planning.
+- #49 — Brand Knowledge volta a ser pendente; o schema anterior foi removido.
+- #54 — créditos voltam a ser pendentes; o schema antigo foi removido e o ledger
+  real (wallet/saldo/preços/idempotência) não existe.
+- #133 — consolidação de repositórios concluída (27 arquivos); restam 23
+  `service.py` que importam `creator.api` e 4 routers que usam o UoW.
 
 ## Pendências conhecidas
 
 - Consolidação estrutural complementar: 23 `service.py` ainda importam
-  `creator.api`, 4 routers acessam o UoW diretamente e os 47 repositórios por
-  agregado (fase 5 da ADR-023) seguem pendentes — ver
+  `creator.api`; 4 routers acessam o UoW diretamente — ver
   [0049](issues/0049-flat-layout-consolidation.md) / #133.
 - Backlog de segurança pré-existente S1–S13 — ver
   [0046](issues/0046-security-backlog-after-modularization.md). S1 corrigido;
   S2–S13 abertos.
-- Paridade de comportamento com o legado e ETL — ver
-  [0050](issues/0050-legacy-behavior-parity.md) / #134.
-- Paridade de `operationId` OpenAPI — ver
+- Paridade de `operationId`/error responses do OpenAPI — ver
   [0051](issues/0051-openapi-operation-id-parity.md) / #135.
-- Brand Knowledge ainda não tem repositórios/casos de uso completos (#49).
-- Créditos têm schema e ledger, mas o lifecycle e os consumidores ainda precisam
-  ser fechados (#54).
-- O adapter CrewAI existe atrás de `CREWAI_ENABLED`; com a flag desligada ou CrewAI não
-  instalado, o fallback é o runner determinístico/unconfigured (#64).
-- Jobs COPY/CAPTION ainda não têm executores/filas (#79).
-- RAG, tool calling e ingestão por Workspace (#73–#77) não começaram.
+- Brand Knowledge e RAG ainda não têm schema ativo, ingestão nem retriever
+  configurado (#49, #74–#77).
+- Créditos têm apenas a tabela genérica `workspace_credit_transactions`; wallet,
+  ledger, preços e débito atômico continuam pendentes (#54).
+- O adapter CrewAI existe atrás de `CREWAI_ENABLED`; com a flag desligada ou
+  CrewAI não instalado, o fallback é o runner determinístico/unconfigured.
+- Jobs COPY/CAPTION ainda não têm executores/filas (#79/#80).
 - Operação de produção (#23, #24, #31, #32) permanece na Fase 4.
 - Cache de geração e avaliação de agentes/RAG (#53, #78) pendentes.
+- Publicação, performance signal e feedback de conteúdo ainda não existem;
+  ver CONTEXT.md.
 
 ## Estado do CI
 
 O job de qualidade executa `make check`; o de segurança executa `pip-audit` e
 Gitleaks; o de contrato valida a paridade OpenAPI e o build; o de E2E executa
 `make e2e`; o de containers sobe o Compose e valida health/migrations/worker.
-O PR #129 passou nesses jobs e foi mergeado em `dev` em 2026-11-03.
+Os commits da auditoria (`21456f6`, `0ebce96`, `81cf842`) passaram nesses jobs.
+A `main` está atrás e com CI vermelho; a release precisa de um PR `dev → main`
+quando for decidida.
 
 ## Leituras principais
 
-- `CONTEXT.md`: vocabulário e boundaries.
+- `CONTEXT.md`: vocabulário, fluxo e boundaries.
 - `docs/ADR-ISSUE-TRACKER.md`: índice de ADRs, milestones e issues.
 - `docs/adr/`: decisões arquiteturais.
 - `docs/issues/`: backlog local e critérios de aceite.

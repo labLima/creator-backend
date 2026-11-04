@@ -16,7 +16,7 @@ Criar cache por Workspace com chave determinística, invalidação explícita e 
 ## Modelo esperado
 
 - `generation_cache`: `id`, `workspace_id`, `cache_key`, `generation_type`, `input_hash`, `result`, `hit_count`, `last_used_at`, `created_at`, `updated_at`.
-- Definir JSONB ou referência de storage por tipo de output e garantir ownership/lifecycle de resultados não confiáveis.
+- Definir JSON portável (ADR-021) ou referência de storage por tipo de output e garantir ownership/lifecycle de resultados não confiáveis.
 - A chave deve incluir versão de prompt, Provider/modelo, parâmetros relevantes e schema; não omitir contexto de Brand.
 - Definir unicidade, expiração/invalidação, contadores não negativos e índices de lookup/limpeza.
 - Cache hit não deve criar indevidamente novo Content, Generation ou Generation Job.

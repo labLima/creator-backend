@@ -1,5 +1,10 @@
 # Encerramento da Fase 1 — Fundação e Plataforma
 
+> **Atualização 2026-11-04:** a paridade de comportamento com o Create Bloom e o
+> ETL da #134 / [0050](../issues/0050-legacy-behavior-parity.md) foram encerrados
+> como **não planejados**. O produto está sendo construído com arquitetura nova;
+> as referências ao legado abaixo são históricas.
+
 - Milestone: `02 · Fase 1 — Fundação e Plataforma` (#3)
 - Épico: #109
 - PR: [#136](https://github.com/labLima/creator-backend/pull/136)

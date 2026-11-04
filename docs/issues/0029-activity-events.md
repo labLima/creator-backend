@@ -7,11 +7,15 @@
 
 ## Contexto
 
-O produto precisa de histórico operacional, auditoria e timeline por Workspace. O `activity_log` do legado não deve ser replicado nem misturado com observabilidade técnica.
+O produto precisa de histórico operacional, auditoria e timeline por Workspace. O
+`activity_log` do legado não deve ser replicado nem misturado com observabilidade
+técnica. O CONTEXT define Activity Event como evento de negócio append-oriented,
+distinto de log técnico.
 
 ## Objetivo
 
-Criar eventos de negócio append-oriented para consultas por Workspace, usuário, Brand e entidade, com `entity_type/entity_id` explicitamente polimórficos.
+Criar Activity Events append-oriented para consultas por Workspace, usuário,
+Brand e entidade, com `entity_type/entity_id` explicitamente polimórficos.
 
 ## Modelo esperado
 
