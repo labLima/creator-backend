@@ -139,7 +139,16 @@ def _signup_data(
     }
 
 
-@router.post("/login", operation_id="loginWithPassword")
+@router.post(
+    "/login",
+    operation_id="loginWithPassword",
+    responses={
+        "401": {
+            "$ref": "#/components/responses/LoginRejected",
+            "x-error-codes": ["LOGIN_REJECTED"],
+        }
+    },
+)
 def login_with_password(
     payload: AuthLoginRequest,
     request: Request,
@@ -186,7 +195,13 @@ def login_with_password(
     "/signup",
     status_code=201,
     operation_id="signupWithPassword",
-    responses={"409": {"$ref": "#/components/responses/EmailAlreadyRegistered"}},
+    responses={
+        "409": {"$ref": "#/components/responses/EmailAlreadyRegistered"},
+        "422": {
+            "$ref": "#/components/responses/WeakPassword",
+            "x-error-codes": ["WEAK_PASSWORD", "VALIDATION_FAILED"],
+        },
+    },
 )
 def signup_with_password(
     payload: AuthSignupRequest,

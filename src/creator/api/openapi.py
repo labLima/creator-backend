@@ -163,7 +163,7 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                 "content": {
                     "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
                 },
-                "x-error-codes": ["AUTHENTICATION_INVALID"],
+                "x-error-codes": ["LOGIN_REJECTED"],
             },
         )
         responses.setdefault(
@@ -183,32 +183,44 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
         # Components referenced per operation by `docs/openapi.yaml` (ADR-007,
         # amendment 2026-11-04). Descriptions mirror the static contract so a
         # client generated from `app.openapi()` resolves the same error surface.
-        for component_name, description in (
-            ("Conflict", "The request conflicts with an existing resource."),
-            ("EmailAlreadyRegistered", "The email is already registered."),
+        for component_name, description, error_codes in (
+            ("Conflict", "The request conflicts with an existing resource.", None),
+            ("EmailAlreadyRegistered", "The email is already registered.", None),
             (
                 "Forbidden",
                 "The authenticated Principal is valid but lacks the required role.",
+                None,
             ),
             (
                 "NotFound",
                 "The requested resource does not exist or is not visible to the authenticated "
                 "user.",
+                None,
             ),
             (
                 "ValidationFailed",
                 "The request body, path, query, or headers failed validation.",
+                ["VALIDATION_FAILED"],
+            ),
+            (
+                "WeakPassword",
+                "The password does not meet the minimum policy.",
+                ["WEAK_PASSWORD", "VALIDATION_FAILED"],
             ),
             (
                 "WorkspaceAccessDenied",
                 "The authenticated user does not have an active Membership for the Workspace.",
+                None,
             ),
             (
                 "WorkspaceNotFound",
                 "The Workspace does not exist or the authenticated Principal cannot manage it.",
+                None,
             ),
         ):
-            responses.setdefault(component_name, _error_response(description))
+            responses.setdefault(
+                component_name, _error_response(description, error_codes=error_codes)
+            )
         responses.setdefault(
             "RefreshInProgress",
             _error_response(
@@ -258,8 +270,16 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                     # `422` is a global convention: FastAPI derives it from request
                     # validation with `HTTPValidationError`, but the published
                     # contract keeps the canonical `ValidationFailed` envelope.
-                    validation = operation["responses"].get("422")
-                    if not isinstance(validation, dict) or "$ref" not in validation:
+                    # An operation that declared its own `422` (for example the
+                    # signup `WeakPassword` or a domain validation code) is
+                    # preserved through `setdefault`; only FastAPI's inline
+                    # default is replaced.
+                    operation["responses"].setdefault(
+                        "422",
+                        {"$ref": "#/components/responses/ValidationFailed"},
+                    )
+                    validation = operation["responses"]["422"]
+                    if isinstance(validation, dict) and "$ref" not in validation:
                         operation["responses"]["422"] = {
                             "$ref": "#/components/responses/ValidationFailed"
                         }

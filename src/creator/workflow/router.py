@@ -49,6 +49,10 @@ router = APIRouter()
     responses={
         "404": {"$ref": "#/components/responses/NotFound"},
         "409": {"$ref": "#/components/responses/Conflict"},
+        "422": {
+            "$ref": "#/components/responses/ValidationFailed",
+            "x-error-codes": ["VALIDATION_FAILED", "WORKFLOW_INPUT_INVALID"],
+        },
     },
 )
 def create_image_workflow(
@@ -139,6 +143,10 @@ def list_image_workflow_steps(
     responses={
         "404": {"$ref": "#/components/responses/NotFound"},
         "409": {"$ref": "#/components/responses/Conflict"},
+        "422": {
+            "$ref": "#/components/responses/ValidationFailed",
+            "x-error-codes": ["VALIDATION_FAILED", "WORKFLOW_INPUT_INVALID"],
+        },
     },
 )
 def decide_image_workflow_route(

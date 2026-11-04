@@ -59,6 +59,24 @@ e no changelog da release.
 - [x] `make check` verde.
 - [x] Plano de comunicação registrado (sem consumidor conhecido de `app.openapi()`).
 
+## Exceções explícitas (2026-11-04)
+
+A #135 garante paridade **documento-vs-documento** para `operationId`,
+`403/404/409` e shape canônico de `422`. Ela não é uma auditoria completa de
+todo erro de runtime. As exceções abaixo são deliberadas e rastreadas:
+
+| Exceção | Motivo | Destino |
+| --- | --- | --- |
+| `429`/`500` com componentes específicos no YAML (`AuthRateLimited`, `LlmProviderRateLimited`, `SignupFailed`, etc.) e componentes globais no app (`RateLimitExceeded`, `InternalServerError`) | Ambos usam o envelope `ErrorResponse`; o app aplica a convenção global e o YAML distingue a causa do provider. | Comparação por componente fica fora da #135; união de `x-error-codes` documentada nas operações afetadas. |
+| `403` de CSRF em mutações `/api/v1` | O middleware global `enforce_cookie_security` pode retornar `CsrfRejected` em qualquer mutação, não só refresh/logout. | Documentado em `CsrfRejected` e no security scheme; comparação por operação fica na #15. |
+| `403/404` de runtime ainda ausentes no contrato em alguns recursos (ex.: plans/coupons `403`, assets/notifications `404`, brand settings `403/404`) | A #135 reconciliou o contrato existente; uma auditoria runtime-vs-contrato completa exige varrer guards e `not_found` de todos os serviços. | #20 (autorização por endpoint) e #15 (endurecimento/documentação). |
+| `401` de signup documentado | O handler de signup não levanta 401; a resposta permanece como convenção de auth no contrato estático. | Remover ou justificar na #15. |
+| `X-Request-ID` e headers de CSRF nos componentes de erro `$ref` | O runtime sempre envia `X-Request-ID`; parte dos componentes compartilhados ainda não o declara. | #15 (headers/observabilidade do contrato). |
+| `CsrfTokenResponse.csrf_token` como `writeOnly` | Defeito pré-existente do schema de resposta, fora do diff de operationIds. | #15. |
+
+Login foi alinhado: o runtime retorna `LOGIN_REJECTED`, e YAML, componente e
+`app.openapi()` agora publicam `LOGIN_REJECTED`.
+
 ## Evidência atual
 
 - 106 divergências de operationId (ex.:

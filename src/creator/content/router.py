@@ -69,7 +69,12 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.post("/api/v1/contents", tags=["Contents"], operation_id="createContent")
+@router.post(
+    "/api/v1/contents",
+    tags=["Contents"],
+    operation_id="createContent",
+    responses={"403": {"$ref": "#/components/responses/WorkspaceAccessDenied"}},
+)
 def create_content(
     payload: ContentCreateRequest,
     request: Request,
@@ -119,7 +124,12 @@ def create_content(
     return success_response(_content_data(content), request, status_code=201)
 
 
-@router.get("/api/v1/contents/{id}", tags=["Contents"], operation_id="getContentCanonical")
+@router.get(
+    "/api/v1/contents/{id}",
+    tags=["Contents"],
+    operation_id="getContentCanonical",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 @router.get(
     "/api/v1/content/{id}",
     tags=["Contents"],
@@ -150,7 +160,15 @@ def get_content(
     return success_response(_content_detail_data(detail), request)
 
 
-@router.put("/api/v1/contents/{id}", tags=["Contents"], operation_id="updateContent")
+@router.put(
+    "/api/v1/contents/{id}",
+    tags=["Contents"],
+    operation_id="updateContent",
+    responses={
+        "403": {"$ref": "#/components/responses/WorkspaceAccessDenied"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def update_content(
     content_id: Annotated[UUID, Path(alias="id")],
     payload: ContentUpdateRequest,
@@ -216,7 +234,15 @@ def update_content(
     return success_response(_content_data(content), request)
 
 
-@router.delete("/api/v1/contents/{id}", tags=["Contents"], operation_id="deleteContentCanonical")
+@router.delete(
+    "/api/v1/contents/{id}",
+    tags=["Contents"],
+    operation_id="deleteContentCanonical",
+    responses={
+        "403": {"$ref": "#/components/responses/WorkspaceAccessDenied"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 @router.delete(
     "/api/v1/content/{id}",
     tags=["Contents"],
@@ -265,7 +291,13 @@ def delete_content(
     "/api/v1/content/generate",
     tags=["Contents"],
     operation_id="generateContent",
-    responses={"403": {"$ref": "#/components/responses/WorkspaceAccessDenied"}},
+    responses={
+        "403": {"$ref": "#/components/responses/WorkspaceAccessDenied"},
+        "422": {
+            "$ref": "#/components/responses/ValidationFailed",
+            "x-error-codes": ["VALIDATION_FAILED", "CONTENT_GENERATION_BLOCKED"],
+        },
+    },
 )
 def generate_text_content(
     payload: GenerateContentRequest,
@@ -381,6 +413,10 @@ def generate_text_content(
     responses={
         "403": {"$ref": "#/components/responses/WorkspaceAccessDenied"},
         "404": {"$ref": "#/components/responses/NotFound"},
+        "422": {
+            "$ref": "#/components/responses/ValidationFailed",
+            "x-error-codes": ["VALIDATION_FAILED", "CONTENT_IMPROVEMENT_BLOCKED"],
+        },
     },
 )
 def improve_text_content(

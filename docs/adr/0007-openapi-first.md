@@ -44,7 +44,8 @@ para as respostas de erro documentadas por operação.
   `HTTPValidationError` padrão do FastAPI.
 - Exceções de error response exigem justificativa registrada na
   [0051](../issues/0051-openapi-operation-id-parity.md); não pode haver exceção
-  silenciosa.
+  silenciosa. As exceções de 2026-11-04 (429/500 específicos, CSRF global,
+  auditoria runtime e headers) estão nessa issue e têm issue de destino.
 - A mudança é breaking apenas para consumidores que geram clientes diretamente
   de `app.openapi()`. Consumidores do YAML preservam os nomes. A comunicação
   deve ser registrada no PR da 0051.
