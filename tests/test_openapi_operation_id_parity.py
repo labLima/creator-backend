@@ -42,6 +42,12 @@ EXPECTED_OPERATION_COUNT = 227
 
 NOTIFICATION_PREFERENCE_PATH = "/api/v1/notification-preferences/{id}"
 RESOURCE_ID_REF = {"$ref": "#/components/parameters/ResourceId"}
+# The normalized form of `ResourceId`: `(name, in, required, type, format)`.
+# `_normalized_parameters` resolves the YAML `$ref` and FastAPI's inline
+# parameter to this tuple, so both documents are compared on equal footing.
+RESOURCE_ID_SHAPE = ("id", "path", True, "string", "uuid")
+LOGIN_REJECTED_COMPONENT = "LoginRejected"
+LOGIN_REJECTED_CODE = "LOGIN_REJECTED"
 
 # ADR-007 (amendment 2026-11-04): these statuses are compared per operation.
 PER_OPERATION_ERROR_STATUSES = ("403", "404", "409")
@@ -165,6 +171,39 @@ def _error_responses_by_status(
         status: (_component_name(responses[status]), _normalized_error_codes(responses[status]))
         for status in documented
     }
+
+
+def _normalized_parameters(
+    operation: dict[str, Any], document: dict[str, Any]
+) -> tuple[tuple[str, str, bool, str, str], ...]:
+    """Normalize an operation's parameters, resolving `$ref` against `document`.
+
+    FastAPI publishes a shared parameter inline and adds a `title`, while the
+    hand-written document references the same parameter as a component.
+    Comparing `(name, in, required, type, format)` makes both spellings equal
+    without weakening the check: a different name, location, required flag or
+    schema still diverges.
+    """
+    components = document.get("components", {}).get("parameters", {})
+    normalized: list[tuple[str, str, bool, str, str]] = []
+    for parameter in operation.get("parameters", []):
+        if not isinstance(parameter, dict):
+            continue
+        resolved = parameter
+        ref = parameter.get("$ref")
+        if isinstance(ref, str):
+            resolved = components.get(ref.rsplit("/", 1)[-1], {})
+        schema = resolved.get("schema", {})
+        normalized.append(
+            (
+                str(resolved.get("name")),
+                str(resolved.get("in")),
+                bool(resolved.get("required")),
+                str(schema.get("type")),
+                str(schema.get("format")),
+            )
+        )
+    return tuple(sorted(normalized))
 
 
 def _inline_schema_name(response: Any) -> str | None:
@@ -339,9 +378,20 @@ def test_static_contract_declares_operation_id_for_every_operation() -> None:
 
 
 def test_notification_preference_get_is_a_get_operation() -> None:
-    """The GET was copied from the Assets collection and must describe a preference."""
-    operation = _static_contract()["paths"][NOTIFICATION_PREFERENCE_PATH]["get"]
+    """The GET was copied from the Assets collection and must describe a preference.
+
+    The same surface is asserted on `app.openapi()`, because a generated client
+    reads the application document, not the YAML; checking only the YAML would
+    let the served contract drift while this test stayed green. Parameters are
+    normalized so the YAML `$ref` and FastAPI's inline `id` parameter compare
+    equal.
+    """
+    static = _static_contract()
+    generated = app.openapi()
+    operation = static["paths"][NOTIFICATION_PREFERENCE_PATH]["get"]
+    generated_operation = generated["paths"][NOTIFICATION_PREFERENCE_PATH]["get"]
     responses = operation["responses"]
+    generated_responses = generated_operation["responses"]
 
     assert operation["operationId"] == "getNotificationPreference", (
         "the notification preference GET still reuses another operation's id: "
@@ -363,12 +413,62 @@ def test_notification_preference_get_is_a_get_operation() -> None:
         f"{sorted(responses)}"
     )
 
+    assert generated_operation["operationId"] == "getNotificationPreference", (
+        "app.openapi() publishes a different id for the notification preference GET: "
+        f"{generated_operation['operationId']!r}"
+    )
+    assert generated_operation.get("tags") == ["Notifications"], (
+        f"app.openapi() tags the notification preference GET {generated_operation.get('tags')!r}"
+    )
+    assert RESOURCE_ID_SHAPE in _normalized_parameters(operation, static), (
+        "the notification preference GET must take the ResourceId path parameter: "
+        f"{_normalized_parameters(operation, static)!r}"
+    )
+    assert RESOURCE_ID_SHAPE in _normalized_parameters(generated_operation, generated), (
+        "app.openapi() does not publish the ResourceId path parameter for the "
+        f"notification preference GET: {_normalized_parameters(generated_operation, generated)!r}"
+    )
+    assert "404" in generated_responses, (
+        "app.openapi() does not publish the documented 404 for the notification "
+        f"preference GET: {sorted(generated_responses)}"
+    )
+
     success_description = responses["200"]["description"].lower()
     assert "preference" in success_description, (
         f"the 200 description does not describe a notification preference: {success_description!r}"
     )
     assert "asset" not in success_description, (
         f"the 200 description was copied from the Assets collection: {success_description!r}"
+    )
+
+
+def test_auth_login_401_is_login_rejected() -> None:
+    """`POST /api/v1/auth/login` must advertise the specific login rejection.
+
+    A generic `Unauthorized` hides the difference between a bad credential and
+    an expired session, which is exactly the branch a generated client has to
+    take. Both documents must publish the `LoginRejected` component and the
+    `LOGIN_REJECTED` code the app injects for this operation.
+    """
+    slug = ("/api/v1/auth/login", "post")
+    static_response = _operations_by_slug(_static_contract())[slug]["responses"]["401"]
+    generated_response = _operations_by_slug(app.openapi())[slug]["responses"]["401"]
+
+    assert _component_name(static_response) == LOGIN_REJECTED_COMPONENT, (
+        "docs/openapi.yaml documents a different 401 component for auth login: "
+        f"{_component_name(static_response)!r}"
+    )
+    assert _component_name(generated_response) == LOGIN_REJECTED_COMPONENT, (
+        "app.openapi() documents a different 401 component for auth login: "
+        f"{_component_name(generated_response)!r}"
+    )
+    assert list(_normalized_error_codes(static_response)) == [LOGIN_REJECTED_CODE], (
+        "docs/openapi.yaml documents different 401 x-error-codes for auth login: "
+        f"{list(_normalized_error_codes(static_response))!r}"
+    )
+    assert list(_normalized_error_codes(generated_response)) == [LOGIN_REJECTED_CODE], (
+        "app.openapi() documents different 401 x-error-codes for auth login: "
+        f"{list(_normalized_error_codes(generated_response))!r}"
     )
 
 
@@ -416,17 +516,20 @@ def test_error_responses_403_404_409_match_static_contract() -> None:
 
 
 def test_global_error_conventions_are_documented() -> None:
-    """Global error conventions are declared once instead of per operation in the YAML.
+    """Global error conventions are declared once instead of per operation.
 
-    The app publishes `401`, `429` and `500` on every `/api/v1` operation because
-    FastAPI attaches them to each generated route. The YAML documents `401` per
-    operation, but `429` and `500` are document-wide conventions:
-    `x-rate-limit.response` points at `RateLimitExceeded`, and
-    `components.responses.InternalServerError` carries the 500 envelope. Repeating
-    those two on all 224 `/api/v1` operations would add hundreds of artificial
-    blocks, so the convention is a single declaration. `422` is intentionally
-    excluded here: FastAPI emits it for operations with validation and the YAML
-    documents it where applicable, without a presence comparison.
+    The app injects `401`, `429` and `500` into every `/api/v1` operation in its
+    OpenAPI post-processor, so those statuses are conventions rather than route
+    declarations. The YAML documents `401` per operation, `429` through
+    `x-rate-limit.response` (`RateLimitExceeded`) and `500` through the
+    `InternalServerError` component; repeating them on all 224 `/api/v1`
+    operations would add hundreds of artificial blocks. Where the YAML declares
+    a provider-specific `429`/`500` component (`AuthRateLimited`,
+    `LlmProviderRateLimited`, `SignupFailed`, `AuthMisconfigured`, ...) instead
+    of the global one, that divergence is a deliberate exception documented in
+    issue 0051, not silent drift. `422` is out of scope here: it is a validation
+    convention handled by `test_generated_422_matches_static_contract`, not a
+    globally injected status.
     """
     static = _static_contract()
     generated = app.openapi()
@@ -492,16 +595,20 @@ def test_yaml_422_responses_are_covered_by_generated_document() -> None:
 
 
 def test_generated_422_matches_static_contract() -> None:
-    """A documented `422` must resolve to the same shape in both documents.
+    """A documented `422` must resolve to the same shape and codes in both documents.
 
     ADR-007 (amendment 2026-11-04) keeps `ErrorResponse`/`ValidationFailed` as
     the canonical envelope, so an inline `HTTPValidationError` schema or a
     bespoke component in the YAML is a real divergence, not a formatting
     detail: a client generated from the YAML branches on a different type than
-    one generated from `app.openapi()`. Only operations the YAML documents as
-    `422` are compared, because FastAPI emits `422` for every operation with
-    validation and presence is not part of this gate. All divergences are
-    aggregated so a fix is validated against every mismatch at once.
+    one generated from `app.openapi()`. `x-error-codes` are compared too, since
+    they are the branch points a generated client reads when the documented
+    operation narrows the failure (signup `WeakPassword`, content and image
+    workflow domain errors); operations without operation-level codes normalize
+    to `()` on both sides. Only operations the YAML documents as `422` are
+    compared, because FastAPI emits `422` for every operation with validation
+    and presence is not part of this gate. All divergences are aggregated so a
+    fix is validated against every mismatch at once.
     """
     static_operations = _operations_by_slug(_static_contract())
     generated_operations = _operations_by_slug(app.openapi())
@@ -514,24 +621,30 @@ def test_generated_422_matches_static_contract() -> None:
 
     divergences: list[str] = []
     for path, method in documented_422:
-        static_shape = _response_shape(static_operations[(path, method)]["responses"]["422"])
+        static_response = static_operations[(path, method)]["responses"]["422"]
         generated_response = (
             generated_operations.get((path, method), {}).get("responses", {}).get("422")
         )
+        static_shape = _response_shape(static_response)
         generated_shape = (
             "<missing>" if generated_response is None else _response_shape(generated_response)
         )
-        if static_shape != generated_shape:
-            divergences.append(
-                f"{method.upper()} {path}: docs/openapi.yaml={static_shape!r} "
-                f"app.openapi()={generated_shape!r}"
-            )
+        static_codes = _normalized_error_codes(static_response)
+        generated_codes = _normalized_error_codes(generated_response)
+        if static_shape == generated_shape and static_codes == generated_codes:
+            continue
+        divergences.append(
+            f"{method.upper()} {path}: shape docs/openapi.yaml={static_shape!r} "
+            f"app.openapi()={generated_shape!r}; x-error-codes "
+            f"docs/openapi.yaml={list(static_codes)!r} "
+            f"app.openapi()={list(generated_codes)!r}"
+        )
 
     assert not divergences, (
         f"{len(divergences)} of {len(documented_422)} operations document a different "
-        "422 shape in app.openapi() than in docs/openapi.yaml (names are the last "
-        "segment of the `$ref`, or `inline:<Schema>` for an inline schema):\n"
-        + "\n".join(divergences)
+        "422 shape or x-error-codes in app.openapi() than in docs/openapi.yaml (names "
+        "are the last segment of the `$ref`, or `inline:<Schema>` for an inline "
+        "schema; codes are sorted):\n" + "\n".join(divergences)
     )
 
 

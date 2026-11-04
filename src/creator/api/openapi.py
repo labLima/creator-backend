@@ -30,6 +30,17 @@ OPENAPI_TAGS = [
 ]
 
 
+def _is_default_validation_response(response: Any) -> bool:
+    """Return True only for FastAPI's generated `HTTPValidationError` response."""
+    if not isinstance(response, dict):
+        return False
+    schema = response.get("content", {}).get("application/json", {}).get("schema")
+    if not isinstance(schema, dict):
+        return False
+    ref = schema.get("$ref")
+    return isinstance(ref, str) and ref.endswith("/HTTPValidationError")
+
+
 def _error_response(description: str, *, error_codes: list[str] | None = None) -> dict[str, Any]:
     """Build a named error response that resolves to the canonical `ErrorResponse`."""
     response: dict[str, Any] = {
@@ -270,16 +281,11 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                     # `422` is a global convention: FastAPI derives it from request
                     # validation with `HTTPValidationError`, but the published
                     # contract keeps the canonical `ValidationFailed` envelope.
-                    # An operation that declared its own `422` (for example the
-                    # signup `WeakPassword` or a domain validation code) is
-                    # preserved through `setdefault`; only FastAPI's inline
-                    # default is replaced.
-                    operation["responses"].setdefault(
-                        "422",
-                        {"$ref": "#/components/responses/ValidationFailed"},
-                    )
-                    validation = operation["responses"]["422"]
-                    if isinstance(validation, dict) and "$ref" not in validation:
+                    # Only FastAPI's default inline response is replaced; an
+                    # operation that declared its own 422 (signup `WeakPassword`,
+                    # domain codes, or an inline ErrorResponse) is preserved.
+                    validation = operation["responses"].get("422")
+                    if _is_default_validation_response(validation):
                         operation["responses"]["422"] = {
                             "$ref": "#/components/responses/ValidationFailed"
                         }
@@ -344,6 +350,11 @@ def _install_rate_limit_openapi(application: FastAPI) -> None:
                         )
 
         schemas = components.setdefault("schemas", {})
+        # The canonical 422 envelope replaces FastAPI's generated schema; drop
+        # the orphan definitions so generated clients cannot resolve a type no
+        # operation publishes.
+        schemas.pop("HTTPValidationError", None)
+        schemas.pop("ValidationError", None)
         schemas["AuthPrincipal"] = {
             "type": "object",
             "required": ["subject"],

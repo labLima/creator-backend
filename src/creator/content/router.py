@@ -247,7 +247,10 @@ def update_content(
     "/api/v1/content/{id}",
     tags=["Contents"],
     operation_id="deleteContent",
-    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+    responses={
+        "403": {"$ref": "#/components/responses/WorkspaceAccessDenied"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
 )
 def delete_content(
     content_id: Annotated[UUID, Path(alias="id")],

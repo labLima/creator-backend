@@ -2127,6 +2127,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContentDeleteResponse'
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
