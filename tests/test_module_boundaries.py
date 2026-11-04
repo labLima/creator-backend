@@ -92,7 +92,7 @@ def _capability_of(module: str) -> str | None:
 def test_capability_set_is_exact() -> None:
     names = {path.name for path in _capabilities()}
 
-    assert len(names) == 27, sorted(names)
+    assert len(names) == 28, sorted(names)
     assert {"auth", "user", "workspace", "brand", "generation", "billing_provider"} <= names
 
 

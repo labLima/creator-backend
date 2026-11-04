@@ -100,7 +100,7 @@ def test_sqlalchemy_unit_of_work_implements_the_protocol() -> None:
 
     assert UnitOfWork in SqlAlchemyUnitOfWork.__mro__
     assert protocol <= annotations, protocol - annotations
-    assert len(protocol) == 28
+    assert len(protocol) == 29
 
 
 def test_unit_of_work_exposes_grouped_repositories_without_flat_aliases() -> None:

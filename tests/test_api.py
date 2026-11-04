@@ -1,5 +1,6 @@
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import Annotated
 from uuid import UUID
 
@@ -481,6 +482,7 @@ class FakeUnitOfWork:
             create_error=workspace_create_error,
         )
         self.brands = FakeCrudRepository(brand_record())
+        self.activity_events = SimpleNamespace(add_brand_event=lambda **kwargs: None)
         self.projects = FakeCrudRepository(project_record())
         self.contents = FakeContentRepository(
             content,

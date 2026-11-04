@@ -1793,6 +1793,14 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/workspaces/{workspace_id}/activity-events",
+    "operation_id": "list_activity_events_api_v1_workspaces__workspace_id__activity_events_get",
+    "tags": [
+      "Workspaces"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/health",
     "operation_id": "health_health_get",
     "tags": [

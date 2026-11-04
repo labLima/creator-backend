@@ -60,6 +60,10 @@ _Avoid_: Action, mode
 A durable multi-step Generation executed by specialist roles and persisted as runs and steps. Creator owns its state transitions; CrewAI is an adapter, not the workflow engine.
 _Avoid_: Crew, pipeline, job
 
+**Activity Event**:
+A Workspace-scoped append-oriented business event that records an authorized activity for a timeline and audit. It is distinct from technical logs and metrics.
+_Avoid_: Technical log, legacy activity_log
+
 **Credit**:
 A non-monetary unit consumed by a Generation or Agent Workflow, tracked in an append-only, Workspace-scoped ledger.
 _Avoid_: Token, balance, billing unit

@@ -1,4 +1,5 @@
 [
+  "activity_events",
   "agent_workflow_runs",
   "agent_workflow_steps",
   "assets",

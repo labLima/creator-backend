@@ -53,6 +53,13 @@ def create_brand(
         brand_voice=payload.brand_voice,
         metadata=payload.metadata,
     )
+    uow.activity_events.add_brand_event(
+        workspace_id=brand.workspace_id,
+        user_id=actor.id,
+        brand_id=brand.id,
+        event_type="brand.created",
+        metadata={},
+    )
     uow.commit()
 
     return _brand_data(brand)
@@ -91,6 +98,13 @@ def update_brand(
         )
     except EntityNotFoundError as error:
         raise not_found("Brand") from error
+    uow.activity_events.add_brand_event(
+        workspace_id=brand.workspace_id,
+        user_id=actor.id,
+        brand_id=brand.id,
+        event_type="brand.updated",
+        metadata={},
+    )
     uow.commit()
 
     return _brand_data(brand)
@@ -103,10 +117,20 @@ def delete_brand(
     request: Any,
     brand_id: Any,
 ) -> Any:
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=brand_id)
+    if brand is None:
+        raise not_found("Brand")
     try:
         uow.brand.brands.soft_delete(user_id=actor.id, brand_id=brand_id)
     except EntityNotFoundError as error:
         raise not_found("Brand") from error
+    uow.activity_events.add_brand_event(
+        workspace_id=brand.workspace_id,
+        user_id=actor.id,
+        brand_id=brand.id,
+        event_type="brand.deleted",
+        metadata={},
+    )
     uow.commit()
 
     return {"deleted": True}

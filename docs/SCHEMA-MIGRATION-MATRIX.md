@@ -72,3 +72,5 @@ Estas tabelas já correspondem ao alvo do PDF e não têm migração de schema p
 - `agent_workflow_runs`/`agent_workflow_steps` são estado durável do Agent Workflow (ADR-014/018), não dívida de migração.
 - Dados legados exigem ETL explícito; a ADR-021 assume banco novo e não migra PostgreSQL automaticamente.
 - A matriz de comportamento e o inventário completo estão em `docs/migration/`.
+
+`activity_events` — Creator-owned business audit history; introduced by issue #52.

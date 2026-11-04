@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Protocol, Self
 
+from creator.activity_event.ports import ActivityEventRepository
 from creator.asset.ports import AssetRepository
 from creator.auth.ports import AuthSessionRepository
 from creator.billing_account.ports import BillingAccountRepository, BillingAddressRepository
@@ -130,6 +131,7 @@ class WorkflowRepositories:
 
 
 class UnitOfWork(Protocol):
+    activity_events: ActivityEventRepository
     auth_sessions: AuthSessionRepository
     user: UserRepositories
     workspace: WorkspaceRepositories
