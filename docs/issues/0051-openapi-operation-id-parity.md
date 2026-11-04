@@ -2,7 +2,8 @@
 
 - ADR primária: [ADR-007](../adr/0007-openapi-first.md)
 - Issue remota: [#135](https://github.com/labLima/creator-backend/issues/135)
-- Status: em implementação (Fase 2)
+- Status: implementação concluída na branch `feat/135-openapi-operation-ids`;
+  aguardando revisão/merge (Fase 2)
 - Owner: backend/platform
 - Decisão: **2026-11-04 — opção 1 aprovada**
 
@@ -51,11 +52,11 @@ e no changelog da release.
 ## Critérios de aceite
 
 - [x] Decisão registrada em ADR-007.
-- [ ] Operação com `operationId` idêntico nos dois documentos.
-- [ ] Nenhum `operationId` duplicado no YAML.
-- [ ] `403/404/409` comparadas por operação; `401/422/429/500` tratadas como convenções globais.
-- [ ] `docs/openapi.yaml` sem drift de paths/methods/segurança.
-- [ ] `make check` verde.
+- [x] Operação com `operationId` idêntico nos dois documentos (227/227).
+- [x] Nenhum `operationId` duplicado no YAML.
+- [x] `403/404/409` comparadas por operação; `401/422/429/500` tratadas como convenções globais.
+- [x] `docs/openapi.yaml` sem drift de paths/methods/segurança.
+- [x] `make check` verde.
 - [x] Plano de comunicação registrado (sem consumidor conhecido de `app.openapi()`).
 
 ## Evidência atual

@@ -4,6 +4,11 @@ Nine of ten refactor regressions are invisible to `mypy` and to the existing
 parity test: `tests/test_openapi_contract.py` compares only paths and methods.
 A handler rename changes the generated `operationId`, which breaks generated
 clients, without failing any test today. This module closes that gap.
+
+ADR-007 (amendment 2026-11-04) makes `docs/openapi.yaml` authoritative for
+`operationId`, so the frozen snapshot is no longer an independent record of the
+generated identifiers: `test_snapshot_matches_hand_written_operation_ids` also
+asserts that the snapshot publishes exactly the identifiers the YAML declares.
 """
 
 from __future__ import annotations
@@ -54,10 +59,10 @@ def test_route_table_matches_frozen_snapshot() -> None:
 def test_snapshot_matches_hand_written_paths_and_methods() -> None:
     """The snapshot must not drift from the hand-written contract.
 
-    Only paths and methods are compared: `docs/openapi.yaml` predates the
-    generated `operationId` scheme and 106 of its identifiers differ today.
-    Making the snapshot agree with the generator must never be a way to
-    silently redefine the documented surface.
+    Only paths and methods are compared here, so a snapshot refreshed from the
+    generator can never silently add or drop a documented operation. The
+    `operationId` half of the contract is asserted separately by
+    `test_snapshot_matches_hand_written_operation_ids`.
     """
     static = _static_document()
     documented = {
@@ -68,6 +73,49 @@ def test_snapshot_matches_hand_written_paths_and_methods() -> None:
     }
     frozen = {(str(row["path"]), str(row["method"])) for row in _snapshot()}
 
+    assert frozen == documented
+
+
+def test_snapshot_matches_hand_written_operation_ids() -> None:
+    """The snapshot must publish exactly the identifiers the YAML declares.
+
+    ADR-007 (amendment 2026-11-04) makes `docs/openapi.yaml` authoritative for
+    `operationId`. The snapshot is produced from `app.openapi()`, so on its own
+    it only proves the current generator output is frozen; without this check a
+    handler rename followed by a snapshot refresh would silently bless a new,
+    undocumented identifier. All divergences are aggregated so a fix is
+    validated against every mismatch at once.
+    """
+    static = _static_document()
+    documented = {
+        (path, method.upper(), str(operation.get("operationId")))
+        for path, item in static["paths"].items()
+        for method, operation in item.items()
+        if method in HTTP_METHODS
+    }
+    frozen = {
+        (str(row["path"]), str(row["method"]), str(row["operation_id"])) for row in _snapshot()
+    }
+
+    documented_ids = {(path, method): operation_id for path, method, operation_id in documented}
+    frozen_ids = {(path, method): operation_id for path, method, operation_id in frozen}
+
+    missing = "<missing>"
+    divergences = [
+        f"{method} {path}: docs/openapi.yaml="
+        f"{documented_ids.get((path, method), missing)!r} "
+        f"tests/contracts/route_table.json="
+        f"{frozen_ids.get((path, method), missing)!r}"
+        for path, method in sorted(set(documented_ids) | set(frozen_ids))
+        if documented_ids.get((path, method), missing) != frozen_ids.get((path, method), missing)
+    ]
+
+    assert not divergences, (
+        f"{len(divergences)} of {len(set(documented_ids) | set(frozen_ids))} operations "
+        "publish a different operationId in tests/contracts/route_table.json than in "
+        "docs/openapi.yaml (ADR-007 makes the YAML authoritative; update the YAML "
+        "before regenerating the snapshot):\n" + "\n".join(divergences)
+    )
     assert frozen == documented
 
 
