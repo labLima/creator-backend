@@ -36,8 +36,10 @@ Estas dívidas não impedem o funcionamento atual e permanecem rastreadas aqui:
 - **4 routers ainda acessam o UoW diretamente**: `auth`, `content`, `generation`
   e `workflow`. Em `content` e `generation`, parte do CRUD e da autorização
   ainda vive no router.
-- **47 repositórios por agregado**: a fase 5 da ADR-023 (consolidar 47 em ~30)
-  continua pendente e foi transferida para esta issue.
+- **Repositórios por agregado**: a consolidação chegou a 27 arquivos
+  `repository.py` (um por capacidade); a contagem histórica de 47 não se aplica
+  mais. O que resta é a fronteira aplicação/transporte: 23 `service.py` ainda
+  importam `creator.api` e 4 routers usam o UoW diretamente.
 - **Backlog de segurança S1–S13** da [0046](0046-security-backlog-after-modularization.md):
   itens pré-existentes, incluindo o S1 (cross-tenant Brand Settings), fora do
   escopo da consolidação estrutural.

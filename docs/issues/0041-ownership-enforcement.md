@@ -1,9 +1,10 @@
-# Ownership enforcement for protected resources
+# Workspace authorization enforcement for protected resources
 
-- Status: in progress
+- Status: em andamento (atualizada em 2026-11-04)
 - GitHub: [#20](https://github.com/labLima/creator-backend/issues/20) (reaberta em 2026-10-26)
 - ADR primária: [ADR-011 Core Resource CRUD](../adr/0011-core-resource-crud.md)
-- ADR relacionada: [ADR-004 Supabase Auth](../adr/0004-supabase-auth.md)
+- ADRs relacionadas: [ADR-020 autenticação própria](../adr/0020-self-hosted-authentication.md),
+  [ADR-024 estrutura plana](../adr/0024-estrutura-plana-por-capacidade.md)
 
 ## Objetivo
 
@@ -24,6 +25,8 @@ enumeração por identificador.
 - [x] Generation não pode referenciar Content de outro Workspace
 - [x] Image Generation create escopado pelo Principal
 - [x] Settings acessados apenas pelo usuário autenticado
-- [x] Teste estrutural impede rotas de negócio sem Principal e contrato OpenAPI sem bearer security
+- [x] Teste estrutural impede rotas de negócio sem Principal e contrato OpenAPI sem cookie security
 - [x] Auditoria completa das demais entidades e endpoints
-- [ ] Testes de autorização por endpoint
+- [x] 401 em 221 operações (`tests/test_route_auth_enforcement.py`)
+- [ ] Testes de autorização por endpoint e por Workspace Role
+- [ ] Fechar S2–S13 da [0046](0046-security-backlog-after-modularization.md)

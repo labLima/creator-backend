@@ -1,8 +1,14 @@
 # ADR-019: Ledger de créditos por Workspace
 
-- Status: accepted
+- Status: accepted (decisão-alvo; implementação pendente)
 - Tracker: [#38](https://github.com/labLima/creator-backend/issues/38)
 - Issue: [0031-credits](../issues/0031-credits.md)
+
+> **Estado em 2026-11-04:** as tabelas `credit_wallets`, `credit_transactions` e
+> `credit_prices` foram removidas pela migration `0004_drop_dead_tables` por não
+> terem repositório/caso de uso. O código atual só possui
+> `workspace_credit_transactions` genérico. Esta ADR permanece como alvo de
+> implementação; a #54 foi corrigida para refletir a lacuna.
 
 ## Decisão
 

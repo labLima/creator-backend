@@ -41,5 +41,5 @@ esse mecanismo.
 
 ## Issues vinculadas
 
-#1, #21, #26, #30, #31, #44, [#133](https://github.com/labLima/creator-backend/issues/133), [#134](https://github.com/labLima/creator-backend/issues/134), [#135](https://github.com/labLima/creator-backend/issues/135) e [controles de qualidade](../issues/0025-quality-controls.md).
+#1, #21, #26, #30, #31, #44, [#133](https://github.com/labLima/creator-backend/issues/133), [#134](https://github.com/labLima/creator-backend/issues/134) (encerrada como não planejada em 2026-11-04), [#135](https://github.com/labLima/creator-backend/issues/135) e [controles de qualidade](../issues/0025-quality-controls.md).
 Consulte o [tracker central](../ADR-ISSUE-TRACKER.md).

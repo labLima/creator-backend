@@ -12,7 +12,10 @@ Content e Generation já são persistidos, mas a avaliação humana não é regi
 
 ## Objetivo
 
-Persistir feedback de um Principal sobre Content, com correlação opcional à Generation que produziu ou transformou o artefato.
+Persistir Content Feedback explícito de um Principal sobre Content, com
+correlação opcional à Generation que produziu ou transformou o artefato. É
+distinto de Human Review Decision e de Performance Signal, e não reescreve o
+Content avaliado.
 
 ## Modelo esperado
 
@@ -33,4 +36,4 @@ Persistir feedback de um Principal sobre Content, com correlação opcional à G
 ## Dependências
 
 - Depends on: `users`, `workspaces`, `contents`, `generations`.
-- Related: ADR-005, ADR-007, ADR-008, ADR-011; issues #18 e #19.
+- Related: ADR-005, ADR-007, ADR-008, ADR-011; issues #18, #19, #52 e #78.

@@ -3,8 +3,9 @@
 - ADR: [`0010-architecture-governance`](../adr/0010-architecture-governance.md)
 - Labels: `migration`, `blocked`
 - GitHub: [#44](https://github.com/labLima/creator-backend/issues/44) (reaberta em 2026-10-26)
-- Status: inventário de código concluído; paridade de comportamento/ETL em
-  [0050](0050-legacy-behavior-parity.md) / [#134](https://github.com/labLima/creator-backend/issues/134)
+- Status: inventário de código concluído; paridade de comportamento/ETL
+  **encerrada como não planejada** em 2026-11-04
+  ([0050](0050-legacy-behavior-parity.md) / [#134](https://github.com/labLima/creator-backend/issues/134))
 
 ## Artefatos
 

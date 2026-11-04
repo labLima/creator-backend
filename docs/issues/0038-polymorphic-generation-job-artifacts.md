@@ -14,5 +14,5 @@ e legenda, preservando isolamento por Workspace, ownership, request_id e soft de
 - [x] Contratos e política de execução no domínio
 - [x] Campos de job/evento e migration
 - [x] OpenAPI atualizado antes da API
-- [ ] Workers e endpoints polimórficos
+- [ ] Workers e endpoints polimórficos (executores COPY/CAPTION na #80)
 - [ ] Testes de integração dos três tipos e reprocessamento
