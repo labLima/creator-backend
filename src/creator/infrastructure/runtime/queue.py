@@ -40,7 +40,7 @@ class RqGenerationQueue:
             "creator.workers.image_generation.run_image_generation",
             str(job_id),
             str(request_id),
-            job_id=f"creator:rq:image-generation:{job_id}",
+            job_id=f"creator-rq-image-generation-{job_id}",
             job_timeout=self._settings.image_generation_job_timeout_seconds,
             retry=Retry(
                 max=max(self._settings.image_generation_job_max_attempts - 1, 0),
@@ -58,7 +58,7 @@ class RqGenerationQueue:
             "creator.workers.generation.run_generation_job",
             str(job_id),
             str(request_id),
-            job_id=f"creator:rq:generation:{job_id}",
+            job_id=f"creator-rq-generation-{job_id}",
             job_timeout=self._settings.agent_workflow_job_timeout_seconds,
             retry=Retry(
                 max=max(self._settings.image_generation_job_max_attempts - 1, 0),
@@ -72,7 +72,7 @@ class RqGenerationQueue:
             "creator.workers.agent_workflow.run_image_agent_workflow",
             str(run_id),
             str(request_id),
-            job_id=f"creator:rq:agent-workflow:{run_id}",
+            job_id=f"creator-rq-agent-workflow-{run_id}",
             job_timeout=self._settings.agent_workflow_job_timeout_seconds,
             meta={"request_id": str(request_id), "agent_workflow_run_id": str(run_id)},
         )
@@ -82,7 +82,7 @@ class RqGenerationQueue:
         return self._queue.enqueue(
             _PIPELINE_HANDLERS[event.event_type],
             event.model_dump(mode="json"),
-            job_id=f"creator:rq:pipeline-event:{event_id}",
+            job_id=f"creator-rq-pipeline-event-{event_id}",
             job_timeout=self._settings.agent_workflow_job_timeout_seconds,
             retry=Retry(
                 max=max(self._settings.pipeline_event_max_attempts - 1, 0),

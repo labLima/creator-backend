@@ -7081,7 +7081,7 @@ components:
           $ref: '#/components/schemas/GenerateImageStyle'
     IndependentGenerationRequest:
       type: object
-      required: [brand_id, artifact_type, briefing]
+      required: [artifact_type]
       properties:
         brand_id:
           type: string
@@ -7097,6 +7097,14 @@ components:
           type: string
           minLength: 1
           maxLength: 20000
+        planning_id:
+          type: string
+          format: uuid
+          description: Planning that owns the Post Structure being used as image-generation input.
+        post_structure_id:
+          type: string
+          format: uuid
+          description: Post Structure in the Planning to use as image-generation input.
         source_content_id:
           type: string
           format: uuid
@@ -7117,11 +7125,33 @@ components:
           maxLength: 255
       allOf:
       - if:
+          required: [planning_id]
+        then:
+          required: [post_structure_id]
+          properties:
+            artifact_type:
+              const: IMAGE
+            operation:
+              const: CREATE
+      - if:
+          required: [post_structure_id]
+        then:
+          required: [planning_id]
+      - if:
+          not:
+            required: [planning_id]
+        then:
+          required: [brand_id, briefing]
+      - if:
           properties:
             artifact_type:
               const: IMAGE
         then:
-          required: [direction]
+          if:
+            not:
+              required: [planning_id]
+          then:
+            required: [direction]
       - if:
           properties:
             artifact_type:
@@ -7184,6 +7214,12 @@ components:
           type: string
           format: uuid
         content_id:
+          type: string
+          format: uuid
+        planning_id:
+          type: string
+          format: uuid
+        post_structure_id:
           type: string
           format: uuid
         artifact_type:

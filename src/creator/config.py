@@ -80,6 +80,11 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_service_role_key: str | None = Field(default=None, repr=False)
     supabase_auth_timeout_seconds: float = 5.0
+    openai_api_key: str | None = Field(default=None, repr=False)
+    openai_text_model: str = "gpt-5.5"
+    openai_image_model: str = "gpt-image-2.6-flare"
+    openai_reviewer_model: str = "gpt-5.5"
+    openai_timeout_seconds: float = 60.0
     gemini_api_key: str | None = Field(default=None, repr=False)
     gemini_text_model: str = "gemini-2.5-flash"
     gemini_image_model: str = "gemini-2.5-flash-image"

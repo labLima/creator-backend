@@ -84,7 +84,7 @@ def create_independent_generation_job(
             request_id=request_id_for(request),
         )
     except EntityNotFoundError as error:
-        raise not_found("Brand or source Content") from error
+        raise not_found("Brand, Planning, Post Structure or source Content") from error
     except IdempotencyConflictError as error:
         raise HTTPException(
             status_code=409,
@@ -98,7 +98,15 @@ def create_independent_generation_job(
                 "message": "Generation Job could not be queued",
             },
         ) from error
-    return success_response(_generation_job_data(job), request, status_code=202)
+    return success_response(
+        _generation_job_data(
+            job,
+            planning_id=payload.planning_id,
+            post_structure_id=payload.post_structure_id,
+        ),
+        request,
+        status_code=202,
+    )
 
 
 @router.get(
@@ -118,6 +126,13 @@ def get_independent_generation_job(
         raise not_found("Generation Job")
     job, status, versions = details
     result: dict[str, object] = _generation_job_data(job)
+    if status is not None:
+        request_input = status.parameters.get("request_input")
+        if isinstance(request_input, dict):
+            for field in ("planning_id", "post_structure_id"):
+                value = request_input.get(field)
+                if isinstance(value, str):
+                    result[field] = value
     if status is not None and status.image is not None:
         result["image"] = _image_data(status.image)
     if job.artifact_type in {"COPY", "CAPTION"}:
@@ -134,8 +149,13 @@ def get_independent_generation_job(
     return success_response(result, request)
 
 
-def _generation_job_data(job: GenerationJobRecord) -> dict[str, object]:
-    return {
+def _generation_job_data(
+    job: GenerationJobRecord,
+    *,
+    planning_id: UUID | None = None,
+    post_structure_id: UUID | None = None,
+) -> dict[str, object]:
+    result: dict[str, object] = {
         "id": str(job.id),
         "workspace_id": str(job.workspace_id),
         "generation_id": str(job.generation_id),
@@ -155,6 +175,11 @@ def _generation_job_data(job: GenerationJobRecord) -> dict[str, object]:
         "updated_at": job.updated_at.isoformat(),
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
+    if planning_id is not None:
+        result["planning_id"] = str(planning_id)
+    if post_structure_id is not None:
+        result["post_structure_id"] = str(post_structure_id)
+    return result
 
 
 @router.get("/api/v1/generations", tags=["Generations"], operation_id="listGenerations")

@@ -18,6 +18,7 @@ from creator.generation.ports import (
     ImageGenerationStatusRecord,
 )
 from creator.generation.schemas import IndependentGenerationRequest
+from creator.post_structure.ports import PostStructureRecord
 from creator.prompts import (
     RenderedPrompt,
     build_advertising_image_prompt,
@@ -185,9 +186,40 @@ def submit_independent_generation(
     request_id: UUID,
 ) -> GenerationJobRecord:
     """Authorize and enqueue one independent Content component Generation."""
-    brand = unit_of_work.brand.brands.get_for_user(user_id=user.id, brand_id=payload.brand_id)
+    planning = None
+    post_structure = None
+    requested_brand_id = payload.brand_id
+    if payload.planning_id is not None and payload.post_structure_id is not None:
+        planning = unit_of_work.planning.get_for_user(
+            user_id=user.id, planning_id=payload.planning_id
+        )
+        post_structure = unit_of_work.post_structures.get_for_user(
+            user_id=user.id, post_structure_id=payload.post_structure_id
+        )
+        if (
+            planning is None
+            or post_structure is None
+            or post_structure.planning_id != planning.id
+            or (requested_brand_id is not None and requested_brand_id != planning.brand_id)
+        ):
+            raise EntityNotFoundError("Planning or Post Structure not found")
+        requested_brand_id = planning.brand_id
+
+    brand = (
+        unit_of_work.brand.brands.get_for_user(user_id=user.id, brand_id=requested_brand_id)
+        if requested_brand_id is not None
+        else None
+    )
     if brand is None:
         raise EntityNotFoundError("Brand not found")
+    if post_structure is not None and post_structure.workspace_id != brand.workspace_id:
+        raise EntityNotFoundError("Planning or Post Structure not found")
+
+    briefing, direction = _generation_input_from_planning(
+        payload=payload,
+        planning_info=planning.info if planning is not None else None,
+        post_structure=post_structure,
+    )
     external_id = independent_generation_external_id(user.id, idempotency_key)
     fingerprint = _independent_generation_fingerprint(payload)
     jobs = unit_of_work.generation.image_jobs
@@ -222,8 +254,14 @@ def submit_independent_generation(
             created_by_user_id=user.id,
             content_type="IMAGE" if payload.artifact_type == "IMAGE" else "TEXT",
             brand_id=brand.id,
-            title=payload.title or payload.briefing[:255],
-            payload={"artifact_type": payload.artifact_type},
+            title=payload.title
+            or (post_structure.title if post_structure else None)
+            or briefing[:255],
+            payload={
+                "artifact_type": payload.artifact_type,
+                "planning_id": str(planning.id) if planning is not None else None,
+                "post_structure_id": str(post_structure.id) if post_structure is not None else None,
+            },
         )
     context = {
         "workspace_id": str(brand.workspace_id),
@@ -247,19 +285,19 @@ def submit_independent_generation(
         rendered = build_advertising_image_prompt(
             context=context,
             user_input={
-                "briefing": payload.briefing,
-                "visual_direction": payload.direction,
+                "briefing": briefing,
+                "visual_direction": direction,
                 "restrictions": payload.restrictions,
             },
         )
-        model = settings.gemini_image_model
+        model = settings.openai_image_model
     else:
         rendered = build_agent_prompt(
             "Writer",
             {
                 **context,
                 "requested_component": payload.artifact_type,
-                "briefing": payload.briefing,
+                "briefing": briefing,
                 "operation": payload.operation,
                 "source_content": source.payload if source else None,
                 "source_text": source_text,
@@ -269,7 +307,7 @@ def submit_independent_generation(
             version="3.0",
             prompt_context=context,
         )
-        model = settings.gemini_text_model
+        model = settings.openai_text_model
     parameters: dict[str, object] = dict(rendered.metadata)
     parameters.update(
         {
@@ -285,6 +323,11 @@ def submit_independent_generation(
             },
         }
     )
+    if post_structure is not None:
+        parameters["image_options"] = {
+            "aspect_ratio": post_structure.ratio,
+            "resolution": post_structure.resolution,
+        }
     try:
         job = jobs.create_image_generation(
             workspace_id=brand.workspace_id,
@@ -328,6 +371,49 @@ def submit_independent_generation(
 def independent_generation_external_id(user_id: UUID, idempotency_key: str) -> str:
     digest = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()
     return f"independent-generation:{user_id}:{digest}"
+
+
+def _generation_input_from_planning(
+    *,
+    payload: IndependentGenerationRequest,
+    planning_info: str | None,
+    post_structure: PostStructureRecord | None,
+) -> tuple[str, str | None]:
+    if post_structure is None:
+        return payload.briefing or "", payload.direction
+
+    fields = {
+        "Objetivo": post_structure.objective,
+        "Ideia central": post_structure.big_idea,
+        "Mensagem principal": post_structure.main_message,
+        "Headline": post_structure.headline,
+        "Chamada para ação": post_structure.image_cta,
+    }
+    briefing_parts = [f"{label}: {value}" for label, value in fields.items() if value]
+    if planning_info:
+        briefing_parts.insert(0, f"Contexto do Planning: {planning_info}")
+    supplied_briefing = payload.briefing
+    if supplied_briefing:
+        briefing_parts.insert(0, supplied_briefing)
+    if not briefing_parts:
+        briefing_parts.append(post_structure.title or "Peça do Planning")
+
+    direction_parts = [post_structure.art_guiding]
+    direction_parts.extend(
+        value
+        for value in (
+            f"Formato: {post_structure.format}" if post_structure.format else None,
+            f"Proporção: {post_structure.ratio}" if post_structure.ratio else None,
+            f"Resolução: {post_structure.resolution}" if post_structure.resolution else None,
+        )
+        if value
+    )
+    if payload.direction:
+        direction_parts.append(payload.direction)
+    direction = "\n".join(part for part in direction_parts if part) or (
+        "Criar uma imagem publicitária coerente com o objetivo, a mensagem e o formato da peça."
+    )
+    return "\n".join(briefing_parts), direction
 
 
 def _independent_generation_fingerprint(payload: IndependentGenerationRequest) -> str:
@@ -393,7 +479,7 @@ def submit_image_generation(
             workspace_id=content.workspace_id,
             content_id=content.id,
             requested_by_user_id=user.id,
-            model=settings.gemini_image_model,
+            model=settings.openai_image_model,
             prompt=rendered_prompt.text,
             parameters=generation_parameters,
             external_id=external_id,
@@ -483,7 +569,7 @@ def submit_image_regeneration(
             workspace_id=original_image.workspace_id,
             content_id=original_image.content_id,
             requested_by_user_id=user.id,
-            model=original_image.model or settings.gemini_image_model,
+            model=original_image.model or settings.openai_image_model,
             prompt=regeneration_prompt.text,
             parameters=generation_parameters,
             external_id=external_id,

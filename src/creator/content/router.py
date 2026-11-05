@@ -61,7 +61,17 @@ from creator.integrations.gemini.exceptions import (
     GeminiTransientError,
 )
 from creator.post_structure.ports import PostStructureRecord
-from creator.services.ai.provider import LLMProvider, ProviderNotConfiguredError
+from creator.services.ai.provider import (
+    LLMAuthenticationError,
+    LLMBlockedContentError,
+    LLMInvalidResponseError,
+    LLMProvider,
+    LLMProviderError,
+    LLMQuotaError,
+    LLMTimeoutError,
+    LLMTransientError,
+    ProviderNotConfiguredError,
+)
 from creator.user.ports import UserRecord
 
 router = APIRouter()
@@ -242,7 +252,7 @@ def generate_text_content(
                 "message": "LLM provider is not configured",
             },
         ) from error
-    except GeminiAuthenticationError as error:
+    except (GeminiAuthenticationError, LLMAuthenticationError) as error:
         raise HTTPException(
             status_code=500,
             detail={
@@ -250,7 +260,7 @@ def generate_text_content(
                 "message": "LLM provider authentication is not configured",
             },
         ) from error
-    except GeminiQuotaError as error:
+    except (GeminiQuotaError, LLMQuotaError) as error:
         raise HTTPException(
             status_code=429,
             detail={
@@ -258,7 +268,7 @@ def generate_text_content(
                 "message": "LLM provider quota or rate limit exceeded",
             },
         ) from error
-    except GeminiBlockedContentError as error:
+    except (GeminiBlockedContentError, LLMBlockedContentError) as error:
         raise HTTPException(
             status_code=422,
             detail={
@@ -266,7 +276,7 @@ def generate_text_content(
                 "message": "Content generation was blocked by the provider",
             },
         ) from error
-    except GeminiInvalidResponseError as error:
+    except (GeminiInvalidResponseError, LLMInvalidResponseError) as error:
         raise HTTPException(
             status_code=502,
             detail={
@@ -274,7 +284,7 @@ def generate_text_content(
                 "message": "LLM provider returned an invalid response",
             },
         ) from error
-    except GeminiTimeoutError as error:
+    except (GeminiTimeoutError, LLMTimeoutError) as error:
         raise HTTPException(
             status_code=504,
             detail={
@@ -282,7 +292,12 @@ def generate_text_content(
                 "message": "LLM provider timed out",
             },
         ) from error
-    except (GeminiTransientError, GeminiProviderError) as error:
+    except (
+        GeminiTransientError,
+        GeminiProviderError,
+        LLMTransientError,
+        LLMProviderError,
+    ) as error:
         raise HTTPException(
             status_code=503,
             detail={
@@ -366,7 +381,7 @@ def improve_text_content(
                 "message": "LLM provider is not configured",
             },
         ) from error
-    except GeminiAuthenticationError as error:
+    except (GeminiAuthenticationError, LLMAuthenticationError) as error:
         raise HTTPException(
             status_code=500,
             detail={
@@ -374,7 +389,7 @@ def improve_text_content(
                 "message": "LLM provider authentication is not configured",
             },
         ) from error
-    except GeminiQuotaError as error:
+    except (GeminiQuotaError, LLMQuotaError) as error:
         raise HTTPException(
             status_code=429,
             detail={
@@ -382,7 +397,7 @@ def improve_text_content(
                 "message": "LLM provider quota or rate limit exceeded",
             },
         ) from error
-    except GeminiBlockedContentError as error:
+    except (GeminiBlockedContentError, LLMBlockedContentError) as error:
         raise HTTPException(
             status_code=422,
             detail={
@@ -390,7 +405,11 @@ def improve_text_content(
                 "message": "Content improvement was blocked by the provider",
             },
         ) from error
-    except (GeminiInvalidResponseError, ContentImprovementInvalidResponseError) as error:
+    except (
+        GeminiInvalidResponseError,
+        LLMInvalidResponseError,
+        ContentImprovementInvalidResponseError,
+    ) as error:
         raise HTTPException(
             status_code=502,
             detail={
@@ -398,7 +417,7 @@ def improve_text_content(
                 "message": "LLM provider returned an invalid response",
             },
         ) from error
-    except GeminiTimeoutError as error:
+    except (GeminiTimeoutError, LLMTimeoutError) as error:
         raise HTTPException(
             status_code=504,
             detail={
@@ -406,7 +425,12 @@ def improve_text_content(
                 "message": "LLM provider timed out",
             },
         ) from error
-    except (GeminiTransientError, GeminiProviderError) as error:
+    except (
+        GeminiTransientError,
+        GeminiProviderError,
+        LLMTransientError,
+        LLMProviderError,
+    ) as error:
         raise HTTPException(
             status_code=503,
             detail={

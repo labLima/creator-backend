@@ -24,7 +24,6 @@ from creator.integrations.gemini.exceptions import (
     GeminiTimeoutError,
     GeminiTransientError,
 )
-from creator.integrations.gemini.image_generator import GeminiImageGenerationRequest
 from creator.services.agents.contracts import (
     AgentExecutionContext,
     ArtistOutput,
@@ -33,7 +32,17 @@ from creator.services.agents.contracts import (
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
 from creator.services.agents.factory import create_multi_agent_orchestrator
 from creator.services.ai.factory import create_image_reviewer
-from creator.services.ai.image_provider import create_image_generator
+from creator.services.ai.image_provider import (
+    ImageGenerationRequest,
+    ImageProviderAuthenticationError,
+    ImageProviderBlockedError,
+    ImageProviderError,
+    ImageProviderInvalidResponseError,
+    ImageProviderQuotaError,
+    ImageProviderTimeoutError,
+    ImageProviderTransientError,
+    create_image_generator,
+)
 from creator.services.ai.reviewer import ImageReviewRequest
 from creator.services.storage.provider import StorageError
 
@@ -121,10 +130,13 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                 }
             }
         result = create_image_generator(settings).generate(
-            GeminiImageGenerationRequest(
+            ImageGenerationRequest(
                 prompt=prompt,
                 model=work_item.model,
                 metadata=_image_request_metadata(work_item),
+                size=_image_request_size(work_item),
+                aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
+                resolution=_image_request_option(work_item, "resolution"),
             )
         )
         image_metadata = dict(result.metadata)
@@ -234,7 +246,7 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
             duration_ms=duration_ms,
             failure_code=failure_code,
         )
-    except GeminiProviderError as error:
+    except (GeminiProviderError, ImageProviderError) as error:
         failure_code = _provider_failure_code(error)
         duration_ms = int((time.perf_counter() - started_at) * 1000)
         if error.retryable and work_item.job.attempt_count < work_item.job.max_attempts:
@@ -335,18 +347,31 @@ def _image_request_metadata(work_item: ImageGenerationWorkItem) -> JsonObject:
     return metadata
 
 
-def _provider_failure_code(error: GeminiProviderError) -> str:
-    if isinstance(error, GeminiAuthenticationError):
+def _image_request_size(work_item: ImageGenerationWorkItem) -> str | None:
+    value = work_item.parameters.get("image_size")
+    return value if isinstance(value, str) else None
+
+
+def _image_request_option(work_item: ImageGenerationWorkItem, name: str) -> str | None:
+    options = work_item.parameters.get("image_options")
+    if not isinstance(options, dict):
+        return None
+    value = options.get(name)
+    return value if isinstance(value, str) else None
+
+
+def _provider_failure_code(error: GeminiProviderError | ImageProviderError) -> str:
+    if isinstance(error, (GeminiAuthenticationError, ImageProviderAuthenticationError)):
         return "PROVIDER_AUTHENTICATION_FAILED"
-    if isinstance(error, GeminiQuotaError):
+    if isinstance(error, (GeminiQuotaError, ImageProviderQuotaError)):
         return "PROVIDER_QUOTA_EXCEEDED"
-    if isinstance(error, GeminiTimeoutError):
+    if isinstance(error, (GeminiTimeoutError, ImageProviderTimeoutError)):
         return "PROVIDER_TIMEOUT"
-    if isinstance(error, GeminiBlockedContentError):
+    if isinstance(error, (GeminiBlockedContentError, ImageProviderBlockedError)):
         return "PROVIDER_CONTENT_BLOCKED"
-    if isinstance(error, GeminiInvalidResponseError):
+    if isinstance(error, (GeminiInvalidResponseError, ImageProviderInvalidResponseError)):
         return "PROVIDER_INVALID_RESPONSE"
-    if isinstance(error, GeminiTransientError):
+    if isinstance(error, (GeminiTransientError, ImageProviderTransientError)):
         return "PROVIDER_TRANSIENT_FAILED"
     return "PROVIDER_FAILED"
 

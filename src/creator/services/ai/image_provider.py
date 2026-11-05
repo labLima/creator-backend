@@ -6,12 +6,47 @@ from typing import Protocol
 from creator.config import Settings
 
 
+class ImageProviderError(RuntimeError):
+    """Base error for image generation providers."""
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+class ImageProviderAuthenticationError(ImageProviderError):
+    pass
+
+
+class ImageProviderQuotaError(ImageProviderError):
+    pass
+
+
+class ImageProviderTimeoutError(ImageProviderError):
+    pass
+
+
+class ImageProviderBlockedError(ImageProviderError):
+    pass
+
+
+class ImageProviderTransientError(ImageProviderError):
+    pass
+
+
+class ImageProviderInvalidResponseError(ImageProviderError):
+    pass
+
+
 @dataclass(frozen=True, slots=True)
 class ImageGenerationRequest:
     prompt: str
     model: str | None = None
     output_mime_type: str = "image/png"
     metadata: dict[str, object] = field(default_factory=dict)
+    size: str | None = None
+    aspect_ratio: str | None = None
+    resolution: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +65,6 @@ class ImageGenerator(Protocol):
 
 
 def create_image_generator(settings: Settings) -> ImageGenerator:
-    from creator.integrations.gemini.image_generator import GeminiImageGenerator
+    from creator.integrations.openai.image_generator import OpenAIImageGenerator
 
-    return GeminiImageGenerator(settings)
+    return OpenAIImageGenerator(settings)
