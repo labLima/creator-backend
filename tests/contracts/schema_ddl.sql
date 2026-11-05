@@ -1,3 +1,21 @@
+CREATE TABLE activity_events (
+	id CHAR(32) NOT NULL,
+	workspace_id CHAR(32) NOT NULL,
+	user_id CHAR(32),
+	brand_id CHAR(32),
+	entity_type VARCHAR(50) NOT NULL,
+	entity_id CHAR(32),
+	event_type VARCHAR(100) NOT NULL,
+	metadata JSON DEFAULT '{}' NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT ck_activity_events_entity_type CHECK (entity_type = 'brand'),
+	CONSTRAINT ck_activity_events_event_type CHECK (event_type IN ('brand.created', 'brand.updated', 'brand.deleted')),
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT,
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE RESTRICT
+)
+
 CREATE TABLE agent_workflow_runs (
 	id CHAR(32) NOT NULL, 
 	workspace_id CHAR(32) NOT NULL, 

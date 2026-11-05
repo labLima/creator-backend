@@ -8,6 +8,8 @@ from types import TracebackType
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from creator.activity_event.ports import ActivityEventRepository
+from creator.activity_event.repository import SqlAlchemyActivityEventRepository
 from creator.asset.ports import AssetRepository
 from creator.asset.repository import SqlAlchemyAssetRepository
 from creator.auth.ports import AuthSessionRepository
@@ -111,6 +113,7 @@ logger = logging.getLogger(__name__)
 
 
 class SqlAlchemyUnitOfWork(UnitOfWork):
+    activity_events: ActivityEventRepository
     auth_sessions: AuthSessionRepository
     user: UserRepositories
     workspace: WorkspaceRepositories
@@ -149,6 +152,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
     def __enter__(self) -> SqlAlchemyUnitOfWork:
         session = self._session_factory()
         self._session = session
+        self.activity_events = SqlAlchemyActivityEventRepository(session)
         self._started_at = time.perf_counter()
         users = SqlAlchemyUserRepository(session)
         self.auth_sessions = SqlAlchemyAuthSessionRepository(session)

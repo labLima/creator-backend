@@ -153,7 +153,7 @@ def test_business_routes_require_authenticated_principal() -> None:
         if route.path_format not in public and not dependency_names(route) & principal_resolvers
     ]
 
-    assert len(routes) == 224, f"expected 224 /api/v1 operations, found {len(routes)}"
+    assert len(routes) == 225, f"expected 225 /api/v1 operations, found {len(routes)}"
     assert not unauthenticated, f"routes without a Principal dependency: {unauthenticated}"
 
 

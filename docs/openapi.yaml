@@ -55,6 +55,79 @@ tags:
 - name: Brand Assets
   description: Brand-owned assets from the database schema.
 paths:
+  /api/v1/workspaces/{workspace_id}/activity-events:
+    get:
+      operationId: listActivityEvents
+      security:
+      - CreatorSessionCookie: []
+      tags: [Workspaces]
+      summary: List Activity Events for Workspace administrators
+      description: >-
+        Requires an active owner or admin Membership. Results are ordered by
+        created_at and id descending. Cursor pagination does not provide a snapshot.
+        entity_type and entity_id must be supplied together.
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: cursor
+        in: query
+        schema: {type: string, maxLength: 512}
+      - name: user_id
+        in: query
+        schema: {type: string, format: uuid}
+      - name: brand_id
+        in: query
+        schema: {type: string, format: uuid}
+      - name: entity_type
+        in: query
+        schema: {type: string, enum: [brand]}
+      - name: entity_id
+        in: query
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Activity Events and next cursor. Metadata is always empty.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, meta]
+                properties:
+                  success: {type: boolean}
+                  meta: {type: object}
+                  data:
+                    type: object
+                    required: [items, next_cursor]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, workspace_id, user_id, brand_id, entity_type, entity_id, event_type, metadata, created_at]
+                          properties:
+                            id: {type: string, format: uuid}
+                            workspace_id: {type: string, format: uuid}
+                            user_id: {type: [string, 'null'], format: uuid}
+                            brand_id: {type: [string, 'null'], format: uuid}
+                            entity_type: {type: string, enum: [brand]}
+                            entity_id: {type: [string, 'null'], format: uuid}
+                            event_type: {type: string, enum: [brand.created, brand.updated, brand.deleted]}
+                            metadata: {type: object, maxProperties: 0}
+                            created_at: {type: string, format: date-time}
+                      next_cursor: {type: [string, 'null']}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
+          x-error-codes: [WORKSPACE_ACCESS_DENIED]
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+          x-error-codes: [VALIDATION_FAILED, INVALID_CURSOR, INVALID_ENTITY_FILTER]
   /health:
     get:
       operationId: getHealth

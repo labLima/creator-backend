@@ -1,9 +1,9 @@
 # Issue 0029: activity events timeline
 
-- ADR primária: [`0010-architecture-governance`](../adr/0010-architecture-governance.md)
-- ADR tracker: [#43](https://github.com/labLima/creator-backend/issues/43)
+- ADR primária: [`0008-api-limits-and-soft-delete`](../adr/0008-api-limits-and-soft-delete.md)
+- ADR tracker: [#41](https://github.com/labLima/creator-backend/issues/41)
 - GitHub: [#52](https://github.com/labLima/creator-backend/issues/52)
-- Labels: `backend`, `database`, `architecture`, `adr-010`
+- Labels: `backend`, `database`, `architecture`, `adr-008`
 
 ## Contexto
 

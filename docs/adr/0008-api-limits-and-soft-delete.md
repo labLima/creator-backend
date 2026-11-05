@@ -33,3 +33,21 @@ payloads e bytes de imagem.
 
 #5, #13, #15, #18, #19, #22, #25, [rate limiting](../issues/0024-api-rate-limiting.md) e [observabilidade](../issues/0043-observability-correlation.md).
 Consulte o [tracker central](../ADR-ISSUE-TRACKER.md).
+
+## Emenda 2026-11-04 — Activity Events (#52)
+
+Activity Events são registros de negócio append-oriented, separados de logs técnicos.
+A retenção é indefinida, sem expurgo automático. A aplicação não expõe alteração
+ou exclusão; isso não protege contra administradores do banco. O histórico
+sobrevive ao soft delete. A leitura exige Membership ativa owner ou admin.
+
+A timeline é exceção à paginação page/sort desta ADR: usa cursor opaco e limit,
+ordenada por created_at e id decrescentes. Inserções posteriores não garantem
+um snapshot. O catálogo inicial é brand.created, brand.updated e brand.deleted;
+a única entidade referenciável é brand, validada contra o Workspace. Metadata
+é objeto vazio: campos arbitrários, payloads, credenciais e tokens são proibidos.
+A inserção do evento e a mudança de Brand compartilham a mesma transação.
+A exceção será revista quando houver decisão de retenção ou requisitos legais.
+
+Implementação: [#52](https://github.com/labLima/creator-backend/issues/52),
+[issue local](../issues/0029-activity-events.md); tracker [#41](https://github.com/labLima/creator-backend/issues/41).

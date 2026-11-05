@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from creator.activity_event.router import router as activity_event_router
 from creator.api.system import router as system_router
 from creator.asset.router import router as asset_router
 from creator.auth.router import router as auth_router
@@ -43,6 +44,7 @@ api_router.include_router(auth_router)
 api_router.include_router(system_router)
 api_router.include_router(user_router)
 api_router.include_router(workspace_router)
+api_router.include_router(activity_event_router)
 api_router.include_router(brand_router)
 api_router.include_router(project_router)
 api_router.include_router(campaign_router)
