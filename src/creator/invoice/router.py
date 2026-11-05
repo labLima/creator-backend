@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/invoices", tags=["Billing"])
+@router.get("/api/v1/invoices", tags=["Billing"], operation_id="list_invoices_api_v1_invoices_get")
 def list_invoices(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -42,7 +42,9 @@ def list_invoices(
     )
 
 
-@router.post("/api/v1/invoices", tags=["Billing"])
+@router.post(
+    "/api/v1/invoices", tags=["Billing"], operation_id="create_invoice_api_v1_invoices_post"
+)
 def create_invoice(
     payload: InvoiceCreateRequest,
     request: Request,
@@ -58,7 +60,9 @@ def create_invoice(
     )
 
 
-@router.get("/api/v1/invoices/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/invoices/{id}", tags=["Billing"], operation_id="get_invoice_api_v1_invoices__id__get"
+)
 def get_invoice(
     invoice_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -73,7 +77,11 @@ def get_invoice(
     )
 
 
-@router.put("/api/v1/invoices/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/invoices/{id}",
+    tags=["Billing"],
+    operation_id="update_invoice_api_v1_invoices__id__put",
+)
 def update_invoice(
     invoice_id: Annotated[UUID, Path(alias="id")],
     payload: InvoiceUpdateRequest,
@@ -93,7 +101,11 @@ def update_invoice(
     )
 
 
-@router.delete("/api/v1/invoices/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/invoices/{id}",
+    tags=["Billing"],
+    operation_id="delete_invoice_api_v1_invoices__id__delete",
+)
 def delete_invoice(
     invoice_id: Annotated[UUID, Path(alias="id")],
     request: Request,

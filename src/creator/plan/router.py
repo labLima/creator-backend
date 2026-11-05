@@ -32,7 +32,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/plans", tags=["Billing"])
+@router.get("/api/v1/plans", tags=["Billing"], operation_id="list_plans_api_v1_plans_get")
 def list_plans(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -44,7 +44,7 @@ def list_plans(
     )
 
 
-@router.post("/api/v1/plans", tags=["Billing"])
+@router.post("/api/v1/plans", tags=["Billing"], operation_id="create_plan_api_v1_plans_post")
 def create_plan(
     payload: PlanCreateRequest,
     request: Request,
@@ -58,7 +58,7 @@ def create_plan(
     )
 
 
-@router.get("/api/v1/plans/{id}", tags=["Billing"])
+@router.get("/api/v1/plans/{id}", tags=["Billing"], operation_id="get_plan_api_v1_plans__id__get")
 def get_plan(
     plan_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -71,7 +71,9 @@ def get_plan(
     )
 
 
-@router.put("/api/v1/plans/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/plans/{id}", tags=["Billing"], operation_id="update_plan_api_v1_plans__id__put"
+)
 def update_plan(
     plan_id: Annotated[UUID, Path(alias="id")],
     payload: PlanUpdateRequest,
@@ -87,7 +89,9 @@ def update_plan(
     )
 
 
-@router.delete("/api/v1/plans/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/plans/{id}", tags=["Billing"], operation_id="delete_plan_api_v1_plans__id__delete"
+)
 def delete_plan(
     plan_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -100,7 +104,7 @@ def delete_plan(
     )
 
 
-@router.get("/api/v1/plan-items", tags=["Billing"])
+@router.get("/api/v1/plan-items", tags=["Billing"], operation_id="listPlanItems")
 def list_plan_items(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -115,7 +119,7 @@ def list_plan_items(
     )
 
 
-@router.post("/api/v1/plan-items", tags=["Billing"])
+@router.post("/api/v1/plan-items", tags=["Billing"], operation_id="createPlanItem")
 def create_plan_item(
     payload: PlanItemCreateRequest,
     request: Request,
@@ -131,7 +135,7 @@ def create_plan_item(
     )
 
 
-@router.get("/api/v1/plan-items/{id}", tags=["Billing"])
+@router.get("/api/v1/plan-items/{id}", tags=["Billing"], operation_id="getPlanItem")
 def get_plan_item(
     item_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -146,7 +150,7 @@ def get_plan_item(
     )
 
 
-@router.put("/api/v1/plan-items/{id}", tags=["Billing"])
+@router.put("/api/v1/plan-items/{id}", tags=["Billing"], operation_id="updatePlanItem")
 def update_plan_item(
     item_id: Annotated[UUID, Path(alias="id")],
     payload: PlanItemUpdateRequest,
@@ -162,7 +166,7 @@ def update_plan_item(
     )
 
 
-@router.delete("/api/v1/plan-items/{id}", tags=["Billing"])
+@router.delete("/api/v1/plan-items/{id}", tags=["Billing"], operation_id="deletePlanItem")
 def delete_plan_item(
     item_id: Annotated[UUID, Path(alias="id")],
     request: Request,

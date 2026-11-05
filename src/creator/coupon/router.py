@@ -32,7 +32,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/coupon-redemptions", tags=["Billing"])
+@router.get(
+    "/api/v1/coupon-redemptions",
+    tags=["Billing"],
+    operation_id="list_coupon_redemptions_api_v1_coupon_redemptions_get",
+)
 def list_coupon_redemptions(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -44,7 +48,11 @@ def list_coupon_redemptions(
     )
 
 
-@router.post("/api/v1/coupon-redemptions", tags=["Billing"])
+@router.post(
+    "/api/v1/coupon-redemptions",
+    tags=["Billing"],
+    operation_id="create_coupon_redemption_api_v1_coupon_redemptions_post",
+)
 def create_coupon_redemption(
     payload: CouponRedemptionCreateRequest,
     request: Request,
@@ -60,7 +68,11 @@ def create_coupon_redemption(
     )
 
 
-@router.get("/api/v1/coupon-redemptions/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/coupon-redemptions/{id}",
+    tags=["Billing"],
+    operation_id="get_coupon_redemption_api_v1_coupon_redemptions__id__get",
+)
 def get_coupon_redemption(
     redemption_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -75,7 +87,11 @@ def get_coupon_redemption(
     )
 
 
-@router.put("/api/v1/coupon-redemptions/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/coupon-redemptions/{id}",
+    tags=["Billing"],
+    operation_id="update_coupon_redemption_api_v1_coupon_redemptions__id__put",
+)
 def update_coupon_redemption(
     redemption_id: Annotated[UUID, Path(alias="id")],
     payload: CouponRedemptionUpdateRequest,
@@ -95,7 +111,11 @@ def update_coupon_redemption(
     )
 
 
-@router.delete("/api/v1/coupon-redemptions/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/coupon-redemptions/{id}",
+    tags=["Billing"],
+    operation_id="delete_coupon_redemption_api_v1_coupon_redemptions__id__delete",
+)
 def delete_coupon_redemption(
     redemption_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -110,7 +130,7 @@ def delete_coupon_redemption(
     )
 
 
-@router.get("/api/v1/coupons", tags=["Billing"])
+@router.get("/api/v1/coupons", tags=["Billing"], operation_id="list_coupons_api_v1_coupons_get")
 def list_coupons(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -122,7 +142,7 @@ def list_coupons(
     )
 
 
-@router.post("/api/v1/coupons", tags=["Billing"])
+@router.post("/api/v1/coupons", tags=["Billing"], operation_id="create_coupon_api_v1_coupons_post")
 def create_coupon(
     payload: CouponCreateRequest,
     request: Request,
@@ -138,7 +158,9 @@ def create_coupon(
     )
 
 
-@router.get("/api/v1/coupons/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/coupons/{id}", tags=["Billing"], operation_id="get_coupon_api_v1_coupons__id__get"
+)
 def get_coupon(
     coupon_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -153,7 +175,9 @@ def get_coupon(
     )
 
 
-@router.put("/api/v1/coupons/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/coupons/{id}", tags=["Billing"], operation_id="update_coupon_api_v1_coupons__id__put"
+)
 def update_coupon(
     coupon_id: Annotated[UUID, Path(alias="id")],
     payload: CouponUpdateRequest,
@@ -173,7 +197,11 @@ def update_coupon(
     )
 
 
-@router.delete("/api/v1/coupons/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/coupons/{id}",
+    tags=["Billing"],
+    operation_id="delete_coupon_api_v1_coupons__id__delete",
+)
 def delete_coupon(
     coupon_id: Annotated[UUID, Path(alias="id")],
     request: Request,

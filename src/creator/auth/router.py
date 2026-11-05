@@ -125,7 +125,16 @@ def _signup_data(
     }
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    operation_id="loginWithPassword",
+    responses={
+        "401": {
+            "$ref": "#/components/responses/LoginRejected",
+            "x-error-codes": ["LOGIN_REJECTED"],
+        }
+    },
+)
 def login_with_password(
     payload: AuthLoginRequest,
     request: Request,
@@ -167,7 +176,18 @@ def login_with_password(
     return response
 
 
-@router.post("/signup", status_code=201)
+@router.post(
+    "/signup",
+    status_code=201,
+    operation_id="signupWithPassword",
+    responses={
+        "409": {"$ref": "#/components/responses/EmailAlreadyRegistered"},
+        "422": {
+            "$ref": "#/components/responses/WeakPassword",
+            "x-error-codes": ["WEAK_PASSWORD", "VALIDATION_FAILED"],
+        },
+    },
+)
 def signup_with_password(
     payload: AuthSignupRequest,
     request: Request,
@@ -237,7 +257,7 @@ def signup_with_password(
     return response
 
 
-@router.post("/refresh")
+@router.post("/refresh", operation_id="refreshSession")
 def refresh_session(
     request: Request,
     application: Annotated[AuthApplication, Depends(get_auth_application)],
@@ -280,7 +300,7 @@ def refresh_session(
     return response
 
 
-@router.get("/csrf")
+@router.get("/csrf", operation_id="csrfToken")
 def csrf_token(
     request: Request,
     principal: Annotated[Principal | None, Depends(get_optional_principal)],
@@ -320,7 +340,7 @@ def csrf_token(
     return response
 
 
-@router.post("/logout")
+@router.post("/logout", operation_id="logoutSession")
 def logout_session(
     request: Request,
     current_user: Annotated[UserRecord | None, Depends(get_optional_current_user)],

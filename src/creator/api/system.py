@@ -22,17 +22,17 @@ from creator.infrastructure.runtime.metrics import MetricsRegistry
 router = APIRouter()
 
 
-@router.get("/health", tags=["System"])
+@router.get("/health", tags=["System"], operation_id="getHealth")
 async def health(request: Request) -> JSONResponse:
     return success_response({"status": "ok"}, request)
 
 
-@router.get("/health/live", tags=["System"])
+@router.get("/health/live", tags=["System"], operation_id="liveHealth")
 async def live_health(request: Request) -> JSONResponse:
     return success_response({"status": "ok"}, request)
 
 
-@router.get("/metrics", include_in_schema=True, tags=["System"])
+@router.get("/metrics", include_in_schema=True, tags=["System"], operation_id="getMetrics")
 def metrics(
     registry: Annotated[MetricsRegistry, Depends(get_metrics_registry)],
 ) -> PlainTextResponse:

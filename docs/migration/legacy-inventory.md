@@ -522,7 +522,13 @@ Além dessas 10, há um bloqueio transversal: **não existe teste de contrato po
 
 ### Recomendação
 
-A #44 está fechada como `completed`, mas os critérios de aceite **não foram atendidos**. Não usar esse fechamento como evidência de migração. O escopo remanescente está na [#134](https://github.com/labLima/creator-backend/issues/134); se a #44 for reaberta, o status correto é **bloqueada**.
+> **Atualização 2026-11-04:** a migração de comportamento e o ETL foram
+> encerrados como **não planejados** (#134 / [0050](../issues/0050-legacy-behavior-parity.md)).
+> Este inventário permanece como registro histórico. As condições abaixo não são
+> um backlog ativo; qualquer remoção de tabela legada exige issue própria com
+> consumidores migrados.
+
+A #44 está fechada como `completed`, mas os critérios de aceite **não foram atendidos**. Não usar esse fechamento como evidência de migração. O escopo remanescente foi encerrado com a #134.
 
 Justificativa:
 

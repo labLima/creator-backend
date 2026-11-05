@@ -31,7 +31,7 @@ from creator.user.schemas import (
 router = APIRouter()
 
 
-@router.get("/api/v1/users/me", tags=["Users"])
+@router.get("/api/v1/users/me", tags=["Users"], operation_id="getMyProfile")
 def get_my_profile(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -43,7 +43,7 @@ def get_my_profile(
     )
 
 
-@router.get("/api/v1/settings", tags=["Settings"])
+@router.get("/api/v1/settings", tags=["Settings"], operation_id="getMySettings")
 def get_my_settings(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -55,7 +55,7 @@ def get_my_settings(
     )
 
 
-@router.patch("/api/v1/settings", tags=["Settings"])
+@router.patch("/api/v1/settings", tags=["Settings"], operation_id="updateMySettings")
 def update_my_settings(
     payload: SettingsUpdateRequest,
     request: Request,
@@ -70,7 +70,12 @@ def update_my_settings(
     )
 
 
-@router.get("/api/v1/users", tags=["Users"])
+@router.get(
+    "/api/v1/users",
+    tags=["Users"],
+    operation_id="listUsers",
+    responses={"403": {"$ref": "#/components/responses/Forbidden"}},
+)
 def list_users(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -87,7 +92,12 @@ def list_users(
     )
 
 
-@router.post("/api/v1/users", tags=["Users"])
+@router.post(
+    "/api/v1/users",
+    tags=["Users"],
+    operation_id="createUser",
+    responses={"403": {"$ref": "#/components/responses/Forbidden"}},
+)
 def create_user(
     payload: UserCreateRequest,
     request: Request,
@@ -101,7 +111,15 @@ def create_user(
     )
 
 
-@router.get("/api/v1/users/{id}", tags=["Users"])
+@router.get(
+    "/api/v1/users/{id}",
+    tags=["Users"],
+    operation_id="getUser",
+    responses={
+        "403": {"$ref": "#/components/responses/Forbidden"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def get_user(
     user_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -114,7 +132,15 @@ def get_user(
     )
 
 
-@router.put("/api/v1/users/{id}", tags=["Users"])
+@router.put(
+    "/api/v1/users/{id}",
+    tags=["Users"],
+    operation_id="updateUser",
+    responses={
+        "403": {"$ref": "#/components/responses/Forbidden"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def update_user(
     user_id: Annotated[UUID, Path(alias="id")],
     payload: UserUpdateRequest,
@@ -130,7 +156,15 @@ def update_user(
     )
 
 
-@router.delete("/api/v1/users/{id}", tags=["Users"])
+@router.delete(
+    "/api/v1/users/{id}",
+    tags=["Users"],
+    operation_id="deleteUser",
+    responses={
+        "403": {"$ref": "#/components/responses/Forbidden"},
+        "404": {"$ref": "#/components/responses/NotFound"},
+    },
+)
 def delete_user(
     user_id: Annotated[UUID, Path(alias="id")],
     request: Request,

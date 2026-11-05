@@ -30,7 +30,11 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/subscription-history", tags=["Billing"])
+@router.get(
+    "/api/v1/subscription-history",
+    tags=["Billing"],
+    operation_id="list_subscription_history_api_v1_subscription_history_get",
+)
 def list_subscription_history(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -42,7 +46,11 @@ def list_subscription_history(
     )
 
 
-@router.post("/api/v1/subscription-history", tags=["Billing"])
+@router.post(
+    "/api/v1/subscription-history",
+    tags=["Billing"],
+    operation_id="create_subscription_history_api_v1_subscription_history_post",
+)
 def create_subscription_history(
     payload: dict[str, Any],
     request: Request,
@@ -58,7 +66,11 @@ def create_subscription_history(
     )
 
 
-@router.get("/api/v1/subscription-history/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/subscription-history/{id}",
+    tags=["Billing"],
+    operation_id="get_subscription_history_api_v1_subscription_history__id__get",
+)
 def get_subscription_history(
     history_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -73,7 +85,11 @@ def get_subscription_history(
     )
 
 
-@router.put("/api/v1/subscription-history/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/subscription-history/{id}",
+    tags=["Billing"],
+    operation_id="update_subscription_history_api_v1_subscription_history__id__put",
+)
 def update_subscription_history(
     history_id: Annotated[UUID, Path(alias="id")],
     payload: dict[str, Any],
@@ -93,7 +109,11 @@ def update_subscription_history(
     )
 
 
-@router.delete("/api/v1/subscription-history/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/subscription-history/{id}",
+    tags=["Billing"],
+    operation_id="delete_subscription_history_api_v1_subscription_history__id__delete",
+)
 def delete_subscription_history(
     history_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -108,7 +128,11 @@ def delete_subscription_history(
     )
 
 
-@router.get("/api/v1/subscriptions", tags=["Billing"])
+@router.get(
+    "/api/v1/subscriptions",
+    tags=["Billing"],
+    operation_id="list_subscriptions_api_v1_subscriptions_get",
+)
 def list_subscriptions(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -120,7 +144,11 @@ def list_subscriptions(
     )
 
 
-@router.post("/api/v1/subscriptions", tags=["Billing"])
+@router.post(
+    "/api/v1/subscriptions",
+    tags=["Billing"],
+    operation_id="create_subscription_api_v1_subscriptions_post",
+)
 def create_subscription(
     payload: SubscriptionCreateRequest,
     request: Request,
@@ -136,7 +164,11 @@ def create_subscription(
     )
 
 
-@router.get("/api/v1/subscriptions/{id}", tags=["Billing"])
+@router.get(
+    "/api/v1/subscriptions/{id}",
+    tags=["Billing"],
+    operation_id="get_subscription_api_v1_subscriptions__id__get",
+)
 def get_subscription(
     subscription_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -151,7 +183,11 @@ def get_subscription(
     )
 
 
-@router.put("/api/v1/subscriptions/{id}", tags=["Billing"])
+@router.put(
+    "/api/v1/subscriptions/{id}",
+    tags=["Billing"],
+    operation_id="update_subscription_api_v1_subscriptions__id__put",
+)
 def update_subscription(
     subscription_id: Annotated[UUID, Path(alias="id")],
     payload: SubscriptionUpdateRequest,
@@ -171,7 +207,11 @@ def update_subscription(
     )
 
 
-@router.delete("/api/v1/subscriptions/{id}", tags=["Billing"])
+@router.delete(
+    "/api/v1/subscriptions/{id}",
+    tags=["Billing"],
+    operation_id="delete_subscription_api_v1_subscriptions__id__delete",
+)
 def delete_subscription(
     subscription_id: Annotated[UUID, Path(alias="id")],
     request: Request,

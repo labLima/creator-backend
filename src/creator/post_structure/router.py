@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/post-structures", tags=["Post Structures"])
+@router.get("/api/v1/post-structures", tags=["Post Structures"], operation_id="listPostStructures")
 def list_post_structures(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -54,7 +54,9 @@ def list_post_structures(
     )
 
 
-@router.post("/api/v1/post-structures", tags=["Post Structures"])
+@router.post(
+    "/api/v1/post-structures", tags=["Post Structures"], operation_id="createPostStructure"
+)
 def create_post_structure(
     payload: PostStructureCreateRequest,
     request: Request,
@@ -70,7 +72,12 @@ def create_post_structure(
     )
 
 
-@router.get("/api/v1/post-structures/{id}", tags=["Post Structures"])
+@router.get(
+    "/api/v1/post-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="getPostStructure",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def get_post_structure(
     post_structure_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -88,7 +95,12 @@ def get_post_structure(
     )
 
 
-@router.put("/api/v1/post-structures/{id}", tags=["Post Structures"])
+@router.put(
+    "/api/v1/post-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="updatePostStructure",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def update_post_structure(
     post_structure_id: Annotated[UUID, Path(alias="id")],
     payload: PostStructureUpdateRequest,
@@ -108,7 +120,12 @@ def update_post_structure(
     )
 
 
-@router.delete("/api/v1/post-structures/{id}", tags=["Post Structures"])
+@router.delete(
+    "/api/v1/post-structures/{id}",
+    tags=["Post Structures"],
+    operation_id="deletePostStructure",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
 def delete_post_structure(
     post_structure_id: Annotated[UUID, Path(alias="id")],
     request: Request,

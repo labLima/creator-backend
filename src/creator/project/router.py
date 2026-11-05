@@ -30,7 +30,7 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/projects", tags=["Projects"])
+@router.get("/api/v1/projects", tags=["Projects"], operation_id="listProjects")
 def list_projects(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
@@ -56,7 +56,7 @@ def list_projects(
     )
 
 
-@router.post("/api/v1/projects", tags=["Projects"])
+@router.post("/api/v1/projects", tags=["Projects"], operation_id="createProject")
 def create_project(
     payload: ProjectCreateRequest,
     request: Request,
@@ -72,7 +72,7 @@ def create_project(
     )
 
 
-@router.get("/api/v1/projects/{id}", tags=["Projects"])
+@router.get("/api/v1/projects/{id}", tags=["Projects"], operation_id="getProject")
 def get_project(
     project_id: Annotated[UUID, Path(alias="id")],
     request: Request,
@@ -87,7 +87,7 @@ def get_project(
     )
 
 
-@router.put("/api/v1/projects/{id}", tags=["Projects"])
+@router.put("/api/v1/projects/{id}", tags=["Projects"], operation_id="updateProject")
 def update_project(
     project_id: Annotated[UUID, Path(alias="id")],
     payload: ProjectUpdateRequest,
@@ -107,7 +107,7 @@ def update_project(
     )
 
 
-@router.delete("/api/v1/projects/{id}", tags=["Projects"])
+@router.delete("/api/v1/projects/{id}", tags=["Projects"], operation_id="deleteProject")
 def delete_project(
     project_id: Annotated[UUID, Path(alias="id")],
     request: Request,

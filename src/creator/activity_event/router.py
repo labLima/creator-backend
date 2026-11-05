@@ -13,7 +13,21 @@ from creator.user.ports import UserRecord
 router = APIRouter()
 
 
-@router.get("/api/v1/workspaces/{workspace_id}/activity-events", tags=["Workspaces"])
+@router.get(
+    "/api/v1/workspaces/{workspace_id}/activity-events",
+    tags=["Workspaces"],
+    operation_id="listActivityEvents",
+    responses={
+        403: {
+            "$ref": "#/components/responses/WorkspaceAccessDenied",
+            "x-error-codes": ["WORKSPACE_ACCESS_DENIED"],
+        },
+        422: {
+            "$ref": "#/components/responses/ValidationFailed",
+            "x-error-codes": ["VALIDATION_FAILED", "INVALID_CURSOR", "INVALID_ENTITY_FILTER"],
+        },
+    },
+)
 def list_activity_events(
     request: Request,
     workspace_id: UUID,

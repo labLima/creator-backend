@@ -122,8 +122,12 @@ paths:
                       next_cursor: {type: [string, 'null']}
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403': {description: Workspace administrator access required}
-        '422': {description: Invalid filter or cursor}
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
+          x-error-codes: [WORKSPACE_ACCESS_DENIED]
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+          x-error-codes: [VALIDATION_FAILED, INVALID_CURSOR, INVALID_ENTITY_FILTER]
   /health:
     get:
       operationId: getHealth
@@ -185,19 +189,15 @@ paths:
                 $ref: '#/components/schemas/AuthLoginResponse'
         '401':
           $ref: '#/components/responses/LoginRejected'
-          x-error-codes: [AUTHENTICATION_INVALID]
+          x-error-codes: [LOGIN_REJECTED]
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
         '422':
-          description: The login request failed validation.
+          $ref: '#/components/responses/ValidationFailed'
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
         '429':
           $ref: '#/components/responses/AuthRateLimited'
           headers:
@@ -242,6 +242,7 @@ paths:
               $ref: '#/components/headers/NoStore'
         '422':
           $ref: '#/components/responses/WeakPassword'
+          x-error-codes: [WEAK_PASSWORD, VALIDATION_FAILED]
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
@@ -783,11 +784,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -888,11 +885,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -1179,6 +1172,8 @@ paths:
       responses:
         '201':
           description: Content created in a writable Workspace.
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -1192,6 +1187,8 @@ paths:
       responses:
         '200':
           description: Content detail.
+        '404':
+          $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -1231,6 +1228,10 @@ paths:
       responses:
         '200':
           description: Content updated.
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -1243,6 +1244,10 @@ paths:
       responses:
         '200':
           description: Content soft-deleted.
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -1703,14 +1708,18 @@ paths:
           x-error-codes: [AUTHENTICATION_INVALID]
   /api/v1/notification-preferences/{id}:
     get:
-      operationId: listAssets
+      operationId: getNotificationPreference
       tags:
-      - Assets
+      - Notifications
       security:
       - CreatorSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
-          description: Paginated Assets visible by Workspace Membership.
+          description: Notification preference detail.
+        '404':
+          $ref: '#/components/responses/NotFound'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -1837,6 +1846,7 @@ paths:
           $ref: '#/components/responses/WorkspaceAccessDenied'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+          x-error-codes: [VALIDATION_FAILED, CONTENT_GENERATION_BLOCKED]
         '429':
           $ref: '#/components/responses/LlmProviderRateLimited'
         '500':
@@ -1876,6 +1886,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+          x-error-codes: [VALIDATION_FAILED, CONTENT_IMPROVEMENT_BLOCKED]
         '429':
           $ref: '#/components/responses/LlmProviderRateLimited'
         '500':
@@ -1917,6 +1928,7 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+          x-error-codes: [VALIDATION_FAILED, WORKFLOW_INPUT_INVALID]
   /api/v1/generations/image-workflows/{id}:
     get:
       operationId: getImageAgentWorkflow
@@ -1990,6 +2002,7 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+          x-error-codes: [VALIDATION_FAILED, WORKFLOW_INPUT_INVALID]
   /api/v1/images/generate:
     post:
       operationId: generateImage
@@ -2187,6 +2200,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContentDeleteResponse'
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -2228,6 +2243,7 @@ paths:
           $ref: '#/components/responses/CsrfRejected'
         '409':
           $ref: '#/components/responses/RefreshInProgress'
+          x-error-codes: [REFRESH_IN_PROGRESS]
         '429':
           $ref: '#/components/responses/AuthRateLimited'
         '500':
@@ -2301,11 +2317,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2336,11 +2348,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2376,11 +2384,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2408,11 +2412,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2443,11 +2443,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2473,11 +2469,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2506,11 +2498,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2544,11 +2532,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2576,11 +2560,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2623,11 +2603,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2658,11 +2634,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2698,11 +2670,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2730,11 +2698,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2765,11 +2729,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2795,11 +2755,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2828,11 +2784,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2860,11 +2812,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2895,11 +2843,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2925,11 +2869,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2958,11 +2898,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -2996,11 +2932,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3028,11 +2960,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3063,11 +2991,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3093,11 +3017,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3126,11 +3046,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3164,11 +3080,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3196,11 +3108,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3231,11 +3139,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3261,11 +3165,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3294,11 +3194,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3332,11 +3228,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3364,11 +3256,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3411,11 +3299,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3446,11 +3330,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3484,11 +3364,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3516,11 +3392,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3563,11 +3435,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3598,11 +3466,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3636,11 +3500,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3668,11 +3528,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3715,11 +3571,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3750,11 +3602,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3788,11 +3636,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3820,11 +3664,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3867,11 +3707,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3902,11 +3738,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3940,11 +3772,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -3972,11 +3800,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4019,11 +3843,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4054,11 +3874,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4092,11 +3908,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4124,11 +3936,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4171,11 +3979,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4206,11 +4010,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4244,11 +4044,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4276,11 +4072,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4323,11 +4115,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4358,11 +4146,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4390,11 +4174,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4430,11 +4210,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4477,11 +4253,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4512,11 +4284,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4544,11 +4312,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4584,11 +4348,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4633,11 +4393,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4668,11 +4424,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4708,11 +4460,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4740,11 +4488,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4789,11 +4533,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4824,11 +4564,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4864,11 +4600,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4896,11 +4628,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4943,11 +4671,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -4978,11 +4702,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5016,11 +4736,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5048,11 +4764,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5095,11 +4807,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5130,11 +4838,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5168,11 +4872,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5200,11 +4900,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5247,11 +4943,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5282,11 +4974,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5320,11 +5008,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5352,11 +5036,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5399,11 +5079,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5434,11 +5110,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5472,11 +5144,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5504,11 +5172,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5551,11 +5215,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5586,11 +5246,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5624,11 +5280,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5656,11 +5308,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5705,11 +5353,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5740,11 +5384,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5780,11 +5420,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5812,11 +5448,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5847,11 +5479,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5879,11 +5507,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5912,11 +5536,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5952,11 +5572,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -5984,11 +5600,7 @@ paths:
             application/json:
               schema: {}
         '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '401':
@@ -6075,7 +5687,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     LoginRejected:
       description: Creator rejected the email and password credentials.
-      x-error-codes: [AUTHENTICATION_INVALID]
+      x-error-codes: [LOGIN_REJECTED]
       content:
         application/json:
           schema:
@@ -6201,6 +5813,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+      x-error-codes: [VALIDATION_FAILED]
     StorageUrlUnavailable:
       description: The stored object exists but a usable URL could not be issued.
       content:
@@ -6231,6 +5844,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+      x-error-codes: [WEAK_PASSWORD, VALIDATION_FAILED]
     CsrfRejected:
       description: CSRF token is missing or invalid, or the Origin is not allowed.
       content:
@@ -9235,15 +8849,6 @@ components:
       additionalProperties: false
       type: object
       title: GenerationUpdateRequest
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          type: array
-          title: Detail
-      type: object
-      title: HTTPValidationError
     InvoiceCreateRequest:
       properties:
         billing_account_id:
@@ -9847,32 +9452,6 @@ components:
       additionalProperties: false
       type: object
       title: UserUpdateRequest
-    ValidationError:
-      properties:
-        loc:
-          items:
-            anyOf:
-            - type: string
-            - type: integer
-          type: array
-          title: Location
-        msg:
-          type: string
-          title: Message
-        type:
-          type: string
-          title: Error Type
-        input:
-          title: Input
-        ctx:
-          type: object
-          title: Context
-      type: object
-      required:
-      - loc
-      - msg
-      - type
-      title: ValidationError
     WorkspaceCreditTransactionCreateRequest:
       properties:
         workspace_id:
