@@ -4,6 +4,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from creator.services.ai.provider import ProviderNotConfiguredError
+
 
 @dataclass(frozen=True, slots=True)
 class ImageReviewRequest:
@@ -31,4 +33,4 @@ class MultimodalImageReviewer(Protocol):
 
 class UnconfiguredMultimodalImageReviewer:
     def review(self, request: ImageReviewRequest) -> ImageReviewResult:
-        raise RuntimeError("Multimodal image reviewer is not configured")
+        raise ProviderNotConfiguredError("Multimodal image reviewer is not configured")

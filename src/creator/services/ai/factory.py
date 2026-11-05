@@ -26,4 +26,10 @@ def create_image_reviewer(settings: Settings) -> MultimodalImageReviewer:
         from creator.integrations.openai.image_reviewer import OpenAIMultimodalImageReviewer
 
         return OpenAIMultimodalImageReviewer(settings)
+    if settings.gemini_api_key:
+        # ADR-001 keeps Gemini as an optional legacy reviewer while OpenAI is
+        # the active provider for generation.
+        from creator.integrations.gemini.image_reviewer import GeminiMultimodalImageReviewer
+
+        return GeminiMultimodalImageReviewer(settings)
     return UnconfiguredMultimodalImageReviewer()

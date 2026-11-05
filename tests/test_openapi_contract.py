@@ -16,6 +16,20 @@ def _operations(path_item: dict[str, object]) -> set[str]:
     return {method for method in path_item if method in HTTP_METHODS}
 
 
+def _condition_requiring(
+    conditions: list[dict[str, object]], required: list[str]
+) -> dict[str, object]:
+    for condition in conditions:
+        then = condition.get("then")
+        if not isinstance(then, dict):
+            continue
+        nested_then = then.get("then")
+        for block in (then, nested_then):
+            if isinstance(block, dict) and block.get("required") == required:
+                return condition
+    raise AssertionError(f"condition requiring {required} was not found")
+
+
 def test_static_openapi_matches_application_routes() -> None:
     static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
     generated = app.openapi()
@@ -127,10 +141,60 @@ def test_generation_job_contract_documents_operation_rules_and_results() -> None
     static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
     request = static["components"]["schemas"]["IndependentGenerationRequest"]
     conditions = request["allOf"]
-    assert conditions[0]["then"]["required"] == ["direction"]
-    assert conditions[1]["then"]["properties"]["review_image"]["const"] is False
-    assert conditions[2]["then"]["not"]["required"] == ["source_content_id"]
-    assert conditions[3]["then"]["required"] == ["source_content_id"]
+
+    planning = next(
+        condition
+        for condition in conditions
+        if condition.get("if") == {"required": ["planning_id"]}
+    )
+    assert planning["then"] == {
+        "required": ["post_structure_id"],
+        "properties": {
+            "artifact_type": {"const": "IMAGE"},
+            "operation": {"const": "CREATE"},
+        },
+    }
+    post_structure = next(
+        condition
+        for condition in conditions
+        if condition.get("if") == {"required": ["post_structure_id"]}
+    )
+    assert post_structure["then"] == {"required": ["planning_id"]}
+    standalone = next(
+        condition
+        for condition in conditions
+        if condition.get("if") == {"not": {"required": ["planning_id"]}}
+    )
+    assert standalone["then"] == {"required": ["brand_id", "briefing"]}
+
+    direction = _condition_requiring(conditions, ["direction"])
+    assert direction["if"] == {"properties": {"artifact_type": {"const": "IMAGE"}}}
+    assert direction["then"] == {
+        "if": {"not": {"required": ["planning_id"]}},
+        "then": {"required": ["direction"]},
+    }
+
+    review = next(
+        condition
+        for condition in conditions
+        if condition.get("if") == {"properties": {"artifact_type": {"enum": ["COPY", "CAPTION"]}}}
+    )
+    assert review["then"] == {"properties": {"review_image": {"const": False}}}
+
+    create = next(
+        condition
+        for condition in conditions
+        if condition.get("if") == {"properties": {"operation": {"const": "CREATE"}}}
+    )
+    assert create["then"] == {"not": {"required": ["source_content_id"]}}
+
+    reuse = next(
+        condition
+        for condition in conditions
+        if condition.get("if")
+        == {"properties": {"operation": {"enum": ["REGENERATE", "TRANSFORM"]}}}
+    )
+    assert reuse["then"] == {"required": ["source_content_id"]}
 
     job = static["components"]["schemas"]["GenerationJob"]
     assert "content_id" in job["required"]

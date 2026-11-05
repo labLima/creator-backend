@@ -1357,6 +1357,7 @@ async def test_core_resource_create_rejects_non_writable_workspace() -> None:
 
 @pytest.mark.anyio
 async def test_generate_content_persists_text_content() -> None:
+    settings = Settings(_env_file=None)
     unit_of_work = FakeUnitOfWork(
         settings_record=settings_record(default_preferences={"locale": "pt-BR", "brand": "Lefil"})
     )
@@ -1379,13 +1380,13 @@ async def test_generate_content_persists_text_content() -> None:
     assert response.json()["data"]["type"] == "TEXT"
     assert response.json()["data"]["payload"]["text"] == "Generated launch copy"
     assert response.json()["data"]["generation"]["id"] == "61000000-0000-0000-0000-000000000001"
-    assert response.json()["data"]["generation"]["model"] == "gemini-2.5-flash"
+    assert response.json()["data"]["generation"]["model"] == settings.openai_text_model
     assert response.headers["X-Request-ID"] == response.json()["meta"]["request_id"]
     assert "CREATOR_PROMPT" in llm_provider.prompts[0]
     assert '"settings"' in llm_provider.prompts[0]
     created = unit_of_work.contents.created_text_generations[0]
     assert created["workspace_id"] == UUID("10000000-0000-0000-0000-000000000001")
-    assert created["model"] == "gemini-2.5-flash"
+    assert created["model"] == settings.openai_text_model
     assert created["parameters"]["prompt_template"]["id"] == "content.generation.v1"
     assert unit_of_work.commits == 1
 
@@ -1918,6 +1919,7 @@ async def test_cookie_authentication_keeps_principal_rate_limit_identity() -> No
 
 @pytest.mark.anyio
 async def test_generate_image_returns_accepted_job_and_enqueues_work() -> None:
+    settings = Settings(_env_file=None)
     content_id = UUID("20000000-0000-0000-0000-000000000001")
     unit_of_work = FakeUnitOfWork(content=content_record(content_id))
     queue = FakeGenerationQueue()
@@ -1946,13 +1948,39 @@ async def test_generate_image_returns_accepted_job_and_enqueues_work() -> None:
         }
     ]
     created = unit_of_work.image_generations.created[0]
-    assert created["model"] == "gemini-2.5-flash-image"
+    assert created["model"] == settings.openai_image_model
     assert created["max_attempts"] == 3
     assert "CREATOR_PROMPT" in str(created["prompt"])
     assert created["parameters"]["style"] == "photographic"
     assert created["parameters"]["prompt_template"]["id"] == "image.advertising.v1"
     assert "request_fingerprint" in created["parameters"]["idempotency"]
     assert unit_of_work.commits == 1
+
+
+@pytest.mark.anyio
+async def test_create_generation_job_unknown_input_uses_stable_error_code() -> None:
+    unit_of_work = FakeUnitOfWork()
+    unit_of_work.brands = FakeCrudRepository(None)
+    application = authorized_app()
+    application.dependency_overrides[get_uow] = lambda: unit_of_work
+    application.dependency_overrides[get_generation_queue] = lambda: FakeGenerationQueue()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/v1/generation-jobs",
+            headers={"Idempotency-Key": "idem-unknown-generation-input"},
+            json={
+                "brand_id": "30000000-0000-0000-0000-000000000001",
+                "artifact_type": "IMAGE",
+                "briefing": "Launch brief",
+                "direction": "Bright product photography",
+            },
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "GENERATION_INPUT_NOT_FOUND"
 
 
 @pytest.mark.anyio
@@ -2105,6 +2133,7 @@ async def test_generate_image_rolls_back_when_queue_enqueue_fails() -> None:
 
 @pytest.mark.anyio
 async def test_regenerate_image_returns_accepted_job_and_enqueues_work() -> None:
+    settings = Settings(_env_file=None)
     image_id = UUID("40000000-0000-0000-0000-000000000001")
     image = stored_image(image_id)
     unit_of_work = FakeUnitOfWork(
@@ -2143,7 +2172,8 @@ async def test_regenerate_image_returns_accepted_job_and_enqueues_work() -> None
     ]
     created = unit_of_work.image_generations.created[0]
     assert created["content_id"] == image.content_id
-    assert created["model"] == "gemini-image-original"
+    assert created["model"] == settings.openai_image_model
+    assert created["model"] != image.model
     assert "Original prompt with launch context and original offer" in str(created["prompt"])
     assert created["parameters"]["style"] == "illustration"
     assert created["parameters"]["regenerated_from_image_id"] == str(image_id)

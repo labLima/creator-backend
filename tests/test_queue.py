@@ -69,7 +69,7 @@ def test_rq_generation_queue_enqueues_image_job_with_retry_policy(
     assert created.default_timeout == 123
     assert call["f"] == "creator.workers.image_generation.run_image_generation"
     assert call["args"] == (str(job_id), str(request_id))
-    assert call["job_id"] == f"creator:rq:image-generation:{job_id}"
+    assert call["job_id"] == f"creator-rq-image-generation-{job_id}"
     assert call["job_timeout"] == 123
     assert call["meta"] == {
         "request_id": str(request_id),
@@ -126,7 +126,7 @@ def test_pipeline_events_enqueue_stage_specific_jobs_with_retry(
 
     call = queues[0].calls[0]
     assert call["f"] == f"creator.workers.pipeline_events.{handler}"
-    assert call["job_id"] == f"creator:rq:pipeline-event:{event.event_id}"
+    assert call["job_id"] == f"creator-rq-pipeline-event-{event.event_id}"
     assert call["unique"] is True
     assert call["meta"] == {
         "event_id": str(event.event_id),

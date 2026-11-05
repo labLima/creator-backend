@@ -5,7 +5,8 @@ import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from creator.config import get_settings
+from creator.brand.ports import BrandRecord
+from creator.config import Settings, get_settings
 from creator.core.types import JsonObject
 from creator.domain.agent_workflow import AgentWorkflowStepRole
 from creator.domain.auth import Principal, WorkspaceRole
@@ -30,7 +31,7 @@ from creator.services.agents.contracts import (
     WorkspaceAuthorizationContext,
 )
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
-from creator.services.agents.factory import create_multi_agent_orchestrator
+from creator.services.agents.factory import create_specialist_executor
 from creator.services.ai.factory import create_image_reviewer
 from creator.services.ai.image_provider import (
     ImageGenerationRequest,
@@ -42,7 +43,9 @@ from creator.services.ai.image_provider import (
     ImageProviderTimeoutError,
     ImageProviderTransientError,
     create_image_generator,
+    normalize_image_model,
 )
+from creator.services.ai.provider import ProviderNotConfiguredError
 from creator.services.ai.reviewer import ImageReviewRequest
 from creator.services.storage.provider import StorageError
 
@@ -77,19 +80,36 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
         request_input = work_item.parameters.get("request_input")
         artist_metadata: dict[str, object] = {}
         prompt = work_item.prompt
+        briefing: str | None = None
         if isinstance(request_input, dict) and request_input.get("artifact_type") == "IMAGE":
-            brand_id = UUID(str(request_input["brand_id"]))
-            with SqlAlchemyUnitOfWork() as unit_of_work:
-                brand = unit_of_work.brand.brands.get_for_user(
-                    user_id=work_item.requested_by_user.id,
-                    brand_id=brand_id,
+            brand = _authorized_brand(work_item)
+            if brand is None:
+                _settle_failure(
+                    parsed_job_id,
+                    "BRAND_CONTEXT_UNAVAILABLE",
+                    request_id=parsed_request_id,
+                    attempt=work_item.job.attempt_count,
+                    started_at=started_at,
                 )
-            if brand is None or brand.workspace_id != work_item.job.workspace_id:
-                raise RuntimeError("Authorized Brand context is unavailable for ARTIST")
-            artist_result = create_multi_agent_orchestrator(settings).execute(
+                return
+            prompt_inputs = _prompt_inputs(work_item, request_input)
+            if prompt_inputs is None:
+                _settle_failure(
+                    parsed_job_id,
+                    "PROMPT_CONTEXT_UNAVAILABLE",
+                    request_id=parsed_request_id,
+                    attempt=work_item.job.attempt_count,
+                    started_at=started_at,
+                )
+                return
+            briefing, direction = prompt_inputs
+            operation = request_input.get("operation")
+            if not isinstance(operation, str):
+                operation = "CREATE"
+            artist_result = create_specialist_executor(settings).execute(
                 AgentExecutionContext(
                     workspace_id=work_item.job.workspace_id,
-                    brand_id=brand_id,
+                    brand_id=brand.id,
                     authorization=WorkspaceAuthorizationContext(
                         principal=Principal(subject=work_item.requested_by_user.external_id),
                         workspace_id=work_item.job.workspace_id,
@@ -97,11 +117,11 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     ),
                     role=AgentWorkflowStepRole.ARTIST,
                     inputs={
-                        "briefing": request_input["briefing"],
-                        "visual_direction": request_input["direction"],
-                        "operation": request_input["operation"],
+                        "briefing": briefing,
+                        "visual_direction": direction,
+                        "operation": operation,
                         "source_content": work_item.parameters.get("source_content"),
-                        "preserve_source_concept": request_input["operation"] != "CREATE",
+                        "preserve_source_concept": operation != "CREATE",
                         "brand_context": {
                             "name": brand.name,
                             "description": brand.description or "",
@@ -129,10 +149,20 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     "schema_version": artist_result.schema_version,
                 }
             }
+        model = normalize_image_model(work_item.model, default_model=settings.openai_image_model)
+        if model != work_item.model:
+            logger.info(
+                "image_model_normalized",
+                extra={
+                    "requested_model": work_item.model,
+                    "model": model,
+                    "generation_job_id": str(work_item.job.id),
+                },
+            )
         result = create_image_generator(settings).generate(
             ImageGenerationRequest(
                 prompt=prompt,
-                model=work_item.model,
+                model=model,
                 metadata=_image_request_metadata(work_item),
                 size=_image_request_size(work_item),
                 aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
@@ -141,45 +171,16 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
         )
         image_metadata = dict(result.metadata)
         image_metadata.update(artist_metadata)
-        if (
-            isinstance(request_input, dict)
-            and request_input.get("review_image") is True
-            and isinstance(request_input.get("briefing"), str)
-        ):
-            review_brand_id = request_input.get("brand_id")
-            with SqlAlchemyUnitOfWork() as unit_of_work:
-                brand = (
-                    unit_of_work.brand.brands.get_for_user(
-                        user_id=work_item.requested_by_user.id,
-                        brand_id=UUID(str(review_brand_id)),
-                    )
-                    if review_brand_id
-                    else None
-                )
-            if brand is None:
-                raise RuntimeError("Authorized Brand context is unavailable for image review")
-            review = create_image_reviewer(settings).review(
-                ImageReviewRequest(
-                    image_bytes=result.image_bytes,
-                    mime_type=result.mime_type,
-                    prompt=result.prompt,
-                    briefing=str(request_input["briefing"]),
-                    brand_context={
-                        "brand_id": str(brand.id),
-                        "name": brand.name,
-                        "description": brand.description or "",
-                        "brand_voice": brand.brand_voice or "",
-                    },
-                )
+        if isinstance(request_input, dict) and request_input.get("review_image") is True:
+            image_metadata["review"] = _review_generated_image(
+                settings=settings,
+                work_item=work_item,
+                image_bytes=result.image_bytes,
+                mime_type=result.mime_type,
+                prompt=result.prompt,
+                briefing=briefing,
+                request_id=parsed_request_id,
             )
-            image_metadata["review"] = {
-                "decision": review.decision,
-                "score": review.score,
-                "feedback": list(review.feedback),
-                "safety_issues": list(review.safety_issues),
-                "provider": review.provider,
-                "model": review.model,
-            }
         with SqlAlchemyUnitOfWork() as unit_of_work:
             persist_generated_image(
                 unit_of_work=unit_of_work,
@@ -220,6 +221,17 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
             failure_code="STORAGE_UPLOAD_FAILED",
         )
         return
+    except ProviderNotConfiguredError:
+        duration_ms = int((time.perf_counter() - started_at) * 1000)
+        _fail_job(parsed_job_id, "PROVIDER_AUTHENTICATION_FAILED")
+        _log(
+            "image_generation_failed",
+            request_id=parsed_request_id,
+            job_id=parsed_job_id,
+            attempt=work_item.job.attempt_count,
+            duration_ms=duration_ms,
+            failure_code="PROVIDER_AUTHENTICATION_FAILED",
+        )
     except AgentKickoffError as error:
         retryable = error.code in {
             AgentKickoffErrorCode.PROVIDER_FAILURE,
@@ -303,6 +315,126 @@ def recover_stale_processing_jobs() -> int:
                 extra={"recovered_count": recovered},
             )
         return recovered
+
+
+def _review_generated_image(
+    *,
+    settings: Settings,
+    work_item: ImageGenerationWorkItem,
+    image_bytes: bytes,
+    mime_type: str,
+    prompt: str,
+    briefing: str | None,
+    request_id: UUID | None,
+) -> dict[str, object]:
+    if briefing is None:
+        return _review_failure("PROMPT_CONTEXT_UNAVAILABLE", work_item, request_id)
+    brand = _authorized_brand(work_item)
+    if brand is None:
+        return _review_failure("BRAND_CONTEXT_UNAVAILABLE", work_item, request_id)
+    try:
+        review = create_image_reviewer(settings).review(
+            ImageReviewRequest(
+                image_bytes=image_bytes,
+                mime_type=mime_type,
+                prompt=prompt,
+                briefing=briefing,
+                brand_context={
+                    "brand_id": str(brand.id),
+                    "name": brand.name,
+                    "description": brand.description or "",
+                    "brand_voice": brand.brand_voice or "",
+                },
+            )
+        )
+    except (ImageProviderError, GeminiProviderError, ProviderNotConfiguredError) as error:
+        return _review_failure(_review_failure_code(error), work_item, request_id)
+    except Exception:
+        # Automated Review is best-effort: SDK/transport failures from a
+        # legacy reviewer must not fail an image that was already generated.
+        return _review_failure("IMAGE_REVIEW_FAILED", work_item, request_id)
+    return {
+        "decision": review.decision,
+        "score": review.score,
+        "feedback": list(review.feedback),
+        "safety_issues": list(review.safety_issues),
+        "provider": review.provider,
+        "model": review.model,
+    }
+
+
+def _review_failure(
+    error_code: str,
+    work_item: ImageGenerationWorkItem,
+    request_id: UUID | None,
+) -> dict[str, object]:
+    _log(
+        "image_review_failed",
+        request_id=request_id,
+        job_id=work_item.job.id,
+        attempt=work_item.job.attempt_count,
+        failure_code=error_code,
+    )
+    return {"status": "failed", "error_code": error_code}
+
+
+def _review_failure_code(
+    error: ImageProviderError | GeminiProviderError | ProviderNotConfiguredError,
+) -> str:
+    if isinstance(error, ProviderNotConfiguredError):
+        return "PROVIDER_AUTHENTICATION_FAILED"
+    return _provider_failure_code(error)
+
+
+def _prompt_inputs(
+    work_item: ImageGenerationWorkItem, request_input: object
+) -> tuple[str, str] | None:
+    resolved_input = work_item.parameters.get("resolved_input")
+    briefing = _text_input(resolved_input, "briefing") or _text_input(request_input, "briefing")
+    direction = _text_input(resolved_input, "direction") or _text_input(request_input, "direction")
+    if briefing is None or direction is None:
+        return None
+    return briefing, direction
+
+
+def _text_input(source: object, key: str) -> str | None:
+    if not isinstance(source, dict):
+        return None
+    value = source.get(key)
+    return value if isinstance(value, str) and value else None
+
+
+def _authorized_brand(work_item: ImageGenerationWorkItem) -> BrandRecord | None:
+    if work_item.brand_id is None:
+        return None
+    with SqlAlchemyUnitOfWork() as unit_of_work:
+        brand = unit_of_work.brand.brands.get_for_user(
+            user_id=work_item.requested_by_user.id,
+            brand_id=work_item.brand_id,
+        )
+    if brand is None or brand.workspace_id != work_item.job.workspace_id:
+        return None
+    return brand
+
+
+def _settle_failure(
+    job_id: UUID,
+    failure_code: str,
+    *,
+    request_id: UUID | None,
+    attempt: int,
+    started_at: float,
+) -> None:
+    duration_ms = int((time.perf_counter() - started_at) * 1000)
+    _fail_job(job_id, failure_code)
+    _log(
+        "image_generation_failed",
+        request_id=request_id,
+        job_id=job_id,
+        attempt=attempt,
+        duration_ms=duration_ms,
+        failure_code=failure_code,
+    )
 
 
 def _claim_work_item(job_id: UUID) -> ImageGenerationWorkItem | None:

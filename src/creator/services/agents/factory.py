@@ -3,9 +3,12 @@ from creator.services.agents.contracts import (
     AgentExecutionContext,
     AgentExecutionResult,
     KickoffRequest,
+    contract_for_execution,
 )
-from creator.services.agents.orchestrator import MultiAgentOrchestrator
+from creator.services.agents.orchestrator import MultiAgentOrchestrator, SpecialistExecutor
+from creator.services.agents.runner import StructuredAgentRunner
 from creator.services.ai.factory import create_llm_provider
+from creator.services.ai.provider import ProviderNotConfiguredError
 
 
 class AgentOrchestratorNotConfiguredError(RuntimeError):
@@ -28,3 +31,25 @@ def create_multi_agent_orchestrator(settings: Settings) -> MultiAgentOrchestrato
 
         return CrewAIMultiAgentOrchestrator(create_llm_provider(settings))
     return UnconfiguredMultiAgentOrchestrator()
+
+
+class UnconfiguredSpecialistExecutor:
+    def execute(self, context: AgentExecutionContext) -> AgentExecutionResult:
+        raise ProviderNotConfiguredError("Specialist provider is not configured")
+
+
+class StructuredSpecialistExecutor:
+    def __init__(self, runner: StructuredAgentRunner) -> None:
+        self._runner = runner
+
+    def execute(self, context: AgentExecutionContext) -> AgentExecutionResult:
+        contract = contract_for_execution(context)
+        return self._runner.run(context, contract.output_model)
+
+
+def create_specialist_executor(settings: Settings) -> SpecialistExecutor:
+    if settings.crewai_enabled:
+        return create_multi_agent_orchestrator(settings)
+    if settings.openai_api_key:
+        return StructuredSpecialistExecutor(StructuredAgentRunner(create_llm_provider(settings)))
+    return UnconfiguredSpecialistExecutor()

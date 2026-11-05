@@ -95,14 +95,16 @@ imagem; o procedimento de rollback está no guia do SPA.
 Os providers de geração de texto e imagem usam OpenAI:
 
 - texto: configurado por `OPENAI_TEXT_MODEL` (padrão `gpt-5.5`);
-- imagem: configurado por `OPENAI_IMAGE_MODEL` (padrão `gpt-image-2.6-flare`);
+- imagem: configurado por `OPENAI_IMAGE_MODEL` (padrão `gpt-image-2`);
 - revisão multimodal: configurada por `OPENAI_REVIEWER_MODEL` (padrão `gpt-5.5`).
 
 Configure `OPENAI_API_KEY` no `.env`. Sem a chave, as chamadas de geração
 retornam erro estruturado de provider não configurado; a API continua
-disponível. Os adapters Gemini antigos permanecem no código de compatibilidade,
-mas nenhuma factory os seleciona para geração ou revisão. CrewAI e LangChain
-estão preparados atrás de interfaces, mas desabilitados por padrão.
+disponível. Os adapters Gemini antigos permanecem no código de compatibilidade:
+eles não são selecionados para texto ou imagem, mas a revisão multimodal ainda
+pode usar Gemini como fallback opcional quando só `GEMINI_API_KEY` estiver
+configurada. CrewAI e LangChain estão preparados atrás de interfaces, mas
+desabilitados por padrão.
 
 Storage local é o padrão de desenvolvimento; Supabase Storage permanece
 opcional atrás de `STORAGE_PROVIDER=supabase`.

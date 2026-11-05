@@ -38,6 +38,15 @@ class ImageProviderInvalidResponseError(ImageProviderError):
     pass
 
 
+def normalize_image_model(requested_model: str | None, *, default_model: str) -> str:
+    """Map legacy Gemini image models to the configured OpenAI image model."""
+    if requested_model is None:
+        return default_model
+    if requested_model.startswith(("gemini-", "imagen-")):
+        return default_model
+    return requested_model
+
+
 @dataclass(frozen=True, slots=True)
 class ImageGenerationRequest:
     prompt: str

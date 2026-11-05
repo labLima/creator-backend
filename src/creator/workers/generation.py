@@ -17,7 +17,8 @@ from creator.services.agents.contracts import (
     WriterCopyOutput,
 )
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
-from creator.services.agents.factory import create_multi_agent_orchestrator
+from creator.services.agents.factory import create_specialist_executor
+from creator.services.ai.provider import ProviderNotConfiguredError
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ def _run_text_job(job_id: UUID) -> None:
             schema_version="1.0",
             output_contract=artifact_type,
         )
-        result = create_multi_agent_orchestrator(settings).execute(execution)
+        result = create_specialist_executor(settings).execute(execution)
         if artifact_type == "COPY":
             text = WriterCopyOutput.model_validate(result.output).copy_text
         else:
@@ -114,6 +115,15 @@ def _run_text_job(job_id: UUID) -> None:
                 },
             )
             unit_of_work.generation.image_jobs.complete_text_job(job_id)
+            unit_of_work.commit()
+    except ProviderNotConfiguredError:
+        logger.exception("independent_text_generation_failed", extra={"job_id": str(job_id)})
+        with SqlAlchemyUnitOfWork() as unit_of_work:
+            unit_of_work.generation.image_jobs.fail_job(
+                job_id,
+                failure_code="PROVIDER_AUTHENTICATION_FAILED",
+                failure_message="Text Generation provider is not configured",
+            )
             unit_of_work.commit()
     except AgentKickoffError as error:
         retryable = error.code in {
