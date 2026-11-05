@@ -121,3 +121,20 @@ def test_workflow_acceptance_does_not_document_redis_availability_errors() -> No
     for path in paths:
         assert "503" not in static["paths"][path]["post"]["responses"]
         assert "503" not in generated["paths"][path]["post"]["responses"]
+
+
+def test_generation_job_contract_documents_operation_rules_and_results() -> None:
+    static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
+    request = static["components"]["schemas"]["IndependentGenerationRequest"]
+    conditions = request["allOf"]
+    assert conditions[0]["then"]["required"] == ["direction"]
+    assert conditions[1]["then"]["properties"]["review_image"]["const"] is False
+    assert conditions[2]["then"]["not"]["required"] == ["source_content_id"]
+    assert conditions[3]["then"]["required"] == ["source_content_id"]
+
+    job = static["components"]["schemas"]["GenerationJob"]
+    assert "content_id" in job["required"]
+    assert job["properties"]["image"]["$ref"] == "#/components/schemas/Image"
+    assert job["properties"]["text_versions"]["items"]["$ref"] == (
+        "#/components/schemas/ContentTextVersion"
+    )

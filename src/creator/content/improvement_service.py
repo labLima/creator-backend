@@ -55,6 +55,7 @@ def improve_content(
         raise WorkspaceAccessDeniedError("Workspace access denied")
 
     original_text = command.text
+    content: ContentRecord | None = None
     if original_text is None:
         content = _content_for_improvement(
             unit_of_work=unit_of_work,
@@ -64,11 +65,23 @@ def improve_content(
         )
         original_text = _text_from_content(content)
 
+    brand_context: dict[str, object] = {}
+    if content is not None and content.brand_id is not None:
+        brand = unit_of_work.brand.brands.get_for_user(user_id=user.id, brand_id=content.brand_id)
+        if brand is not None and brand.workspace_id == command.workspace_id:
+            brand_context = {
+                "brand_id": str(brand.id),
+                "brand_name": brand.name,
+                "brand_description": brand.description or "",
+                "brand_voice": brand.brand_voice or "",
+            }
+
     rendered_prompt = build_text_improvement_prompt(
         objective=command.objective,
         context={
             "workspace_id": str(command.workspace_id),
             "request_context": command.context,
+            "brand_context": brand_context,
             "persistence": "preview_only",
             "output_contract": {"format": "json", "required": ["text", "justification"]},
         },

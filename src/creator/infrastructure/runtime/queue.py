@@ -52,6 +52,21 @@ class RqGenerationQueue:
             },
         )
 
+    def enqueue_generation_job(self, *, job_id: UUID, request_id: UUID) -> object:
+        retry_intervals = list(self._settings.image_generation_retry_interval_seconds)
+        return self._queue.enqueue(
+            "creator.workers.generation.run_generation_job",
+            str(job_id),
+            str(request_id),
+            job_id=f"creator:rq:generation:{job_id}",
+            job_timeout=self._settings.agent_workflow_job_timeout_seconds,
+            retry=Retry(
+                max=max(self._settings.image_generation_job_max_attempts - 1, 0),
+                interval=retry_intervals,
+            ),
+            meta={"request_id": str(request_id), "generation_job_id": str(job_id)},
+        )
+
     def enqueue_agent_workflow(self, *, run_id: UUID, request_id: UUID) -> object:
         return self._queue.enqueue(
             "creator.workers.agent_workflow.run_image_agent_workflow",

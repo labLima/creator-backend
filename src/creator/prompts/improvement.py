@@ -2,17 +2,21 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from creator.domain.agent_workflow import AgentWorkflowStepRole
+from creator.prompts.agent_designs import AGENT_DESIGNS
 from creator.prompts.base import PromptBundle, RenderedPrompt, render_prompt
+from creator.prompts.specialist_specs import SPECIALIST_SPECS
 
 COPY_IMPROVEMENT_TEMPLATE_ID = "improvement.copy.v1"
 TONE_ADAPTATION_TEMPLATE_ID = "improvement.tone_adaptation.v1"
 IMPROVEMENT_TEMPLATE_VERSION = "v1"
+TEXT_IMPROVEMENT_TEMPLATE_VERSION = "v2"
 IMPROVEMENT_OBJECTIVE_TEMPLATE_IDS = {
-    "shorten": "improvement.shorten.v1",
-    "persuasive": "improvement.persuasive.v1",
-    "formal": "improvement.formal.v1",
-    "seo": "improvement.seo.v1",
-    "audience_adaptation": "improvement.audience_adaptation.v1",
+    "shorten": "improvement.shorten.v2",
+    "persuasive": "improvement.persuasive.v2",
+    "formal": "improvement.formal.v2",
+    "seo": "improvement.seo.v2",
+    "audience_adaptation": "improvement.audience_adaptation.v2",
 }
 
 COPY_IMPROVEMENT_SYSTEM = """
@@ -77,11 +81,17 @@ def build_text_improvement_prompt(
     context: Mapping[str, object] | None = None,
     metadata: Mapping[str, object] | None = None,
 ) -> RenderedPrompt:
+    writer = AGENT_DESIGNS[AgentWorkflowStepRole.WRITER]
+    writer_rules = SPECIALIST_SPECS[AgentWorkflowStepRole.WRITER].instructions
     return render_prompt(
         PromptBundle(
             template_id=IMPROVEMENT_OBJECTIVE_TEMPLATE_IDS[objective],
-            version=IMPROVEMENT_TEMPLATE_VERSION,
-            system=IMPROVEMENT_SYSTEM_BY_OBJECTIVE[objective],
+            version=TEXT_IMPROVEMENT_TEMPLATE_VERSION,
+            system=(
+                f"Role: {writer.title}. Goal: {writer.goal} Backstory: {writer.backstory} "
+                f"Task: {writer.task} {writer_rules} "
+                f"{IMPROVEMENT_SYSTEM_BY_OBJECTIVE[objective]}"
+            ),
             context=context or {},
             user_input=user_input,
             metadata=metadata or {},

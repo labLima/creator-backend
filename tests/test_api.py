@@ -1502,14 +1502,14 @@ async def test_generate_content_rolls_back_when_persistence_fails() -> None:
 @pytest.mark.parametrize(
     ("objective", "extra_payload", "template_id"),
     [
-        ("shorten", {}, "improvement.shorten.v1"),
-        ("persuasive", {}, "improvement.persuasive.v1"),
-        ("formal", {}, "improvement.formal.v1"),
-        ("seo", {}, "improvement.seo.v1"),
+        ("shorten", {}, "improvement.shorten.v2"),
+        ("persuasive", {}, "improvement.persuasive.v2"),
+        ("formal", {}, "improvement.formal.v2"),
+        ("seo", {}, "improvement.seo.v2"),
         (
             "audience_adaptation",
             {"audience": "CMOs de SaaS"},
-            "improvement.audience_adaptation.v1",
+            "improvement.audience_adaptation.v2",
         ),
     ],
 )
@@ -2456,6 +2456,7 @@ def test_swagger_operations_are_grouped_by_domain() -> None:
         "/api/v1/content": "Contents",
         "/api/v1/contents": "Contents",
         "/api/v1/generations": "Generations",
+        "/api/v1/generation-jobs": "Generations",
         "/api/v1/assets": "Assets",
         "/api/v1/images": "Images",
         "/api/v1/campaigns": "Campaigns",

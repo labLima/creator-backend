@@ -14,6 +14,7 @@ from creator.services.agents.contracts import (
     AgentExecutionContext,
     AgentExecutionResult,
     KickoffRequest,
+    contract_for_execution,
     contract_for_role,
 )
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
@@ -129,7 +130,7 @@ class CrewAIMultiAgentOrchestrator:
                 "Specialist execution requires authorized Workspace and Brand scope",
             )
         _validate_execution_context(context)
-        contract = contract_for_role(context.role)
+        contract = contract_for_execution(context)
         if (
             context.prompt_template_id != contract.prompt_template_id
             or context.prompt_template_version != contract.prompt_template_version

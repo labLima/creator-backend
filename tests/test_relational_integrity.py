@@ -37,6 +37,7 @@ EXPECTED_TABLES = {
     "generation_jobs",
     "generation_job_status_events",
     "images",
+    "content_text_versions",
 }
 
 

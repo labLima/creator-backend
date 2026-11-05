@@ -40,14 +40,14 @@ e2e:
 	$(PYTEST) -m e2e --no-cov
 
 dependency-audit:
-	$(PYTHON) -m pip_audit --skip-editable \
+	$(PYTHON) -m pip_audit . \
 		--ignore-vuln PYSEC-2026-311 \
 		--ignore-vuln PYSEC-2026-3813 \
 		--ignore-vuln PYSEC-2026-3814 \
 		--ignore-vuln PYSEC-2026-3815
 
 secrets:
-	gitleaks detect --source . --no-banner --redact --config .gitleaks.toml
+	$(PYTHON) scripts/run_gitleaks.py
 
 security: dependency-audit secrets
 

@@ -53,12 +53,19 @@ class FakeLLM:
 class FakeGenerationQueue:
     def __init__(self) -> None:
         self.calls: list[dict[str, UUID]] = []
+        self.generation_calls: list[dict[str, UUID]] = []
         self.error: Exception | None = None
 
     def enqueue_image_generation(self, *, job_id: UUID, request_id: UUID) -> object:
         if self.error is not None:
             raise self.error
         self.calls.append({"job_id": job_id, "request_id": request_id})
+        return object()
+
+    def enqueue_generation_job(self, *, job_id: UUID, request_id: UUID) -> object:
+        if self.error is not None:
+            raise self.error
+        self.generation_calls.append({"job_id": job_id, "request_id": request_id})
         return object()
 
 

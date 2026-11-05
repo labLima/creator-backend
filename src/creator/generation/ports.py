@@ -18,6 +18,8 @@ from creator.user.ports import UserRecord
 class GenerationQueue(Protocol):
     def enqueue_image_generation(self, *, job_id: UUID, request_id: UUID) -> object: ...
 
+    def enqueue_generation_job(self, *, job_id: UUID, request_id: UUID) -> object: ...
+
     def enqueue_agent_workflow(self, *, run_id: UUID, request_id: UUID) -> object: ...
 
     def enqueue_pipeline_event(self, *, event_id: UUID, event: PipelineEvent) -> object: ...
@@ -105,6 +107,9 @@ class GenerationJobRecord:
     updated_at: datetime
     deleted_at: datetime | None
     request_id: UUID | None = None
+    artifact_type: str = "IMAGE"
+    operation: str = "CREATE"
+    idempotency_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +153,7 @@ class ImageGenerationRepository(Protocol):
         *,
         workspace_id: UUID,
         content_id: UUID,
+        brand_id: UUID | None = None,
         requested_by_user_id: UUID | None,
         model: str,
         prompt: str,
@@ -155,6 +161,9 @@ class ImageGenerationRepository(Protocol):
         external_id: str | None = None,
         max_attempts: int = 1,
         request_id: UUID | None = None,
+        artifact_type: str = "IMAGE",
+        operation: str = "CREATE",
+        idempotency_key: str | None = None,
     ) -> GenerationJobRecord: ...
 
     def get_job_for_user(
@@ -163,6 +172,10 @@ class ImageGenerationRepository(Protocol):
         user_id: UUID,
         job_id: UUID,
         include_deleted: bool = False,
+    ) -> GenerationJobRecord | None: ...
+
+    def get_job_by_external_id_for_user(
+        self, *, user_id: UUID, external_id: str
     ) -> GenerationJobRecord | None: ...
 
     def list_history_for_user(
@@ -197,7 +210,11 @@ class ImageGenerationRepository(Protocol):
         include_deleted: bool = False,
     ) -> ImageGenerationStatusRecord | None: ...
 
-    def claim_pending_by_id(self, job_id: UUID) -> ImageGenerationWorkItem | None: ...
+    def claim_pending_by_id(
+        self, job_id: UUID, *, artifact_type: str = "IMAGE"
+    ) -> ImageGenerationWorkItem | None: ...
+
+    def complete_text_job(self, job_id: UUID) -> None: ...
 
     def get_image_by_generation_id(self, generation_id: UUID) -> ImageRecord | None: ...
 

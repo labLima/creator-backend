@@ -71,6 +71,24 @@ class WriterOutput(BaseModel):
     direction: DesignDirection
 
 
+class WriterCopyOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    copy_text: str = Field(min_length=1, max_length=2_000)
+
+
+class WriterCaptionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    caption: str = Field(min_length=1, max_length=4_000)
+
+
+class ArtistOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    visual_prompt: str = Field(min_length=1, max_length=20_000)
+
+
 class ReviewOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -107,6 +125,30 @@ AGENT_CONTRACTS: dict[AgentWorkflowStepRole, AgentContract] = {
     )
 }
 
+INDEPENDENT_AGENT_CONTRACTS: dict[str, AgentContract] = {
+    "COPY": AgentContract(
+        role=AgentWorkflowStepRole.WRITER,
+        prompt_template_id="agent.writer.copy.v1",
+        prompt_template_version="3.0",
+        schema_version="1.0",
+        output_model=WriterCopyOutput,
+    ),
+    "CAPTION": AgentContract(
+        role=AgentWorkflowStepRole.WRITER,
+        prompt_template_id="agent.writer.caption.v1",
+        prompt_template_version="3.0",
+        schema_version="1.0",
+        output_model=WriterCaptionOutput,
+    ),
+    "IMAGE": AgentContract(
+        role=AgentWorkflowStepRole.ARTIST,
+        prompt_template_id="agent.artist.v3",
+        prompt_template_version="3.0",
+        schema_version="1.0",
+        output_model=ArtistOutput,
+    ),
+}
+
 
 def contract_for_role(role: AgentWorkflowStepRole) -> AgentContract:
     from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
@@ -120,6 +162,15 @@ def contract_for_role(role: AgentWorkflowStepRole) -> AgentContract:
     return contract
 
 
+def contract_for_execution(context: AgentExecutionContext) -> AgentContract:
+    """Return a server-owned specialist contract for a role and optional component."""
+    if context.output_contract:
+        contract = INDEPENDENT_AGENT_CONTRACTS.get(context.output_contract)
+        if contract is not None and contract.role == context.role:
+            return contract
+    return contract_for_role(context.role)
+
+
 @dataclass(frozen=True, slots=True)
 class AgentExecutionContext:
     workspace_id: UUID
@@ -130,6 +181,7 @@ class AgentExecutionContext:
     prompt_template_id: str
     prompt_template_version: str
     schema_version: str
+    output_contract: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

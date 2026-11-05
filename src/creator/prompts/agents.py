@@ -52,10 +52,49 @@ def build_agent_prompt(
                 f"v{SPECIALIST_SPEC_VERSION}; found spec v{spec.spec_version} for role "
                 f"{specialist_role.value}"
             )
+        task = design.task
+        expected_output = design.expected_output
+        specialist_instructions = spec.instructions
+        component_instruction = ""
+        component = inputs.get("requested_component")
+        if specialist_role == AgentWorkflowStepRole.WRITER and component == "COPY":
+            task = (
+                "Produce only the requested standalone copy. Preserve the supplied concept, "
+                "facts, offer and restrictions; follow Brand voice and do not invent claims."
+            )
+            expected_output = "WriterCopyOutput with one copy_text field."
+            specialist_instructions = (
+                "Preserve selected idea, Brand constraints and verified facts. Never invent "
+                "offers, benefits or prices."
+            )
+            component_instruction = "Output only this independent COPY component."
+        elif specialist_role == AgentWorkflowStepRole.WRITER and component == "CAPTION":
+            task = (
+                "Produce only the requested post caption. Preserve the supplied concept, facts, "
+                "offer and restrictions; follow Brand voice and do not add visual direction."
+            )
+            expected_output = "WriterCaptionOutput with one caption field."
+            specialist_instructions = (
+                "Preserve selected idea, Brand constraints and verified facts. Never invent "
+                "offers, benefits or prices."
+            )
+            component_instruction = "Output only this independent CAPTION component."
+        elif specialist_role == AgentWorkflowStepRole.ARTIST and "visual_direction" in inputs:
+            task = (
+                "Translate the supplied visual direction into one executable image prompt. "
+                "Follow Brand context and restrictions without adding copy or a new concept."
+            )
+            expected_output = "ArtistOutput with one visual_prompt field."
+            specialist_instructions = (
+                "Execute the approved visual direction without inventing a concept, claim or copy."
+            )
+            component_instruction = "Output only this independent IMAGE direction contract."
         system = (
             f"Role: {design.title}. Goal: {design.goal} Backstory: {design.backstory} "
-            f"Task: {design.task} Expected output: {design.expected_output} {spec.instructions}"
+            f"Task: {task} Expected output: {expected_output} {specialist_instructions}"
         )
+        if component_instruction:
+            system = f"{system} {component_instruction}"
     else:
         raise ValueError("Unsupported agent prompt version")
     bundle = PromptBundle(

@@ -55,6 +55,7 @@ de implementação vinculada antes do fechamento do tracker.
 | [ADR-022](adr/0022-cookie-auth-provider.md) | [#116](https://github.com/labLima/creator-backend/issues/116) | [0044](issues/0044-cookie-auth-provider.md) encerrada como não necessária; #118–#127; [#128](https://github.com/labLima/creator-backend/issues/128) / [0047](issues/0047-cookie-auth-cutover.md) |
 | [ADR-023](adr/0023-estrutura-modular-por-capacidade.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) | [docs/issues/0045](issues/0045-modular-structure-tracker.md) (histórico; fase 5 em [0049](issues/0049-flat-layout-consolidation.md)) |
 | [ADR-024](adr/0024-estrutura-plana-por-capacidade.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md) | [docs/issues/0048](issues/0048-plain-capability-layout.md), [0049](issues/0049-flat-layout-consolidation.md), [#133](https://github.com/labLima/creator-backend/issues/133), [0046](issues/0046-security-backlog-after-modularization.md) (backlog relacionado) |
+| [ADR-025](adr/0025-generation-independente-com-especialistas.md) | [#140](https://github.com/labLima/creator-backend/issues/140) | [#141](https://github.com/labLima/creator-backend/issues/141), [0052](issues/0052-generation-jobs-independentes.md) |
 
 A [0049](issues/0049-flat-layout-consolidation.md) é o tracker local da
 consolidação da estrutura plana; a issue remota é

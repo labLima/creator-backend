@@ -36,9 +36,9 @@ from creator.main import app
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_PATH = PROJECT_ROOT / "docs" / "openapi.yaml"
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
-# 225 `/api/v1` operations plus the three System operations (/health,
+# 227 `/api/v1` operations plus the three System operations (/health,
 # /health/live, /metrics). The original 227 figure in issue 0051 predates Activity Events.
-EXPECTED_OPERATION_COUNT = 228
+EXPECTED_OPERATION_COUNT = 230
 
 NOTIFICATION_PREFERENCE_PATH = "/api/v1/notification-preferences/{id}"
 RESOURCE_ID_REF = {"$ref": "#/components/parameters/ResourceId"}
@@ -308,7 +308,7 @@ def test_operation_id_parity_compares_every_documented_operation() -> None:
     from `app.openapi()`, the intersection would shrink and the assertion would
     keep passing while silently covering less. The compared set must therefore
     equal the complete YAML surface, which is frozen at
-    `EXPECTED_OPERATION_COUNT` (225 `/api/v1` operations plus three System ones).
+    `EXPECTED_OPERATION_COUNT` (227 `/api/v1` operations plus three System ones).
     """
     static_operations = _operations_by_slug(_static_contract())
     generated_operations = _operations_by_slug(app.openapi())
@@ -522,7 +522,7 @@ def test_global_error_conventions_are_documented() -> None:
     OpenAPI post-processor, so those statuses are conventions rather than route
     declarations. The YAML documents `401` per operation, `429` through
     `x-rate-limit.response` (`RateLimitExceeded`) and `500` through the
-    `InternalServerError` component; repeating them on all 225 `/api/v1`
+    `InternalServerError` component; repeating them on all 227 `/api/v1`
     operations would add hundreds of artificial blocks. Where the YAML declares
     a provider-specific `429`/`500` component (`AuthRateLimited`,
     `LlmProviderRateLimited`, `SignupFailed`, `AuthMisconfigured`, ...) instead

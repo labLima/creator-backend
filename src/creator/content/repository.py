@@ -14,6 +14,7 @@ from creator.content.ports import (
     ContentDetailRecord,
     ContentFilters,
     ContentRecord,
+    ContentTextVersionRecord,
     GeneratedTextContentRecord,
     ImageRecord,
 )
@@ -28,6 +29,9 @@ from creator.infrastructure.persistence.sql import enum_value as _enum_value
 from creator.infrastructure.persistence.sql import flush_or_raise
 from creator.infrastructure.persistence.sql import json_object as _json
 from creator.infrastructure.persistence.sql import now as _now
+from creator.infrastructure.persistence.sql import (
+    user_has_workspace_role as _user_has_workspace_role,
+)
 from creator.workspace import models as workspace_tables
 
 
@@ -65,6 +69,22 @@ def _image_record(row: content_tables.Image) -> ImageRecord:
         created_at=_datetime(row.created_at),
         updated_at=_datetime(row.updated_at),
         deleted_at=_optional_datetime(row.deleted_at),
+    )
+
+
+def _text_version_record(
+    row: content_tables.ContentTextVersion,
+) -> ContentTextVersionRecord:
+    return ContentTextVersionRecord(
+        id=row.id,
+        content_id=row.content_id,
+        workspace_id=row.workspace_id,
+        generation_id=row.generation_id,
+        artifact_type=row.artifact_type,
+        version_number=row.version_number,
+        text=row.content_text,
+        metadata=_json(row.metadata_json),
+        created_at=_datetime(row.created_at),
     )
 
 
@@ -147,6 +167,94 @@ class SqlAlchemyContentRepository:
             generation_model=model,
             generation_parameters=_json(generation.parameters),
         )
+
+    def append_text_version(
+        self,
+        *,
+        user_id: UUID,
+        content_id: UUID,
+        generation_id: UUID,
+        artifact_type: str,
+        text: str,
+        metadata: JsonObject,
+    ) -> ContentTextVersionRecord:
+        content = self._session.scalars(
+            select(content_tables.Content).where(
+                content_tables.Content.id == content_id,
+                content_tables.Content.deleted_at.is_(None),
+            )
+        ).one_or_none()
+        if content is None or not _user_has_workspace_role(
+            self._session,
+            user_id=user_id,
+            workspace_id=content.workspace_id,
+            minimum_role="editor",
+        ):
+            raise EntityNotFoundError("Content not found")
+        generation = self._session.scalars(
+            select(generation_tables.Generation).where(
+                generation_tables.Generation.id == generation_id,
+                generation_tables.Generation.workspace_id == content.workspace_id,
+                generation_tables.Generation.content_id == content_id,
+                generation_tables.Generation.deleted_at.is_(None),
+            )
+        ).one_or_none()
+        if generation is None or artifact_type not in {"COPY", "CAPTION"}:
+            raise EntityNotFoundError("Generation not found")
+        existing = self._session.scalars(
+            select(content_tables.ContentTextVersion).where(
+                content_tables.ContentTextVersion.generation_id == generation_id
+            )
+        ).one_or_none()
+        if existing is not None:
+            if existing.content_text != text:
+                raise ValueError("Generation already has a different immutable text version")
+            return _text_version_record(existing)
+        latest = self._session.scalar(
+            select(func.max(content_tables.ContentTextVersion.version_number)).where(
+                content_tables.ContentTextVersion.content_id == content_id
+            )
+        )
+        row = content_tables.ContentTextVersion(
+            workspace_id=content.workspace_id,
+            content_id=content_id,
+            generation_id=generation_id,
+            artifact_type=artifact_type,
+            version_number=(latest or 0) + 1,
+            content_text=text,
+            metadata_json=_json(metadata),
+        )
+        self._session.add(row)
+        flush_or_raise(self._session)
+        return _text_version_record(row)
+
+    def list_text_versions(
+        self, *, user_id: UUID, content_id: UUID, generation_id: UUID | None = None
+    ) -> list[ContentTextVersionRecord]:
+        content = self._session.scalars(
+            select(content_tables.Content).where(
+                content_tables.Content.id == content_id,
+                content_tables.Content.deleted_at.is_(None),
+            )
+        ).one_or_none()
+        if content is None or not _user_has_workspace_role(
+            self._session,
+            user_id=user_id,
+            workspace_id=content.workspace_id,
+            minimum_role="viewer",
+        ):
+            raise EntityNotFoundError("Content not found")
+        statement = select(content_tables.ContentTextVersion).where(
+            content_tables.ContentTextVersion.content_id == content_id
+        )
+        if generation_id is not None:
+            statement = statement.where(
+                content_tables.ContentTextVersion.generation_id == generation_id
+            )
+        rows = self._session.scalars(
+            statement.order_by(content_tables.ContentTextVersion.version_number.asc())
+        ).all()
+        return [_text_version_record(row) for row in rows]
 
     def user_has_workspace_access(self, *, user_id: UUID, workspace_id: UUID) -> bool:
         statement = (
