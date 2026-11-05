@@ -10,6 +10,8 @@ from creator.api.dependencies import get_rate_limiter
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from creator.infrastructure.runtime.metrics import MetricsRegistry
 from creator.infrastructure.runtime.rate_limit import InMemoryRateLimitBackend, RateLimiter
+from creator.services.agents.contracts import AgentExecutionResult, ArtistOutput
+from creator.services.ai.reviewer import ImageReviewResult
 from creator.workers import image_generation as image_generation_worker
 from tests.e2e.conftest import FakeGenerationQueue, signup_payload
 
@@ -352,3 +354,136 @@ async def test_rate_limit_contract_is_scoped_to_authenticated_principal(
     assert body["error"]["code"] == "RATE_LIMIT_EXCEEDED"
     assert second.headers["Retry-After"] == "60"
     assert second.headers["RateLimit-Limit"] == "1"
+
+
+@pytest.mark.anyio
+async def test_independent_generation_job_is_idempotent_and_workspace_scoped(
+    e2e: tuple[object, object],
+) -> None:
+    application, _ = e2e
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        token, workspace_id = await _signup(client, "independent-generation@example.com")
+        other_token, _ = await _signup(client, "independent-other@example.com")
+        brand_response = await client.post(
+            "/api/v1/brands",
+            headers=_auth(token),
+            json={
+                "workspace_id": workspace_id,
+                "name": "Generation Brand",
+                "brand_voice": "Clear and direct",
+            },
+        )
+        assert brand_response.status_code == 201, brand_response.text
+        brand_id = _assert_envelope(brand_response, success=True)["data"]["id"]
+        payload = {
+            "brand_id": brand_id,
+            "artifact_type": "COPY",
+            "operation": "CREATE",
+            "briefing": "Write concise launch copy",
+        }
+        headers = {**_auth(token), "Idempotency-Key": "independent-copy-1"}
+        created = await client.post("/api/v1/generation-jobs", headers=headers, json=payload)
+        repeated = await client.post("/api/v1/generation-jobs", headers=headers, json=payload)
+        job_id = _assert_envelope(created, success=True)["data"]["id"]
+        fetched = await client.get(f"/api/v1/generation-jobs/{job_id}", headers=_auth(token))
+        hidden = await client.get(f"/api/v1/generation-jobs/{job_id}", headers=_auth(other_token))
+
+    assert created.status_code == 202
+    assert repeated.status_code == 202
+    assert _assert_envelope(repeated, success=True)["data"]["id"] == job_id
+    assert fetched.status_code == 200
+    fetched_data = _assert_envelope(fetched, success=True)["data"]
+    assert fetched_data["artifact_type"] == "COPY"
+    assert fetched_data["operation"] == "CREATE"
+    assert fetched_data["status"] == "PENDING"
+    queue: FakeGenerationQueue = application.state.e2e_queue
+    assert len(queue.generation_calls) == 1
+    assert hidden.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_independent_image_job_runs_artist_and_returns_reviewed_image(
+    e2e: tuple[object, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    application, _ = e2e
+    _patch_worker_to_test_database(monkeypatch, application)
+
+    class FakeArtist:
+        def execute(self, context: object) -> AgentExecutionResult:
+            assert context.inputs["visual_direction"] == "Minimal studio composition"
+            return AgentExecutionResult(
+                output=ArtistOutput(visual_prompt="Artist composed visual prompt"),
+                prompt="Artist specialist prompt",
+                prompt_template_id="agent.artist.v3",
+                prompt_template_version="3.0",
+                input_hash="a" * 64,
+                output_hash="b" * 64,
+                schema_name="ArtistOutput",
+                schema_version="1.0",
+                provider="fake-artist",
+                model="artist-model",
+            )
+
+    class FakeReviewer:
+        def review(self, request: object) -> ImageReviewResult:
+            assert request.prompt == "Artist composed visual prompt"
+            return ImageReviewResult(
+                decision="APPROVED",
+                score=0.94,
+                feedback=("Brand context is respected",),
+                provider="fake-reviewer",
+                model="review-model",
+            )
+
+    monkeypatch.setattr(
+        image_generation_worker,
+        "create_multi_agent_orchestrator",
+        lambda _settings: FakeArtist(),
+    )
+    monkeypatch.setattr(
+        image_generation_worker,
+        "create_image_reviewer",
+        lambda _settings: FakeReviewer(),
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        token, workspace_id = await _signup(client, "independent-image@example.com")
+        brand_response = await client.post(
+            "/api/v1/brands",
+            headers=_auth(token),
+            json={"workspace_id": workspace_id, "name": "Image Brand"},
+        )
+        brand_id = _assert_envelope(brand_response, success=True)["data"]["id"]
+        accepted = await client.post(
+            "/api/v1/generation-jobs",
+            headers={**_auth(token), "Idempotency-Key": "independent-image-1"},
+            json={
+                "brand_id": brand_id,
+                "artifact_type": "IMAGE",
+                "operation": "CREATE",
+                "briefing": "Create a launch visual",
+                "direction": "Minimal studio composition",
+                "restrictions": ["No third-party marks"],
+                "review_image": True,
+            },
+        )
+        assert accepted.status_code == 202, accepted.text
+        accepted_data = _assert_envelope(accepted, success=True)["data"]
+        image_generation_worker.run_image_generation(
+            accepted_data["id"], _assert_envelope(accepted, success=True)["meta"]["request_id"]
+        )
+        completed = await client.get(
+            f"/api/v1/generation-jobs/{accepted_data['id']}", headers=_auth(token)
+        )
+
+    assert completed.status_code == 200, completed.text
+    result = _assert_envelope(completed, success=True)["data"]
+    assert result["status"] == "COMPLETED"
+    assert result["image"]["prompt"] == "Artist composed visual prompt"
+    assert result["image"]["metadata"]["artist"]["provider"] == "fake-artist"
+    assert result["image"]["metadata"]["review"]["decision"] == "APPROVED"
+    assert result["image"]["metadata"]["review"]["feedback"] == ["Brand context is respected"]

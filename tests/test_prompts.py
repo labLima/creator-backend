@@ -172,11 +172,11 @@ def test_generation_parameters_include_prompt_template_metadata() -> None:
 @pytest.mark.parametrize(
     ("objective", "template_id", "expected_instruction"),
     [
-        ("shorten", "improvement.shorten.v1", "Encurte o texto"),
-        ("persuasive", "improvement.persuasive.v1", "editor de Content de marketing persuasivo"),
-        ("formal", "improvement.formal.v1", "linguagem profissional"),
-        ("seo", "improvement.seo.v1", "orientado a SEO"),
-        ("audience_adaptation", "improvement.audience_adaptation.v1", "publico-alvo"),
+        ("shorten", "improvement.shorten.v2", "Encurte o texto"),
+        ("persuasive", "improvement.persuasive.v2", "editor de Content de marketing persuasivo"),
+        ("formal", "improvement.formal.v2", "linguagem profissional"),
+        ("seo", "improvement.seo.v2", "orientado a SEO"),
+        ("audience_adaptation", "improvement.audience_adaptation.v2", "publico-alvo"),
     ],
 )
 def test_text_improvement_prompt_supports_each_objective(
@@ -198,3 +198,4 @@ def test_text_improvement_prompt_supports_each_objective(
     assert expected_instruction in rendered.text
     assert '"text"' in rendered.text
     assert '"justification"' in rendered.text
+    assert "Backstory:" in rendered.text

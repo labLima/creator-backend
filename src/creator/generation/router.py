@@ -29,17 +29,19 @@ from creator.api.responses import (
 from creator.api.serializers import (
     _generated_image_data,
     _generation_data,
+    _image_data,
     _image_generation_status_data,
 )
 from creator.config import Settings, get_settings
 from creator.core.pagination import page_request
 from creator.domain.exceptions import EntityNotFoundError
 from creator.domain.generation import GenerationJobStatus
-from creator.generation.ports import GenerationQueue
+from creator.generation.ports import GenerationJobRecord, GenerationQueue
 from creator.generation.schemas import (
     GenerateImageRequest,
     GenerationCreateRequest,
     GenerationUpdateRequest,
+    IndependentGenerationRequest,
     RegenerateImageRequest,
 )
 from creator.generation.service import (
@@ -51,6 +53,108 @@ from creator.services.storage.provider import StorageProvider, StorageUrlError
 from creator.user.ports import UserRecord
 
 router = APIRouter()
+
+
+@router.post(
+    "/api/v1/generation-jobs",
+    tags=["Generations"],
+    operation_id="createIndependentGenerationJob",
+    status_code=202,
+    responses={
+        "404": {"$ref": "#/components/responses/NotFound"},
+        "409": {"$ref": "#/components/responses/Conflict"},
+    },
+)
+def create_independent_generation_job(
+    payload: IndependentGenerationRequest,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=128)],
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
+    queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
+) -> JSONResponse:
+    try:
+        job = application.submit_independent_generation(
+            queue=queue,
+            settings=settings,
+            user=current_user,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            request_id=request_id_for(request),
+        )
+    except EntityNotFoundError as error:
+        raise not_found("Brand or source Content") from error
+    except IdempotencyConflictError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "IDEMPOTENCY_CONFLICT", "message": str(error)},
+        ) from error
+    except QueueEnqueueError as error:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "QUEUE_ENQUEUE_FAILED",
+                "message": "Generation Job could not be queued",
+            },
+        ) from error
+    return success_response(_generation_job_data(job), request, status_code=202)
+
+
+@router.get(
+    "/api/v1/generation-jobs/{id}",
+    tags=["Generations"],
+    operation_id="getIndependentGenerationJob",
+    responses={"404": {"$ref": "#/components/responses/NotFound"}},
+)
+def get_independent_generation_job(
+    job_id: Annotated[UUID, Path(alias="id")],
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
+) -> JSONResponse:
+    details = application.get_independent_generation_job(user_id=current_user.id, job_id=job_id)
+    if details is None:
+        raise not_found("Generation Job")
+    job, status, versions = details
+    result: dict[str, object] = _generation_job_data(job)
+    if status is not None and status.image is not None:
+        result["image"] = _image_data(status.image)
+    if job.artifact_type in {"COPY", "CAPTION"}:
+        result["text_versions"] = [
+            {
+                "version_number": version.version_number,
+                "artifact_type": version.artifact_type,
+                "text": version.text,
+                "metadata": version.metadata,
+                "created_at": version.created_at.isoformat(),
+            }
+            for version in versions
+        ]
+    return success_response(result, request)
+
+
+def _generation_job_data(job: GenerationJobRecord) -> dict[str, object]:
+    return {
+        "id": str(job.id),
+        "workspace_id": str(job.workspace_id),
+        "generation_id": str(job.generation_id),
+        "content_id": str(job.content_id),
+        "artifact_type": job.artifact_type,
+        "operation": job.operation,
+        "status": job.status.value,
+        "attempt_count": job.attempt_count,
+        "max_attempts": job.max_attempts,
+        "failure_code": job.failure_code,
+        "failure_message": job.failure_message,
+        "queued_at": job.queued_at.isoformat(),
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "failed_at": job.failed_at.isoformat() if job.failed_at else None,
+        "request_id": str(job.request_id) if job.request_id else None,
+        "created_at": job.created_at.isoformat(),
+        "updated_at": job.updated_at.isoformat(),
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+    }
 
 
 @router.get("/api/v1/generations", tags=["Generations"], operation_id="listGenerations")

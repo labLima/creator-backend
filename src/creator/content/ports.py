@@ -41,6 +41,19 @@ class GeneratedTextContentRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class ContentTextVersionRecord:
+    id: UUID
+    content_id: UUID
+    workspace_id: UUID
+    generation_id: UUID
+    artifact_type: str
+    version_number: int
+    text: str
+    metadata: JsonObject
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class ContentFilters:
     workspace_id: UUID | None = None
     content_type: str | None = None
@@ -76,6 +89,21 @@ class ContentRepository(Protocol):
         project_id: UUID | None = None,
         parameters: JsonObject | None = None,
     ) -> GeneratedTextContentRecord: ...
+
+    def append_text_version(
+        self,
+        *,
+        user_id: UUID,
+        content_id: UUID,
+        generation_id: UUID,
+        artifact_type: str,
+        text: str,
+        metadata: JsonObject,
+    ) -> ContentTextVersionRecord: ...
+
+    def list_text_versions(
+        self, *, user_id: UUID, content_id: UUID, generation_id: UUID | None = None
+    ) -> list[ContentTextVersionRecord]: ...
 
     def user_has_workspace_access(self, *, user_id: UUID, workspace_id: UUID) -> bool: ...
 

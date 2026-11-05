@@ -2003,6 +2003,58 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
           x-error-codes: [VALIDATION_FAILED, WORKFLOW_INPUT_INVALID]
+  /api/v1/generation-jobs:
+    post:
+      operationId: createIndependentGenerationJob
+      tags:
+      - Generations
+      security:
+      - CreatorSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndependentGenerationRequest'
+      responses:
+        '202':
+          description: Independent Generation Job accepted and queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationJobResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '503':
+          description: Generation queue is unavailable.
+  /api/v1/generation-jobs/{id}:
+    get:
+      operationId: getIndependentGenerationJob
+      tags:
+      - Generations
+      security:
+      - CreatorSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Current independent Generation Job status and result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationJobResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/images/generate:
     post:
       operationId: generateImage
@@ -7027,12 +7079,92 @@ components:
       properties:
         style:
           $ref: '#/components/schemas/GenerateImageStyle'
+    IndependentGenerationRequest:
+      type: object
+      required: [brand_id, artifact_type, briefing]
+      properties:
+        brand_id:
+          type: string
+          format: uuid
+        artifact_type:
+          type: string
+          enum: [IMAGE, COPY, CAPTION]
+        operation:
+          type: string
+          enum: [CREATE, REGENERATE, TRANSFORM]
+          default: CREATE
+        briefing:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        source_content_id:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        review_image:
+          type: boolean
+          default: false
+        restrictions:
+          type: array
+          maxItems: 30
+          items:
+            type: string
+        title:
+          type: string
+          maxLength: 255
+      allOf:
+      - if:
+          properties:
+            artifact_type:
+              const: IMAGE
+        then:
+          required: [direction]
+      - if:
+          properties:
+            artifact_type:
+              enum: [COPY, CAPTION]
+        then:
+          properties:
+            review_image:
+              const: false
+      - if:
+          properties:
+            operation:
+              const: CREATE
+        then:
+          not:
+            required: [source_content_id]
+      - if:
+          properties:
+            operation:
+              enum: [REGENERATE, TRANSFORM]
+        then:
+          required: [source_content_id]
+    GenerationJobResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success:
+          const: true
+        data:
+          $ref: '#/components/schemas/GenerationJob'
+        meta:
+          type: object
+          required: [request_id]
+          properties:
+            request_id:
+              type: string
+              format: uuid
     GenerationJob:
       type: object
       required:
       - id
       - workspace_id
       - generation_id
+      - content_id
       - artifact_type
       - operation
       - status
@@ -7049,6 +7181,9 @@ components:
           type: string
           format: uuid
         generation_id:
+          type: string
+          format: uuid
+        content_id:
           type: string
           format: uuid
         artifact_type:
@@ -7076,20 +7211,6 @@ components:
         max_attempts:
           type: integer
           minimum: 1
-        timeout_seconds:
-          type: integer
-          minimum: 1
-        idempotency_key:
-          type:
-          - string
-          - 'null'
-          maxLength: 255
-        failure_policy:
-          type: string
-          enum:
-          - FAIL
-          - RETRY
-          - PARTIAL
         request_id:
           type:
           - string
@@ -7132,6 +7253,32 @@ components:
           type:
           - string
           - 'null'
+          format: date-time
+        image:
+          $ref: '#/components/schemas/Image'
+        text_versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentTextVersion'
+    ContentTextVersion:
+      type: object
+      required: [version_number, artifact_type, text, metadata, created_at]
+      properties:
+        version_number:
+          type: integer
+          minimum: 1
+        artifact_type:
+          type: string
+          enum: [COPY, CAPTION]
+        text:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
           format: date-time
     GenerationJobStatusEvent:
       type: object

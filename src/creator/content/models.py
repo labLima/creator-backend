@@ -169,3 +169,44 @@ class Content(Base):
         onupdate=func.now(),
     )
     deleted_at: Mapped[object | None] = mapped_column(timestamp_tz)
+
+
+class ContentTextVersion(Base):
+    """Immutable text output versions produced by COPY and CAPTION Generations."""
+
+    __tablename__ = "content_text_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["content_id", "workspace_id"],
+            ["contents.id", "contents.workspace_id"],
+            name="fk_content_text_versions_content_workspace",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("content_id", "version_number", name="uq_content_text_versions_number"),
+        UniqueConstraint("generation_id", name="uq_content_text_versions_generation"),
+        CheckConstraint("version_number > 0", name="ck_content_text_versions_positive"),
+        CheckConstraint(
+            "artifact_type IN ('COPY', 'CAPTION')",
+            name="ck_content_text_versions_artifact_type",
+        ),
+        CheckConstraint("length(text) BETWEEN 1 AND 20000", name="ck_content_text_versions_text"),
+        Index("ix_content_text_versions_content_version", "content_id", "version_number"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    workspace_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    content_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    generation_id: Mapped[UUID] = mapped_column(
+        uuid_pk,
+        ForeignKey("generations.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    artifact_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    version_number: Mapped[int] = mapped_column(nullable=False)
+    content_text: Mapped[str] = mapped_column("text", Text, nullable=False)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(
+        "metadata", json_type, nullable=False, server_default=text("'{}'")
+    )
+    created_at: Mapped[object] = mapped_column(
+        timestamp_tz, nullable=False, server_default=func.now()
+    )

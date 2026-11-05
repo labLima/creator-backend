@@ -2,7 +2,7 @@
 
 Fonte: `src/creator/infrastructure/database/schema_manifest.py`, `docs/migration/legacy-compatibility-matrix.md` e `docs/migration/legacy-inventory.md`.
 
-A matriz cobre as **51 tabelas** registradas no metadata: 38 do PDF, 11 legadas e 2 extensões de ADR (`auth_sessions`, `outbox_events`).
+A matriz cobre as **53 tabelas** registradas no metadata: 38 do PDF, 11 legadas e 4 extensões de ADR (`auth_sessions`, `outbox_events`, `activity_events`, `content_text_versions`).
 
 > **Decisão de 2026-11-04:** a migração de comportamento do Create Bloom foi
 > encerrada como não planejada (#134 / [0050](issues/0050-legacy-behavior-parity.md)).
@@ -16,9 +16,11 @@ A matriz cobre as **51 tabelas** registradas no metadata: 38 do PDF, 11 legadas 
 | --- | --- | --- | --- | --- | --- |
 | `agent_workflow_runs` | legado | ativo | extensão de ADR — sem alvo PDF | Ativo; estado durável do Agent Workflow (ADR-014/018). Extensão aceita; não é dívida de migração. | Sem migração de legado (2026-11-04) |
 | `agent_workflow_steps` | legado | ativo | extensão de ADR — sem alvo PDF | Ativo; estado durável do Agent Workflow (ADR-014/018). Extensão aceita; não é dívida de migração. | Sem migração de legado (2026-11-04) |
+| `activity_events` | extensão de ADR | ativo | sem alvo PDF | Histórico append-oriented de eventos de negócio (ADR-008 emendada). | [#52](https://github.com/labLima/creator-backend/issues/52) |
 | `assets` | legado | ativo | ver matriz de comportamento | Ativo; metadados de upload. Alvo brand_assets; separar brand-owned de gerado. | Sem migração de legado (2026-11-04) |
 | `brand_settings` | legado | ativo | ver matriz de comportamento | Ativo; extensão de Brand (ADR-014/024). Sem alvo PDF; permanece. | Sem migração de legado (2026-11-04) |
 | `contents` | legado | ativo | ver matriz de comportamento | Ativo; dual-read com post_structure. Conversão de payload e consumidores pendente. | Sem migração de legado (2026-11-04) |
+| `content_text_versions` | extensão de ADR | ativo | sem alvo PDF | Extensão de Content para versões imutáveis produzidas por Generation Jobs (ADR-025). | [#141](https://github.com/labLima/creator-backend/issues/141) |
 | `generation_job_status_events` | legado | ativo | ver matriz de comportamento | Ativo; event log de jobs. Remover junto com generation_jobs após migração. | Sem migração de legado (2026-11-04) |
 | `generation_jobs` | legado | ativo | ver matriz de comportamento | Ativo; lifecycle assíncrono. Boundary de worker; não criar nova tabela silenciosamente. | Sem migração de legado (2026-11-04) |
 | `generations` | legado | ativo | Generation/Generation Job; sem alvo PDF direto | Ativo; intenção de geração. Não usar design_structure (vazio) sem extensão/ADR. | Sem migração de legado (2026-11-04) |

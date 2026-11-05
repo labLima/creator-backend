@@ -27,6 +27,7 @@ from creator.generation.ports import (
     ImageGenerationStatusRecord,
     ImageGenerationWorkItem,
 )
+from creator.infrastructure.database.enums import GenerationType
 from creator.infrastructure.persistence.sql import as_datetime as _datetime
 from creator.infrastructure.persistence.sql import as_optional_datetime as _optional_datetime
 from creator.infrastructure.persistence.sql import enum_value as _enum_value
@@ -318,6 +319,9 @@ def _job_record(row: generation_tables.GenerationJob, content_id: UUID) -> Gener
         updated_at=_datetime(row.updated_at),
         deleted_at=_optional_datetime(row.deleted_at),
         request_id=row.request_id,
+        artifact_type=_enum_value(row.artifact_type),
+        operation=row.operation,
+        idempotency_key=row.idempotency_key,
     )
 
 
@@ -344,6 +348,7 @@ class SqlAlchemyImageGenerationRepository:
         *,
         workspace_id: UUID,
         content_id: UUID,
+        brand_id: UUID | None = None,
         requested_by_user_id: UUID | None,
         model: str,
         prompt: str,
@@ -351,6 +356,9 @@ class SqlAlchemyImageGenerationRepository:
         external_id: str | None = None,
         max_attempts: int = 1,
         request_id: UUID | None = None,
+        artifact_type: str = "IMAGE",
+        operation: str = "CREATE",
+        idempotency_key: str | None = None,
     ) -> GenerationJobRecord:
         if requested_by_user_id is None or not _user_has_workspace_role(
             self._session,
@@ -373,6 +381,8 @@ class SqlAlchemyImageGenerationRepository:
             workspace_id=workspace_id,
             content_id=content_id,
             requested_by_user_id=requested_by_user_id,
+            brand_id=brand_id,
+            generation_type=artifact_type,
             model=model,
             prompt=prompt,
             parameters=_json(parameters),
@@ -383,13 +393,22 @@ class SqlAlchemyImageGenerationRepository:
         job = generation_tables.GenerationJob(
             workspace_id=workspace_id,
             generation_id=generation.id,
+            artifact_type=artifact_type,
+            operation=operation,
             external_id=external_id,
+            idempotency_key=idempotency_key,
             max_attempts=max_attempts,
             request_id=request_id,
         )
         self._session.add(job)
         flush_or_raise(self._session)
-        self._add_status_event(job.id, None, GenerationJobStatus.PENDING, request_id=request_id)
+        self._add_status_event(
+            job.id,
+            None,
+            GenerationJobStatus.PENDING,
+            request_id=request_id,
+            artifact_type=artifact_type,
+        )
         flush_or_raise(self._session)
         return _job_record(job, content_id)
 
@@ -406,6 +425,20 @@ class SqlAlchemyImageGenerationRepository:
         if not include_deleted:
             statement = statement.where(generation_tables.GenerationJob.deleted_at.is_(None))
         row = self._session.execute(statement).one_or_none()
+        if row is None:
+            return None
+        job, content_id = cast(tuple[generation_tables.GenerationJob, UUID], row)
+        return _job_record(job, content_id)
+
+    def get_job_by_external_id_for_user(
+        self, *, user_id: UUID, external_id: str
+    ) -> GenerationJobRecord | None:
+        row = self._session.execute(
+            self._scoped_job_select(user_id).where(
+                generation_tables.GenerationJob.external_id == external_id,
+                generation_tables.GenerationJob.deleted_at.is_(None),
+            )
+        ).one_or_none()
         if row is None:
             return None
         job, content_id = cast(tuple[generation_tables.GenerationJob, UUID], row)
@@ -450,6 +483,7 @@ class SqlAlchemyImageGenerationRepository:
             select(generation_tables.GenerationJob)
             .where(
                 generation_tables.GenerationJob.status == GenerationJobStatus.PENDING,
+                generation_tables.GenerationJob.artifact_type == GenerationType.IMAGE,
                 generation_tables.GenerationJob.deleted_at.is_(None),
             )
             .order_by(generation_tables.GenerationJob.created_at.asc())
@@ -473,6 +507,7 @@ class SqlAlchemyImageGenerationRepository:
             .where(
                 generation_tables.GenerationJob.id == candidate_id,
                 generation_tables.GenerationJob.status == GenerationJobStatus.PENDING,
+                generation_tables.GenerationJob.artifact_type == GenerationType.IMAGE,
                 generation_tables.GenerationJob.deleted_at.is_(None),
             )
             .values(
@@ -569,7 +604,9 @@ class SqlAlchemyImageGenerationRepository:
         )
         return _image_generation_status_record(job, content_id, parameters, image)
 
-    def claim_pending_by_id(self, job_id: UUID) -> ImageGenerationWorkItem | None:
+    def claim_pending_by_id(
+        self, job_id: UUID, *, artifact_type: str = "IMAGE"
+    ) -> ImageGenerationWorkItem | None:
         statement = (
             select(generation_tables.GenerationJob, generation_tables.Generation, user_tables.User)
             .join(
@@ -591,6 +628,7 @@ class SqlAlchemyImageGenerationRepository:
             )
             .where(
                 generation_tables.GenerationJob.id == job_id,
+                generation_tables.GenerationJob.artifact_type == artifact_type,
                 generation_tables.GenerationJob.status.in_(
                     [GenerationJobStatus.PENDING, GenerationJobStatus.PROCESSING]
                 ),
@@ -617,6 +655,16 @@ class SqlAlchemyImageGenerationRepository:
             requested_by_user=_user_record(user),
         )
 
+    def complete_text_job(self, job_id: UUID) -> None:
+        job = self._locked_job(job_id)
+        if _enum_value(job.artifact_type) not in {"COPY", "CAPTION"}:
+            raise InvalidStateTransitionError("Only text Generation Jobs can complete as text")
+        self._transition_job(job, GenerationJobStatus.COMPLETED)
+        timestamp = _now()
+        job.completed_at = timestamp
+        job.updated_at = timestamp
+        flush_or_raise(self._session)
+
     def get_image_by_generation_id(self, generation_id: UUID) -> ImageRecord | None:
         image = self._session.scalars(
             select(content_tables.Image).where(
@@ -637,6 +685,7 @@ class SqlAlchemyImageGenerationRepository:
             select(generation_tables.GenerationJob)
             .where(
                 generation_tables.GenerationJob.status == GenerationJobStatus.PROCESSING,
+                generation_tables.GenerationJob.artifact_type == GenerationType.IMAGE,
                 generation_tables.GenerationJob.started_at < older_than,
                 generation_tables.GenerationJob.deleted_at.is_(None),
             )
@@ -928,7 +977,13 @@ class SqlAlchemyImageGenerationRepository:
         if not can_transition(current, target):
             raise InvalidStateTransitionError(f"Cannot transition {current} to {target}")
         job.status = target
-        self._add_status_event(job.id, current, target, request_id=job.request_id)
+        self._add_status_event(
+            job.id,
+            current,
+            target,
+            request_id=job.request_id,
+            artifact_type=_enum_value(job.artifact_type),
+        )
 
     def _add_status_event(
         self,
@@ -937,6 +992,7 @@ class SqlAlchemyImageGenerationRepository:
         status: GenerationJobStatus,
         *,
         request_id: UUID | None = None,
+        artifact_type: str = "IMAGE",
     ) -> None:
         self._session.add(
             generation_tables.GenerationJobStatusEvent(
@@ -944,6 +1000,7 @@ class SqlAlchemyImageGenerationRepository:
                 previous_status=previous_status,
                 status=status,
                 request_id=request_id,
+                artifact_type=artifact_type,
             )
         )
 

@@ -680,6 +680,22 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/api/v1/generation-jobs",
+    "operation_id": "createIndependentGenerationJob",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/generation-jobs/{id}",
+    "operation_id": "getIndependentGenerationJob",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/api/v1/generations",
     "operation_id": "listGenerations",

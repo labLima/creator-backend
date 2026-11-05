@@ -90,8 +90,10 @@ class FakeImageGenerationRepository:
 
 class FakeUnitOfWork:
     def __init__(self, repository: FakeImageGenerationRepository) -> None:
+        self.repository = repository
         self.image_generations = repository
         self.generation = SimpleNamespace(image_jobs=repository)
+        self.brand = SimpleNamespace(brands=self)
         self.commits = 0
 
     def __enter__(self) -> FakeUnitOfWork:
@@ -105,6 +107,20 @@ class FakeUnitOfWork:
 
     def rollback(self) -> None:
         return None
+
+    def get_for_user(self, *, user_id: UUID, brand_id: UUID) -> object:
+        assert self.repository.work_item is not None
+        return type(
+            "Brand",
+            (),
+            {
+                "id": brand_id,
+                "workspace_id": self.repository.work_item.job.workspace_id,
+                "name": "Test Brand",
+                "description": "Brand description",
+                "brand_voice": "Clear",
+            },
+        )()
 
 
 def job_record(*, attempt_count: int = 1, max_attempts: int = 3) -> GenerationJobRecord:

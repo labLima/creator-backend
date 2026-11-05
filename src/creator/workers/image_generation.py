@@ -7,6 +7,8 @@ from uuid import UUID
 
 from creator.config import get_settings
 from creator.core.types import JsonObject
+from creator.domain.agent_workflow import AgentWorkflowStepRole
+from creator.domain.auth import Principal, WorkspaceRole
 from creator.domain.exceptions import InvalidStateTransitionError
 from creator.generation.ports import ImageGenerationWorkItem
 from creator.generation.storage_service import GeneratedImage, persist_generated_image
@@ -23,7 +25,16 @@ from creator.integrations.gemini.exceptions import (
     GeminiTransientError,
 )
 from creator.integrations.gemini.image_generator import GeminiImageGenerationRequest
+from creator.services.agents.contracts import (
+    AgentExecutionContext,
+    ArtistOutput,
+    WorkspaceAuthorizationContext,
+)
+from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
+from creator.services.agents.factory import create_multi_agent_orchestrator
+from creator.services.ai.factory import create_image_reviewer
 from creator.services.ai.image_provider import create_image_generator
+from creator.services.ai.reviewer import ImageReviewRequest
 from creator.services.storage.provider import StorageError
 
 logger = logging.getLogger(__name__)
@@ -54,13 +65,109 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
     )
     settings = get_settings()
     try:
+        request_input = work_item.parameters.get("request_input")
+        artist_metadata: dict[str, object] = {}
+        prompt = work_item.prompt
+        if isinstance(request_input, dict) and request_input.get("artifact_type") == "IMAGE":
+            brand_id = UUID(str(request_input["brand_id"]))
+            with SqlAlchemyUnitOfWork() as unit_of_work:
+                brand = unit_of_work.brand.brands.get_for_user(
+                    user_id=work_item.requested_by_user.id,
+                    brand_id=brand_id,
+                )
+            if brand is None or brand.workspace_id != work_item.job.workspace_id:
+                raise RuntimeError("Authorized Brand context is unavailable for ARTIST")
+            artist_result = create_multi_agent_orchestrator(settings).execute(
+                AgentExecutionContext(
+                    workspace_id=work_item.job.workspace_id,
+                    brand_id=brand_id,
+                    authorization=WorkspaceAuthorizationContext(
+                        principal=Principal(subject=work_item.requested_by_user.external_id),
+                        workspace_id=work_item.job.workspace_id,
+                        workspace_role=WorkspaceRole.EDITOR,
+                    ),
+                    role=AgentWorkflowStepRole.ARTIST,
+                    inputs={
+                        "briefing": request_input["briefing"],
+                        "visual_direction": request_input["direction"],
+                        "operation": request_input["operation"],
+                        "source_content": work_item.parameters.get("source_content"),
+                        "preserve_source_concept": request_input["operation"] != "CREATE",
+                        "brand_context": {
+                            "name": brand.name,
+                            "description": brand.description or "",
+                            "brand_voice": brand.brand_voice or "",
+                        },
+                        "restrictions": request_input.get("restrictions", []),
+                    },
+                    prompt_template_id="agent.artist.v3",
+                    prompt_template_version="3.0",
+                    schema_version="1.0",
+                    output_contract="IMAGE",
+                )
+            )
+            artist_output = ArtistOutput.model_validate(artist_result.output)
+            prompt = artist_output.visual_prompt
+            artist_metadata = {
+                "artist": {
+                    "provider": artist_result.provider,
+                    "model": artist_result.model,
+                    "prompt_template_id": artist_result.prompt_template_id,
+                    "prompt_template_version": artist_result.prompt_template_version,
+                    "prompt_input_hash": artist_result.input_hash,
+                    "output_hash": artist_result.output_hash,
+                    "schema_name": artist_result.schema_name,
+                    "schema_version": artist_result.schema_version,
+                }
+            }
         result = create_image_generator(settings).generate(
             GeminiImageGenerationRequest(
-                prompt=work_item.prompt,
+                prompt=prompt,
                 model=work_item.model,
                 metadata=_image_request_metadata(work_item),
             )
         )
+        image_metadata = dict(result.metadata)
+        image_metadata.update(artist_metadata)
+        if (
+            isinstance(request_input, dict)
+            and request_input.get("review_image") is True
+            and isinstance(request_input.get("briefing"), str)
+        ):
+            review_brand_id = request_input.get("brand_id")
+            with SqlAlchemyUnitOfWork() as unit_of_work:
+                brand = (
+                    unit_of_work.brand.brands.get_for_user(
+                        user_id=work_item.requested_by_user.id,
+                        brand_id=UUID(str(review_brand_id)),
+                    )
+                    if review_brand_id
+                    else None
+                )
+            if brand is None:
+                raise RuntimeError("Authorized Brand context is unavailable for image review")
+            review = create_image_reviewer(settings).review(
+                ImageReviewRequest(
+                    image_bytes=result.image_bytes,
+                    mime_type=result.mime_type,
+                    prompt=result.prompt,
+                    briefing=str(request_input["briefing"]),
+                    brand_context={
+                        "brand_id": str(brand.id),
+                        "name": brand.name,
+                        "description": brand.description or "",
+                        "brand_voice": brand.brand_voice or "",
+                    },
+                )
+            )
+            image_metadata["review"] = {
+                "decision": review.decision,
+                "score": review.score,
+                "feedback": list(review.feedback),
+                "safety_issues": list(review.safety_issues),
+                "provider": review.provider,
+                "model": review.model,
+            }
         with SqlAlchemyUnitOfWork() as unit_of_work:
             persist_generated_image(
                 unit_of_work=unit_of_work,
@@ -74,7 +181,7 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     height=result.height,
                     model=result.model,
                     prompt=result.prompt,
-                    metadata=result.metadata,
+                    metadata=image_metadata,
                 ),
             )
         duration_ms = int((time.perf_counter() - started_at) * 1000)
@@ -101,6 +208,32 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
             failure_code="STORAGE_UPLOAD_FAILED",
         )
         return
+    except AgentKickoffError as error:
+        retryable = error.code in {
+            AgentKickoffErrorCode.PROVIDER_FAILURE,
+            AgentKickoffErrorCode.PROVIDER_UNAVAILABLE,
+        }
+        failure_code = error.code.value
+        duration_ms = int((time.perf_counter() - started_at) * 1000)
+        if retryable and work_item.job.attempt_count < work_item.job.max_attempts:
+            _log(
+                "image_generation_retryable_failure",
+                request_id=parsed_request_id,
+                job_id=parsed_job_id,
+                attempt=work_item.job.attempt_count,
+                duration_ms=duration_ms,
+                failure_code=failure_code,
+            )
+            raise
+        _fail_job(parsed_job_id, failure_code)
+        _log(
+            "image_generation_failed",
+            request_id=parsed_request_id,
+            job_id=parsed_job_id,
+            attempt=work_item.job.attempt_count,
+            duration_ms=duration_ms,
+            failure_code=failure_code,
+        )
     except GeminiProviderError as error:
         failure_code = _provider_failure_code(error)
         duration_ms = int((time.perf_counter() - started_at) * 1000)
