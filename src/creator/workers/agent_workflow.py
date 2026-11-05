@@ -997,7 +997,7 @@ def _generate_workflow_image(
                 workspace_id=run.workspace_id,
                 content_id=run.content_id,
                 requested_by_user_id=user.id,
-                model=typed_settings.gemini_image_model,
+                model=typed_settings.openai_image_model,
                 prompt=writer.direction.visual_prompt,
                 parameters=parameters,
                 external_id=external_id,
@@ -1040,7 +1040,7 @@ def _generate_workflow_image(
     generated = create_image_generator(typed_settings).generate(
         ImageGenerationRequest(
             prompt=writer.direction.visual_prompt,
-            model=typed_settings.gemini_image_model,
+            model=typed_settings.openai_image_model,
             metadata={"agent_workflow_run_id": str(run.id), "item": index},
         )
     )

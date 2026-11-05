@@ -92,16 +92,17 @@ imagem; o procedimento de rollback está no guia do SPA.
 
 ## IA e storage
 
-O provider de IA inicial é Google Gemini, via `google-genai`:
+Os providers de geração de texto e imagem usam OpenAI:
 
-- texto: `gemini-2.5-flash`;
-- imagem: `gemini-2.5-flash-image`;
-- reviewer multimodal: `gemini-2.5-flash`.
+- texto: configurado por `OPENAI_TEXT_MODEL` (padrão `gpt-5.5`);
+- imagem: configurado por `OPENAI_IMAGE_MODEL` (padrão `gpt-image-2.6-flare`);
+- revisão multimodal: configurada por `OPENAI_REVIEWER_MODEL` (padrão `gpt-5.5`).
 
-Configure `GEMINI_API_KEY` no `.env`. Sem a chave, as chamadas de geração
+Configure `OPENAI_API_KEY` no `.env`. Sem a chave, as chamadas de geração
 retornam erro estruturado de provider não configurado; a API continua
-disponível. CrewAI e LangChain estão preparados atrás de interfaces, mas
-desabilitados por padrão.
+disponível. Os adapters Gemini antigos permanecem no código de compatibilidade,
+mas nenhuma factory os seleciona para geração ou revisão. CrewAI e LangChain
+estão preparados atrás de interfaces, mas desabilitados por padrão.
 
 Storage local é o padrão de desenvolvimento; Supabase Storage permanece
 opcional atrás de `STORAGE_PROVIDER=supabase`.

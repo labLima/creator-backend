@@ -30,7 +30,7 @@ de implementação vinculada antes do fechamento do tracker.
 
 | ADR | Issue tracker | Issues de implementação |
 | --- | --- | --- |
-| [ADR-001](adr/0001-llm-provider.md) | [#34](https://github.com/labLima/creator-backend/issues/34) | #3, #9, #11, #17, #19, #23, #27, #53 |
+| [ADR-001](adr/0001-llm-provider.md) | [#34](https://github.com/labLima/creator-backend/issues/34) | #3, #9, #11, #13 (Gemini image adapter substituído), #17, #19, #23, #27, [#143](https://github.com/labLima/creator-backend/issues/143) / [0053](issues/0053-openai-provider-migration.md) |
 | [ADR-002](adr/0002-image-storage.md) | [#35](https://github.com/labLima/creator-backend/issues/35) | #3, #5, #10, #16, #33 |
 | [ADR-003](adr/0003-async-image-generation.md) | [#36](https://github.com/labLima/creator-backend/issues/36) | #3, #5, #7, #8, #12, #16, #25, #33, #79 |
 | [ADR-004](adr/0004-supabase-auth.md) | [#37](https://github.com/labLima/creator-backend/issues/37) | #3, #14, #15, #20, #25; substituída por ADR-020 |

@@ -72,7 +72,7 @@ def generate_content(
             "settings": settings_preferences,
         },
         user_input=request_payload,
-        metadata={"provider": "gemini", "model": settings.gemini_text_model},
+        metadata={"provider": "openai", "model": settings.openai_text_model},
     )
     generated_text = llm_provider.generate_text(rendered_prompt.text)
 
@@ -80,8 +80,8 @@ def generate_content(
         "text": generated_text,
         "request": request_payload,
         "metadata": {
-            "provider": "gemini",
-            "model": settings.gemini_text_model,
+            "provider": "openai",
+            "model": settings.openai_text_model,
             **rendered_prompt.metadata,
         },
     }
@@ -89,8 +89,8 @@ def generate_content(
         dict[str, object],
         generation_parameters_with_prompt_template(
             {
-                "provider": "gemini",
-                "model": settings.gemini_text_model,
+                "provider": "openai",
+                "model": settings.openai_text_model,
                 "request": request_payload,
                 "settings_context": {"included": bool(settings_preferences)},
             },
@@ -104,7 +104,7 @@ def generate_content(
             requested_by_user_id=user.id,
             title=command.topic,
             payload=content_payload,
-            model=settings.gemini_text_model,
+            model=settings.openai_text_model,
             prompt=rendered_prompt.text,
             parameters=generation_parameters,
         )

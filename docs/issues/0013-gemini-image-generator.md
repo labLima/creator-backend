@@ -1,5 +1,7 @@
 # Issue 0013: Gemini image generator
 
+- Status: superseded em 2026-11-05 pela [0053](0053-openai-provider-migration.md).
+
 - ADR primária: [`0001-llm-provider`](../adr/0001-llm-provider.md)
 - ADRs relacionadas: [`0003-async-image-generation`](../adr/0003-async-image-generation.md)
 - Labels: `ai`, `provider`, `jobs`

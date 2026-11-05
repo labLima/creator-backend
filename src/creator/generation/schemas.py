@@ -25,10 +25,12 @@ class RegenerateImageRequest(CreatorDTO):
 class IndependentGenerationRequest(CreatorDTO):
     """Input for one specialist-backed Content component Generation."""
 
-    brand_id: UUID
+    brand_id: UUID | None = None
     artifact_type: Literal["IMAGE", "COPY", "CAPTION"]
     operation: Literal["CREATE", "REGENERATE", "TRANSFORM"] = "CREATE"
-    briefing: str = Field(min_length=1, max_length=20_000)
+    briefing: str | None = Field(default=None, min_length=1, max_length=20_000)
+    planning_id: UUID | None = None
+    post_structure_id: UUID | None = None
     source_content_id: UUID | None = None
     direction: str | None = Field(default=None, min_length=1, max_length=20_000)
     restrictions: list[str] = Field(default_factory=list, max_length=30)
@@ -37,11 +39,23 @@ class IndependentGenerationRequest(CreatorDTO):
 
     @model_validator(mode="after")
     def validate_operation(self) -> IndependentGenerationRequest:
+        from_planning = self.planning_id is not None or self.post_structure_id is not None
+        if from_planning:
+            if self.planning_id is None or self.post_structure_id is None:
+                raise ValueError(
+                    "Planning image Generation requires planning_id and post_structure_id"
+                )
+            if self.artifact_type != "IMAGE" or self.operation != "CREATE":
+                raise ValueError("Planning input is only supported for IMAGE CREATE")
+            if self.source_content_id is not None:
+                raise ValueError("Planning IMAGE CREATE must not reference source Content")
+        elif self.brand_id is None or self.briefing is None:
+            raise ValueError("brand_id and briefing are required without Planning input")
         if self.operation == "CREATE" and self.source_content_id is not None:
             raise ValueError("CREATE must not reference source Content")
         if self.operation != "CREATE" and self.source_content_id is None:
             raise ValueError("REGENERATE and TRANSFORM require source Content")
-        if self.artifact_type == "IMAGE" and self.direction is None:
+        if self.artifact_type == "IMAGE" and not from_planning and self.direction is None:
             raise ValueError("IMAGE Generation requires a visual direction")
         if self.artifact_type != "IMAGE" and self.review_image:
             raise ValueError("review_image is only valid for IMAGE")

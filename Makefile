@@ -63,32 +63,15 @@ worker:
 
 dev/start: dev-start
 dev-start:
-	@if [ ! -f .env ]; then cp .env.example .env; fi
-	@if ! grep -Eq '^AUTH_JWT_SECRET=.+' .env; then \
-		secret=$$(python3 -c "import secrets; print(secrets.token_urlsafe(48))"); \
-		if grep -q '^AUTH_JWT_SECRET=' .env; then \
-			sed -i.bak "s|^AUTH_JWT_SECRET=.*|AUTH_JWT_SECRET=$$secret|" .env; rm -f .env.bak; \
-		else \
-			echo "AUTH_JWT_SECRET=$$secret" >> .env; \
-		fi; \
-	fi
-	docker compose up -d --build --wait
-	docker compose ps
+	$(PYTHON) scripts/dev_compose.py start
 
 dev/stop: dev-stop
 dev-stop:
-	AUTH_JWT_SECRET=$${AUTH_JWT_SECRET:-unused-for-stop} docker compose stop
-	@echo "Serviços parados; containers e volumes preservados."
+	$(PYTHON) scripts/dev_compose.py stop
 
 dev/clean: dev-clean
 dev-clean:
-	@if [ "$(CONFIRM)" != "yes" ]; then \
-		echo "Operação destrutiva. Execute: make dev/clean CONFIRM=yes"; \
-		exit 1; \
-	fi
-	AUTH_JWT_SECRET=$${AUTH_JWT_SECRET:-unused-for-clean} docker compose down --volumes --remove-orphans --rmi local
-	docker image prune -f
-	@echo "Containers, volumes e imagens locais do projeto removidos."
+	$(PYTHON) scripts/dev_compose.py clean "$(CONFIRM)"
 
 dev/logs:
-	AUTH_JWT_SECRET=$${AUTH_JWT_SECRET:-unused-for-logs} docker compose logs -f --tail=200
+	$(PYTHON) scripts/dev_compose.py logs

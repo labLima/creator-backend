@@ -90,7 +90,7 @@ def improve_content(
             "objective": command.objective,
             "audience": command.audience,
         },
-        metadata={"provider": "gemini", "model": settings.gemini_text_model},
+        metadata={"provider": "openai", "model": settings.openai_text_model},
     )
     provider_output = llm_provider.generate_text(rendered_prompt.text)
     parsed = _parse_provider_output(provider_output)
