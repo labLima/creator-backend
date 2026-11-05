@@ -39,3 +39,7 @@ O formato antigo de job ID (`creator:rq:*`) é inválido no RQ 2.12, que aceita
 apenas letras, números, `_` e `-`. Antes do deploy desta branch, drene a fila de
 jobs antigos com esse formato; o novo formato é `creator-rq-*` e não renomeia
 entrypoints `creator.workers.*`.
+
+Jobs de Planning enfileirados antes desta correção não têm `resolved_input` e
+devem ser reenfileirados após o deploy. O fallback do worker cobre apenas jobs
+standalone legados que ainda carregam `briefing`/`direction` no `request_input`.
