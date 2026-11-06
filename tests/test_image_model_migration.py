@@ -21,6 +21,13 @@ from creator.services.ai.image_provider import (
 )
 
 NEW_DEFAULT = "gpt-image-2.5-sunburst"
+
+
+@pytest.fixture(autouse=True)
+def _clear_image_model_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENAI_IMAGE_MODEL", raising=False)
+
+
 SNAPSHOT = "gpt-image-2.5-sunburst-2026-09-08"
 
 
@@ -52,6 +59,7 @@ class FakeOpenAIClient:
         pytest.param("", NEW_DEFAULT, id="empty"),
         pytest.param(" \t\n ", NEW_DEFAULT, id="whitespace-only"),
         pytest.param("gpt-image-2.6-flare", NEW_DEFAULT, id="legacy-openai"),
+        pytest.param("gpt-image-2.6-flare-2026-10-01", NEW_DEFAULT, id="legacy-openai-snapshot"),
         pytest.param("GEMINI-2.5-flash-image", NEW_DEFAULT, id="uppercase-gemini"),
         pytest.param("imagen-3.0", NEW_DEFAULT, id="legacy-imagen"),
         pytest.param("gpt-image-2", "gpt-image-2", id="explicit-prior-openai"),
@@ -70,6 +78,7 @@ def test_canonical_image_model_maps_legacy_values_and_preserves_supported_values
     ("dotenv_value", "expected_model"),
     [
         pytest.param("gpt-image-2.6-flare", NEW_DEFAULT, id="legacy-openai"),
+        pytest.param("gpt-image-2.6-flare-2026-10-01", NEW_DEFAULT, id="legacy-openai-snapshot"),
         pytest.param("gpt-image-2", "gpt-image-2", id="explicit-prior-openai"),
     ],
 )
