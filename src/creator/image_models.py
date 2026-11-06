@@ -1,9 +1,12 @@
 DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-2.5-sunburst"
 
 LEGACY_OPENAI_IMAGE_MODELS = frozenset({"gpt-image-2.6-flare"})
+LEGACY_OPENAI_IMAGE_MODEL_PREFIXES = ("gpt-image-2.6-flare-",)
 
 LEGACY_IMAGE_MODEL_PREFIXES = ("gemini-", "imagen-")
 
+# Source: https://developers.openai.com/api/reference/resources/images/methods/generate.md
+# (fetched 2026-11-06). Kept in sync with the documented Image API model list.
 KNOWN_OPENAI_IMAGE_MODELS = frozenset(
     {
         "gpt-image-1",
@@ -36,6 +39,8 @@ def canonical_image_model(
         return default_model
     normalized = requested.lower()
     if normalized in LEGACY_OPENAI_IMAGE_MODELS:
+        return default_model
+    if normalized.startswith(LEGACY_OPENAI_IMAGE_MODEL_PREFIXES):
         return default_model
     if normalized.startswith(LEGACY_IMAGE_MODEL_PREFIXES):
         return default_model

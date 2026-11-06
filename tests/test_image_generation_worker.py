@@ -249,6 +249,7 @@ def patch_worker(
     specialist: FakeSpecialistExecutor | None = None,
     reviewer: FakeReviewer | None = None,
 ) -> None:
+    monkeypatch.delenv("OPENAI_IMAGE_MODEL", raising=False)
     monkeypatch.setattr(image_generation, "get_settings", lambda: Settings(_env_file=None))
     monkeypatch.setattr(
         image_generation,

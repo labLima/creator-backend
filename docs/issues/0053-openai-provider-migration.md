@@ -28,8 +28,8 @@ um Post Structure pertencente a um Planning.
 
 Branch `fix/openai-provider-ci-recovery`, a partir da `dev` em `c7a7839`:
 
-- `make check` — Ruff, format, mypy strict, pytest (601 testes) e migrate-check verdes;
-  cobertura total **74,99%** (gate 73%).
+- `make check` — Ruff, format, mypy strict, pytest (603 testes) e migrate-check verdes;
+  cobertura total **75,00%** (gate 73%).
 - `make security` — `pip-audit` sem vulnerabilidades conhecidas e Gitleaks sem vazamentos.
 - `make e2e` — 18 testes e2e verdes.
 

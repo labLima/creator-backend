@@ -40,7 +40,7 @@ class ImageProviderInvalidResponseError(ImageProviderError):
 
 
 def normalize_image_model(requested_model: str | None, *, default_model: str) -> str:
-    """Map legacy Gemini and retired OpenAI image models to the configured model."""
+    """Map legacy Gemini and legacy OpenAI image models to the configured model."""
     return canonical_image_model(requested_model, default_model=default_model)
 
 
