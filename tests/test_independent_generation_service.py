@@ -18,6 +18,7 @@ from creator.generation.service import (
     submit_image_regeneration,
     submit_independent_generation,
 )
+from creator.image_models import DEFAULT_OPENAI_IMAGE_MODEL
 from creator.planning.ports import PlanningRecord
 from creator.post_structure.ports import PostStructureRecord
 from creator.services.ai.image_provider import normalize_image_model
@@ -411,21 +412,30 @@ def test_planning_generation_persists_resolved_input_and_keeps_request_input() -
 @pytest.mark.parametrize(
     ("requested_model", "expected_model"),
     [
-        (None, "gpt-image-2"),
-        ("gemini-2.5-flash-image", "gpt-image-2"),
-        ("imagen-3.0", "gpt-image-2"),
+        (None, DEFAULT_OPENAI_IMAGE_MODEL),
+        ("", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("gemini-2.5-flash-image", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("imagen-3.0", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("gpt-image-2.6-flare", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("gpt-image-2.5-sunburst", "gpt-image-2.5-sunburst"),
+        ("gpt-image-2.5-sunburst-2026-09-08", "gpt-image-2.5-sunburst-2026-09-08"),
         ("gpt-image-2", "gpt-image-2"),
         ("custom-image-model", "custom-image-model"),
+        ("  custom-image-model  ", "custom-image-model"),
     ],
 )
-def test_normalize_image_model_maps_only_legacy_prefixes(
+def test_normalize_image_model_canonicalizes_legacy_values(
     requested_model: str | None, expected_model: str
 ) -> None:
-    assert normalize_image_model(requested_model, default_model="gpt-image-2") == expected_model
+    assert (
+        normalize_image_model(requested_model, default_model=DEFAULT_OPENAI_IMAGE_MODEL)
+        == expected_model
+    )
 
 
-def test_regeneration_normalizes_legacy_model_for_new_generation() -> None:
-    image = image_record()
+@pytest.mark.parametrize("original_model", ["gemini-image-original", "gpt-image-2.6-flare"])
+def test_regeneration_normalizes_legacy_model_for_new_generation(original_model: str) -> None:
+    image = replace(image_record(), model=original_model)
     uow = FakeUnitOfWork(brand=brand(), image=image)
     queue = FakeQueue()
 
@@ -441,6 +451,6 @@ def test_regeneration_normalizes_legacy_model_for_new_generation() -> None:
     )
 
     created = uow.created[0]
-    assert created["model"] == "gpt-image-2"
-    assert created["parameters"]["regenerated_from_model"] == "gemini-image-original"
+    assert created["model"] == DEFAULT_OPENAI_IMAGE_MODEL
+    assert created["parameters"]["regenerated_from_model"] == original_model
     assert queue.images == [job.job.id]

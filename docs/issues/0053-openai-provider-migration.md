@@ -28,10 +28,18 @@ um Post Structure pertencente a um Planning.
 
 Branch `fix/openai-provider-ci-recovery`, a partir da `dev` em `c7a7839`:
 
-- `make check` — Ruff, format, mypy strict, pytest (572 testes) e migrate-check verdes;
-  cobertura total **74,95%** (gate 73%).
+- `make check` — Ruff, format, mypy strict, pytest (601 testes) e migrate-check verdes;
+  cobertura total **74,99%** (gate 73%).
 - `make security` — `pip-audit` sem vulnerabilidades conhecidas e Gitleaks sem vazamentos.
 - `make e2e` — 18 testes e2e verdes.
+
+## Modelo de imagem
+
+O padrão de `OPENAI_IMAGE_MODEL` é `gpt-image-2.5-sunburst`, com o snapshot
+`gpt-image-2.5-sunburst-2026-09-08` disponível para fixação. O valor legado
+`gpt-image-2.6-flare` e nomes `gemini-*`/`imagen-*` são normalizados no
+carregamento da configuração e no uso (worker e regeneração), sem reescrever o
+modelo histórico das gerações já persistidas.
 
 ## Nota operacional (RQ)
 

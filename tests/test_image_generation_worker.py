@@ -10,6 +10,7 @@ from creator.config import Settings
 from creator.domain.generation import GenerationJobStatus
 from creator.generation.ports import GenerationJobRecord, ImageGenerationWorkItem
 from creator.generation.storage_service import GeneratedImage
+from creator.image_models import DEFAULT_OPENAI_IMAGE_MODEL
 from creator.integrations.gemini.exceptions import GeminiBlockedContentError, GeminiTimeoutError
 from creator.integrations.gemini.image_generator import (
     GeminiImageGenerationRequest,
@@ -683,8 +684,9 @@ def test_run_image_generation_skips_review_without_authorized_brand(
 @pytest.mark.parametrize(
     ("requested_model", "expected_model"),
     [
-        ("gemini-2.5-flash-image", "gpt-image-2"),
-        ("imagen-3.0", "gpt-image-2"),
+        ("gemini-2.5-flash-image", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("imagen-3.0", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("gpt-image-2.6-flare", DEFAULT_OPENAI_IMAGE_MODEL),
         ("custom-image-model", "custom-image-model"),
     ],
 )

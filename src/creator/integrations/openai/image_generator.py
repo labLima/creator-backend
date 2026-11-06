@@ -11,6 +11,7 @@ from PIL import Image as PillowImage
 from PIL import UnidentifiedImageError
 
 from creator.config import Settings
+from creator.image_models import canonical_image_model
 from creator.integrations.openai.client import create_openai_client
 from creator.services.ai.image_provider import (
     ImageGenerationRequest,
@@ -45,7 +46,9 @@ class OpenAIImageGenerator:
         if output_format is None:
             raise ImageProviderInvalidResponseError("Unsupported requested image mime type")
 
-        model = request.model or self._settings.openai_image_model
+        model = canonical_image_model(
+            request.model, default_model=self._settings.openai_image_model
+        )
         size = (
             request.size
             or self.size_for_planning(

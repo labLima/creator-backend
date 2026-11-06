@@ -95,7 +95,7 @@ imagem; o procedimento de rollback está no guia do SPA.
 Os providers de geração de texto e imagem usam OpenAI:
 
 - texto: configurado por `OPENAI_TEXT_MODEL` (padrão `gpt-5.5`);
-- imagem: configurado por `OPENAI_IMAGE_MODEL` (padrão `gpt-image-2`);
+- imagem: configurado por `OPENAI_IMAGE_MODEL` (padrão `gpt-image-2.5-sunburst`);
 - revisão multimodal: configurada por `OPENAI_REVIEWER_MODEL` (padrão `gpt-5.5`).
 
 Configure `OPENAI_API_KEY` no `.env`. Sem a chave, as chamadas de geração

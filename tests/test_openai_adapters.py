@@ -13,6 +13,7 @@ from openai import APIConnectionError, APIStatusError, APITimeoutError
 from PIL import Image
 
 from creator.config import Settings
+from creator.image_models import DEFAULT_OPENAI_IMAGE_MODEL
 from creator.integrations.openai.image_generator import OpenAIImageGenerator
 from creator.integrations.openai.image_reviewer import OpenAIMultimodalImageReviewer
 from creator.services.ai.image_provider import (
@@ -141,6 +142,34 @@ def test_generate_image_returns_decoded_png_with_dimensions_and_metadata() -> No
     assert client.images.calls[0]["prompt"] == "A red rectangle"
     assert client.images.calls[0]["size"] == "1024x1024"
     assert client.images.calls[0]["output_format"] == "png"
+
+
+def test_generate_image_uses_settings_default_model_when_request_omits_model() -> None:
+    image = png_bytes((2, 3))
+    client = FakeOpenAIClient(images=[image_response(image)])
+    generator = OpenAIImageGenerator(
+        image_settings(openai_image_model=DEFAULT_OPENAI_IMAGE_MODEL), client=client
+    )
+
+    result = generator.generate(ImageGenerationRequest(prompt="A red rectangle"))
+
+    assert client.images.calls[0]["model"] == DEFAULT_OPENAI_IMAGE_MODEL
+    assert result.model == DEFAULT_OPENAI_IMAGE_MODEL
+    assert result.metadata["source_model"] == DEFAULT_OPENAI_IMAGE_MODEL
+
+
+def test_generate_image_canonicalizes_legacy_request_model_at_the_provider_boundary() -> None:
+    image = png_bytes((2, 3))
+    client = FakeOpenAIClient(images=[image_response(image)])
+    generator = OpenAIImageGenerator(
+        image_settings(openai_image_model=DEFAULT_OPENAI_IMAGE_MODEL), client=client
+    )
+
+    generator.generate(
+        ImageGenerationRequest(prompt="Legacy queued image", model="gpt-image-2.6-flare")
+    )
+
+    assert client.images.calls[0]["model"] == DEFAULT_OPENAI_IMAGE_MODEL
 
 
 def test_generate_image_rejects_unsupported_requested_mime_type() -> None:
