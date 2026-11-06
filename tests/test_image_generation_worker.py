@@ -9,16 +9,28 @@ import pytest
 from creator.config import Settings
 from creator.domain.generation import GenerationJobStatus
 from creator.generation.ports import GenerationJobRecord, ImageGenerationWorkItem
+from creator.generation.storage_service import GeneratedImage
+from creator.image_models import DEFAULT_OPENAI_IMAGE_MODEL
 from creator.integrations.gemini.exceptions import GeminiBlockedContentError, GeminiTimeoutError
 from creator.integrations.gemini.image_generator import (
     GeminiImageGenerationRequest,
     GeminiImageGenerationResult,
 )
+from creator.services.agents.contracts import (
+    AgentExecutionContext,
+    AgentExecutionResult,
+    ArtistOutput,
+)
+from creator.services.ai.image_provider import ImageProviderInvalidResponseError
+from creator.services.ai.provider import ProviderNotConfiguredError
+from creator.services.ai.reviewer import ImageReviewRequest, ImageReviewResult
 from creator.services.storage.provider import StorageValidationError
 from creator.user.ports import UserRecord
 from creator.workers import image_generation
 
 NOW = datetime(2026, 9, 1, tzinfo=UTC)
+JOB_BRAND_ID = UUID("31000000-0000-0000-0000-000000000001")
+OTHER_BRAND_ID = UUID("31000000-0000-0000-0000-000000000002")
 
 
 class FakeImageGenerator:
@@ -41,6 +53,53 @@ class FakeImageGenerator:
         )
 
 
+class FakeSpecialistExecutor:
+    def __init__(self, *, error: Exception | None = None) -> None:
+        self.error = error
+        self.contexts: list[AgentExecutionContext] = []
+
+    def execute(self, context: AgentExecutionContext) -> AgentExecutionResult:
+        self.contexts.append(context)
+        if self.error is not None:
+            raise self.error
+        return AgentExecutionResult(
+            output=ArtistOutput(visual_prompt="Artist composed visual prompt"),
+            prompt="Artist specialist prompt",
+            prompt_template_id="agent.artist.v3",
+            prompt_template_version="3.0",
+            input_hash="a" * 64,
+            output_hash="b" * 64,
+            schema_name="ArtistOutput",
+            schema_version="1.0",
+            provider="fake-artist",
+            model="artist-model",
+        )
+
+
+class FakeReviewer:
+    def __init__(
+        self,
+        *,
+        error: Exception | None = None,
+        result: ImageReviewResult | None = None,
+    ) -> None:
+        self.error = error
+        self.result = result or ImageReviewResult(
+            decision="APPROVED",
+            score=0.94,
+            feedback=("Brand context is respected",),
+            provider="fake-reviewer",
+            model="review-model",
+        )
+        self.requests: list[ImageReviewRequest] = []
+
+    def review(self, request: ImageReviewRequest) -> ImageReviewResult:
+        self.requests.append(request)
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
 class FakeStorage:
     pass
 
@@ -50,6 +109,8 @@ class FakeImageGenerationRepository:
         self.work_item = work_item
         self.failed: list[dict[str, object]] = []
         self.stale_calls: list[dict[str, object]] = []
+        self.brand_requests: list[UUID] = []
+        self.brand_results: list[object | None] = []
 
     def claim_pending_by_id(self, job_id: UUID) -> ImageGenerationWorkItem | None:
         return self.work_item
@@ -108,19 +169,22 @@ class FakeUnitOfWork:
     def rollback(self) -> None:
         return None
 
-    def get_for_user(self, *, user_id: UUID, brand_id: UUID) -> object:
+    def get_for_user(self, *, user_id: UUID, brand_id: UUID) -> object | None:
+        self.repository.brand_requests.append(brand_id)
+        if self.repository.brand_results:
+            return self.repository.brand_results.pop(0)
         assert self.repository.work_item is not None
-        return type(
-            "Brand",
-            (),
-            {
-                "id": brand_id,
-                "workspace_id": self.repository.work_item.job.workspace_id,
-                "name": "Test Brand",
-                "description": "Brand description",
-                "brand_voice": "Clear",
-            },
-        )()
+        return brand(brand_id=brand_id, workspace_id=self.repository.work_item.job.workspace_id)
+
+
+def brand(*, brand_id: UUID, workspace_id: UUID) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=brand_id,
+        workspace_id=workspace_id,
+        name="Test Brand",
+        description="Brand description",
+        brand_voice="Clear",
+    )
 
 
 def job_record(*, attempt_count: int = 1, max_attempts: int = 3) -> GenerationJobRecord:
@@ -158,13 +222,21 @@ def user_record() -> UserRecord:
     )
 
 
-def work_item(*, attempt_count: int = 1, max_attempts: int = 3) -> ImageGenerationWorkItem:
+def work_item(
+    *,
+    attempt_count: int = 1,
+    max_attempts: int = 3,
+    model: str = "gemini-image",
+    parameters: dict[str, object] | None = None,
+    brand_id: UUID | None = None,
+) -> ImageGenerationWorkItem:
     return ImageGenerationWorkItem(
         job=job_record(attempt_count=attempt_count, max_attempts=max_attempts),
-        model="gemini-image",
+        model=model,
         prompt="Generate",
-        parameters={"style": "photographic"},
+        parameters=parameters or {"style": "photographic"},
         requested_by_user=user_record(),
+        brand_id=brand_id,
     )
 
 
@@ -174,6 +246,8 @@ def patch_worker(
     repository: FakeImageGenerationRepository,
     generator: FakeImageGenerator,
     persisted: list[object] | None = None,
+    specialist: FakeSpecialistExecutor | None = None,
+    reviewer: FakeReviewer | None = None,
 ) -> None:
     monkeypatch.setattr(image_generation, "get_settings", lambda: Settings(_env_file=None))
     monkeypatch.setattr(
@@ -182,6 +256,13 @@ def patch_worker(
         lambda: FakeUnitOfWork(repository),
     )
     monkeypatch.setattr(image_generation, "create_image_generator", lambda settings: generator)
+    monkeypatch.setattr(
+        image_generation,
+        "create_specialist_executor",
+        lambda settings: specialist or FakeSpecialistExecutor(),
+    )
+    if reviewer is not None:
+        monkeypatch.setattr(image_generation, "create_image_reviewer", lambda settings: reviewer)
     monkeypatch.setattr(image_generation, "create_storage_provider", lambda settings: FakeStorage())
 
     def fake_persist_generated_image(**kwargs: object) -> object:
@@ -289,3 +370,371 @@ def test_recover_stale_processing_jobs_marks_old_jobs_failed(
 
     assert recovered == 2
     assert repository.stale_calls[0]["failure_code"] == "IMAGE_GENERATION_STALE_PROCESSING"
+
+
+def image_request_input(
+    *,
+    brand_id: UUID | None = JOB_BRAND_ID,
+    briefing: str | None = "Create a launch visual",
+    direction: str | None = "Minimal studio composition",
+    operation: str = "CREATE",
+    review_image: bool = False,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "artifact_type": "IMAGE",
+        "operation": operation,
+    }
+    if brand_id is not None:
+        payload["brand_id"] = str(brand_id)
+    if briefing is not None:
+        payload["briefing"] = briefing
+    if direction is not None:
+        payload["direction"] = direction
+    if review_image:
+        payload["review_image"] = True
+    return payload
+
+
+def persisted_metadata(persisted: list[object]) -> dict[str, object]:
+    call = persisted[-1]
+    assert isinstance(call, dict)
+    image = call["image"]
+    assert isinstance(image, GeneratedImage)
+    return image.metadata
+
+
+def test_run_image_generation_uses_job_brand_and_specialist_executor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    specialist = FakeSpecialistExecutor()
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={
+                "request_input": image_request_input(brand_id=OTHER_BRAND_ID),
+            },
+        )
+    )
+    generator = FakeImageGenerator()
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=generator,
+        specialist=specialist,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert repository.brand_requests == [JOB_BRAND_ID]
+    assert len(specialist.contexts) == 1
+    assert specialist.contexts[0].brand_id == JOB_BRAND_ID
+    assert specialist.contexts[0].inputs["briefing"] == "Create a launch visual"
+    assert specialist.contexts[0].inputs["visual_direction"] == "Minimal studio composition"
+    assert generator.requests[0].prompt == "Artist composed visual prompt"
+    assert repository.failed == []
+
+
+def test_run_image_generation_fails_without_job_brand_for_image_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    specialist = FakeSpecialistExecutor()
+    repository = FakeImageGenerationRepository(
+        work_item(brand_id=None, parameters={"request_input": image_request_input()})
+    )
+    generator = FakeImageGenerator()
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=generator,
+        specialist=specialist,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert repository.failed[0]["failure_code"] == "BRAND_CONTEXT_UNAVAILABLE"
+    assert repository.brand_requests == []
+    assert specialist.contexts == []
+    assert generator.requests == []
+
+
+def test_run_image_generation_rejects_brand_from_other_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    specialist = FakeSpecialistExecutor()
+    item = work_item(brand_id=JOB_BRAND_ID, parameters={"request_input": image_request_input()})
+    repository = FakeImageGenerationRepository(item)
+    repository.brand_results = [brand(brand_id=JOB_BRAND_ID, workspace_id=uuid4())]
+    generator = FakeImageGenerator()
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=generator,
+        specialist=specialist,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert repository.failed[0]["failure_code"] == "BRAND_CONTEXT_UNAVAILABLE"
+    assert specialist.contexts == []
+    assert generator.requests == []
+
+
+def test_run_image_generation_uses_resolved_input_over_request_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    specialist = FakeSpecialistExecutor()
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={
+                "resolved_input": {
+                    "briefing": "Resolved planning brief",
+                    "direction": "Resolved planning direction",
+                },
+                "request_input": image_request_input(
+                    briefing="Raw client brief",
+                    direction="Raw client direction",
+                ),
+            },
+        )
+    )
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=FakeImageGenerator(),
+        specialist=specialist,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert specialist.contexts[0].inputs["briefing"] == "Resolved planning brief"
+    assert specialist.contexts[0].inputs["visual_direction"] == "Resolved planning direction"
+
+
+def test_run_image_generation_falls_back_to_legacy_request_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    specialist = FakeSpecialistExecutor()
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={
+                "request_input": image_request_input(
+                    briefing="Legacy brief",
+                    direction="Legacy direction",
+                ),
+            },
+        )
+    )
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=FakeImageGenerator(),
+        specialist=specialist,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert specialist.contexts[0].inputs["briefing"] == "Legacy brief"
+    assert specialist.contexts[0].inputs["visual_direction"] == "Legacy direction"
+
+
+def test_run_image_generation_fails_without_prompt_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    specialist = FakeSpecialistExecutor()
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={
+                "request_input": image_request_input(briefing=None, direction=None),
+            },
+        )
+    )
+    generator = FakeImageGenerator()
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=generator,
+        specialist=specialist,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert repository.failed[0]["failure_code"] == "PROMPT_CONTEXT_UNAVAILABLE"
+    assert specialist.contexts == []
+    assert generator.requests == []
+
+
+def test_run_image_generation_review_uses_resolved_briefing_and_job_brand(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persisted: list[object] = []
+    reviewer = FakeReviewer()
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={
+                "resolved_input": {
+                    "briefing": "Resolved planning brief",
+                    "direction": "Resolved planning direction",
+                },
+                "request_input": image_request_input(
+                    briefing="Raw client brief",
+                    direction="Raw client direction",
+                    review_image=True,
+                ),
+            },
+        )
+    )
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=FakeImageGenerator(),
+        persisted=persisted,
+        reviewer=reviewer,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert reviewer.requests[0].briefing == "Resolved planning brief"
+    assert reviewer.requests[0].brand_context["brand_id"] == str(JOB_BRAND_ID)
+    assert persisted_metadata(persisted)["review"] == {
+        "decision": "APPROVED",
+        "score": 0.94,
+        "feedback": ["Brand context is respected"],
+        "safety_issues": [],
+        "provider": "fake-reviewer",
+        "model": "review-model",
+    }
+    assert repository.failed == []
+
+
+@pytest.mark.parametrize(
+    ("reviewer_error", "expected_code"),
+    [
+        (ImageProviderInvalidResponseError("invalid review"), "PROVIDER_INVALID_RESPONSE"),
+        (ProviderNotConfiguredError("reviewer missing"), "PROVIDER_AUTHENTICATION_FAILED"),
+        (RuntimeError("sdk transport failure"), "IMAGE_REVIEW_FAILED"),
+    ],
+)
+def test_run_image_generation_review_failure_is_best_effort(
+    monkeypatch: pytest.MonkeyPatch,
+    reviewer_error: Exception,
+    expected_code: str,
+) -> None:
+    persisted: list[object] = []
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={
+                "request_input": image_request_input(review_image=True),
+            },
+        )
+    )
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=FakeImageGenerator(),
+        persisted=persisted,
+        reviewer=FakeReviewer(error=reviewer_error),
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert persisted_metadata(persisted)["review"] == {
+        "status": "failed",
+        "error_code": expected_code,
+    }
+    assert repository.failed == []
+
+
+def test_run_image_generation_skips_review_without_authorized_brand(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persisted: list[object] = []
+    reviewer = FakeReviewer()
+    item = work_item(
+        brand_id=JOB_BRAND_ID,
+        parameters={"request_input": image_request_input(review_image=True)},
+    )
+    repository = FakeImageGenerationRepository(item)
+    repository.brand_results = [
+        brand(brand_id=JOB_BRAND_ID, workspace_id=item.job.workspace_id),
+        None,
+    ]
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=FakeImageGenerator(),
+        persisted=persisted,
+        reviewer=reviewer,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert reviewer.requests == []
+    assert persisted_metadata(persisted)["review"] == {
+        "status": "failed",
+        "error_code": "BRAND_CONTEXT_UNAVAILABLE",
+    }
+    assert repository.failed == []
+
+
+@pytest.mark.parametrize(
+    ("requested_model", "expected_model"),
+    [
+        ("gemini-2.5-flash-image", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("imagen-3.0", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("gpt-image-2.6-flare", DEFAULT_OPENAI_IMAGE_MODEL),
+        ("custom-image-model", "custom-image-model"),
+    ],
+)
+def test_run_image_generation_normalizes_legacy_model(
+    monkeypatch: pytest.MonkeyPatch,
+    requested_model: str,
+    expected_model: str,
+) -> None:
+    repository = FakeImageGenerationRepository(work_item(model=requested_model))
+    generator = FakeImageGenerator()
+    patch_worker(monkeypatch, repository=repository, generator=generator)
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert generator.requests[0].model == expected_model
+
+
+def test_run_image_generation_maps_provider_not_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = FakeImageGenerationRepository(work_item())
+    generator = FakeImageGenerator(error=ProviderNotConfiguredError("missing key"))
+    patch_worker(monkeypatch, repository=repository, generator=generator)
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert repository.failed[0]["failure_code"] == "PROVIDER_AUTHENTICATION_FAILED"
+
+
+def test_run_image_generation_maps_specialist_provider_not_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    specialist = FakeSpecialistExecutor(error=ProviderNotConfiguredError("missing key"))
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={"request_input": image_request_input()},
+        )
+    )
+    generator = FakeImageGenerator()
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=generator,
+        specialist=specialist,
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert repository.failed[0]["failure_code"] == "PROVIDER_AUTHENTICATION_FAILED"
+    assert generator.requests == []

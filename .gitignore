@@ -17,3 +17,4 @@ tmp/
 .pytest-tmp-clean/
 pytest-output.txt
 .local/
+.worktrees/

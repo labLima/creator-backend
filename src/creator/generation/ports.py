@@ -145,6 +145,7 @@ class ImageGenerationWorkItem:
     prompt: str
     parameters: JsonObject
     requested_by_user: UserRecord
+    brand_id: UUID | None = None
 
 
 class ImageGenerationRepository(Protocol):

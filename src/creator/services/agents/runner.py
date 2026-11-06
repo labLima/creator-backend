@@ -10,7 +10,11 @@ from creator.domain.auth import Principal
 from creator.prompts.agents import build_agent_prompt, json_output_instructions
 from creator.services.agents.contracts import AgentExecutionContext, AgentExecutionResult
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
-from creator.services.ai.provider import LLMProvider, ProviderNotConfiguredError
+from creator.services.ai.provider import (
+    LLMAuthenticationError,
+    LLMProvider,
+    ProviderNotConfiguredError,
+)
 
 OutputModel = TypeVar("OutputModel", bound=BaseModel)
 
@@ -45,6 +49,10 @@ class StructuredAgentRunner:
             raise AgentKickoffError(
                 AgentKickoffErrorCode.PROVIDER_UNAVAILABLE,
                 "The agent provider is unavailable",
+            ) from error
+        except LLMAuthenticationError as error:
+            raise ProviderNotConfiguredError(
+                "The agent provider authentication is not configured"
             ) from error
         except Exception as error:
             raise AgentKickoffError(

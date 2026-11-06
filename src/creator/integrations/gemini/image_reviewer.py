@@ -42,18 +42,24 @@ class GeminiMultimodalImageReviewer:
             raise GeminiInvalidResponseError("Gemini image reviewer returned no text")
         try:
             payload = json.loads(_strip_json_fence(text))
-            return ImageReviewResult(
-                decision=str(payload["decision"]),
-                score=float(payload["score"]),
-                feedback=tuple(str(item) for item in payload.get("feedback", [])),
-                safety_issues=tuple(str(item) for item in payload.get("safety_issues", [])),
-                provider="gemini",
-                model=self._settings.agent_reviewer_model,
-            )
+            decision = str(payload["decision"])
+            score = float(payload["score"])
+            feedback = tuple(str(item) for item in payload.get("feedback", []))
+            safety_issues = tuple(str(item) for item in payload.get("safety_issues", []))
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
             raise GeminiInvalidResponseError(
                 "Gemini image reviewer returned invalid JSON"
             ) from error
+        if decision not in {"APPROVED", "REFINE", "REJECTED"} or not 0 <= score <= 1:
+            raise GeminiInvalidResponseError("Gemini image reviewer returned invalid values")
+        return ImageReviewResult(
+            decision=decision,
+            score=score,
+            feedback=feedback,
+            safety_issues=safety_issues,
+            provider="gemini",
+            model=self._settings.agent_reviewer_model,
+        )
 
 
 def _strip_json_fence(text: str) -> str:

@@ -726,6 +726,9 @@ def _improved_content_data(preview: ImprovedContentPreview) -> dict[str, Any]:
 
 
 def _generation_data(generation: GenerationRecord) -> dict[str, Any]:
+    parameters: Any = generation.parameters
+    if isinstance(parameters, dict):
+        parameters = {key: value for key, value in parameters.items() if key != "resolved_input"}
     return {
         "id": str(generation.id),
         "workspace_id": str(generation.workspace_id),
@@ -738,7 +741,7 @@ def _generation_data(generation: GenerationRecord) -> dict[str, Any]:
         "type": generation.generation_type,
         "model": generation.model,
         "prompt": generation.prompt,
-        "parameters": generation.parameters,
+        "parameters": parameters,
         "created_at": generation.created_at.isoformat(),
         "updated_at": generation.updated_at.isoformat(),
         "deleted_at": generation.deleted_at.isoformat() if generation.deleted_at else None,

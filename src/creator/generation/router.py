@@ -84,7 +84,7 @@ def create_independent_generation_job(
             request_id=request_id_for(request),
         )
     except EntityNotFoundError as error:
-        raise not_found("Brand, Planning, Post Structure or source Content") from error
+        raise not_found("Generation input") from error
     except IdempotencyConflictError as error:
         raise HTTPException(
             status_code=409,

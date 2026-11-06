@@ -1,6 +1,6 @@
 .PHONY: install format format-check lint typecheck test e2e migrate-check dependency-audit secrets security check ci run worker dev/start dev/stop dev/clean dev/logs snapshot-contract
 
-PYTHON ?= python
+PYTHON ?= $(or $(shell command -v python3 2>/dev/null),$(shell command -v python 2>/dev/null),python)
 ifeq ($(OS),Windows_NT)
 ifneq ($(wildcard .venv313/Scripts/python.exe),)
 PYTHON := .venv313/Scripts/python.exe

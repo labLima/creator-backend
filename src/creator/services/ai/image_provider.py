@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from creator.config import Settings
+from creator.image_models import canonical_image_model
 
 
 class ImageProviderError(RuntimeError):
@@ -36,6 +37,11 @@ class ImageProviderTransientError(ImageProviderError):
 
 class ImageProviderInvalidResponseError(ImageProviderError):
     pass
+
+
+def normalize_image_model(requested_model: str | None, *, default_model: str) -> str:
+    """Map legacy Gemini and retired OpenAI image models to the configured model."""
+    return canonical_image_model(requested_model, default_model=default_model)
 
 
 @dataclass(frozen=True, slots=True)

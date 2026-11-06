@@ -2,10 +2,11 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from creator.auth_cookie_policy import AuthCookiePolicy
+from creator.image_models import DEFAULT_OPENAI_IMAGE_MODEL, canonical_image_model
 
 
 def _is_exact_http_origin(value: str) -> bool:
@@ -82,9 +83,12 @@ class Settings(BaseSettings):
     supabase_auth_timeout_seconds: float = 5.0
     openai_api_key: str | None = Field(default=None, repr=False)
     openai_text_model: str = "gpt-5.5"
-    openai_image_model: str = "gpt-image-2.6-flare"
+    openai_image_model: str = DEFAULT_OPENAI_IMAGE_MODEL
     openai_reviewer_model: str = "gpt-5.5"
     openai_timeout_seconds: float = 60.0
+    # Legacy Gemini settings: kept only for the compatibility adapters. No
+    # factory selects Gemini for text or image generation; only the optional
+    # multimodal reviewer falls back to it when OPENAI_API_KEY is absent.
     gemini_api_key: str | None = Field(default=None, repr=False)
     gemini_text_model: str = "gemini-2.5-flash"
     gemini_image_model: str = "gemini-2.5-flash-image"
@@ -109,6 +113,7 @@ class Settings(BaseSettings):
     pipeline_event_max_attempts: int = 5
     pipeline_event_retry_interval_seconds: list[int] = [30, 60, 120, 300]
     pipeline_event_lease_grace_seconds: int = 60
+    # Legacy Gemini reviewer model; used only by the optional Gemini fallback.
     agent_reviewer_model: str = "gemini-2.5-flash"
     storage_provider: str = "local"
     storage_bucket: str = "creator-images"
@@ -119,6 +124,11 @@ class Settings(BaseSettings):
     @property
     def auth_cookie_policy(self) -> AuthCookiePolicy:
         return AuthCookiePolicy.from_settings(self)
+
+    @field_validator("openai_image_model", mode="after")
+    @classmethod
+    def canonicalize_openai_image_model(cls, value: str) -> str:
+        return canonical_image_model(value)
 
     @model_validator(mode="after")
     def validate_auth_transport(self) -> "Settings":

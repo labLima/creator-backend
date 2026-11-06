@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from typing import cast
 from uuid import UUID
 
@@ -25,10 +26,12 @@ from creator.prompts import (
     generation_parameters_with_prompt_template,
 )
 from creator.prompts.agents import build_agent_prompt
+from creator.services.ai.image_provider import normalize_image_model
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
 MAX_GENERATION_PROMPT_LENGTH = 20_000
+logger = logging.getLogger(__name__)
 
 
 class GenerationApplication:
@@ -312,6 +315,7 @@ def submit_independent_generation(
     parameters.update(
         {
             "request_input": payload.model_dump(mode="json"),
+            "resolved_input": {"briefing": briefing, "direction": direction},
             "source_content": source.payload if source else None,
             "source_text": source_text,
             "review_image": payload.review_image,
@@ -563,13 +567,23 @@ def submit_image_regeneration(
         regeneration_prompt,
     )
     generation_parameters = cast(dict[str, object], parameters)
+    model = normalize_image_model(original_image.model, default_model=settings.openai_image_model)
+    if model != original_image.model:
+        logger.info(
+            "image_model_normalized",
+            extra={
+                "requested_model": original_image.model,
+                "model": model,
+                "image_id": str(original_image.id),
+            },
+        )
 
     try:
         job = unit_of_work.generation.image_jobs.create_image_generation(
             workspace_id=original_image.workspace_id,
             content_id=original_image.content_id,
             requested_by_user_id=user.id,
-            model=original_image.model or settings.openai_image_model,
+            model=model,
             prompt=regeneration_prompt.text,
             parameters=generation_parameters,
             external_id=external_id,

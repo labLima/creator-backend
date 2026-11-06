@@ -439,7 +439,7 @@ async def test_independent_image_job_runs_artist_and_returns_reviewed_image(
 
     monkeypatch.setattr(
         image_generation_worker,
-        "create_multi_agent_orchestrator",
+        "create_specialist_executor",
         lambda _settings: FakeArtist(),
     )
     monkeypatch.setattr(

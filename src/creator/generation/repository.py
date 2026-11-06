@@ -653,6 +653,7 @@ class SqlAlchemyImageGenerationRepository:
             prompt=generation.prompt,
             parameters=_json(generation.parameters),
             requested_by_user=_user_record(user),
+            brand_id=generation.brand_id,
         )
 
     def complete_text_job(self, job_id: UUID) -> None:

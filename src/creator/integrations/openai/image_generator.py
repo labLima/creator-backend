@@ -11,6 +11,7 @@ from PIL import Image as PillowImage
 from PIL import UnidentifiedImageError
 
 from creator.config import Settings
+from creator.image_models import canonical_image_model
 from creator.integrations.openai.client import create_openai_client
 from creator.services.ai.image_provider import (
     ImageGenerationRequest,
@@ -45,7 +46,9 @@ class OpenAIImageGenerator:
         if output_format is None:
             raise ImageProviderInvalidResponseError("Unsupported requested image mime type")
 
-        model = request.model or self._settings.openai_image_model
+        model = canonical_image_model(
+            request.model, default_model=self._settings.openai_image_model
+        )
         size = (
             request.size
             or self.size_for_planning(
@@ -70,10 +73,22 @@ class OpenAIImageGenerator:
         if not isinstance(encoded_image, str) or not encoded_image:
             raise ImageProviderInvalidResponseError("OpenAI response did not include image bytes")
 
+        max_bytes = self._settings.storage_max_object_bytes
+        max_encoded_bytes = 4 * ((max_bytes + 2) // 3)
+        if len(encoded_image) > max_encoded_bytes:
+            raise ImageProviderInvalidResponseError("OpenAI returned an oversized image")
+
         try:
             image_bytes = base64.b64decode(encoded_image, validate=True)
+        except ValueError as error:
+            raise ImageProviderInvalidResponseError(
+                "OpenAI returned invalid image bytes"
+            ) from error
+        if len(image_bytes) > max_bytes:
+            raise ImageProviderInvalidResponseError("OpenAI returned an oversized image")
+        try:
             width, height, mime_type = self._inspect_image(image_bytes, request.output_mime_type)
-        except (ValueError, UnidentifiedImageError) as error:
+        except (UnidentifiedImageError, PillowImage.DecompressionBombError) as error:
             raise ImageProviderInvalidResponseError(
                 "OpenAI returned invalid image bytes"
             ) from error
@@ -181,6 +196,8 @@ class OpenAIImageGenerator:
         if not isinstance(body, dict):
             return None
         detail = body.get("error", body)
-        if isinstance(detail, dict) and isinstance(detail.get("code"), str):
-            return detail["code"]
+        if isinstance(detail, dict):
+            code = detail.get("code")
+            if isinstance(code, str):
+                return code
         return None

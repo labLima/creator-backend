@@ -139,7 +139,7 @@ def test_copy_worker_persists_immutable_component_with_audit_metadata(monkeypatc
 
     monkeypatch.setattr(generation, "SqlAlchemyUnitOfWork", make_uow)
     monkeypatch.setattr(generation, "get_settings", lambda: SimpleNamespace())
-    monkeypatch.setattr(generation, "create_multi_agent_orchestrator", lambda _: FakeOrchestrator())
+    monkeypatch.setattr(generation, "create_specialist_executor", lambda _: FakeOrchestrator())
     monkeypatch.setattr(generation, "correlation_context", lambda **_: nullcontext())
 
     generation.run_generation_job(str(JOB_ID), str(uuid4()))

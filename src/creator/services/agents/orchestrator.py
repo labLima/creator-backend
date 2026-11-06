@@ -13,3 +13,8 @@ class MultiAgentOrchestrator(Protocol):
 
     def execute(self, context: AgentExecutionContext) -> AgentExecutionResult:
         """Execute one validated specialist role behind the provider boundary."""
+
+
+class SpecialistExecutor(Protocol):
+    def execute(self, context: AgentExecutionContext) -> AgentExecutionResult:
+        """Execute one validated specialist role behind the provider boundary."""
