@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, and_, func, select, update
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
 import creator.workspace.models as workspace_models
@@ -45,9 +45,10 @@ def _workspace_membership_record(
         workspace_id=row.workspace_id,
         user_id=row.user_id,
         role=enum_value(row.role),
+        status=enum_value(row.status),
+        invited_by=row.invited_by,
         created_at=as_datetime(row.created_at),
         updated_at=as_datetime(row.updated_at),
-        deleted_at=as_optional_datetime(row.deleted_at),
     )
 
 
@@ -127,7 +128,6 @@ class SqlAlchemyWorkspaceRepository:
                     workspace_models.WorkspaceMembership.workspace_id
                     == workspace_models.Workspace.id,
                     workspace_models.WorkspaceMembership.user_id == user_id,
-                    workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
             .where(workspace_models.Workspace.deleted_at.is_(None))
@@ -166,7 +166,6 @@ class SqlAlchemyWorkspaceRepository:
                     == workspace_models.Workspace.id,
                     workspace_models.WorkspaceMembership.user_id == user_id,
                     workspace_models.WorkspaceMembership.role == WorkspaceRole.OWNER,
-                    workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
             .where(
@@ -181,14 +180,6 @@ class SqlAlchemyWorkspaceRepository:
         timestamp = now()
         row.deleted_at = timestamp
         row.updated_at = timestamp
-        self._session.execute(
-            update(workspace_models.WorkspaceMembership)
-            .where(
-                workspace_models.WorkspaceMembership.workspace_id == workspace_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
-            )
-            .values(deleted_at=timestamp, updated_at=timestamp)
-        )
         flush_or_raise(self._session)
         return _workspace_record(row)
 
@@ -221,18 +212,12 @@ class SqlAlchemyWorkspaceRepository:
         return row
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return (
-            select(workspace_models.Workspace)
-            .join(
-                workspace_models.WorkspaceMembership,
-                and_(
-                    workspace_models.WorkspaceMembership.workspace_id
-                    == workspace_models.Workspace.id,
-                    workspace_models.WorkspaceMembership.user_id == user_id,
-                    workspace_models.WorkspaceMembership.deleted_at.is_(None),
-                ),
-            )
-            .where(workspace_models.WorkspaceMembership.deleted_at.is_(None))
+        return select(workspace_models.Workspace).join(
+            workspace_models.WorkspaceMembership,
+            and_(
+                workspace_models.WorkspaceMembership.workspace_id == workspace_models.Workspace.id,
+                workspace_models.WorkspaceMembership.user_id == user_id,
+            ),
         )
 
 
@@ -273,7 +258,6 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
                 workspace_models.WorkspaceInvite.id == invite_id,
                 workspace_models.WorkspaceMembership.user_id == user_id,
                 workspace_models.WorkspaceInvite.deleted_at.is_(None),
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
             )
         )
 
@@ -289,7 +273,6 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 workspace_models.WorkspaceInvite.deleted_at.is_(None),
             )
         )

@@ -137,7 +137,6 @@ def test_soft_delete_columns_are_on_recoverable_business_tables() -> None:
     for table_name in [
         "users",
         "workspaces",
-        "workspace_memberships",
         "brands",
         "brand_settings",
         "projects",
@@ -150,3 +149,7 @@ def test_soft_delete_columns_are_on_recoverable_business_tables() -> None:
         assert "deleted_at" in Base.metadata.tables[table_name].c
 
     assert "deleted_at" not in Base.metadata.tables["generation_job_status_events"].c
+    # Membership removal is physical in the final modeling: the unique key
+    # (workspace_id, user_id) must not be filtered by a soft-delete column.
+    assert "deleted_at" not in Base.metadata.tables["workspace_members"].c
+    assert "status" in Base.metadata.tables["workspace_members"].c

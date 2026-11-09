@@ -214,7 +214,6 @@ class SqlAlchemyNotificationRepository:
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 notification_models.Notification.deleted_at.is_(None),
             )
         )
@@ -239,7 +238,6 @@ class SqlAlchemyNotificationRepository:
                 notification_models.Notification.id == notification_id,
                 notification_models.Notification.deleted_at.is_(None),
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
             )
         ).one_or_none()
         return _notification(row) if row else None

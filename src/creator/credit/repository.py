@@ -49,7 +49,6 @@ class SqlAlchemyWorkspaceCreditTransactionRepository(WorkspaceCreditTransactionR
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 credit_models.WorkspaceCreditTransaction.deleted_at.is_(None),
             )
         )
@@ -70,7 +69,6 @@ class SqlAlchemyWorkspaceCreditTransactionRepository(WorkspaceCreditTransactionR
             .where(
                 credit_models.WorkspaceCreditTransaction.id == transaction_id,
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 credit_models.WorkspaceCreditTransaction.deleted_at.is_(None),
             )
         )

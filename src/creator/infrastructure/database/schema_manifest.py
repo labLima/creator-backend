@@ -4,7 +4,7 @@ PDF_TABLES = frozenset(
     {
         "users",
         "workspaces",
-        "workspace_memberships",
+        "workspace_members",
         "workspace_invites",
         "workspace_invite_usages",
         "brands",

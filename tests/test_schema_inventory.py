@@ -237,11 +237,14 @@ def test_ratchet_mechanism_detects_growth_and_stagnation() -> None:
 
 
 def test_rename_map_is_applied_once() -> None:
-    """A renamed table must not appear as both missing and extra."""
+    """A mapped table must not appear as both missing and extra.
+
+    The map is empty once names align; the assertion still guards a future entry.
+    """
     final = _final()
     gap = compare(final, parse_models(Base.metadata))
     for final_name, model_name in RENAME_MAP.items():
-        assert model_name in final.tables or model_name in Base.metadata.tables
+        assert model_name in Base.metadata.tables
         assert final_name not in gap.details.get("table_missing", [])
         assert model_name not in gap.details.get("table_extra", [])
 

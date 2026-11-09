@@ -12,7 +12,6 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
-    CheckConstraint,
     ForeignKey,
     Index,
     Integer,
@@ -24,7 +23,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.db import Base, SchemaRow
 from creator.infrastructure.database.enums import (
+    MemberStatus,
     WorkspaceRole,
+    member_status_enum,
     workspace_role_enum,
 )
 from creator.infrastructure.database.types import timestamp_tz, uuid_default, uuid_pk
@@ -54,7 +55,7 @@ class WorkspaceInviteUsage(SchemaRow, Base):
     invite_id: Mapped[UUID] = mapped_column(ForeignKey("workspace_invites.id"), nullable=False)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
-    member_id: Mapped[UUID | None] = mapped_column(ForeignKey("workspace_memberships.id"))
+    member_id: Mapped[UUID | None] = mapped_column(ForeignKey("workspace_members.id"))
     used_at: Mapped[datetime] = mapped_column(timestamp, nullable=False, server_default=func.now())
 
 
@@ -79,21 +80,12 @@ class Workspace(Base):
 
 
 class WorkspaceMembership(Base):
-    __tablename__ = "workspace_memberships"
+    __tablename__ = "workspace_members"
     __table_args__ = (
-        CheckConstraint(
-            "deleted_at IS NULL OR deleted_at >= created_at",
-            name="ck_memberships_deleted_after_created",
-        ),
-        Index("ix_workspace_memberships_user_id", "user_id"),
-        Index("ix_workspace_memberships_workspace_id", "workspace_id"),
-        Index(
-            "uq_workspace_memberships_active_user_workspace",
-            "user_id",
-            "workspace_id",
-            unique=True,
-            sqlite_where=text("deleted_at IS NULL"),
-        ),
+        Index("uq_workspace_members_workspace_user", "workspace_id", "user_id", unique=True),
+        Index("ix_workspace_members_user_id", "user_id"),
+        Index("ix_workspace_members_workspace_id_role", "workspace_id", "role"),
+        Index("ix_workspace_members_invited_by", "invited_by"),
     )
 
     id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
@@ -108,6 +100,12 @@ class WorkspaceMembership(Base):
         nullable=False,
     )
     role: Mapped[WorkspaceRole] = mapped_column(workspace_role_enum, nullable=False)
+    status: Mapped[MemberStatus] = mapped_column(
+        member_status_enum, nullable=False, server_default=text("'ACTIVE'")
+    )
+    invited_by: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,
         nullable=False,
@@ -119,4 +117,3 @@ class WorkspaceMembership(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-    deleted_at: Mapped[object | None] = mapped_column(timestamp_tz)

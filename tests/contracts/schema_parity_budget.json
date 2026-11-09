@@ -7,18 +7,18 @@
     "allowlisted": 17,
     "rename_collision": 0,
     "pk_mismatch": 0,
-    "column_missing": 132,
-    "column_extra": 116,
+    "column_missing": 130,
+    "column_extra": 115,
     "nullability": 10,
     "width": 27,
     "kind": 1,
     "enum": 35,
     "unique_missing": 4,
     "unique_extra": 7,
-    "index_missing": 107,
-    "index_extra": 5,
-    "index_name": 28,
-    "fk_missing": 45,
+    "index_missing": 104,
+    "index_extra": 3,
+    "index_name": 27,
+    "fk_missing": 44,
     "fk_extra": 49,
     "fk_ondelete": 35,
     "check_missing": 56,
@@ -26,5 +26,5 @@
     "default_missing": 6,
     "default_value": 0
   },
-  "gap_digest": "1e65bea6421a6bdb0c2a8c22d8c5504397bf0b604a333779b1728f6f429c793f"
+  "gap_digest": "8deb8912ef494b3b7a0dfad966f7f4e78328831b42661f947fe85b138c48ba76"
 }

@@ -111,7 +111,6 @@ class SqlAlchemyCampaignRepository(_CampaignRepositoryBase):
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 campaign_models.Campaign.deleted_at.is_(None),
             )
         )
@@ -143,7 +142,6 @@ class SqlAlchemyCampaignRepository(_CampaignRepositoryBase):
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 campaign_models.Campaign.deleted_at.is_(None),
             )
         )

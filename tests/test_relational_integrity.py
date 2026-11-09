@@ -27,7 +27,7 @@ EXPECTED_TABLES = {
     "users",
     "settings",
     "workspaces",
-    "workspace_memberships",
+    "workspace_members",
     "brands",
     "brand_settings",
     "projects",
@@ -91,7 +91,7 @@ def seed_user_workspace_content(connection: Any) -> dict[str, Any]:
     connection.execute(
         text(
             """
-            INSERT INTO workspace_memberships (id, workspace_id, user_id, role)
+            INSERT INTO workspace_members (id, workspace_id, user_id, role)
             VALUES (:id, :workspace_id, :user_id, 'owner')
             """
         ),

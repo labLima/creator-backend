@@ -392,9 +392,10 @@ class FakeWorkspaceRepository:
                 workspace_id=workspace.id,
                 user_id=user_id,
                 role=role,
+                status="ACTIVE",
+                invited_by=None,
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
-                deleted_at=None,
             ),
         )
 

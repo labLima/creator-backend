@@ -65,7 +65,6 @@ class SqlAlchemyPersonaRepository:
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 persona_models.Persona.deleted_at.is_(None),
                 brand_models.Brand.deleted_at.is_(None),
             )
@@ -124,7 +123,6 @@ class SqlAlchemyPersonaRepository:
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 persona_models.Persona.deleted_at.is_(None),
                 brand_models.Brand.deleted_at.is_(None),
             )

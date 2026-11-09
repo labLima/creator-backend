@@ -70,7 +70,7 @@ Estas tabelas já correspondem ao alvo do PDF e não têm migração de schema p
 - `workspace_credit_transactions`
 - `workspace_invite_usages`
 - `workspace_invites`
-- `workspace_memberships`
+- `workspace_members`
 - `workspaces`
 
 ## Tabelas do modelo final adicionadas por ADR-028

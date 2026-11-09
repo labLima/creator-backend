@@ -110,7 +110,6 @@ class SqlAlchemyPlanningRepository:
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 planning_models.Planning.deleted_at.is_(None),
                 campaign_models.Campaign.deleted_at.is_(None),
             )
@@ -181,7 +180,6 @@ class SqlAlchemyPlanningRepository:
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 planning_models.Planning.deleted_at.is_(None),
                 campaign_models.Campaign.deleted_at.is_(None),
             )

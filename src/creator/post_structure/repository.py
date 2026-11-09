@@ -131,7 +131,6 @@ class SqlAlchemyPostStructureRepository:
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 post_structure_models.PostStructure.deleted_at.is_(None),
             )
         )
@@ -170,7 +169,6 @@ class SqlAlchemyPostStructureRepository:
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 post_structure_models.PostStructure.deleted_at.is_(None),
             )
         )

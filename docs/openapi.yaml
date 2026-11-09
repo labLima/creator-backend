@@ -6314,6 +6314,7 @@ components:
       - workspace_id
       - user_id
       - role
+      - status
       - created_at
       - updated_at
       properties:
@@ -6333,16 +6334,22 @@ components:
           - admin
           - editor
           - viewer
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - REMOVED
+        invited_by:
+          type:
+          - string
+          - 'null'
+          format: uuid
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
-          format: date-time
-        deleted_at:
-          type:
-          - string
-          - 'null'
           format: date-time
     WorkspaceCreateRequest:
       type: object

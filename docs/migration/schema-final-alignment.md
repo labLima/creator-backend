@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **711**
+- Divergências: **701**
 
 ## Divergências por categoria
 
@@ -24,18 +24,18 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 132 |
-| `column_extra` | 116 |
+| `column_missing` | 130 |
+| `column_extra` | 115 |
 | `nullability` | 10 |
 | `width` | 27 |
 | `kind` | 1 |
 | `enum` | 35 |
 | `unique_missing` | 4 |
 | `unique_extra` | 7 |
-| `index_missing` | 107 |
-| `index_extra` | 5 |
-| `index_name` | 28 |
-| `fk_missing` | 45 |
+| `index_missing` | 104 |
+| `index_extra` | 3 |
+| `index_name` | 27 |
+| `fk_missing` | 44 |
 | `fk_extra` | 49 |
 | `fk_ondelete` | 35 |
 | `check_missing` | 56 |
@@ -51,7 +51,6 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 | Final | Metadata |
 | --- | --- |
-| `workspace_members` | `workspace_memberships` |
 
 ## 2. Tabelas do modelo final ausentes no ORM
 
@@ -68,9 +67,9 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 ## 3. Colunas, tipos e nullability
 
-Total: **291**.
+Total: **288**.
 
-### `column_missing` (132)
+### `column_missing` (130)
 
 - `billing_accounts.document_hash`
 - `billing_accounts.external_code`
@@ -202,10 +201,8 @@ Total: **291**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 - `workspace_invites.token_hash`
-- `workspace_members.invited_by`
-- `workspace_members.status`
 
-### `column_extra` (116)
+### `column_extra` (115)
 
 - `billing_accounts.deleted_at`
 - `billing_accounts.document_type`
@@ -322,7 +319,6 @@ Total: **291**.
 - `workspace_invites.is_active`
 - `workspace_invites.token`
 - `workspace_invites.uses_count`
-- `workspace_members.deleted_at`
 
 ### `nullability` (10)
 
@@ -420,9 +416,9 @@ Total: **35**.
 
 ## 5. Índices
 
-Total: **140**.
+Total: **134**.
 
-### `index_missing` (107)
+### `index_missing` (104)
 
 - `billing_accounts: (document_hash)`
 - `billing_accounts: (user_id)`
@@ -528,19 +524,14 @@ Total: **140**.
 - `workspace_invites: (email)`
 - `workspace_invites: (status)`
 - `workspace_invites: (workspace_id)`
-- `workspace_memberships: (invited_by)`
-- `workspace_memberships: (workspace_id, role)`
-- `workspace_memberships: UNIQUE (workspace_id, user_id)`
 
-### `index_extra` (5)
+### `index_extra` (3)
 
 - `brands: (created_by_user_id)`
 - `brands: (workspace_id, deleted_at, created_at)`
 - `users: (deleted_at)`
-- `workspace_memberships: (workspace_id)`
-- `workspace_memberships: UNIQUE (user_id, workspace_id) WHERE deleted_at is null`
 
-### `index_name` (28)
+### `index_name` (27)
 
 - `billing_addresses: missing index name uq_billing_addresses_default`
 - `billing_payment_methods: missing index name idx_m8_billing_payment_methods_billing_address_id`
@@ -569,13 +560,12 @@ Total: **140**.
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
 - `workspace_invites: missing index name idx_m8_workspace_invites_created_by`
-- `workspace_memberships: missing index name uq_workspace_members_workspace_user`
 
 ## 6. Foreign keys
 
-Total: **129**.
+Total: **128**.
 
-### `fk_missing` (45)
+### `fk_missing` (44)
 
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `brand_assets['created_by']->users['id'] [SET NULL]`
@@ -621,7 +611,6 @@ Total: **129**.
 - `workspace_credit_transactions['image_resize_id']->image_resizes['id'] [RESTRICT]`
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
-- `workspace_memberships['invited_by']->users['id'] [SET NULL]`
 
 ### `fk_extra` (49)
 
@@ -648,7 +637,7 @@ Total: **129**.
 - `notification_preferences['user_id']->users['id'] [NO ACTION]`
 - `notification_recipients['notification_id']->notifications['id'] [NO ACTION]`
 - `notification_recipients['user_id']->users['id'] [NO ACTION]`
-- `notification_recipients['workspace_member_id']->workspace_memberships['id'] [NO ACTION]`
+- `notification_recipients['workspace_member_id']->workspace_members['id'] [NO ACTION]`
 - `notifications['created_by']->users['id'] [NO ACTION]`
 - `notifications['workspace_id']->workspaces['id'] [NO ACTION]`
 - `orders['billing_account_id']->billing_accounts['id'] [NO ACTION]`
@@ -669,7 +658,7 @@ Total: **129**.
 - `user_devices['user_id']->users['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 - `workspace_invite_usages['invite_id']->workspace_invites['id'] [NO ACTION]`
-- `workspace_invite_usages['member_id']->workspace_memberships['id'] [NO ACTION]`
+- `workspace_invite_usages['member_id']->workspace_members['id'] [NO ACTION]`
 - `workspace_invite_usages['user_id']->users['id'] [NO ACTION]`
 - `workspace_invite_usages['workspace_id']->workspaces['id'] [NO ACTION]`
 - `workspace_invites['created_by']->users['id'] [NO ACTION]`
@@ -709,7 +698,7 @@ Total: **129**.
 - `user_devices['user_id']->users['id']: final CASCADE vs model ['NO ACTION']`
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 - `workspace_invite_usages['invite_id']->workspace_invites['id']: final CASCADE vs model ['NO ACTION']`
-- `workspace_invite_usages['member_id']->workspace_memberships['id']: final CASCADE vs model ['NO ACTION']`
+- `workspace_invite_usages['member_id']->workspace_members['id']: final CASCADE vs model ['NO ACTION']`
 - `workspace_invites['created_by']->users['id']: final RESTRICT vs model ['NO ACTION']`
 - `workspace_invites['workspace_id']->workspaces['id']: final CASCADE vs model ['NO ACTION']`
 
@@ -793,8 +782,8 @@ Total: **73**.
 - `users.global_role`
 - `workspace_credit_lot_consumptions.chk_lot_consumptions_amount`
 - `workspace_credit_lots.chk_credit_lots_amounts`
-- `workspace_memberships.ck_memberships_deleted_after_created`
-- `workspace_memberships.workspace_role`
+- `workspace_members.member_status`
+- `workspace_members.workspace_role`
 
 ## 8. Funções, triggers e views
 

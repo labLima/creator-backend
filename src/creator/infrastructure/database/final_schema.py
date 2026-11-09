@@ -25,9 +25,7 @@ from sqlalchemy.schema import CreateIndex, CreateTable, MetaData
 
 # Final modeling name -> current metadata name. Applied once, so a renamed table
 # is neither "missing" nor "extra".
-RENAME_MAP: Final[dict[str, str]] = {
-    "workspace_members": "workspace_memberships",
-}
+RENAME_MAP: Final[dict[str, str]] = {}
 
 # Deliberate extensions that the final modeling does not contain.
 ADR_EXTENSIONS: Final[tuple[str, ...]] = (

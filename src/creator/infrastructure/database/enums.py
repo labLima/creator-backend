@@ -24,6 +24,12 @@ class GlobalRole(StrEnum):
     MEMBRO = "membro"
 
 
+class MemberStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    REMOVED = "REMOVED"
+
+
 class ContentType(StrEnum):
     IMAGE = "IMAGE"
     TEXT = "TEXT"
@@ -47,6 +53,14 @@ global_role_enum = SQLEnum(
 workspace_role_enum = SQLEnum(
     WorkspaceRole,
     name="workspace_role",
+    native_enum=False,
+    create_constraint=True,
+    values_callable=enum_values,
+    validate_strings=True,
+)
+member_status_enum = SQLEnum(
+    MemberStatus,
+    name="member_status",
     native_enum=False,
     create_constraint=True,
     values_callable=enum_values,
@@ -220,5 +234,6 @@ __all__ = [
     "generation_type_enum",
     "global_role_enum",
     "human_review_mode_enum",
+    "member_status_enum",
     "workspace_role_enum",
 ]

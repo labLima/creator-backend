@@ -716,7 +716,7 @@ CREATE TABLE notification_recipients (
 	PRIMARY KEY (id),
 	FOREIGN KEY(notification_id) REFERENCES notifications (id),
 	FOREIGN KEY(user_id) REFERENCES users (id),
-	FOREIGN KEY(workspace_member_id) REFERENCES workspace_memberships (id)
+	FOREIGN KEY(workspace_member_id) REFERENCES workspace_members (id)
 )
 
 CREATE TABLE notifications (
@@ -1220,7 +1220,7 @@ CREATE TABLE workspace_invite_usages (
 	FOREIGN KEY(invite_id) REFERENCES workspace_invites (id),
 	FOREIGN KEY(user_id) REFERENCES users (id),
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(member_id) REFERENCES workspace_memberships (id)
+	FOREIGN KEY(member_id) REFERENCES workspace_members (id)
 )
 
 CREATE TABLE workspace_invites (
@@ -1247,19 +1247,21 @@ CREATE TABLE workspace_invites (
 	FOREIGN KEY(created_by) REFERENCES users (id)
 )
 
-CREATE TABLE workspace_memberships (
+CREATE TABLE workspace_members (
 	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
 	user_id CHAR(32) NOT NULL,
 	role VARCHAR(6) NOT NULL,
+	status VARCHAR(9) DEFAULT 'ACTIVE' NOT NULL,
+	invited_by CHAR(32),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	CONSTRAINT ck_memberships_deleted_after_created CHECK (deleted_at IS NULL OR deleted_at >= created_at),
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
 	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
-	CONSTRAINT workspace_role CHECK (role IN ('owner', 'admin', 'editor', 'viewer'))
+	CONSTRAINT workspace_role CHECK (role IN ('owner', 'admin', 'editor', 'viewer')),
+	CONSTRAINT member_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REMOVED')),
+	FOREIGN KEY(invited_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE workspaces (
@@ -1413,10 +1415,12 @@ CREATE UNIQUE INDEX uq_credit_lots_id_workspace ON workspace_credit_lots (id, wo
 
 CREATE UNIQUE INDEX uq_credit_tx_id_workspace ON workspace_credit_transactions (id, workspace_id)
 
-CREATE INDEX ix_workspace_memberships_user_id ON workspace_memberships (user_id)
+CREATE INDEX ix_workspace_members_invited_by ON workspace_members (invited_by)
 
-CREATE INDEX ix_workspace_memberships_workspace_id ON workspace_memberships (workspace_id)
+CREATE INDEX ix_workspace_members_user_id ON workspace_members (user_id)
 
-CREATE UNIQUE INDEX uq_workspace_memberships_active_user_workspace ON workspace_memberships (user_id, workspace_id) WHERE deleted_at IS NULL
+CREATE INDEX ix_workspace_members_workspace_id_role ON workspace_members (workspace_id, role)
+
+CREATE UNIQUE INDEX uq_workspace_members_workspace_user ON workspace_members (workspace_id, user_id)
 
 CREATE INDEX ix_workspaces_deleted_at ON workspaces (deleted_at)

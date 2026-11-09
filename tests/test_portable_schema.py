@@ -71,12 +71,15 @@ def test_enums_are_string_checks_and_partial_indexes_target_sqlite() -> None:
     assert user_role.native_enum is False
     assert user_role.create_constraint is True
 
-    index = next(
+    member_index = next(
         index
-        for index in Base.metadata.tables["workspace_memberships"].indexes
-        if index.name == "uq_workspace_memberships_active_user_workspace"
+        for index in Base.metadata.tables["workspace_members"].indexes
+        if index.name == "uq_workspace_members_workspace_user"
     )
-    assert str(index.dialect_options["sqlite"]["where"]) == "deleted_at IS NULL"
+    assert member_index.unique is True
+    assert "sqlite" not in member_index.dialect_options or not member_index.dialect_options[
+        "sqlite"
+    ].get("where")
 
     completed_step_index = next(
         index

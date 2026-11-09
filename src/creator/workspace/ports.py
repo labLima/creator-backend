@@ -25,9 +25,10 @@ class WorkspaceMembershipRecord:
     workspace_id: UUID
     user_id: UUID
     role: str
+    status: str
+    invited_by: UUID | None
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 @dataclass(frozen=True, slots=True)

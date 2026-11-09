@@ -45,7 +45,7 @@ class NotificationRecipient(SchemaRow, Base):
     __tablename__ = "notification_recipients"
     notification_id: Mapped[UUID] = mapped_column(ForeignKey("notifications.id"), nullable=False)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    workspace_member_id: Mapped[UUID | None] = mapped_column(ForeignKey("workspace_memberships.id"))
+    workspace_member_id: Mapped[UUID | None] = mapped_column(ForeignKey("workspace_members.id"))
     channel: Mapped[str] = mapped_column(String(10), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     provider_message_id: Mapped[str | None] = mapped_column(String(128))

@@ -94,9 +94,10 @@ def _membership_data(record: WorkspaceMembershipRecord) -> dict[str, Any]:
         "workspace_id": str(record.workspace_id),
         "user_id": str(record.user_id),
         "role": record.role,
+        "status": record.status,
+        "invited_by": str(record.invited_by) if record.invited_by else None,
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat(),
-        "deleted_at": record.deleted_at.isoformat() if record.deleted_at else None,
     }
 
 

@@ -98,7 +98,6 @@ class SqlAlchemyGeneratedImageRepository:
                 generation_models.GeneratedImage.id == image_id,
                 generation_models.GeneratedImage.deleted_at.is_(None),
                 workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
             )
         ).one_or_none()
         return _generated_image_record(row) if row else None
@@ -728,7 +727,6 @@ class SqlAlchemyImageGenerationRepository:
                     workspace_tables.WorkspaceMembership.workspace_id
                     == content_tables.Image.workspace_id,
                     workspace_tables.WorkspaceMembership.user_id == user_id,
-                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
             .where(content_tables.Image.id == image_id)
@@ -934,7 +932,6 @@ class SqlAlchemyImageGenerationRepository:
                         workspace_tables.WorkspaceMembership.workspace_id
                         == generation_tables.GenerationJob.workspace_id,
                         workspace_tables.WorkspaceMembership.user_id == user_id,
-                        workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                     ),
                 )
             ),
@@ -969,7 +966,6 @@ class SqlAlchemyImageGenerationRepository:
                     workspace_tables.WorkspaceMembership.workspace_id
                     == generation_tables.GenerationJob.workspace_id,
                     workspace_tables.WorkspaceMembership.user_id == user_id,
-                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
         )
@@ -1009,7 +1005,6 @@ class SqlAlchemyImageGenerationRepository:
                         workspace_tables.WorkspaceMembership.workspace_id
                         == generation_tables.GenerationJob.workspace_id,
                         workspace_tables.WorkspaceMembership.user_id == user_id,
-                        workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                     ),
                 )
                 .outerjoin(

@@ -213,7 +213,6 @@ class SqlAlchemyBrandColorRepository(BrandColorRepository):
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == uid,
-                workspace_models.WorkspaceMembership.deleted_at.is_(None),
                 brand_models.BrandColor.deleted_at.is_(None),
             )
         )
@@ -450,7 +449,6 @@ class SqlAlchemyBrandAssetRepository:
             )
             .where(
                 workspace_tables.WorkspaceMembership.user_id == user_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 brand_tables.BrandAsset.deleted_at.is_(None),
                 brand_tables.Brand.deleted_at.is_(None),
             )
@@ -503,7 +501,6 @@ class SqlAlchemyBrandAssetRepository:
             )
             .where(
                 workspace_tables.WorkspaceMembership.user_id == user_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 brand_tables.BrandAsset.deleted_at.is_(None),
                 brand_tables.Brand.deleted_at.is_(None),
             )

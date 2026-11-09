@@ -271,7 +271,6 @@ class SqlAlchemyContentRepository:
             .where(
                 workspace_tables.WorkspaceMembership.user_id == user_id,
                 workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             )
         )
         return self._session.execute(statement).scalar_one() > 0
@@ -388,18 +387,13 @@ class SqlAlchemyContentRepository:
         flush_or_raise(self._session)
 
     def _scoped_select(self, user_id: UUID) -> Select[Any]:
-        return (
-            select(content_tables.Content)
-            .join(
-                workspace_tables.WorkspaceMembership,
-                and_(
-                    workspace_tables.WorkspaceMembership.workspace_id
-                    == content_tables.Content.workspace_id,
-                    workspace_tables.WorkspaceMembership.user_id == user_id,
-                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
-                ),
-            )
-            .where(workspace_tables.WorkspaceMembership.deleted_at.is_(None))
+        return select(content_tables.Content).join(
+            workspace_tables.WorkspaceMembership,
+            and_(
+                workspace_tables.WorkspaceMembership.workspace_id
+                == content_tables.Content.workspace_id,
+                workspace_tables.WorkspaceMembership.user_id == user_id,
+            ),
         )
 
     def _scoped_count(self, user_id: UUID) -> Select[Any]:
@@ -412,7 +406,6 @@ class SqlAlchemyContentRepository:
                     workspace_tables.WorkspaceMembership.workspace_id
                     == content_tables.Content.workspace_id,
                     workspace_tables.WorkspaceMembership.user_id == user_id,
-                    workspace_tables.WorkspaceMembership.deleted_at.is_(None),
                 ),
             )
         )

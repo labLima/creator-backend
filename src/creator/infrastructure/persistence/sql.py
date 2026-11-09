@@ -64,7 +64,6 @@ def scoped_resource_select(user_id: UUID, model: type[Any]) -> Select[Any]:
             and_(
                 workspace_tables.WorkspaceMembership.workspace_id == model.workspace_id,
                 workspace_tables.WorkspaceMembership.user_id == user_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             ),
         )
         .join(
@@ -86,7 +85,6 @@ def scoped_resource_count(user_id: UUID, model: type[Any]) -> Select[Any]:
             and_(
                 workspace_tables.WorkspaceMembership.workspace_id == model.workspace_id,
                 workspace_tables.WorkspaceMembership.user_id == user_id,
-                workspace_tables.WorkspaceMembership.deleted_at.is_(None),
             ),
         )
         .join(
@@ -129,7 +127,6 @@ def user_has_workspace_role(
         select(workspace_tables.WorkspaceMembership).where(
             workspace_tables.WorkspaceMembership.user_id == user_id,
             workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
-            workspace_tables.WorkspaceMembership.deleted_at.is_(None),
         )
     ).one_or_none()
     if row is None:

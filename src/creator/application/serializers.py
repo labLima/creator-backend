@@ -39,9 +39,10 @@ def _workspace_membership_data(membership: WorkspaceMembershipRecord) -> dict[st
         "workspace_id": str(membership.workspace_id),
         "user_id": str(membership.user_id),
         "role": membership.role,
+        "status": membership.status,
+        "invited_by": str(membership.invited_by) if membership.invited_by else None,
         "created_at": membership.created_at.isoformat(),
         "updated_at": membership.updated_at.isoformat(),
-        "deleted_at": membership.deleted_at.isoformat() if membership.deleted_at else None,
     }
 
 
