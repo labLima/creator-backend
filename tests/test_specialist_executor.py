@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from uuid import UUID
 
 import pytest
@@ -12,6 +13,7 @@ from creator.services.agents.contracts import (
     BusinessOutput,
     WorkspaceAuthorizationContext,
 )
+from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
 from creator.services.agents.factory import (
     StructuredSpecialistExecutor,
     create_specialist_executor,
@@ -66,3 +68,15 @@ def test_structured_runner_maps_authentication_failure_to_provider_configuration
 
     with pytest.raises(ProviderNotConfiguredError):
         runner.run(context(), BusinessOutput)
+
+
+def test_structured_runner_schema_failure_does_not_expose_output_in_traceback() -> None:
+    class InvalidLLM:
+        def generate_text(self, prompt: str, temperature: float = 0.7) -> str:
+            return '{"brand_summary":"private-value"}'
+
+    with pytest.raises(AgentKickoffError) as raised:
+        StructuredAgentRunner(InvalidLLM()).run(context(), BusinessOutput)
+
+    assert raised.value.code == AgentKickoffErrorCode.OUTPUT_SCHEMA_INVALID
+    assert "private-value" not in "".join(traceback.format_exception(raised.value))

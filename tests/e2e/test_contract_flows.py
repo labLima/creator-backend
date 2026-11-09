@@ -1,21 +1,472 @@
 from __future__ import annotations
 
+from io import BytesIO
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient, Response
+from PIL import Image
 
 from creator.api.dependencies import get_rate_limiter
+from creator.domain.agent_workflow import AgentWorkflowStatus
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime import image_composition
 from creator.infrastructure.runtime.metrics import MetricsRegistry
 from creator.infrastructure.runtime.rate_limit import InMemoryRateLimitBackend, RateLimiter
-from creator.services.agents.contracts import AgentExecutionResult, ArtistOutput
+from creator.services.agents.contracts import AgentExecutionResult, ArtistOutput, WriterOutput
+from creator.services.ai.image_provider import ImageGenerationResult
 from creator.services.ai.reviewer import ImageReviewResult
+from creator.workers import agent_workflow as workflow_worker
 from creator.workers import image_generation as image_generation_worker
 from tests.e2e.conftest import FakeGenerationQueue, signup_payload
 
 pytestmark = pytest.mark.e2e
+
+
+@pytest.mark.anyio
+async def test_composition_resolves_real_brand_assets_and_local_storage(
+    e2e: tuple[object, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    application, _ = e2e
+    state = application.state
+    font_path = next(
+        (
+            path
+            for path in (
+                Path("C:/Windows/Fonts/arial.ttf"),
+                Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+            )
+            if path.exists()
+        ),
+        None,
+    )
+    if font_path is None:
+        pytest.skip("No TrueType font available")
+    storage_root = Path(state.e2e_settings.local_storage_root)
+    (storage_root / "brand-assets").mkdir(parents=True, exist_ok=True)
+    (storage_root / "brand-assets" / "font.ttf").write_bytes(font_path.read_bytes())
+    logo_buffer = BytesIO()
+    Image.new("RGBA", (80, 40), "#FFFFFF").save(logo_buffer, format="PNG")
+    (storage_root / "brand-assets" / "logo.png").write_bytes(logo_buffer.getvalue())
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        token, workspace_id = await _signup(client, "composition-brand@example.com")
+        brand_response = await client.post(
+            "/api/v1/brands",
+            headers=token,
+            json={"workspace_id": workspace_id, "name": "Bakery"},
+        )
+        assert brand_response.status_code == 201, brand_response.text
+        brand = brand_response.json()["data"]
+        font_response = await client.post(
+            "/api/v1/brand-assets",
+            headers=token,
+            json={
+                "brand_id": brand["id"],
+                "type": "FONT",
+                "file_url": "storage://brand-assets/font.ttf",
+            },
+        )
+        logo_response = await client.post(
+            "/api/v1/brand-assets",
+            headers=token,
+            json={
+                "brand_id": brand["id"],
+                "type": "LOGO",
+                "file_url": "storage://brand-assets/logo.png",
+            },
+        )
+        assert font_response.status_code == logo_response.status_code == 201
+        settings_response = await client.put(
+            f"/api/v1/brands/{brand['id']}/settings",
+            headers=token,
+            json={
+                "workspace_id": workspace_id,
+                "visual_settings": {
+                    "font_asset_id": font_response.json()["data"]["id"],
+                    "logo_asset_id": logo_response.json()["data"]["id"],
+                    "text_color": "#FFFFFF",
+                    "safe_margin": 0.06,
+                },
+            },
+        )
+        assert settings_response.status_code == 200, settings_response.text
+    monkeypatch.setattr(
+        image_composition,
+        "SqlAlchemyUnitOfWork",
+        lambda: SqlAlchemyUnitOfWork(state.e2e_factory),
+    )
+    monkeypatch.setattr(
+        image_composition,
+        "create_image_reviewer",
+        lambda settings: type(
+            "Reviewer", (), {"review": lambda self, request: ImageReviewResult("APPROVED", 0.99)}
+        )(),
+    )
+    scene_buffer = BytesIO()
+    Image.new("RGB", (1024, 1024), "#8B5A2B").save(scene_buffer, format="PNG")
+    result = image_composition.compose_generated_image(
+        result=ImageGenerationResult(
+            scene_buffer.getvalue(), "image/png", 1024, 1024, "test", "clean bakery scene", {}
+        ),
+        approved={"headline": "Pão quentinho", "call_to_action": "Peça já"},
+        workspace_id=UUID(workspace_id),
+        brand_id=UUID(brand["id"]),
+        user_id=UUID(brand["created_by_user_id"]),
+        settings=state.e2e_settings,
+    )
+    assert Image.open(BytesIO(result.image_bytes)).size == (1024, 1024)
+    assert result.metadata["composition"]["font_asset_id"] == font_response.json()["data"]["id"]
+
+    # Exercise the durable scene candidate, human decision, and resumed composition.
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        workflow_response = await client.post(
+            "/api/v1/generations/image-workflows",
+            headers={**token, "Idempotency-Key": "integrated-scene-review"},
+            json={
+                "brand_id": brand["id"],
+                "campaign": "Bakery",
+                "persona": "Adults",
+                "compose_text": True,
+                "headline": "Pão quentinho",
+            },
+        )
+        assert workflow_response.status_code == 202, workflow_response.text
+        run_id = UUID(workflow_response.json()["data"]["id"])
+    writer = WriterOutput(
+        caption="Café",
+        direction={"briefing": "Bakery", "copy": "Pão", "visual_prompt": "Clean bakery scene"},
+    )
+    generated_calls: list[str] = []
+
+    class Generator:
+        def generate(self, request: object) -> ImageGenerationResult:
+            generated_calls.append("generated")
+            return ImageGenerationResult(
+                scene_buffer.getvalue(),
+                "image/png",
+                1024,
+                1024,
+                "test",
+                "Clean bakery scene",
+                {},
+            )
+
+    monkeypatch.setattr(
+        workflow_worker,
+        "SqlAlchemyUnitOfWork",
+        lambda: SqlAlchemyUnitOfWork(state.e2e_factory),
+    )
+    monkeypatch.setattr(workflow_worker, "create_image_generator", lambda settings: Generator())
+    monkeypatch.setattr(workflow_worker, "_persist_artist_step", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        image_composition,
+        "create_image_reviewer",
+        lambda settings: type(
+            "Reviewer", (), {"review": lambda self, request: ImageReviewResult("REFINE", 0.5)}
+        )(),
+    )
+    with SqlAlchemyUnitOfWork(state.e2e_factory) as uow:
+        uow.agent_workflow.workflows.transition(
+            run_id, AgentWorkflowStatus.RUNNING, current_step="ARTIST"
+        )
+        uow.commit()
+        run = uow.agent_workflow.workflows.get_internal(run_id)
+        user = uow.user.users.get_by_id(UUID(brand["created_by_user_id"]))
+    assert run is not None and user is not None
+    candidate, _ = workflow_worker._generate_workflow_image(
+        run=run,
+        user=user,
+        writer=writer,
+        index=1,
+        refinement_count=0,
+        settings=state.e2e_settings,
+    )
+    assert candidate.metadata["scene_review_pending"] is True
+    with SqlAlchemyUnitOfWork(state.e2e_factory) as uow:
+        waiting = uow.agent_workflow.workflows.get_internal(run_id)
+    assert waiting is not None and waiting.status == AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        decision = await client.post(
+            f"/api/v1/generations/image-workflows/{run_id}/decision",
+            headers=token,
+            json={"decision": "APPROVE"},
+        )
+    assert decision.status_code == 200, decision.text
+    with SqlAlchemyUnitOfWork(state.e2e_factory) as uow:
+        resumed = uow.agent_workflow.workflows.get_internal(run_id)
+    assert resumed is not None
+    composed_image, _ = workflow_worker._generate_workflow_image(
+        run=resumed,
+        user=user,
+        writer=writer,
+        index=1,
+        refinement_count=0,
+        settings=state.e2e_settings,
+    )
+    assert len(generated_calls) == 1
+    assert (
+        composed_image.metadata["composition"]["scene_text_check"]["decision"] == "HUMAN_APPROVED"
+    )
+    assert composed_image.metadata["scene_review_source_image_id"] == str(candidate.id)
+
+
+@pytest.mark.anyio
+async def test_scene_review_decision_resumes_artist_through_http(
+    e2e: tuple[object, object],
+) -> None:
+    application, _ = e2e
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        token, workspace_id = await _signup(client, "scene-review@example.com")
+        brand_response = await client.post(
+            "/api/v1/brands",
+            headers=token,
+            json={"workspace_id": workspace_id, "name": "Scene Review Brand"},
+        )
+        brand_id = brand_response.json()["data"]["id"]
+        created = await client.post(
+            "/api/v1/generations/image-workflows",
+            headers={**token, "Idempotency-Key": "scene-review-test"},
+            json={
+                "brand_id": brand_id,
+                "campaign": "Bakery",
+                "persona": "Adults",
+                "compose_text": True,
+                "headline": "Pão quentinho",
+            },
+        )
+        assert created.status_code == 202, created.text
+        run_id = UUID(created.json()["data"]["id"])
+        scene_id = str(uuid4())
+        with SqlAlchemyUnitOfWork(application.state.e2e_factory) as uow:
+            run = uow.agent_workflow.workflows.get_internal(run_id)
+            assert run is not None
+            updated_input = dict(run.input)
+            updated_input["pending_scenes"] = {"1": scene_id}
+            updated_input["scene_review_reason"] = "COMPOSITION_TEXT_CHECK_INCONCLUSIVE"
+            uow.agent_workflow.workflows.update_input(run_id, updated_input)
+            uow.agent_workflow.workflows.transition(run_id, AgentWorkflowStatus.RUNNING)
+            uow.agent_workflow.workflows.transition(
+                run_id,
+                AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW,
+                current_step="SCENE_REVIEW",
+            )
+            uow.commit()
+        decision = await client.post(
+            f"/api/v1/generations/image-workflows/{run_id}/decision",
+            headers=token,
+            json={"decision": "APPROVE"},
+        )
+        assert decision.status_code == 200, decision.text
+        data = decision.json()["data"]
+        assert data["status"] == "REFINING"
+        assert data["current_step"] == "ARTIST"
+        assert data["input"]["approved_scenes"] == {"1": scene_id}
+
+
+@pytest.mark.anyio
+async def test_independent_scene_review_resumes_same_scene(
+    e2e: tuple[object, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    application, _ = e2e
+    state = application.state
+    _patch_worker_to_test_database(monkeypatch, application)
+    monkeypatch.setattr(
+        image_composition, "SqlAlchemyUnitOfWork", lambda: SqlAlchemyUnitOfWork(state.e2e_factory)
+    )
+    monkeypatch.setattr(
+        image_composition, "create_storage_provider", lambda settings: state.e2e_storage
+    )
+    font_path = next(
+        (
+            path
+            for path in (
+                Path("C:/Windows/Fonts/arial.ttf"),
+                Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+            )
+            if path.exists()
+        ),
+        None,
+    )
+    if font_path is None:
+        pytest.skip("No TrueType font available")
+    state.e2e_storage.objects["assets/font.ttf"] = font_path.read_bytes()
+    logo_buffer = BytesIO()
+    Image.new("RGBA", (80, 40), "#FFFFFF").save(logo_buffer, format="PNG")
+    state.e2e_storage.objects["assets/logo.png"] = logo_buffer.getvalue()
+    scene_buffer = BytesIO()
+    Image.new("RGB", (1024, 1024), "#8B5A2B").save(scene_buffer, format="PNG")
+    generated: list[str] = []
+
+    class Generator:
+        def generate(self, request: object) -> ImageGenerationResult:
+            generated.append("scene")
+            return ImageGenerationResult(
+                scene_buffer.getvalue(), "image/png", 1024, 1024, "test", "clean scene", {}
+            )
+
+    class Artist:
+        def execute(self, context: object) -> AgentExecutionResult:
+            return AgentExecutionResult(
+                output=ArtistOutput(visual_prompt="Clean bakery scene"),
+                prompt="artist",
+                prompt_template_id="agent.artist.v7",
+                prompt_template_version="7.0",
+                input_hash="a" * 64,
+                output_hash="b" * 64,
+                schema_name="ArtistOutput",
+                schema_version="1.0",
+                provider="fake",
+                model="fake",
+            )
+
+    monkeypatch.setattr(
+        image_generation_worker, "create_image_generator", lambda settings: Generator()
+    )
+    monkeypatch.setattr(
+        image_generation_worker, "create_specialist_executor", lambda settings: Artist()
+    )
+    monkeypatch.setattr(
+        image_composition,
+        "create_image_reviewer",
+        lambda settings: type(
+            "Reviewer", (), {"review": lambda self, request: ImageReviewResult("REFINE", 0.5)}
+        )(),
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        token, workspace_id = await _signup(client, "independent-review@example.com")
+        other_token, _ = await _signup(client, "independent-review-other@example.com")
+        brand_response = await client.post(
+            "/api/v1/brands", headers=token, json={"workspace_id": workspace_id, "name": "Bakery"}
+        )
+        brand_id = brand_response.json()["data"]["id"]
+        font_response = await client.post(
+            "/api/v1/brand-assets",
+            headers=token,
+            json={"brand_id": brand_id, "type": "FONT", "file_url": "storage://assets/font.ttf"},
+        )
+        logo_response = await client.post(
+            "/api/v1/brand-assets",
+            headers=token,
+            json={"brand_id": brand_id, "type": "LOGO", "file_url": "storage://assets/logo.png"},
+        )
+        assert font_response.status_code == logo_response.status_code == 201
+        settings_response = await client.put(
+            f"/api/v1/brands/{brand_id}/settings",
+            headers=token,
+            json={
+                "workspace_id": workspace_id,
+                "visual_settings": {
+                    "font_asset_id": font_response.json()["data"]["id"],
+                    "logo_asset_id": logo_response.json()["data"]["id"],
+                },
+            },
+        )
+        assert settings_response.status_code == 200
+        created = await client.post(
+            "/api/v1/generation-jobs",
+            headers={**token, "Idempotency-Key": "review-scene-1"},
+            json={
+                "brand_id": brand_id,
+                "artifact_type": "IMAGE",
+                "operation": "CREATE",
+                "briefing": "Bakery",
+                "direction": "Clean scene",
+                "compose_text": True,
+                "headline": "Pão quentinho",
+            },
+        )
+        assert created.status_code == 202, created.text
+        job_id = created.json()["data"]["id"]
+        image_generation_worker.run_image_generation(job_id)
+        pending = await client.get(f"/api/v1/generation-jobs/{job_id}", headers=token)
+        assert pending.json()["data"]["scene_review"]["status"] == "PENDING"
+        assert "scene-reviews/" in pending.json()["data"]["scene_review"]["image_url"]
+        image_generation_worker.run_image_generation(job_id)
+        assert len(generated) == 1
+        assert image_generation_worker.recover_stale_processing_jobs() == 0
+        hidden = await client.post(
+            f"/api/v1/generation-jobs/{job_id}/scene-decision",
+            headers=other_token,
+            json={"decision": "APPROVE"},
+        )
+        assert hidden.status_code == 404
+        approved = await client.post(
+            f"/api/v1/generation-jobs/{job_id}/scene-decision",
+            headers=token,
+            json={"decision": "APPROVE"},
+        )
+        assert approved.status_code == 200, approved.text
+        queued_after_approval = len(state.e2e_queue.calls)
+        approved_again = await client.post(
+            f"/api/v1/generation-jobs/{job_id}/scene-decision",
+            headers=token,
+            json={"decision": "APPROVE"},
+        )
+        assert approved_again.status_code == 200, approved_again.text
+        assert len(state.e2e_queue.calls) == queued_after_approval
+        image_generation_worker.run_image_generation(job_id)
+        completed = await client.get(f"/api/v1/generation-jobs/{job_id}", headers=token)
+        assert completed.json()["data"]["status"] == "COMPLETED"
+        assert "scene_review" not in completed.json()["data"]
+        assert len(generated) == 1
+        assert (
+            completed.json()["data"]["image"]["metadata"]["composition"]["scene_text_check"][
+                "decision"
+            ]
+            == "HUMAN_APPROVED"
+        )
+        rejected_job = await client.post(
+            "/api/v1/generation-jobs",
+            headers={**token, "Idempotency-Key": "review-scene-reject"},
+            json={
+                "brand_id": brand_id,
+                "artifact_type": "IMAGE",
+                "operation": "CREATE",
+                "briefing": "Bakery",
+                "direction": "Clean scene",
+                "compose_text": True,
+                "headline": "Pão quentinho",
+            },
+        )
+        rejected_id = rejected_job.json()["data"]["id"]
+        image_generation_worker.run_image_generation(rejected_id)
+        rejected_scene_path = next(
+            path for path in state.e2e_storage.objects if f"/{rejected_id}." in path
+        )
+        real_delete = state.e2e_storage.delete
+        delete_failures_left = 1
+
+        def fail_first_delete(path: str) -> None:
+            nonlocal delete_failures_left
+            if path == rejected_scene_path and delete_failures_left:
+                delete_failures_left -= 1
+                raise RuntimeError("temporary storage outage")
+            real_delete(path)
+
+        monkeypatch.setattr(state.e2e_storage, "delete", fail_first_delete)
+        rejected = await client.post(
+            f"/api/v1/generation-jobs/{rejected_id}/scene-decision",
+            headers=token,
+            json={"decision": "REJECT"},
+        )
+        assert rejected.status_code == 200, rejected.text
+        assert rejected.json()["data"]["status"] == "FAILED"
+        assert rejected.json()["data"]["failure_code"] == "COMPOSITION_SCENE_REJECTED"
+        assert rejected_scene_path in state.e2e_storage.objects
+        assert image_generation_worker.cleanup_rejected_scene_objects() == 1
+        assert rejected_scene_path not in state.e2e_storage.objects
 
 
 def _assert_envelope(response: Response, *, success: bool) -> dict[str, Any]:
@@ -115,6 +566,67 @@ async def test_health_auth_and_error_envelopes(e2e: tuple[object, object]) -> No
     )
     assert invalid_login.status_code == 401
     assert _assert_envelope(invalid_login, success=False)["error"]["code"] == "LOGIN_REJECTED"
+
+
+@pytest.mark.anyio
+async def test_workflow_content_reads_use_current_status_and_preserve_workspace_isolation(
+    e2e: tuple[object, object],
+) -> None:
+    application, _ = e2e
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        token, workspace_id = await _signup(client, "workflow-content@example.com")
+        other_token, _ = await _signup(client, "workflow-content-other@example.com")
+        brand = await client.post(
+            "/api/v1/brands",
+            headers=_auth(token),
+            json={"workspace_id": workspace_id, "name": "Workflow Brand"},
+        )
+        assert brand.status_code == 201, brand.text
+        run = await client.post(
+            "/api/v1/generations/image-workflows",
+            headers={**_auth(token), "Idempotency-Key": "workflow-status-test"},
+            json={
+                "brand_id": brand.json()["data"]["id"],
+                "campaign": "Launch",
+                "persona": "Adults",
+            },
+        )
+        assert run.status_code == 202, run.text
+        run_data = run.json()["data"]
+        content_id = run_data["content_id"]
+        with SqlAlchemyUnitOfWork(application.state.e2e_factory) as uow:
+            uow.agent_workflow.workflows.transition(
+                UUID(run_data["id"]), AgentWorkflowStatus.RUNNING
+            )
+            uow.agent_workflow.workflows.transition(
+                UUID(run_data["id"]), AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW
+            )
+            uow.commit()
+
+        detail = await client.get(f"/api/v1/contents/{content_id}", headers=_auth(token))
+        listing = await client.get("/api/v1/content?type=IMAGE", headers=_auth(token))
+        hidden = await client.get(f"/api/v1/contents/{content_id}", headers=_auth(other_token))
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["data"]["payload"]["workflow_status"] == "WAITING_FOR_HUMAN_REVIEW"
+        listed = next(item for item in listing.json()["data"]["items"] if item["id"] == content_id)
+        assert listed["payload"]["workflow_status"] == "WAITING_FOR_HUMAN_REVIEW"
+        assert hidden.status_code == 404
+
+        unrelated = await client.post(
+            "/api/v1/contents",
+            headers=_auth(token),
+            json={
+                "workspace_id": workspace_id,
+                "type": "IMAGE",
+                "payload": {"workflow_status": "custom"},
+            },
+        )
+        unrelated_detail = await client.get(
+            f"/api/v1/contents/{unrelated.json()['data']['id']}", headers=_auth(token)
+        )
+        assert unrelated_detail.json()["data"]["payload"]["workflow_status"] == "custom"
 
 
 @pytest.mark.anyio
@@ -413,6 +925,10 @@ async def test_independent_image_job_runs_artist_and_returns_reviewed_image(
     class FakeArtist:
         def execute(self, context: object) -> AgentExecutionResult:
             assert context.inputs["visual_direction"] == "Minimal studio composition"
+            assert context.inputs["brand_context"]["visual_settings"] == {
+                "typography": "bold sans serif"
+            }
+            assert context.inputs["brand_context"]["colors"] == [{"name": "Plum", "hex": "#770044"}]
             return AgentExecutionResult(
                 output=ArtistOutput(visual_prompt="Artist composed visual prompt"),
                 prompt="Artist specialist prompt",
@@ -429,6 +945,8 @@ async def test_independent_image_job_runs_artist_and_returns_reviewed_image(
     class FakeReviewer:
         def review(self, request: object) -> ImageReviewResult:
             assert request.prompt == "Artist composed visual prompt"
+            assert request.brand_context["visual_settings"] == {"typography": "bold sans serif"}
+            assert request.brand_context["colors"] == [{"name": "Plum", "hex": "#770044"}]
             return ImageReviewResult(
                 decision="APPROVED",
                 score=0.94,
@@ -458,6 +976,26 @@ async def test_independent_image_job_runs_artist_and_returns_reviewed_image(
             json={"workspace_id": workspace_id, "name": "Image Brand"},
         )
         brand_id = _assert_envelope(brand_response, success=True)["data"]["id"]
+        settings_response = await client.put(
+            f"/api/v1/brands/{brand_id}/settings",
+            headers=_auth(token),
+            json={
+                "workspace_id": workspace_id,
+                "visual_settings": {"typography": "bold sans serif"},
+            },
+        )
+        assert settings_response.status_code == 200, settings_response.text
+        color_response = await client.post(
+            "/api/v1/brand-colors",
+            headers=_auth(token),
+            json={
+                "workspace_id": workspace_id,
+                "brand_id": brand_id,
+                "color_name": "Plum",
+                "hex_code": "#770044",
+            },
+        )
+        assert color_response.status_code == 201, color_response.text
         accepted = await client.post(
             "/api/v1/generation-jobs",
             headers={**_auth(token), "Idempotency-Key": "independent-image-1"},

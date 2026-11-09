@@ -9,7 +9,7 @@ from creator.prompts.agent_designs import (
     AGENT_DESIGN_VERSION,
     AGENT_DESIGNS,
 )
-from creator.prompts.agents import AGENT_PROMPT_VERSION, build_agent_prompt
+from creator.prompts.agents import AGENT_PROMPT_VERSION, build_agent_prompt, build_reviewer_prompt
 from creator.prompts.specialist_specs import SPECIALIST_SPEC_VERSION, SPECIALIST_SPECS
 from creator.services.agents.contracts import AGENT_CONTRACTS, contract_for_role
 from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorCode
@@ -134,6 +134,98 @@ def test_v3_rejects_design_version_mismatch(monkeypatch: pytest.MonkeyPatch) -> 
 
     with pytest.raises(ValueError):
         build_agent_prompt("BUSINESS", {"input": "example"})
+
+
+def test_independent_artist_v4_adds_art_direction_without_changing_v3() -> None:
+    inputs = {"visual_direction": "Photograph a cup of coffee", "briefing": "Use exact copy"}
+    previous = build_agent_prompt("ARTIST", inputs, version="3.0")
+    current = build_agent_prompt("ARTIST", inputs, version="4.0")
+
+    assert current.template_id == "agent.artist.v4"
+    assert "purposeful typography" in current.text
+    assert "Preserve exact supplied wording" in current.text
+    assert "Never invent a logo" in current.text
+    assert "purposeful typography" not in previous.text
+    with pytest.raises(ValueError):
+        build_agent_prompt("WRITER", inputs, version="4.0")
+
+
+def test_independent_artist_v5_asks_for_explicit_cta_design() -> None:
+    inputs = {"visual_direction": "Photograph a cup of coffee"}
+    previous = build_agent_prompt("ARTIST", inputs, version="4.0")
+    current = build_agent_prompt("ARTIST", inputs, version="5.0")
+
+    assert current.template_id == "agent.artist.v5"
+    assert "rather than incidental body text" in current.text
+    assert "rather than incidental body text" not in previous.text
+
+
+def test_artist_v6_and_reviewer_v4_check_specific_visual_constraints() -> None:
+    inputs = {"visual_direction": "Photograph a cup of coffee"}
+    previous = build_agent_prompt("ARTIST", inputs, version="5.0")
+    current = build_agent_prompt("ARTIST", inputs, version="6.0")
+    review = build_reviewer_prompt({"briefing": "A campaign", "image_prompt": "No buttons"})
+
+    assert current.template_id == "agent.artist.v6"
+    assert "rounded rectangles, translucent panels, pills" in current.text
+    assert "rounded rectangles, translucent panels, pills" not in previous.text
+    assert review.template_id == "agent.reviewer.v5"
+    assert "return REFINE" in review.text
+    assert "requirements absent from the brief" in review.text
+
+
+def test_reviewer_v5_distinguishes_textual_description_from_visual_verification() -> None:
+    inputs = {"briefing": "Preserve the official logo", "image_prompt": "Use the Brand"}
+    previous = build_agent_prompt("REVIEWER", inputs, version="4.0")
+    current = build_reviewer_prompt(inputs)
+
+    assert current.version == "5.0"
+    assert "cannot prove exact fidelity" in current.text
+    assert "Do not claim that such fidelity was visually verified" in current.text
+    assert "do not reject solely because no reference was supplied" in current.text
+    assert "cannot prove exact fidelity" not in previous.text
+
+
+def test_independent_artist_v7_guides_photography_without_imposing_it() -> None:
+    inputs = {"visual_direction": "An illustrated campaign"}
+    previous = build_agent_prompt("ARTIST", inputs, version="6.0")
+    current = build_agent_prompt("ARTIST", inputs, version="7.0")
+
+    assert current.template_id == "agent.artist.v7"
+    assert "When the requested style is photographic" in current.text
+    assert "contact shadows, perspective" in current.text
+    assert "honor the brief and any requested non-photographic treatment" in current.text
+    assert "contact shadows, perspective" not in previous.text
+    with pytest.raises(ValueError):
+        build_agent_prompt("REVIEWER", inputs, version="7.0")
+
+
+@pytest.mark.parametrize(
+    ("version", "expected_hash"),
+    [
+        ("6.0", "6fa3a034980961103e5dac540c9d893c01ef394def5db51ff0795c633feaa3ec"),
+        ("7.0", "443b137938a4ef3b8207fe5e92b2784f25126f7ca0ffb12fe49bbf086a3b587e"),
+    ],
+)
+def test_versioned_artist_prompts_remain_reproducible(version: str, expected_hash: str) -> None:
+    rendered = build_agent_prompt(
+        "ARTIST", {"visual_direction": "An illustrated campaign"}, version=version
+    )
+    assert hashlib.sha256(rendered.text.encode()).hexdigest() == expected_hash
+
+
+@pytest.mark.parametrize(
+    ("version", "expected_hash"),
+    [
+        ("4.0", "aa784ebc56dd0ecfd021490badd79bc1735a1b3407a459d2828b44d1d9d38519"),
+        ("5.0", "92193db0b99ead2f7289556b9162bc0b29fed15b5d0453f8e32ce2e8dde5124f"),
+    ],
+)
+def test_versioned_reviewer_prompts_remain_reproducible(version: str, expected_hash: str) -> None:
+    rendered = build_agent_prompt(
+        "REVIEWER", {"briefing": "A campaign", "image_prompt": "No buttons"}, version=version
+    )
+    assert hashlib.sha256(rendered.text.encode()).hexdigest() == expected_hash
 
 
 def test_v3_rejects_specialist_spec_version_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:

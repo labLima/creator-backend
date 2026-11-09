@@ -37,7 +37,7 @@ class StructuredAgentRunner:
             context.role.value,
             {
                 **dict(context.inputs),
-                "output_instructions": json_output_instructions(output_model.__name__),
+                "output_instructions": json_output_instructions(output_model),
             },
             template_id=context.prompt_template_id,
             version=context.prompt_template_version,
@@ -62,11 +62,11 @@ class StructuredAgentRunner:
 
         try:
             payload = json.loads(_strip_json_fence(raw))
-        except (TypeError, json.JSONDecodeError) as error:
+        except (TypeError, json.JSONDecodeError):
             raise AgentKickoffError(
                 AgentKickoffErrorCode.OUTPUT_MALFORMED,
                 "The agent provider returned malformed JSON",
-            ) from error
+            ) from None
         if not isinstance(payload, dict):
             raise AgentKickoffError(
                 AgentKickoffErrorCode.OUTPUT_MALFORMED,
@@ -74,11 +74,11 @@ class StructuredAgentRunner:
             )
         try:
             output = output_model.model_validate(payload)
-        except ValidationError as error:
+        except ValidationError:
             raise AgentKickoffError(
                 AgentKickoffErrorCode.OUTPUT_SCHEMA_INVALID,
                 "The agent provider returned output outside the contract",
-            ) from error
+            ) from None
 
         output_payload = output.model_dump(mode="json")
         return AgentExecutionResult(

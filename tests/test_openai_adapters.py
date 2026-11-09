@@ -376,6 +376,16 @@ def test_text_generation_returns_stripped_output_text() -> None:
     assert provider.generate_text("Write a launch post", temperature=0.2) == "Launch copy"
     assert client.responses.calls[0]["model"] == "gpt-5.5"
     assert client.responses.calls[0]["input"] == "Write a launch post"
+    assert "temperature" not in client.responses.calls[0]
+
+
+def test_text_generation_preserves_temperature_for_supported_models() -> None:
+    client = FakeOpenAIClient(responses=[SimpleNamespace(output_text="Launch copy")])
+    settings = llm_settings().model_copy(update={"openai_text_model": "gpt-4.1"})
+    provider = OpenAILLMProvider(settings, client=client)
+
+    provider.generate_text("Write a launch post", temperature=0.2)
+
     assert client.responses.calls[0]["temperature"] == 0.2
 
 
@@ -472,6 +482,10 @@ def test_reviewer_parses_valid_json_decision_and_feedback(fenced: bool) -> None:
     assert result.provider == "openai"
     assert result.model == "gpt-5.5"
     assert client.responses.calls[0]["model"] == "gpt-5.5"
+    assert "temperature" not in client.responses.calls[0]
+    inputs = client.responses.calls[0]["input"][0]["content"]
+    assert len([part for part in inputs if part["type"] == "input_image"]) == 1
+    assert "cannot prove exact fidelity" in inputs[0]["text"]
 
 
 @pytest.mark.parametrize(

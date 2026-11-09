@@ -10,7 +10,12 @@ from creator.application.errors import require_workspace_write
 from creator.config import Settings
 from creator.content.ports import ContentRecord, ContentTextVersionRecord
 from creator.core.pagination import Page, PageRequest
-from creator.domain.exceptions import ConflictError, EntityNotFoundError
+from creator.domain.exceptions import (
+    ConflictError,
+    EntityNotFoundError,
+    InvalidStateTransitionError,
+)
+from creator.domain.generation import GenerationJobStatus
 from creator.generation.ports import (
     GeneratedImageRecord,
     GenerationJobRecord,
@@ -27,6 +32,7 @@ from creator.prompts import (
 )
 from creator.prompts.agents import build_agent_prompt
 from creator.services.ai.image_provider import normalize_image_model
+from creator.services.storage.provider import StorageObjectNotFoundError, StorageProvider
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -168,6 +174,77 @@ class GenerationApplication:
             else []
         )
         return job, status, versions
+
+    def decide_independent_scene(
+        self,
+        *,
+        user: UserRecord,
+        job_id: UUID,
+        approve: bool,
+        queue: GenerationQueue,
+        request_id: UUID,
+        storage: StorageProvider,
+    ) -> GenerationJobRecord:
+        jobs = self._unit_of_work.generation.image_jobs
+        details = self.get_independent_generation_job(user_id=user.id, job_id=job_id)
+        status = details[1] if details is not None else None
+        if status is None or status.job.artifact_type != "IMAGE":
+            raise EntityNotFoundError("Generation Job not found")
+        if status.job.status != GenerationJobStatus.PROCESSING:
+            raise InvalidStateTransitionError("Generation Job is not awaiting scene review")
+        require_workspace_write(
+            self._unit_of_work, user_id=user.id, workspace_id=status.job.workspace_id
+        )
+        scene_review = status.parameters.get("scene_review")
+        if not isinstance(scene_review, dict) or scene_review.get("status") not in {
+            "PENDING",
+            "APPROVED",
+        }:
+            raise InvalidStateTransitionError("Scene is not awaiting review")
+        if not approve and scene_review.get("status") == "APPROVED":
+            raise InvalidStateTransitionError("Approved scene cannot be rejected")
+        updated = (
+            jobs.decide_scene_review(job_id, approve=approve)
+            if scene_review.get("status") == "PENDING"
+            else status.job
+        )
+        should_enqueue = approve and scene_review.get("status") == "PENDING"
+        self._unit_of_work.commit()
+        if not approve:
+            self._cleanup_rejected_scene(
+                job_id=job_id,
+                storage_path=scene_review.get("storage_path"),
+                storage=storage,
+            )
+        if should_enqueue:
+            try:
+                queue.enqueue_image_generation(job_id=job_id, request_id=request_id)
+            except Exception as error:
+                jobs.reset_scene_review_approval(job_id)
+                self._unit_of_work.commit()
+                raise QueueEnqueueError("Generation Job could not be queued") from error
+        return updated
+
+    def _cleanup_rejected_scene(
+        self, *, job_id: UUID, storage_path: object, storage: StorageProvider
+    ) -> None:
+        if not isinstance(storage_path, str) or not storage_path.startswith("scene-reviews/"):
+            return
+        try:
+            try:
+                storage.stat(storage_path)
+            except StorageObjectNotFoundError:
+                pass
+            else:
+                storage.delete(storage_path)
+            self._unit_of_work.generation.image_jobs.complete_scene_review_cleanup(job_id)
+            self._unit_of_work.commit()
+        except Exception:
+            # Keep cleanup_status=PENDING so the worker's cleanup loop can retry.
+            logger.exception(
+                "rejected_scene_cleanup_failed",
+                extra={"generation_job_id": str(job_id)},
+            )
 
 
 class IdempotencyConflictError(ConflictError):

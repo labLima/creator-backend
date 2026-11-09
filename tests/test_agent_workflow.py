@@ -19,6 +19,7 @@ from creator.domain.agent_workflow import (
     can_transition_agent_workflow_step,
 )
 from creator.domain.auth import Principal, WorkspaceRole
+from creator.domain.exceptions import EntityNotFoundError
 from creator.domain.pipeline_events import PipelineEvent, PipelineEventType
 from creator.services.agents.contracts import (
     AgentExecutionContext,
@@ -80,8 +81,32 @@ class FakeBrand:
     id = BRAND_ID
 
 
+def test_business_stage_can_retry_while_running_without_reclaiming_advanced_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run = replace(_run(AgentWorkflowStatus.RUNNING), current_step="BUSINESS")
+    user = object()
+
+    class FakeClaimUow:
+        def __enter__(self):
+            self.agent_workflow = SimpleNamespace(
+                workflows=SimpleNamespace(get_internal=lambda run_id: run)
+            )
+            self.user = SimpleNamespace(users=SimpleNamespace(get_by_id=lambda user_id: user))
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+    monkeypatch.setattr(workflow_worker, "SqlAlchemyUnitOfWork", FakeClaimUow)
+    assert workflow_worker._claim_run(run.id, stage="BUSINESS") == (run, user)
+    run = replace(run, current_step="PLANNER")
+    assert workflow_worker._claim_run(run.id, stage="BUSINESS") == (None, None)
+
+
 class FakeContents:
     def add(self, **kwargs: object) -> ContentRecord:
+        self.added_payload = kwargs.get("payload", {})
         now = datetime.now(UTC)
         return ContentRecord(
             id=UUID("21000000-0000-0000-0000-000000000001"),
@@ -126,7 +151,11 @@ class FakeWorkflowRepository:
         return self.run
 
     def create_run(self, **kwargs: object) -> AgentWorkflowRunRecord:
-        self.run = _run(AgentWorkflowStatus.PENDING)
+        self.run = replace(
+            _run(AgentWorkflowStatus.PENDING),
+            input=kwargs.get("input", {}),
+            request_fingerprint=str(kwargs.get("request_fingerprint", "fingerprint")),
+        )
         return self.run
 
     def get_for_user(self, **kwargs: object) -> AgentWorkflowRunRecord | None:
@@ -183,6 +212,35 @@ def test_agent_workflow_transitions_are_explicit() -> None:
     )
 
 
+def test_approving_pending_scene_resumes_artist_without_regeneration() -> None:
+    scene_id = "52000000-0000-0000-0000-000000000099"
+    run = replace(
+        _run(),
+        current_step="SCENE_REVIEW",
+        input={
+            "pending_scenes": {"1": scene_id},
+            "scene_review_reason": "COMPOSITION_TEXT_CHECK_INCONCLUSIVE",
+        },
+        final_image_ids=[],
+    )
+    uow = FakeUow(run)
+    result = decide_image_workflow(
+        unit_of_work=uow,
+        queue=FakeQueue(),
+        run_id=run.id,
+        user=SimpleNamespace(id=USER_ID),
+        request_id=uuid4(),
+        decision=WorkflowDecision.APPROVE,
+        feedback=None,
+    )
+    assert result is run
+    assert uow.agent_workflows.transitions[-1][1] == AgentWorkflowStatus.REFINING
+    assert uow.agent_workflows.updated_input is not None
+    assert uow.agent_workflows.updated_input["approved_scenes"] == {"1": scene_id}
+    assert "pending_scenes" not in uow.agent_workflows.updated_input
+    assert uow.outbox.events[-1].event_type == PipelineEventType.WRITER_COMPLETED
+
+
 def test_agent_workflow_step_transitions_are_explicit() -> None:
     assert can_transition_agent_workflow_step(
         AgentWorkflowStepStatus.RUNNING, AgentWorkflowStepStatus.COMPLETED
@@ -221,6 +279,144 @@ def test_start_image_workflow_derives_workspace_and_is_idempotent() -> None:
     assert queue.calls == []
     assert uow.outbox.events[0].event_type == PipelineEventType.WORKFLOW_STARTED
     assert uow.commits == 1
+
+
+def test_planning_workflow_snapshots_context_and_source_references() -> None:
+    planning_id = uuid4()
+    structure_id = uuid4()
+    campaign_id = uuid4()
+    persona_id = uuid4()
+    now = datetime.now(UTC)
+    planning = SimpleNamespace(
+        id=planning_id,
+        brand_id=BRAND_ID,
+        campaign_id=campaign_id,
+        persona_id=persona_id,
+        info="Seasonal launch",
+        start_period=now,
+        end_period=now,
+    )
+    structure = SimpleNamespace(
+        id=structure_id,
+        planning_id=planning_id,
+        workspace_id=WORKSPACE_ID,
+        title="Hero post",
+        objective="Awareness",
+        big_idea="A brighter morning",
+        main_message="Fresh start",
+        headline="Good morning",
+        image_cta="Discover",
+        art_guiding="Warm sunrise",
+        format="STATIC",
+        ratio="1:1",
+        resolution="1080x1080",
+    )
+    campaign = SimpleNamespace(
+        workspace_id=WORKSPACE_ID,
+        name="Spring",
+        objectives="Reach",
+        target_audience="Commuters",
+        voice="Optimistic",
+    )
+    persona = SimpleNamespace(
+        brand_id=BRAND_ID,
+        name="Morning commuter",
+        age=30,
+        gender="any",
+        main_goal="Save time",
+        challenge="Busy mornings",
+        interest="Coffee",
+        routine="Commute",
+        journey="Awareness",
+        trigger="Convenience",
+    )
+    uow = FakeUow()
+    uow.planning = SimpleNamespace(get_for_user=lambda **kwargs: planning)
+    uow.post_structures = SimpleNamespace(get_for_user=lambda **kwargs: structure)
+    uow.campaigns = SimpleNamespace(get_for_user=lambda **kwargs: campaign)
+    uow.personas = SimpleNamespace(get_for_user=lambda **kwargs: persona)
+    command = StartImageWorkflowCommand(
+        brand_id=None,
+        planning_id=planning_id,
+        post_structure_id=structure_id,
+        campaign=None,
+        persona=None,
+        quantity=1,
+        extra_instructions=None,
+        human_review="AUTO",
+        max_refinements=None,
+        extensions={},
+        idempotency_key="planned",
+        request_id=uuid4(),
+    )
+
+    run = start_image_workflow(
+        unit_of_work=uow,
+        queue=FakeQueue(),
+        settings=Settings(agent_workflow_max_refinements=3),
+        user=SimpleNamespace(id=USER_ID),
+        command=command,
+    )
+
+    context = run.input["editorial_context"]
+    assert context["campaign"]["objectives"] == "Reach"
+    assert context["campaign"]["audience"] == "Commuters"
+    assert context["persona"]["main_goal"] == "Save time"
+    assert context["planning"]["info"] == "Seasonal launch"
+    assert context["post_structure"]["big_idea"] == "A brighter morning"
+    assert context["post_structure"]["resolution"] == "1080x1080"
+    assert run.input["quantity"] == 1
+    assert run.input["planning_id"] == str(planning_id)
+    assert run.input["post_structure_id"] == str(structure_id)
+    assert uow.contents.added_payload["planning_id"] == str(planning_id)
+
+    campaign.objectives = "Updated after start"
+    retry = start_image_workflow(
+        unit_of_work=uow,
+        queue=FakeQueue(),
+        settings=Settings(agent_workflow_max_refinements=3),
+        user=SimpleNamespace(id=USER_ID),
+        command=command,
+    )
+    assert retry is run
+
+    campaign.workspace_id = uuid4()
+    with pytest.raises(EntityNotFoundError):
+        start_image_workflow(
+            unit_of_work=uow,
+            queue=FakeQueue(),
+            settings=Settings(agent_workflow_max_refinements=3),
+            user=SimpleNamespace(id=USER_ID),
+            command=replace(command, idempotency_key="cross-workspace"),
+        )
+
+    campaign.workspace_id = WORKSPACE_ID
+    structure.planning_id = uuid4()
+    with pytest.raises(EntityNotFoundError):
+        start_image_workflow(
+            unit_of_work=uow,
+            queue=FakeQueue(),
+            settings=Settings(agent_workflow_max_refinements=3),
+            user=SimpleNamespace(id=USER_ID),
+            command=replace(command, idempotency_key="wrong-planning"),
+        )
+
+
+def test_planning_workflow_request_pair_validation() -> None:
+    from pydantic import ValidationError
+
+    from creator.workflow.schemas import ImageWorkflowRequest
+
+    with pytest.raises(ValidationError):
+        ImageWorkflowRequest.model_validate(
+            {"planning_id": str(uuid4()), "brand_id": str(BRAND_ID)}
+        )
+    planned = ImageWorkflowRequest.model_validate(
+        {"planning_id": str(uuid4()), "post_structure_id": str(uuid4())}
+    )
+    assert planned.quantity == 1
+    with pytest.raises(ValidationError):
+        ImageWorkflowRequest.model_validate({"campaign": "Launch", "persona": "Creators"})
 
 
 def test_start_image_workflow_rejects_conflicts_and_limits_but_not_queue_failures() -> None:

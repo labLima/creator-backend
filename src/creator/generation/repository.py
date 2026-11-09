@@ -640,6 +640,9 @@ class SqlAlchemyImageGenerationRepository:
         if row is None:
             return None
         job, generation, user = row
+        scene_review = _json(generation.parameters).get("scene_review")
+        if isinstance(scene_review, dict) and scene_review.get("status") == "PENDING":
+            return None
         if job.status == GenerationJobStatus.PENDING:
             self._transition_job(job, GenerationJobStatus.PROCESSING)
         timestamp = _now()
@@ -783,6 +786,123 @@ class SqlAlchemyImageGenerationRepository:
         flush_or_raise(self._session)
         content_id = self._content_id_for_generation(job.generation_id)
         return _job_record(job, content_id)
+
+    def mark_scene_review_pending(
+        self, job_id: UUID, *, storage_path: str, mime_type: str, width: int, height: int
+    ) -> None:
+        job = self._locked_job(job_id)
+        if job.status != GenerationJobStatus.PROCESSING:
+            raise InvalidStateTransitionError("Scene review requires a processing IMAGE job")
+        generation = self._generation_for_job(job)
+        parameters = _json(generation.parameters)
+        parameters["scene_review"] = {
+            "status": "PENDING",
+            "storage_path": storage_path,
+            "mime_type": mime_type,
+            "width": width,
+            "height": height,
+        }
+        generation.parameters = parameters
+        job.started_at = None
+        job.updated_at = _now()
+        flush_or_raise(self._session)
+
+    def decide_scene_review(self, job_id: UUID, *, approve: bool) -> GenerationJobRecord:
+        job = self._locked_job(job_id)
+        generation = self._generation_for_job(job)
+        parameters = _json(generation.parameters)
+        review = parameters.get("scene_review")
+        if (
+            job.status != GenerationJobStatus.PROCESSING
+            or not isinstance(review, dict)
+            or review.get("status") != "PENDING"
+        ):
+            raise InvalidStateTransitionError("Generation Job is not awaiting scene review")
+        if approve:
+            parameters["scene_review"] = {**review, "status": "APPROVED"}
+            generation.parameters = parameters
+            job.updated_at = _now()
+        else:
+            self._transition_job(job, GenerationJobStatus.FAILED)
+            job.failure_code = "COMPOSITION_SCENE_REJECTED"
+            job.failure_message = "Scene was rejected by human review"
+            job.failed_at = _now()
+            job.updated_at = _now()
+            parameters["scene_review"] = {
+                **review,
+                "status": "REJECTED",
+                "cleanup_status": "PENDING",
+            }
+            generation.parameters = parameters
+        flush_or_raise(self._session)
+        return _job_record(job, generation.content_id)
+
+    def reset_scene_review_approval(self, job_id: UUID) -> None:
+        job = self._locked_job(job_id)
+        generation = self._generation_for_job(job)
+        parameters = _json(generation.parameters)
+        review = parameters.get("scene_review")
+        if (
+            job.status == GenerationJobStatus.PROCESSING
+            and isinstance(review, dict)
+            and review.get("status") == "APPROVED"
+        ):
+            parameters["scene_review"] = {**review, "status": "PENDING"}
+            generation.parameters = parameters
+            job.updated_at = _now()
+            flush_or_raise(self._session)
+
+    def list_pending_scene_review_cleanup(self, *, limit: int = 100) -> list[tuple[UUID, str]]:
+        statement = (
+            select(
+                generation_tables.GenerationJob.id,
+                generation_tables.Generation.parameters["scene_review"]["storage_path"].as_string(),
+            )
+            .join(
+                generation_tables.Generation,
+                and_(
+                    generation_tables.Generation.id
+                    == generation_tables.GenerationJob.generation_id,
+                    generation_tables.Generation.workspace_id
+                    == generation_tables.GenerationJob.workspace_id,
+                ),
+            )
+            .where(
+                generation_tables.GenerationJob.status == GenerationJobStatus.FAILED,
+                generation_tables.GenerationJob.artifact_type == "IMAGE",
+                generation_tables.GenerationJob.deleted_at.is_(None),
+                generation_tables.Generation.parameters["scene_review"][
+                    "cleanup_status"
+                ].as_string()
+                == "PENDING",
+            )
+            .order_by(asc(generation_tables.GenerationJob.updated_at))
+            .limit(max(1, min(limit, 500)))
+        )
+        pending: list[tuple[UUID, str]] = []
+        for job_id, path in self._session.execute(statement).all():
+            if isinstance(path, str) and path.startswith("scene-reviews/"):
+                pending.append((cast(UUID, job_id), path))
+        return pending
+
+    def complete_scene_review_cleanup(self, job_id: UUID) -> None:
+        job = self._locked_job(job_id)
+        generation = self._generation_for_job(job)
+        parameters = _json(generation.parameters)
+        review = parameters.get("scene_review")
+        if (
+            job.status == GenerationJobStatus.FAILED
+            and isinstance(review, dict)
+            and review.get("cleanup_status") == "PENDING"
+        ):
+            parameters["scene_review"] = {
+                **review,
+                "cleanup_status": "COMPLETE",
+                "cleanup_completed_at": _now().isoformat(),
+            }
+            generation.parameters = parameters
+            generation.updated_at = _now()
+            flush_or_raise(self._session)
 
     def _scoped_job_select(self, user_id: UUID) -> Select[Any]:
         return cast(

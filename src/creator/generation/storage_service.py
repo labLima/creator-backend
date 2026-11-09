@@ -145,5 +145,5 @@ def _recover_existing_upload(
         mime_type=request.mime_type,
         size_bytes=metadata.size_bytes or len(request.content),
         checksum_sha256=metadata.checksum_sha256 or checksum_sha256,
-        metadata={**metadata.metadata, **request.metadata},
+        metadata={**request.metadata, **metadata.metadata},
     )

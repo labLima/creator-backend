@@ -34,7 +34,7 @@ from creator.api.serializers import (
 )
 from creator.config import Settings, get_settings
 from creator.core.pagination import page_request
-from creator.domain.exceptions import EntityNotFoundError
+from creator.domain.exceptions import EntityNotFoundError, InvalidStateTransitionError
 from creator.domain.generation import GenerationJobStatus
 from creator.generation.ports import GenerationJobRecord, GenerationQueue
 from creator.generation.schemas import (
@@ -43,6 +43,7 @@ from creator.generation.schemas import (
     GenerationUpdateRequest,
     IndependentGenerationRequest,
     RegenerateImageRequest,
+    SceneReviewDecisionRequest,
 )
 from creator.generation.service import (
     GenerationApplication,
@@ -120,6 +121,7 @@ def get_independent_generation_job(
     request: Request,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     application: Annotated[GenerationApplication, Depends(get_generation_application)],
+    storage: Annotated[StorageProvider, Depends(get_storage_provider)],
 ) -> JSONResponse:
     details = application.get_independent_generation_job(user_id=current_user.id, job_id=job_id)
     if details is None:
@@ -135,6 +137,22 @@ def get_independent_generation_job(
                     result[field] = value
     if status is not None and status.image is not None:
         result["image"] = _image_data(status.image)
+    if status is not None:
+        review = status.parameters.get("scene_review")
+        if (
+            job.status == GenerationJobStatus.PROCESSING
+            and isinstance(review, dict)
+            and review.get("status") in {"PENDING", "APPROVED"}
+        ):
+            path = review.get("storage_path")
+            if isinstance(path, str):
+                try:
+                    result["scene_review"] = {
+                        "status": review["status"],
+                        "image_url": storage.get_url(path),
+                    }
+                except StorageUrlError:
+                    pass
     if job.artifact_type in {"COPY", "CAPTION"}:
         result["text_versions"] = [
             {
@@ -147,6 +165,54 @@ def get_independent_generation_job(
             for version in versions
         ]
     return success_response(result, request)
+
+
+@router.post(
+    "/api/v1/generation-jobs/{id}/scene-decision",
+    tags=["Generations"],
+    operation_id="decideIndependentGenerationScene",
+    responses={
+        "404": {"$ref": "#/components/responses/NotFound"},
+        "409": {"$ref": "#/components/responses/Conflict"},
+    },
+)
+def decide_independent_generation_scene(
+    job_id: Annotated[UUID, Path(alias="id")],
+    payload: SceneReviewDecisionRequest,
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    application: Annotated[GenerationApplication, Depends(get_generation_application)],
+    queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
+    storage: Annotated[StorageProvider, Depends(get_storage_provider)],
+) -> JSONResponse:
+    try:
+        job = application.decide_independent_scene(
+            user=current_user,
+            job_id=job_id,
+            approve=payload.decision == "APPROVE",
+            queue=queue,
+            request_id=request_id_for(request),
+            storage=storage,
+        )
+    except EntityNotFoundError as error:
+        raise not_found("Generation Job") from error
+    except InvalidStateTransitionError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "SCENE_REVIEW_INVALID_STATE",
+                "message": str(error),
+            },
+        ) from error
+    except QueueEnqueueError as error:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "QUEUE_ENQUEUE_FAILED",
+                "message": str(error),
+            },
+        ) from error
+    return success_response(_generation_job_data(job), request)
 
 
 def _generation_job_data(

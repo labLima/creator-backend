@@ -2055,6 +2055,38 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/v1/generation-jobs/{id}/scene-decision:
+    post:
+      operationId: decideIndependentGenerationScene
+      tags:
+      - Generations
+      security:
+      - CreatorSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SceneReviewDecisionRequest'
+      responses:
+        '200':
+          description: Scene approved for composition or rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationJobResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '503':
+          description: Generation queue is unavailable.
   /api/v1/images/generate:
     post:
       operationId: generateImage
@@ -6410,6 +6442,9 @@ components:
         payload:
           type: object
           additionalProperties: true
+          description: >-
+            Content-specific data. When present on Content created by an Agent Workflow,
+            workflow_status reflects the current authorized Agent Workflow status.
         created_at:
           type: string
           format: date-time
@@ -6799,13 +6834,22 @@ components:
       - FAILED
     ImageWorkflowRequest:
       type: object
-      required:
-      - brand_id
-      - campaign
-      - persona
       additionalProperties: false
+      allOf:
+      - if: {required: [planning_id]}
+        then: {required: [post_structure_id]}
+      - if: {required: [post_structure_id]}
+        then: {required: [planning_id]}
+      - if: {not: {required: [planning_id]}}
+        then: {required: [brand_id, campaign, persona]}
       properties:
         brand_id:
+          type: string
+          format: uuid
+        planning_id:
+          type: string
+          format: uuid
+        post_structure_id:
           type: string
           format: uuid
         campaign:
@@ -6841,6 +6885,18 @@ components:
         extensions:
           type: object
           additionalProperties: true
+        compose_text:
+          type: boolean
+          default: false
+        headline:
+          type: string
+          maxLength: 500
+        supporting_text:
+          type: string
+          maxLength: 2000
+        call_to_action:
+          type: string
+          maxLength: 300
     ImageWorkflowDecisionRequest:
       type: object
       required:
@@ -7115,6 +7171,18 @@ components:
         review_image:
           type: boolean
           default: false
+        compose_text:
+          type: boolean
+          default: false
+        headline:
+          type: string
+          maxLength: 500
+        supporting_text:
+          type: string
+          maxLength: 2000
+        call_to_action:
+          type: string
+          maxLength: 300
         restrictions:
           type: array
           maxItems: 30
@@ -7173,6 +7241,14 @@ components:
               enum: [REGENERATE, TRANSFORM]
         then:
           required: [source_content_id]
+    SceneReviewDecisionRequest:
+      type: object
+      required: [decision]
+      additionalProperties: false
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, REJECT]
     GenerationJobResponse:
       type: object
       required: [success, data, meta]
@@ -7292,6 +7368,16 @@ components:
           format: date-time
         image:
           $ref: '#/components/schemas/Image'
+        scene_review:
+          type: object
+          required: [status, image_url]
+          properties:
+            status:
+              type: string
+              enum: [PENDING, APPROVED]
+            image_url:
+              type: string
+              format: uri
         text_versions:
           type: array
           items:

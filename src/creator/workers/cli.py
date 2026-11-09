@@ -12,7 +12,10 @@ from rq import Queue, Worker
 from creator.config import get_settings
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from creator.infrastructure.runtime.observability import configure_logging
-from creator.workers.image_generation import recover_stale_processing_jobs
+from creator.workers.image_generation import (
+    cleanup_rejected_scene_objects,
+    recover_stale_processing_jobs,
+)
 
 
 def main() -> None:
@@ -46,11 +49,13 @@ def _queue_and_connection() -> tuple[Queue, Redis]:
 
 def run_image_generation_worker() -> None:
     recover_stale_processing_jobs()
+    _start_scene_review_cleanup_worker()
     queue, connection = _queue_and_connection()
     Worker([queue], connection=connection).work(with_scheduler=True)
 
 
 def run_agent_workflow_worker() -> None:
+    _start_scene_review_cleanup_worker()
     queue, connection = _queue_and_connection()
     Worker([queue], connection=connection).work(with_scheduler=True)
 
@@ -68,12 +73,25 @@ def run_pipeline_outbox_worker() -> None:
 
 def run_all_workers() -> None:
     recover_stale_processing_jobs()
+    _start_scene_review_cleanup_worker()
     outbox_thread = threading.Thread(target=run_pipeline_outbox_worker, daemon=True)
     outbox_thread.start()
     auth_cleanup_thread = threading.Thread(target=run_auth_cleanup_worker, daemon=True)
     auth_cleanup_thread.start()
     queue, connection = _queue_and_connection()
     Worker([queue], connection=connection).work(with_scheduler=True)
+
+
+def _start_scene_review_cleanup_worker() -> None:
+    def cleanup_loop() -> None:
+        while True:
+            try:
+                cleanup_rejected_scene_objects()
+            except Exception:
+                logging.getLogger(__name__).exception("rejected_scene_cleanup_failed")
+            time.sleep(300)
+
+    threading.Thread(target=cleanup_loop, daemon=True).start()
 
 
 def purge_expired_auth_sessions() -> int:

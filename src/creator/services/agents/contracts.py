@@ -56,7 +56,9 @@ class PlannerOutput(BaseModel):
 
 
 class DesignDirection(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # Stored workflow steps use field names, while the specialist JSON contract
+    # uses the public alias. Accept both when resuming persisted steps.
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     briefing: str = Field(min_length=1, max_length=5_000)
     keywords: list[str] = Field(default_factory=list, max_length=30)
@@ -142,8 +144,8 @@ INDEPENDENT_AGENT_CONTRACTS: dict[str, AgentContract] = {
     ),
     "IMAGE": AgentContract(
         role=AgentWorkflowStepRole.ARTIST,
-        prompt_template_id="agent.artist.v3",
-        prompt_template_version="3.0",
+        prompt_template_id="agent.artist.v7",
+        prompt_template_version="7.0",
         schema_version="1.0",
         output_model=ArtistOutput,
     ),

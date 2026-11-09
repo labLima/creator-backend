@@ -108,7 +108,7 @@ class SupabaseStorageProvider:
             mime_type=request.mime_type,
             size_bytes=len(request.content),
             checksum_sha256=checksum_sha256,
-            metadata={"provider": "supabase", **request.metadata},
+            metadata={**request.metadata, "provider": "supabase"},
         )
 
     def delete(self, path: str) -> None:
@@ -330,7 +330,7 @@ class LocalStorageProvider:
             mime_type=request.mime_type,
             size_bytes=len(request.content),
             checksum_sha256=checksum_sha256,
-            metadata={"provider": "local", **request.metadata},
+            metadata={**request.metadata, "provider": "local"},
         )
 
     def delete(self, path: str) -> None:

@@ -12,7 +12,7 @@ O fluxo direto de imagem gera um prompt e chama um Provider, mas não separa an�
 
 Adicionar um workflow próprio e assíncrono para imagem com os papéis `Business`, `Planner`, `Writer`, `Artist` e `Reviewer`. A máquina de estados pertence ao Creator e persiste cada etapa, prompt, output estruturado, decisão e erro sanitizado. CrewAI permanece atrás de `MultiAgentOrchestrator` como adapter substituível; não controla transições de negócio nem acesso a Workspace.
 
-O workflow recebe `brand_id`, campanha, persona, quantidade, orientações extras, modo de revisão humana e extensões controladas. O Workspace é derivado da Brand autorizada. Cada execução cria um novo Content e preserva imagens candidatas como versões imutáveis. O fluxo suporta aprovação automática ou pausa para aprovação humana e limita refações a uma configuração padrão de três tentativas.
+O workflow recebe `brand_id`, campanha, persona, quantidade, orientações extras, modo de revisão humana e extensões controladas. Também pode partir de um Planning e Post Structure autorizados; nesse modo, Campaign, Persona, Planning e Post Structure são resolvidos e persistidos como snapshot no input. O Workspace é derivado da Brand autorizada. Cada execução cria um novo Content e preserva imagens candidatas como versões imutáveis. O fluxo suporta aprovação automática ou pausa para aprovação humana e limita refações a uma configuração padrão de três tentativas.
 
 O Revisor usa uma interface multimodal provider-neutral. RAG é opcional e sempre recebe o `workspace_id` autorizado; Brand e BrandSettings continuam sendo o contexto mínimo. Vídeo fica fora da primeira implementação, mas os contratos não devem assumir que o único media kind futuro será imagem.
 
@@ -21,6 +21,8 @@ O Revisor usa uma interface multimodal provider-neutral. RAG é opcional e sempr
 O worker resolve o orquestrador pela factory; o Flow controlado pelo Creator preserva execução determinística por especialista.
 
 O sistema passa a ter maior latência e custo por execução, compensados por prompts especializados, validação de schemas, revisão objetiva, idempotência, limites e rastreabilidade. Os endpoints existentes de geração direta permanecem compatíveis durante a migração. Nenhum SDK de Provider ou CrewAI pode ser importado por domínio, aplicação ou endpoint.
+
+O contrato do Agent Workflow aceita `planning_id` e `post_structure_id` em conjunto. As referências são mantidas no workflow e no Content; volume-alvo do Planning não altera a quantidade solicitada.
 
 ## Issues vinculadas
 

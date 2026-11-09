@@ -32,5 +32,6 @@ def test_review_uses_creative_critic_instructions_with_existing_contract() -> No
     assert SPECIALIST_SPECS[AgentWorkflowStepRole.REVIEWER].instructions in prompt
     assert AGENT_DESIGNS[AgentWorkflowStepRole.REVIEWER].task in prompt
     assert "untrusted data" in prompt
+    assert "cannot prove exact fidelity" in prompt
     assert result.decision == "REFINE"
     assert result.feedback == ("Fix crop",)
