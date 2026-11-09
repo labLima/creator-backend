@@ -58,6 +58,7 @@ de implementação vinculada antes do fechamento do tracker.
 | [ADR-025](adr/0025-generation-independente-com-especialistas.md) | [#140](https://github.com/labLima/creator-backend/issues/140) | [#141](https://github.com/labLima/creator-backend/issues/141), [0052](issues/0052-generation-jobs-independentes.md) |
 | [ADR-026](adr/0026-deterministic-image-composition.md) | [#152](https://github.com/labLima/creator-backend/issues/152) | [#147](https://github.com/labLima/creator-backend/issues/147), [0054](issues/0054-deterministic-image-composition.md); relacionada a #78 |
 | [ADR-027](adr/0027-generative-image-adaptation.md) | [#154](https://github.com/labLima/creator-backend/issues/154) | [#155](https://github.com/labLima/creator-backend/issues/155), [#156](https://github.com/labLima/creator-backend/issues/156), [0056](issues/0056-generative-image-adaptation.md) |
+| [ADR-028](adr/0028-sqlite-final-schema-alignment.md) | [0057](issues/0057-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159) | [0057](issues/0057-sqlite-final-schema-alignment.md); board `SHC` (`SHC-2`–`SHC-19`); relacionada a [ADR-015](adr/0015-database-diagram-alignment.md) e [ADR-021](adr/0021-sqlite-default-database.md) |
 
 A [0049](issues/0049-flat-layout-consolidation.md) é o tracker local da
 consolidação da estrutura plana; a issue remota é
