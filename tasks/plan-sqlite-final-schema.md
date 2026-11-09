@@ -105,6 +105,13 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ## Dependências descobertas na execução (2026-11-09)
 
+- **T13 depende da migração de consumidores.** 17 arquivos de aplicação (routers,
+  services, repositórios e UoW de Planning, PostStructure, Generation e Content)
+  ainda usam as tabelas legadas. Dropar `planning`/`post_structure`/
+  `design_structure`/`generated_image` sem migrar esses consumidores quebra as
+  rotas e o e2e. T13 fica dividida em **T23** (migrar consumidores mantendo o
+  contrato HTTP) e T13 (dropar as tabelas), nessa ordem.
+
 - **T9, T10 e T11 dependem de T14.** `content_plans`, `posts`/`post_designs` e
   `brand_business_details` têm FKs compostas para `campaigns(id, brand_id)` e
   `personas(id, brand_id)`. `campaigns` ainda não tem `brand_id` e falta o UNIQUE
@@ -421,6 +428,24 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Arquivos prováveis:** `scripts/backfill_redesigns.py`, `tests/test_backfill_redesigns.py`
 **Tamanho:** M
 
+### T23 — Migrar consumidores legados para os modelos finais
+
+**Descrição:** Migrar Planning, PostStructure, DesignStructure e GeneratedImage (routers, services, repositórios e UoW) para `content_plans`, `posts`, `post_designs`, `design_slides` e `generated_images`, preservando o contrato HTTP ou versionando-o explicitamente. É pré-requisito do contract de T13.
+
+**Critérios de aceite:**
+- [ ] Nenhum router/service/repositório importa `Planning`, `PostStructure`, `DesignStructure` ou `GeneratedImage` legados.
+- [ ] `docs/openapi.yaml` atualizado antes de mudança de payload; teste de paridade OpenAPI verde.
+- [ ] Testes de API/e2e cobrindo planejamento, posts/estrutura e imagens passam com os novos modelos.
+- [ ] Dados existentes continuam visíveis (backfill de T12) e nenhuma rota retorna 500.
+
+**Verificação:**
+- [ ] `grep -rn "post_structure_models\|planning_models\|design_structure_models" src/creator` sem resultados.
+- [ ] `make check` e `make e2e` verdes.
+
+**Dependências:** T12
+**Arquivos prováveis:** `src/creator/planning/*`, `src/creator/post_structure/*`, `src/creator/design_structure/*`, `src/creator/generation/*`, `src/creator/uow.py`, `docs/openapi.yaml`
+**Tamanho:** L (será fatiado por rota)
+
 ### T13 — Contract: remover as tabelas antigas
 
 **Descrição:** Dropar `planning`, `post_structure`, `design_structure` e `generated_image`, remover o script de backfill e os consumidores remanescentes.
@@ -434,7 +459,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `grep -rn "post_structure\|design_structure\|generated_image\b" src tests workers` sem resultados.
 - [ ] `make check` e `make e2e` verdes.
 
-**Dependências:** T12
+**Dependências:** T12, T23
 **Arquivos prováveis:** `migrations/versions/0013_*.py`, `src/creator/**/models.py`, `docs/migration/schema-final-alignment.md`
 **Tamanho:** S
 
@@ -965,7 +990,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
     "description": "Dropar planning, post_structure, design_structure e generated_image, remover o script de backfill e os consumidores remanescentes, com downgrade funcional.",
     "priority": "high",
     "depends_on": [
-      "T12"
+      "T12",
+      "T23"
     ],
     "phase": "Fase 3 — Backfill e contract",
     "files": [
@@ -1129,6 +1155,25 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
       "migrations/versions/0011_*.py"
     ],
     "size": "M"
+  },
+  {
+    "id": "T23",
+    "title": "Migrar consumidores legados para os modelos finais",
+    "description": "Migrar routers, services, repositórios e UoW de Planning/PostStructure/DesignStructure/GeneratedImage para content_plans, posts, post_designs, design_slides e generated_images, preservando ou versionando o contrato HTTP.",
+    "priority": "high",
+    "depends_on": [
+      "T12"
+    ],
+    "phase": "Fase 3 — Backfill e contract",
+    "files": [
+      "src/creator/planning/*",
+      "src/creator/post_structure/*",
+      "src/creator/design_structure/*",
+      "src/creator/generation/*",
+      "src/creator/uow.py",
+      "docs/openapi.yaml"
+    ],
+    "size": "L"
   }
 ]
 ```
