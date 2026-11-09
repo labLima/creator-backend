@@ -114,6 +114,20 @@ Uma issue por tarefa do plano, cada uma declarando o workspace
 | T19 | `SHC-20` | [T19] Snapshot como gate, índices no fixture e teste de upgrade anterior |
 | T20 | `SHC-21` | [T20] Triggers, funções e view do dump |
 
+## Progresso
+
+| Issue | Tarefa | Estado | Evidência |
+| --- | --- | --- | --- |
+| `SHC-2` | T1 — ADR-028, épico e tracker | done | `docs/adr/0028-sqlite-final-schema-alignment.md`; tracker |
+| `SHC-3` | T2 — comparador único e orçamento | done | `final_schema.py`; `schema_parity_budget.json`; 27 testes |
+| `SHC-20` | T19 — snapshot gate e upgrade anterior | done | `snapshot_contract.py --check`; `schema_prev_ddl.sql`; prova de mutação |
+| `SHC-4` | T3 — enums e nomes de índice | done | `portable_enums.py`; `naming.py`; 6 testes |
+| `SHC-5` | T4 — CHECKs portáveis e defaults | done | `constraints.py`; 30 testes de equivalência |
+
+Estado do orçamento de paridade após a fundação: **729 divergências** (22 tabelas
+ausentes, 4 excedentes, 17 allowlisted, 132 colunas faltantes, 116 excedentes, 108
+índices ausentes, 63 FKs ausentes). O orçamento só pode encolher.
+
 ## Objetos de armazenamento
 
 O dump também declara 69 funções/triggers e a view
