@@ -214,6 +214,18 @@ Efeitos colaterais já conhecidos, que precisam ser tratados nas mesmas PRs:
 - `tests/test_module_boundaries.py` continua valendo: tabela nova nasce em `<entity>/models.py` +
   `repository.py`.
 
+## Inconsistências conhecidas do dump
+
+Duas declarações da modelagem final não são aplicáveis literalmente e foram
+traduzidas com decisão registrada:
+
+- `fiscal_invoices.currency` tem CHECK `^[a-z]{3}$` e default `'BRL'`, o que se
+  contradiz; o helper portável aplica maiúsculas, coerente com o default e com as
+  demais tabelas.
+- `uq_captions_current` usa `WHERE is_current AND deleted_at IS NULL`, mas
+  `captions` não tem `deleted_at`; o índice filtra apenas `is_current` para continuar
+  válido no SQLite, e a divergência aparece no orçamento de paridade.
+
 ## Fora de escopo
 
 - Reintroduzir PostgreSQL/MySQL como banco principal.
