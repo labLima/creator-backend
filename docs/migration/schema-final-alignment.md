@@ -14,18 +14,24 @@
 - Tipos ENUM no modelo final: **52**
 - Índices no modelo final: **173** (52 tabelas; 123 sem nome explícito; 54 UNIQUE)
 - Tabelas novas a criar: **18**
-- Nome divergente: **5** (1 rename simples, 4 redesenhos)
+- Nome divergente: **5** (1 rename com migração de valores, 4 redesenhos)
 - Extensões de ADR preservadas: **4**
 - Tabelas legadas a decidir: **11**
 - Tabelas sem alvo no modelo final: **2**
-- Foreign keys no modelo final: **101** (10 compostas com `workspace_id`)
+- Funções/triggers/views no modelo final: **70** (11 funções, 58 triggers, 1 view)
+- Foreign keys no modelo final: **101** (10 compostas: 6 com `workspace_id` e 4 com `brand_id`)
 - FKs ausentes no ORM: **65**; ON DELETE divergente: **35**; FKs só no ORM: **65**
 
 ## 1. Tabelas com nome divergente
 
 O nome muda, mas isso **não** implica `ALTER TABLE ... RENAME`: a maioria dos casos é
 redesenho de modelo, com colunas redistribuídas para as tabelas satélite novas.
-A coluna Veredito separa rename simples de substituição com migração de consumidores.
+A coluna Veredito separa rename de substituição com migração de consumidores.
+
+O único rename (`workspace_memberships` → `workspace_members`) também exige migração de
+dados: o vocabulário de `role` muda (`owner/admin/editor/viewer` →
+`OWNER/MANAGER/EDITOR/VIEWER`), entra `status` e sai `deleted_at`, que hoje é filtrado
+pelas consultas. Não é `ALTER TABLE ... RENAME` puro.
 
 | Atual | Final | Colunas | Veredito |
 | --- | --- | --- | --- |
@@ -223,9 +229,10 @@ são conversões portáveis esperadas (ADR-021) e não aparecem como divergênci
 
 ## 4. Foreign keys
 
-O modelo final declara 101 FKs em `ALTER TABLE` no fim do dump
-(10 são compostas e incluem `workspace_id`, exigindo UNIQUE
-composta no alvo). SQLite não aceita `ALTER TABLE ... ADD CONSTRAINT`: essas FKs
+O modelo final declara 101 FKs em `ALTER TABLE` no fim do dump.
+São 10 compostas — 6 com `workspace_id` e 4 com `brand_id` — e cada uma exige UNIQUE
+composta no alvo com a mesma chave. SQLite não aceita
+`ALTER TABLE ... ADD CONSTRAINT`: essas FKs
 precisam existir nas models para valerem no baseline criado por `create_all()`.
 
 > FKs das tabelas com nome divergente (seção 1) contam como ausentes porque a
@@ -408,9 +415,10 @@ precisam existir nas models para valerem no baseline criado por `create_all()`.
 
 ## 5. Índices por tabela
 
-O modelo final declara 173 índices. `SQLite` aceita nomes
-automáticos, mas a paridade precisa ser decidida tabela a tabela:
-nome, colunas, UNIQUE e predicado parcial.
+O modelo final declara 173 índices: 50 com nome explícito e 123 anônimos.
+SQLite **exige** nome em `CREATE INDEX` (não existe `CREATE INDEX ON tabela`), então os
+anônimos recebem nome na metadata. Os nomes explícitos do dump (`idx_m8_*`, `uq_*`) são
+preservados para manter a paridade com a fonte.
 
 ### `audit_logs`
 - `CREATE INDEX ON "audit_logs" ("entity_type", "entity_id", "created_at")`
@@ -818,7 +826,88 @@ nome, colunas, UNIQUE e predicado parcial.
 - `CONSTRAINT "chk_workspace_invites_max_uses_by_type" CHECK ((type = 'LINK') = (max_uses IS NOT NULL))`
 - `CONSTRAINT "chk_workspace_invites_max_uses_positive" CHECK (max_uses IS NULL OR max_uses >= 1)`
 
-## 7. Tabelas fora do modelo final
+## 7. Funções, triggers e views
+
+Estes objetos carregam regra de negócio no banco (imutabilidade do ledger, validação de
+lote, `updated_at`, snapshot de cupom, histórico append-only). Eles não são expressos por
+models e não entram na paridade tabela-coluna, mas precisam de decisão explícita objeto a
+objeto: portar como trigger SQLite, mover para a aplicação com teste equivalente, ou
+declarar fora de escopo com justificativa. Nenhum fica sem classificação.
+
+| Tipo | Nome |
+| --- | --- |
+| FUNCTION | `coupon_redemptions_set_once` |
+| TRIGGER | `trg_coupon_redemptions_set_once` |
+| FUNCTION | `workspace_credit_balance` |
+| FUNCTION | `workspace_credit_lot_available` |
+| FUNCTION | `m1_validate_credit_transaction` |
+| TRIGGER | `trg_m1_credit_tx_validate` |
+| FUNCTION | `check_credit_tx_image_workspace` |
+| TRIGGER | `trg_credit_tx_image_workspace` |
+| FUNCTION | `m1_validate_credit_lot` |
+| TRIGGER | `trg_m1_credit_lot_validate` |
+| FUNCTION | `m1_validate_credit_consumption` |
+| TRIGGER | `trg_m1_credit_consumption_validate` |
+| FUNCTION | `m1_reject_credit_mutation` |
+| TRIGGER | `trg_m1_tx_immutable` |
+| TRIGGER | `trg_m1_consumption_immutable` |
+| FUNCTION | `m1_guard_credit_lot_update` |
+| TRIGGER | `trg_m1_lot_guard` |
+| VIEW | `charges_with_last_transaction` |
+| FUNCTION | `m7_reject_subscription_history_mutation` |
+| TRIGGER | `trg_subscription_history_append_only` |
+| FUNCTION | `set_updated_at` |
+| TRIGGER | `trg_updated_at_workspace_credit_lots` |
+| TRIGGER | `trg_updated_at_users` |
+| TRIGGER | `trg_updated_at_workspaces` |
+| TRIGGER | `trg_updated_at_workspace_members` |
+| TRIGGER | `trg_updated_at_workspace_invites` |
+| TRIGGER | `trg_updated_at_workspace_invite_usages` |
+| TRIGGER | `trg_updated_at_notifications` |
+| TRIGGER | `trg_updated_at_notification_recipients` |
+| TRIGGER | `trg_updated_at_user_devices` |
+| TRIGGER | `trg_updated_at_notification_preferences` |
+| TRIGGER | `trg_updated_at_billing_accounts` |
+| TRIGGER | `trg_updated_at_billing_addresses` |
+| TRIGGER | `trg_updated_at_billing_payment_methods` |
+| TRIGGER | `trg_updated_at_plans` |
+| TRIGGER | `trg_updated_at_plan_items` |
+| TRIGGER | `trg_updated_at_plan_payment_methods` |
+| TRIGGER | `trg_updated_at_subscriptions` |
+| TRIGGER | `trg_updated_at_orders` |
+| TRIGGER | `trg_updated_at_invoices` |
+| TRIGGER | `trg_updated_at_charges` |
+| TRIGGER | `trg_updated_at_charge_transactions` |
+| TRIGGER | `trg_updated_at_refunds` |
+| TRIGGER | `trg_updated_at_provider_disputes` |
+| TRIGGER | `trg_updated_at_provider_webhook_events` |
+| TRIGGER | `trg_updated_at_provider_idempotency_keys` |
+| TRIGGER | `trg_updated_at_credit_packages` |
+| TRIGGER | `trg_updated_at_coupons` |
+| TRIGGER | `trg_updated_at_coupon_redemptions` |
+| TRIGGER | `trg_updated_at_brands` |
+| TRIGGER | `trg_updated_at_brand_values` |
+| TRIGGER | `trg_updated_at_brand_hashtags` |
+| TRIGGER | `trg_updated_at_brand_colors` |
+| TRIGGER | `trg_updated_at_brand_assets` |
+| TRIGGER | `trg_updated_at_brand_business_details` |
+| TRIGGER | `trg_updated_at_campaigns` |
+| TRIGGER | `trg_updated_at_campaign_hashtags` |
+| TRIGGER | `trg_updated_at_campaign_voices` |
+| TRIGGER | `trg_updated_at_personas` |
+| TRIGGER | `trg_updated_at_persona_interests` |
+| TRIGGER | `trg_updated_at_content_plans` |
+| TRIGGER | `trg_updated_at_content_plan_items` |
+| TRIGGER | `trg_updated_at_content_plan_special_dates` |
+| TRIGGER | `trg_updated_at_posts` |
+| TRIGGER | `trg_updated_at_captions` |
+| TRIGGER | `trg_updated_at_post_designs` |
+| TRIGGER | `trg_updated_at_design_slides` |
+| TRIGGER | `trg_updated_at_generated_images` |
+| TRIGGER | `trg_updated_at_fiscal_invoices` |
+| TRIGGER | `trg_updated_at_image_resizes` |
+
+## 8. Tabelas fora do modelo final
 
 | Tabela | Categoria | Ação |
 | --- | --- | --- |

@@ -10,11 +10,15 @@
 ## Overview
 
 Fazer o schema vivo (metadata SQLAlchemy + Alembic, SQLite) coincidir com a modelagem final
-`docs/migration/Creator_DB_final.sql`: **54 tabelas, 52 enums, 173 índices, 101 foreign keys,
-80 CHECK constraints**. O delta verificado é 18 tabelas a criar, 31 a alinhar, 1 rename simples
-e 4 redesenhos de modelo. A migração PostgreSQL→SQLite **já está concluída** (ADR-021,
-`0001_sqlite_baseline.py`, `migrations/legacy_postgres/`, compose com
+`docs/migration/Creator_DB_final.sql`: **54 tabelas, 52 enums, 173 índices, 101 FKs, 80 CHECKs,
+69 funções/triggers e 1 view**. O delta verificado é 18 tabelas a criar, 31 a alinhar, 1 rename
+com migração de valores e 4 redesenhos de modelo. A migração PostgreSQL→SQLite **já está
+concluída** (ADR-021, `0001_sqlite_baseline.py`, `migrations/legacy_postgres/`, compose com
 `sqlite+pysqlite:////data/creator.db`) e não é reescopada aqui.
+
+O conjunto-alvo durante a execução é de **71 tabelas** (54 do dump + 4 extensões de ADR + 13
+legadas/sem alvo), não 58: as 13 só saem com a ADR-029. `users.password_hash` e
+`users.global_role` permanecem como extensão da ADR-020, mesmo ausentes no dump.
 
 A execução é incremental: revisões Alembic encadeadas a partir da head atual
 (`0005_content_text_versions`), cada PR verde, cada mudança de schema acompanhada da
@@ -34,34 +38,63 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 3. **Expand → backfill → contract para os 4 redesenhos**, nunca no mesmo PR. Expand cria as
    tabelas novas ao lado das antigas; backfill copia dados; contract remove as antigas. O
    rollback de cada etapa é o `downgrade` da própria revisão.
-4. **Teste de paridade mora em `tests/test_schema_inventory.py`**, junto dos fixtures congelados,
-   para não existir um segundo parser de DDL. Ele ganha `tests/contracts/creator_db_final.sql`
-   (cópia de `docs/migration/Creator_DB_final.sql`, com sha256 verificado no teste) e asserta
-   seis dimensões contra `Base.metadata`: conjunto de tabelas (54 finais + 4 extensões
-   declaradas), colunas por tabela, nullability e tamanho de coluna, vocabulário de enum,
-   índices (nome, colunas ordenadas, unicidade) e foreign keys (colunas, alvo, `ON DELETE`).
-   As falhas agregam todas as divergências com contagem por categoria.
-5. **Nomes de índice são contrato.** O snapshot DDL precisa ser determinístico e 123 dos 173
-   índices do dump são anônimos. Convenção obrigatória: `ix_<tabela>_<colunas>` e
-   `uq_<tabela>_<colunas>`, registrada em ADR-028; índice anônimo no dump recebe nome na
-   metadata e o mapeamento fica documentado no próprio teste.
-6. **`make snapshot-contract` é gate de toda PR que muda schema**, na mesma PR, com o diff dos
-   dois fixtures revisado. O diff é a evidência auditável da mudança; separar em outra PR quebra
-   a rastreabilidade e desaparece com a revisão.
-7. **Portabilidade de constraints é trabalho explícito, não detalhe.** SQLite não aceita:
-   `ALTER TABLE ... ADD CONSTRAINT` (as 101 FKs precisam estar nas models, e 10 são **compostas
-   com `workspace_id`**, exigindo UNIQUE composta no alvo); regex PostgreSQL `~` (15 CHECKs de
-   moeda) nem `num_nonnulls` (3 CHECKs). Helpers em `creator/infrastructure/database/`
-   traduzem para `GLOB`/`LIKE`/`length`+`upper` e para soma de `CASE WHEN ... IS NOT NULL`, com
-   teste de equivalência por constraint. `gen_random_uuid()` vira default Python `uuid4` e
-   `now()` vira `CURRENT_TIMESTAMP`/helper UTC.
-8. **Enums: 52 tipos, vocabulário 1:1.** `Enum(native_enum=False, create_constraint=True)` ou
-   `String` + `CHECK`, num módulo único de constantes importado pelas models
-   (`<entity>/models.py` e `creator/infrastructure/database/` podem importar; router, schemas,
-   service e ports não).
-9. **Aposentadoria do legado em ADR-029**, com mapeamento tabela→alvo, ordem de remoção e
+4. **Comparador único em `src/`, importável pelos dois lados.** O parsing e a comparação vivem
+   em `src/creator/infrastructure/database/final_schema.py`; `scripts/schema_parity_report.py`
+   passa a ser um invólucro fino. `scripts/` e `tests/` não se importam entre si, e duplicar o
+   parser criaria duas verdades. O módulo não importa `Base` nem muta `sys.path`.
+5. **Oito dimensões de paridade em `tests/test_schema_inventory.py`**, junto dos fixtures
+   congelados: tabelas (aplicando o mapa de renames uma vez); colunas e PK; nullability, tamanho
+   de `String` e largura `Integer`/`BigInteger`; enums; índices e UNIQUE (nome, colunas
+   ordenadas, unicidade, predicado parcial); FKs (colunas locais, alvo, colunas do alvo,
+   `ON DELETE`); CHECKs; e presença de defaults. CHECKs e FKs não são comparáveis por texto
+   entre PostgreSQL e SQLite, então o módulo declara `CHECK_MAP` e `RENAME_MAP`, e o teste falha
+   se um CHECK do dump ficar sem entrada.
+6. **Orçamento de dívida que só diminui (ratchet).** `tests/contracts/schema_parity_budget.json`
+   guarda `dump_sha256`, contagem por categoria e `gap_digest`. O teste exige igualdade: dívida
+   maior falha (`schema debt GREW`), dívida menor também falha (`ratchet stale: reduza o
+   orçamento nesta PR`). Assim o PR que corrige uma tabela reduz a contagem e o digest na mesma
+   diff — a evidência de progresso é o diff. `xfail`, skip e allowlist por tabela são rejeitados
+   porque não forçam a limpeza; no fim todas as contagens são zero.
+7. **Snapshot passa a ser gate e a cobrir índices.** `scripts/snapshot_contract.py` ganha
+   `--check` e `make check` passa a executá-lo. O fixture `tests/contracts/schema_ddl.sql` ganha
+   os `CREATE INDEX` canônicos (hoje não tem nenhum, então mudança só de índice é invisível), e
+   a comparação deixa de colapsar todo whitespace: normaliza apenas EOL e espaço final. Essa
+   normalização frouxa foi o que escondeu o gerador emitindo espaço final.
+8. **`alembic check` deixa de ser vacuous.** A baseline usa `create_all()` sobre o metadata
+   corrente, então um banco novo já nasce alinhado e uma revisão esquecida não é detectada.
+   Medidas: `compare_type=True` e `render_as_batch=True` em `migrations/env.py`, e um teste de
+   upgrade a partir de `tests/contracts/schema_prev_ddl.sql` (schema da head anterior), estampado
+   na revisão correspondente, que precisa convergir para `Base.metadata` após `alembic upgrade
+   head`. O fixture é renovado a cada fase que muda schema.
+9. **Índices: preservar nomes explícitos, nomear só os anônimos.** SQLite **exige** nome em
+   `CREATE INDEX` (não existe `CREATE INDEX ON tabela`). Dos 173 índices do dump, 50 têm nome
+   (`idx_m8_*`, `uq_*`) e são preservados; os 123 anônimos recebem nome na metadata pela
+   convenção `ix_<tabela>_<colunas>`/`uq_<tabela>_<colunas>`, com mapeamento no teste.
+10. **Portabilidade de constraints é trabalho explícito.** SQLite não aceita
+    `ALTER TABLE ... ADD CONSTRAINT`, então as 101 FKs precisam estar nas models. São 10
+    compostas: **6 com `workspace_id` e 4 com `brand_id`**, cada uma exigindo UNIQUE composta no
+    alvo com a chave exata. `ON DELETE` preservado (40 CASCADE, 31 RESTRICT, 30 SET NULL). Dos
+    80 CHECKs, 15 usam regex PostgreSQL — 12 de moeda, 1 de UF, 1 de CEP e 1 de cor hexadecimal —
+    e 3 usam `num_nonnulls`. Helpers em `creator/infrastructure/database/constraints.py` traduzem
+    para `GLOB`/`LIKE`/`length`/`upper` e soma de `CASE WHEN ... IS NOT NULL`, com teste de
+    equivalência por helper. `gen_random_uuid()` vira default Python `uuid4`; `now()` vira
+    `CURRENT_TIMESTAMP`/helper UTC.
+11. **Enums: 52 tipos, vocabulário 1:1.** `Enum(native_enum=False, create_constraint=True)` ou
+    `String` + `CHECK`, em `creator/infrastructure/database/enums.py`, importado pelas models.
+    Vocabulário idêntico ao dump, inclusive valores sem uso previsto.
+12. **Triggers, funções e view têm decisão própria.** As 69 funções/triggers e a view
+    `charges_with_last_transaction` carregam regra no banco (imutabilidade do ledger, validação
+    de lote, `updated_at`, snapshot de cupom, histórico append-only). T19 inventaria objeto a
+    objeto e classifica em portar como trigger SQLite, mover para a aplicação com teste
+    equivalente, ou declarar fora de escopo com justificativa. Ledger e histórico de assinatura
+    são obrigatoriamente cobertos.
+13. **Rename também migra dados.** `workspace_memberships` → `workspace_members` muda o
+    vocabulário de `role` (`owner/admin/editor/viewer` → `OWNER/MANAGER/EDITOR/VIEWER`), adiciona
+    `status` e remove `deleted_at` (hoje filtrado nas consultas). Segue expand → backfill →
+    contract como as demais, com mapa de valores explícito.
+14. **Aposentadoria do legado em ADR-029**, com mapeamento tabela→alvo, ordem de remoção e
    verificação de consumidores. Tabela retida precisa de justificativa e prazo escritos.
-10. **Rastreabilidade**: ADR-028 e ADR-029 em `docs/adr/`, indexadas em
+15. **Rastreabilidade**: ADR-028 e ADR-029 em `docs/adr/`, indexadas em
     `docs/ADR-ISSUE-TRACKER.md`; épico local
     [0057](../docs/issues/0057-sqlite-final-schema-alignment.md) e issue
     [#159](https://github.com/labLima/creator-backend/issues/159); issues filhas no board `SHC`
@@ -77,7 +110,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Descrição:** Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade em `tests/test_schema_inventory.py`, convenção de nomes de índice, gate `make snapshot-contract`, política de enums e de constraints portáveis) e amarrar a rastreabilidade do épico 0057 / #159 às ADR-021 e ADR-015.
 
 **Critérios de aceite:**
-- [ ] `docs/adr/0028-sqlite-final-schema-alignment.md` aceita, cobrindo as decisões 1–8.
+- [ ] `docs/adr/0028-sqlite-final-schema-alignment.md` aceita, cobrindo as decisões 1–15.
 - [ ] `docs/ADR-ISSUE-TRACKER.md` lista ADR-028 com tracker e issues de implementação.
 - [ ] Épico [0057](../docs/issues/0057-sqlite-final-schema-alignment.md) aponta para o plano e para as issues filhas.
 - [ ] `tasks/plan.md` e `tasks/todo.md` (históricos) permanecem intocados.
@@ -90,50 +123,55 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Arquivos prováveis:** `docs/adr/0028-sqlite-final-schema-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0057-sqlite-final-schema-alignment.md`
 **Tamanho:** S
 
-### T2 — Teste de paridade contra o DDL final
+### T2 — Comparador único e teste de paridade com orçamento
 
-**Descrição:** Copiar o dump final para `tests/contracts/creator_db_final.sql` e adicionar ao módulo de inventário as asserções de paridade (tabelas, colunas, nullability/tamanho, vocabulário de enum, índices e FKs), com as 4 extensões de ADR declaradas como exceção e falha agregada por categoria. O teste nasce vermelho com o delta atual — é o contrato do plano.
+**Descrição:** Extrair o parsing e a comparação para `src/creator/infrastructure/database/final_schema.py` (`parse_final`, `parse_models`, `compare`, `gap_counts`, `gap_digest`, `render_schema_ddl`), fazer `scripts/schema_parity_report.py` usá-lo e adicionar ao inventário congelado os testes de paridade em oito dimensões, com as exceções declaradas (`ADR_EXTENSIONS`, `LEGACY_RETENTION`, `RENAME_MAP`, `CHECK_MAP`) e orçamento de dívida que só diminui.
 
 **Critérios de aceite:**
-- [ ] Fixture versionada com sha256 conferido no teste.
-- [ ] `test_final_table_set`, `test_final_columns`, `test_final_nullability_and_lengths`, `test_final_enum_vocabulary`, `test_final_indexes`, `test_final_foreign_keys` no mesmo módulo.
-- [ ] Exceções declaradas em constante única (`ADR_EXTENSIONS`, `LEGACY_RETENTION`), não em `if`s espalhados.
-- [ ] Testes antigos (`test_metadata_table_set_is_exact`, `test_ddl_is_byte_identical`) continuam verdes.
+- [ ] O módulo não importa `Base`, não muta `sys.path` e não importa `tests`; o script vira invólucro fino.
+- [ ] `parse_models` passa a registrar colunas de índice, unicidade, predicado e **todas** as colunas de FK composta (hoje perde as demais).
+- [ ] `tests/contracts/creator_db_final.sql` versionado com sha256 conferido; `tests/contracts/schema_parity_budget.json` com `dump_sha256`, contagem por categoria e `gap_digest`.
+- [ ] Testes: `test_final_table_set` (54 + 4 extensões + 13 legadas declaradas), `test_final_columns_and_pk`, `test_final_nullability_and_widths`, `test_final_enum_vocabulary`, `test_final_indexes`, `test_final_foreign_keys`, `test_final_checks`, `test_final_defaults`.
+- [ ] O teste exige **igualdade** com o orçamento: dívida maior falha (`schema debt GREW`) e dívida menor também (`ratchet stale`).
+- [ ] `test_ratchet_mechanism` prova, sobre dados sintéticos, que crescimento e estagnação são detectados.
 
 **Verificação:**
-- [ ] `pytest tests/test_schema_inventory.py -q` vermelho apenas nas asserções novas, com relatório de 18 ausentes e 31 divergentes.
-- [ ] `XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python` falha só nesse arquivo.
+- [ ] `pytest tests/test_schema_inventory.py -q` verde com o orçamento atual.
+- [ ] `python scripts/schema_parity_report.py` regenera o relatório idêntico ao commitado.
+- [ ] `XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python`.
 
 **Dependências:** T1
-**Arquivos prováveis:** `tests/test_schema_inventory.py`, `tests/contracts/creator_db_final.sql`
-**Tamanho:** M
+**Arquivos prováveis:** `src/creator/infrastructure/database/final_schema.py`, `scripts/schema_parity_report.py`, `tests/test_schema_inventory.py`, `tests/contracts/creator_db_final.sql`, `tests/contracts/schema_parity_budget.json`
+**Tamanho:** L (justificado: fundação única; será fatiado em commits por dimensão)
 
-### T3 — Helpers portáveis de coluna, enum e índice
+### T3 — Helpers portáveis de enum e nome de índice
 
-**Descrição:** Centralizar em `creator/infrastructure/database/` os tipos e fábricas que as models passarão a usar: PK UUID (CHAR(32)), timestamps UTC, JSON, enum portátil, índices nomeados na convenção `ix_/uq_`, além das 52 constantes de enum extraídas do dump.
+**Descrição:** Estender o que já existe em `creator/infrastructure/database/types.py` (não criar um `columns.py` paralelo) com o módulo de enums e o de nomes: `enums.py` com os 52 vocabulários e `enum_column(nome)`, e `naming.py` com `index_name`/`unique_index_name` para os 123 índices anônimos.
 
 **Critérios de aceite:**
-- [ ] `uuid_pk()`, `utc_timestamp()`, `json_column()`, `enum_column(enum_cls)`, `index_name()`, `unique_index_name()` disponíveis.
-- [ ] Inventário dos 52 enums com nome e valores.
-- [ ] Nenhum import de `sqlalchemy` fora de `models.py`, `repository.py` e `creator/infrastructure/database/`.
+- [ ] `enums.py` com os 52 vocabulários extraídos do dump, validados pelo teste de paridade.
+- [ ] `enum_column("workspace_role")` renderiza `VARCHAR` + `CHECK` (sem enum nativo) e rejeita valor fora do vocabulário.
+- [ ] `naming.py` preserva nomes explícitos do dump e só gera nome para índice anônimo.
+- [ ] `types.py` reexporta os helpers usados pelas models; nenhum import de `sqlalchemy` fora de `models.py`, `repository.py` e `creator/infrastructure/database/`.
 
 **Verificação:**
-- [ ] `pytest tests/test_module_boundaries.py -q`.
+- [ ] `pytest tests/test_module_boundaries.py tests/test_schema_inventory.py -q`.
 - [ ] `grep -rn "JSONB\|PGUUID\|gen_random_uuid" src/creator` sem resultados.
-- [ ] `git diff --exit-code tests/contracts/`.
+- [ ] `make snapshot-contract` sem diff (fase sem mudança de schema).
 
 **Dependências:** T1
-**Arquivos prováveis:** `src/creator/infrastructure/database/columns.py`, `src/creator/infrastructure/database/enums.py`
+**Arquivos prováveis:** `src/creator/infrastructure/database/enums.py`, `src/creator/infrastructure/database/naming.py`, `src/creator/infrastructure/database/types.py`
 **Tamanho:** S
 
 ### T4 — Portabilidade das CHECK constraints e defaults
 
-**Descrição:** Traduzir as 80 CHECKs do dump final para expressões válidas em SQLite, com helpers testados: 15 regex de moeda (`currency ~ '^[A-Z]{3}$'`), 3 `num_nonnulls(...)` e os predicados com `NOT is_current`. Definir o mapa de defaults (`gen_random_uuid()`→`uuid4`, `now()`→`CURRENT_TIMESTAMP`).
+**Descrição:** Criar `constraints.py` com helpers portáveis e cobrir os 80 CHECKs do dump: 12 de moeda, 1 de UF, 1 de CEP, 1 de cor hexadecimal (todos com regex `~` no dump) e 3 `num_nonnulls`. Definir o mapa de defaults (`gen_random_uuid()`→`uuid4`, `now()`→`CURRENT_TIMESTAMP`).
 
 **Critérios de aceite:**
-- [ ] Helpers `currency_code_check(coluna)`, `exactly_one_of(*colunas)`, `at_most_one_of(*colunas)` geram SQL portável.
-- [ ] Teste de equivalência semântica por helper (aceita e rejeita os mesmos casos que a expressão PostgreSQL).
+- [ ] `currency_code_check`, `uf_check`, `zip_code_check`, `hex_color_check`, `exactly_one_of`, `at_most_one_of` com teste de equivalência semântica (aceitam e rejeitam os mesmos casos que o PostgreSQL).
+- [ ] `CHECK_MAP` cobre os 80 CHECKs do dump; o teste falha se algum ficar sem entrada ou apontar coluna inexistente.
 - [ ] Nenhum `~`, `num_nonnulls` ou `gen_random_uuid` em model ou migration.
+- [ ] Defaults documentados: UUID por `uuid4` em Python, timestamps por `CURRENT_TIMESTAMP`.
 
 **Verificação:**
 - [ ] `pytest tests/test_portable_schema.py tests/test_schema_inventory.py -q`.
@@ -143,11 +181,34 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Arquivos prováveis:** `src/creator/infrastructure/database/constraints.py`, `tests/test_portable_schema.py`
 **Tamanho:** M
 
+### T19 — Snapshot como gate, índices no fixture e teste de upgrade anterior
+
+**Descrição:** Fechar as duas brechas de verificação: `snapshot_contract.py` ganha `--check` e entra em `make check`; o fixture `schema_ddl.sql` passa a incluir os `CREATE INDEX` canônicos; e um teste de upgrade parte de `tests/contracts/schema_prev_ddl.sql` (schema da head anterior) para provar que uma revisão esquecida é detectada, já que `alembic check` sozinho é vacuous com a baseline `create_all`.
+
+**Critérios de aceite:**
+- [ ] `python scripts/snapshot_contract.py --check` falha quando o schema muda e não escreve arquivo.
+- [ ] `make check` executa `snapshot-contract --check`.
+- [ ] `schema_ddl.sql` contém tabelas **e** índices, ordenados e com nome; comparação canônica (EOL e espaço final apenas).
+- [ ] `schema_prev_ddl.sql` carregado e estampado na revisão anterior; `alembic upgrade head` converge para `Base.metadata`.
+- [ ] `migrations/env.py` com `compare_type=True` e `render_as_batch=True`.
+
+**Verificação:**
+- [ ] `make check` vermelho ao remover uma coluna de uma revisão (teste de mutação manual registrado na issue).
+- [ ] `make snapshot-contract --check` verde após regenerar.
+- [ ] `pytest tests/test_schema_inventory.py -q`.
+
+**Dependências:** T2
+**Arquivos prováveis:** `scripts/snapshot_contract.py`, `Makefile`, `migrations/env.py`, `tests/test_schema_inventory.py`, `tests/contracts/schema_prev_ddl.sql`, `tests/contracts/schema_ddl.sql`
+**Tamanho:** M
+
 ### Checkpoint — Fase 0
-- [ ] ADR-028 aceita e tracker consistente.
-- [ ] Teste de paridade roda e reporta o delta esperado (18 ausentes, 31 divergentes).
-- [ ] Helpers de constraint com teste de equivalência.
-- [ ] Revisão humana da ADR-028 antes da fase seguinte.
+- [ ] ADR-028 aceita e tracker consistente; épico 0057 alinhado.
+- [ ] Comparador único em `final_schema.py`, usado pelo script e pelos testes.
+- [ ] Orçamento de paridade com as oito dimensões, em igualdade com o estado atual.
+- [ ] `snapshot-contract --check` no `make check`, com índices no fixture.
+- [ ] Teste de upgrade anterior provando que revisão esquecida é detectada.
+- [ ] Helpers de enum, nome e constraint com teste de equivalência.
+- [ ] Revisão humana da ADR-028 e do orçamento antes da fase seguinte.
 
 ## Fase 1 — Criar tabelas sem dependência de redesenho
 
@@ -211,23 +272,25 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ## Fase 2 — Renomear e redesenhar (expand)
 
-### T8 — Renomear `workspace_memberships` → `workspace_members`
+### T8 — `workspace_memberships` → `workspace_members` com migração de valores
 
-**Descrição:** Único rename viável: adicionar `status` e `invited_by`, remover `deleted_at`, preservar UNIQUE(workspace_id, user_id), renomear índices na convenção e atualizar repositório, autorização e testes.
+**Descrição:** Renomear a tabela e migrar dados e código: `role` passa de `owner/admin/editor/viewer` para `OWNER/MANAGER/EDITOR/VIEWER`, entra `status` (`member_status`), sai `deleted_at` (hoje filtrado em consultas de autorização). Inclui revisão de renomeação, revisão de backfill de valores e ajuste de repositório, autorização e testes.
 
 **Critérios de aceite:**
-- [ ] Tabela e índices renomeados; colunas e enum `member_status` conforme dump.
-- [ ] Nenhuma referência ao nome antigo em `src`, `tests`, `migrations`.
-- [ ] Remoção do soft delete documentada (remoção de vínculo é exclusão).
-- [ ] Revisão `0009_*` com downgrade; fixtures regenerados.
+- [ ] `RENAME_MAP` e mapa de valores (`owner→OWNER`, `admin→MANAGER`, `editor→EDITOR`, `viewer→VIEWER`) declarados no teste de paridade.
+- [ ] `deleted_at IS NOT NULL` vira `status` equivalente antes de remover a coluna; consultas de autorização migradas.
+- [ ] Tabela, índices e UNIQUE(workspace_id, user_id) conforme o dump.
+- [ ] Revisão `0009_*` com rename e `0010_*` com backfill + drop de `deleted_at`; ambas com downgrade.
+- [ ] Nenhuma referência ao nome ou aos valores antigos em `src`, `tests`, `migrations`.
 
 **Verificação:**
 - [ ] `grep -rn "workspace_memberships" src tests migrations scripts` sem resultados.
-- [ ] `pytest tests/ -q -k "workspace or member"` verde.
+- [ ] `grep -rn '"admin"\|"owner"\|"viewer"' src/creator/domain src/creator/workspace` sem resultados.
+- [ ] `pytest tests/ -q -k "workspace or member or auth"` verde.
 
 **Dependências:** T4
-**Arquivos prováveis:** `src/creator/workspace/models.py`, `src/creator/workspace/repository.py`, `migrations/versions/0009_*.py`
-**Tamanho:** S
+**Arquivos prováveis:** `src/creator/workspace/models.py`, `src/creator/workspace/repository.py`, `src/creator/domain/auth.py`, `migrations/versions/0009_*.py`, `migrations/versions/0010_*.py`
+**Tamanho:** M
 
 ### T9 — `planning` → `content_plans` + satélites
 
@@ -391,6 +454,25 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 **Dependências:** T15
 **Arquivos prováveis:** `docs/adr/0029-legacy-table-retirement.md`, `migrations/versions/0017_*.py`, `src/creator/settings/**`, `workers/**`
+**Tamanho:** M
+
+### T20 — Triggers, funções e view do dump
+
+**Descrição:** Inventariar as 69 funções/triggers e a view `charges_with_last_transaction` e classificar cada objeto em: portar como trigger SQLite, mover para a aplicação com teste equivalente, ou declarar fora de escopo com justificativa. Ledger de créditos e histórico append-only de assinatura são obrigatoriamente cobertos.
+
+**Critérios de aceite:**
+- [ ] Inventário versionado em `docs/migration/storage-objects-matrix.md` com uma linha por objeto e a classificação.
+- [ ] Objetos de imutabilidade (`workspace_credit_transactions`, `subscription_history`), validação de lote e `updated_at` implementados como trigger SQLite ou como guarda de aplicação com teste que falha sem ela.
+- [ ] View `charges_with_last_transaction` substituída por consulta equivalente com teste.
+- [ ] Nenhum objeto sem classificação; os fora de escopo têm justificativa e risco escrito.
+
+**Verificação:**
+- [ ] `pytest tests/test_storage_objects.py -q` cobrindo cada guarda portada.
+- [ ] `grep -c` do inventário igual ao número de objetos do dump (70).
+- [ ] `make check`, `make security` e `make e2e` verdes.
+
+**Dependências:** T15
+**Arquivos prováveis:** `docs/migration/storage-objects-matrix.md`, `migrations/versions/0018_*.py`, `tests/test_storage_objects.py`
 **Tamanho:** M
 
 ### Checkpoint — Fase 5
@@ -597,37 +679,367 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 | `docs/openapi.yaml` dessincronizado | Médio | contrato antes do código em T10, T14 e T15 |
 | Remoção de legado quebra worker/settings | Alto | ADR-029 com mapeamento e `grep` de consumidores; `make e2e` antes do merge |
 | Volume de PRs e conflito de revisões | Médio | uma revisão por tarefa, cadeia linear, rebase diário, PR por fase |
+| Orçamento de paridade ficar stale ou crescer sem revisão | Alto | igualdade obrigatória: crescer falha, ficar stale falha; cada PR reduz na mesma diff |
+| Snapshot sem índices esconder mudança de índice | Alto | `schema_ddl.sql` passa a incluir `CREATE INDEX`; `--check` no `make check` |
+| `alembic check` vacuous pela baseline `create_all` | Alto | teste de upgrade a partir de `schema_prev_ddl.sql` + `compare_type`/`render_as_batch` |
+| Triggers do ledger e do histórico de assinatura não serem portados | Alto | T20 obriga classificação e teste; imutabilidade não pode depender só de disciplina |
+| `test_schema_migration_matrix` e `test_schema_models` quebrarem | Médio | atualizar matriz e o assert de `users.email` na mesma PR que muda schema |
+| Extensão de auth (`password_hash`/`global_role`) ser removida por engano | Alto | exceção declarada na ADR-028 e no teste de paridade; T14 verifica consumidores |
 
 ## Questões abertas
 
-1. **Existe banco com dados a preservar?** Se sim, a consolidação da baseline (T17) fica proibida e o backfill passa a ser obrigatório também para as 31 tabelas alinhadas.
-2. **`settings` e `brand_settings`:** viram colunas em `workspaces`/`brands` ou permanecem como tabela chave-valor até existir UI de configuração? Muda o escopo de T16.
-3. **`provider_customers`/`provider_subscriptions`:** remover (estado em `charge_transactions`/`fiscal_invoices`) ou manter como cache para idempotência e reconciliação?
-4. **Enums:** paridade 1:1 com os 52, incluindo valores sem uso previsto, ou apenas o subconjunto ativo?
-5. **`workspace_members.deleted_at` removido:** confirma que não há soft delete nesse agregado (remoção de vínculo é exclusão física)?
-6. **`generated_images.is_current`:** unicidade por `design_slide_id` (como o dump sugere) ou por `post`? O índice do dump é parcial e precisa de decisão explícita.
+1. **Existe banco com dados a preservar?** Se sim, a consolidação da baseline (T17) fica
+   proibida e o backfill passa a ser obrigatório também para as 31 tabelas alinhadas.
+2. **`settings` e `brand_settings`:** viram colunas em `workspaces`/`brands` ou permanecem como
+   tabela chave-valor até existir UI de configuração? Muda o escopo de T16.
+3. **`provider_customers`/`provider_subscriptions`:** remover (estado em
+   `charge_transactions`/`fiscal_invoices`) ou manter como cache para idempotência e
+   reconciliação?
+4. **`generated_images.is_current`:** unicidade por `design_slide_id` (como o dump sugere) ou por
+   `post`? O índice do dump é parcial e precisa de decisão explícita.
+5. **Triggers do dump:** quais objetos aceitam virar guarda de aplicação em vez de trigger SQLite?
+   A decisão é por objeto, em T20, e imutabilidade de ledger/histórico não pode ficar só na
+   aplicação.
+
+> Resolvidas na revisão da ADR-028: `users.password_hash`/`global_role` permanecem como extensão
+> da ADR-020; o conjunto-alvo é de 71 tabelas até a ADR-029; `workspace_role` migra
+> `admin→MANAGER`; nomes de índice explícitos do dump são preservados.
 
 ## Task list for tracker
 
 ```json
 [
-  {"id":"T1","title":"ADR-028, épico e tracker","description":"Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade, convenção de índices, gate de snapshot, enums e constraints portáveis) e amarrar épico 0057 e #159 às ADR-021/015.","priority":"high","depends_on":[],"phase":"Fase 0 — Contrato, paridade e portabilidade","files":["docs/adr/0028-sqlite-final-schema-alignment.md","docs/ADR-ISSUE-TRACKER.md","docs/issues/0057-sqlite-final-schema-alignment.md"],"size":"S"},
-  {"id":"T2","title":"Teste de paridade contra o DDL final","description":"Versionar tests/contracts/creator_db_final.sql e adicionar ao inventário as asserções de tabelas, colunas, nullability/tamanho, enums, índices e FKs, com as extensões de ADR como exceção declarada e falha agregada.","priority":"high","depends_on":["T1"],"phase":"Fase 0 — Contrato, paridade e portabilidade","files":["tests/test_schema_inventory.py","tests/contracts/creator_db_final.sql"],"size":"M"},
-  {"id":"T3","title":"Helpers portáveis de coluna, enum e índice","description":"Centralizar PK UUID, timestamps UTC, JSON, enum portátil, fábricas de índice ix_/uq_ e as 52 constantes de enum em creator/infrastructure/database/.","priority":"high","depends_on":["T1"],"phase":"Fase 0 — Contrato, paridade e portabilidade","files":["src/creator/infrastructure/database/columns.py","src/creator/infrastructure/database/enums.py"],"size":"S"},
-  {"id":"T4","title":"Portabilidade das CHECK constraints e defaults","description":"Traduzir as 80 CHECKs do dump (15 regex de moeda, 3 num_nonnulls) para expressões SQLite com helpers testados e definir o mapa gen_random_uuid→uuid4 e now→CURRENT_TIMESTAMP.","priority":"high","depends_on":["T3"],"phase":"Fase 0 — Contrato, paridade e portabilidade","files":["src/creator/infrastructure/database/constraints.py","tests/test_portable_schema.py"],"size":"M"},
-  {"id":"T5","title":"Conformidade, consentimento e interesses","description":"Criar audit_logs, user_consents e persona_interests com FKs, UNIQUE e índices conforme o dump, mais revisão 0006 com downgrade.","priority":"medium","depends_on":["T4"],"phase":"Fase 1 — Criar tabelas","files":["src/creator/audit/models.py","src/creator/user/models.py","src/creator/persona/models.py","migrations/versions/0006_*.py"],"size":"S"},
-  {"id":"T6","title":"Satélites de Brand e Campanha","description":"Criar brand_business_details, brand_hashtags, brand_values, campaign_hashtags e campaign_voices com UNIQUE por pai e FKs em cascata, mais revisão 0007.","priority":"medium","depends_on":["T4"],"phase":"Fase 1 — Criar tabelas","files":["src/creator/brand/models.py","src/creator/campaign/models.py","migrations/versions/0007_*.py"],"size":"M"},
-  {"id":"T7","title":"Satélites de Billing e Créditos","description":"Criar plan_payment_methods, charge_transactions, fiscal_invoices, workspace_credit_lots e workspace_credit_lot_consumptions com CHECKs portáveis e ledger sem dupla contagem.","priority":"medium","depends_on":["T4"],"phase":"Fase 1 — Criar tabelas","files":["src/creator/billing/models.py","src/creator/credit/models.py","migrations/versions/0008_*.py"],"size":"M"},
-  {"id":"T8","title":"Renomear workspace_memberships para workspace_members","description":"Renomear a tabela, adicionar status e invited_by, remover deleted_at, preservar UNIQUE(workspace_id, user_id) e atualizar repositório, autorização e testes.","priority":"high","depends_on":["T4"],"phase":"Fase 2 — Renomear e redesenhar (expand)","files":["src/creator/workspace/models.py","src/creator/workspace/repository.py","migrations/versions/0009_*.py"],"size":"S"},
-  {"id":"T9","title":"planning para content_plans e satélites","description":"Expand do redesenho de planejamento: content_plans com 11 colunas, content_plan_items e content_plan_special_dates, mantendo planning intacta.","priority":"high","depends_on":["T4"],"phase":"Fase 2 — Renomear e redesenhar (expand)","files":["src/creator/planning/models.py","src/creator/planning/repository.py","migrations/versions/0010_*.py"],"size":"M"},
-  {"id":"T10","title":"post_structure e design_structure para posts, captions, post_designs e design_slides","description":"Expand do redesenho editorial: posts com 17 colunas e CHECKs de aprovação/agendamento, captions versionadas, post_designs com format/ratio e design_slides ordenados.","priority":"high","depends_on":["T4"],"phase":"Fase 2 — Renomear e redesenhar (expand)","files":["src/creator/content/models.py","src/creator/design_structure/models.py","migrations/versions/0011_*.py","docs/openapi.yaml"],"size":"M"},
-  {"id":"T11","title":"generated_image para generated_images e image_resizes","description":"Expand do redesenho de mídia: generated_images com 23 colunas e 9 CHECKs portadas, image_resizes com UNIQUE (source_image_id, ratio).","priority":"high","depends_on":["T4"],"phase":"Fase 2 — Renomear e redesenhar (expand)","files":["src/creator/generation/models.py","migrations/versions/0012_*.py"],"size":"M"},
-  {"id":"T12","title":"Backfill dos 4 redesenhos","description":"Script idempotente com relatório de contagens e invariantes copiando planning, post_structure, design_structure e generated_image para as tabelas novas, testado em SQLite temporário.","priority":"high","depends_on":["T8","T9","T10","T11"],"phase":"Fase 3 — Backfill e contract","files":["scripts/backfill_redesigns.py","tests/test_backfill_redesigns.py"],"size":"M"},
-  {"id":"T13","title":"Contract: remover as tabelas antigas","description":"Dropar planning, post_structure, design_structure e generated_image, remover o script de backfill e os consumidores remanescentes, com downgrade funcional.","priority":"high","depends_on":["T12"],"phase":"Fase 3 — Backfill e contract","files":["migrations/versions/0013_*.py","docs/migration/schema-final-alignment.md"],"size":"S"},
-  {"id":"T14","title":"Lote A: identidade, notificações, brand, campanha e persona","description":"Alinhar 13 tabelas (users, workspaces, invites, usages, notifications, recipients, preferences, devices, brands, brand_colors, brand_assets, campaigns, personas) com batch, enums do dump e OpenAPI atualizado.","priority":"medium","depends_on":["T13"],"phase":"Fase 4 — Alinhar tabelas comuns","files":["src/creator/user/models.py","src/creator/workspace/models.py","src/creator/notification/models.py","src/creator/brand/models.py","src/creator/campaign/models.py","src/creator/persona/models.py","migrations/versions/0014_*.py","docs/openapi.yaml"],"size":"M"},
-  {"id":"T15","title":"Lote B: billing, créditos e cupons","description":"Alinhar as 18 tabelas de billing, assinaturas, charges, invoices, refunds, providers, cupons e créditos, com bigint nos centavos e backfill dos campos novos.","priority":"medium","depends_on":["T14"],"phase":"Fase 4 — Alinhar tabelas comuns","files":["src/creator/billing/models.py","src/creator/credit/models.py","src/creator/coupon/models.py","migrations/versions/0015_*.py","docs/openapi.yaml"],"size":"M"},
-  {"id":"T16","title":"ADR-029, 11 legadas e 2 tabelas sem alvo","description":"Mapear cada tabela legada ao alvo final ou justificar retenção com prazo, remover as aprovadas, ajustar consumidores e decidir provider_customers e provider_subscriptions.","priority":"medium","depends_on":["T15"],"phase":"Fase 5 — Aposentadoria do legado","files":["docs/adr/0029-legacy-table-retirement.md","migrations/versions/0017_*.py"],"size":"M"},
-  {"id":"T17","title":"Consolidar a baseline","description":"Regenerar 0001_sqlite_baseline do metadata final, remover revisões intermediárias e provar convergência com make snapshot-contract sem diff.","priority":"high","depends_on":["T13","T15","T16"],"phase":"Fase 6 — Consolidação e fechamento","files":["migrations/versions/0001_sqlite_baseline.py","docs/adr/0028-sqlite-final-schema-alignment.md"],"size":"M"},
-  {"id":"T18","title":"Fechamento do épico","description":"Regenerar relatório de paridade e OpenAPI, atualizar tracker, épico 0057 e #159 com evidência de CI e rodar os três gates finais.","priority":"high","depends_on":["T17"],"phase":"Fase 6 — Consolidação e fechamento","files":["docs/openapi.yaml","docs/migration/schema-final-alignment.md","docs/ADR-ISSUE-TRACKER.md"],"size":"S"}
+  {
+    "id": "T1",
+    "title": "ADR-028, épico e tracker",
+    "description": "Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade, convenção de índices, gate de snapshot, enums e constraints portáveis) e amarrar épico 0057 e #159 às ADR-021/015.",
+    "priority": "high",
+    "depends_on": [],
+    "phase": "Fase 0 — Contrato, paridade e portabilidade",
+    "files": [
+      "docs/adr/0028-sqlite-final-schema-alignment.md",
+      "docs/ADR-ISSUE-TRACKER.md",
+      "docs/issues/0057-sqlite-final-schema-alignment.md"
+    ],
+    "size": "S"
+  },
+  {
+    "id": "T2",
+    "title": "Comparador único e teste de paridade com orçamento",
+    "description": "Extrair parse/compare para src/creator/infrastructure/database/final_schema.py, fazer o script usá-lo e adicionar ao inventário congelado os testes de oito dimensões com ADR_EXTENSIONS, LEGACY_RETENTION, RENAME_MAP, CHECK_MAP e orçamento de dívida que só diminui (schema_parity_budget.json).",
+    "priority": "high",
+    "depends_on": [
+      "T1"
+    ],
+    "phase": "Fase 0 — Contrato, paridade e portabilidade",
+    "files": [
+      "src/creator/infrastructure/database/final_schema.py",
+      "scripts/schema_parity_report.py",
+      "tests/test_schema_inventory.py",
+      "tests/contracts/creator_db_final.sql",
+      "tests/contracts/schema_parity_budget.json"
+    ],
+    "size": "L"
+  },
+  {
+    "id": "T3",
+    "title": "Helpers portáveis de enum e nome de índice",
+    "description": "Estender types.py (sem columns.py paralelo) com enums.py dos 52 vocabulários e naming.py para os 123 índices anônimos, preservando os 50 nomes explícitos do dump.",
+    "priority": "high",
+    "depends_on": [
+      "T1"
+    ],
+    "phase": "Fase 0 — Contrato, paridade e portabilidade",
+    "files": [
+      "src/creator/infrastructure/database/enums.py",
+      "src/creator/infrastructure/database/naming.py",
+      "src/creator/infrastructure/database/types.py"
+    ],
+    "size": "S"
+  },
+  {
+    "id": "T4",
+    "title": "Portabilidade das CHECK constraints e defaults",
+    "description": "Criar constraints.py com helpers para 12 CHECKs de moeda, UF, CEP, cor hexadecimal e 3 num_nonnulls, cobrindo os 80 CHECKs via CHECK_MAP, e documentar defaults uuid4/CURRENT_TIMESTAMP.",
+    "priority": "high",
+    "depends_on": [
+      "T3"
+    ],
+    "phase": "Fase 0 — Contrato, paridade e portabilidade",
+    "files": [
+      "src/creator/infrastructure/database/constraints.py",
+      "tests/test_portable_schema.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T5",
+    "title": "Conformidade, consentimento e interesses",
+    "description": "Criar audit_logs, user_consents e persona_interests com FKs, UNIQUE e índices conforme o dump, mais revisão 0006 com downgrade.",
+    "priority": "medium",
+    "depends_on": [
+      "T4"
+    ],
+    "phase": "Fase 1 — Criar tabelas",
+    "files": [
+      "src/creator/audit/models.py",
+      "src/creator/user/models.py",
+      "src/creator/persona/models.py",
+      "migrations/versions/0006_*.py"
+    ],
+    "size": "S"
+  },
+  {
+    "id": "T6",
+    "title": "Satélites de Brand e Campanha",
+    "description": "Criar brand_business_details, brand_hashtags, brand_values, campaign_hashtags e campaign_voices com UNIQUE por pai e FKs em cascata, mais revisão 0007.",
+    "priority": "medium",
+    "depends_on": [
+      "T4"
+    ],
+    "phase": "Fase 1 — Criar tabelas",
+    "files": [
+      "src/creator/brand/models.py",
+      "src/creator/campaign/models.py",
+      "migrations/versions/0007_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T7",
+    "title": "Satélites de Billing e Créditos",
+    "description": "Criar plan_payment_methods, charge_transactions, fiscal_invoices, workspace_credit_lots e workspace_credit_lot_consumptions com CHECKs portáveis e ledger sem dupla contagem.",
+    "priority": "medium",
+    "depends_on": [
+      "T4"
+    ],
+    "phase": "Fase 1 — Criar tabelas",
+    "files": [
+      "src/creator/billing/models.py",
+      "src/creator/credit/models.py",
+      "migrations/versions/0008_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T8",
+    "title": "workspace_memberships para workspace_members com migração de valores",
+    "description": "Renomear a tabela, migrar role owner/admin/editor/viewer para OWNER/MANAGER/EDITOR/VIEWER, introduzir status, remover deleted_at das consultas de autorização e preservar UNIQUE(workspace_id, user_id).",
+    "priority": "high",
+    "depends_on": [
+      "T4"
+    ],
+    "phase": "Fase 2 — Renomear e redesenhar (expand)",
+    "files": [
+      "src/creator/workspace/models.py",
+      "src/creator/workspace/repository.py",
+      "src/creator/domain/auth.py",
+      "migrations/versions/0009_*.py",
+      "migrations/versions/0010_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T9",
+    "title": "planning para content_plans e satélites",
+    "description": "Expand do redesenho de planejamento: content_plans com 11 colunas, content_plan_items e content_plan_special_dates, mantendo planning intacta.",
+    "priority": "high",
+    "depends_on": [
+      "T4"
+    ],
+    "phase": "Fase 2 — Renomear e redesenhar (expand)",
+    "files": [
+      "src/creator/planning/models.py",
+      "src/creator/planning/repository.py",
+      "migrations/versions/0010_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T10",
+    "title": "post_structure e design_structure para posts, captions, post_designs e design_slides",
+    "description": "Expand do redesenho editorial: posts com 17 colunas e CHECKs de aprovação/agendamento, captions versionadas, post_designs com format/ratio e design_slides ordenados.",
+    "priority": "high",
+    "depends_on": [
+      "T4"
+    ],
+    "phase": "Fase 2 — Renomear e redesenhar (expand)",
+    "files": [
+      "src/creator/content/models.py",
+      "src/creator/design_structure/models.py",
+      "migrations/versions/0011_*.py",
+      "docs/openapi.yaml"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T11",
+    "title": "generated_image para generated_images e image_resizes",
+    "description": "Expand do redesenho de mídia: generated_images com 23 colunas e 9 CHECKs portadas, image_resizes com UNIQUE (source_image_id, ratio).",
+    "priority": "high",
+    "depends_on": [
+      "T4"
+    ],
+    "phase": "Fase 2 — Renomear e redesenhar (expand)",
+    "files": [
+      "src/creator/generation/models.py",
+      "migrations/versions/0012_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T12",
+    "title": "Backfill dos 4 redesenhos",
+    "description": "Script idempotente com relatório de contagens e invariantes copiando planning, post_structure, design_structure e generated_image para as tabelas novas, testado em SQLite temporário.",
+    "priority": "high",
+    "depends_on": [
+      "T8",
+      "T9",
+      "T10",
+      "T11"
+    ],
+    "phase": "Fase 3 — Backfill e contract",
+    "files": [
+      "scripts/backfill_redesigns.py",
+      "tests/test_backfill_redesigns.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T13",
+    "title": "Contract: remover as tabelas antigas",
+    "description": "Dropar planning, post_structure, design_structure e generated_image, remover o script de backfill e os consumidores remanescentes, com downgrade funcional.",
+    "priority": "high",
+    "depends_on": [
+      "T12"
+    ],
+    "phase": "Fase 3 — Backfill e contract",
+    "files": [
+      "migrations/versions/0013_*.py",
+      "docs/migration/schema-final-alignment.md"
+    ],
+    "size": "S"
+  },
+  {
+    "id": "T14",
+    "title": "Lote A: identidade, notificações, brand, campanha e persona",
+    "description": "Alinhar 13 tabelas (users, workspaces, invites, usages, notifications, recipients, preferences, devices, brands, brand_colors, brand_assets, campaigns, personas) com batch, enums do dump e OpenAPI atualizado.",
+    "priority": "medium",
+    "depends_on": [
+      "T13"
+    ],
+    "phase": "Fase 4 — Alinhar tabelas comuns",
+    "files": [
+      "src/creator/user/models.py",
+      "src/creator/workspace/models.py",
+      "src/creator/notification/models.py",
+      "src/creator/brand/models.py",
+      "src/creator/campaign/models.py",
+      "src/creator/persona/models.py",
+      "migrations/versions/0014_*.py",
+      "docs/openapi.yaml"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T15",
+    "title": "Lote B: billing, créditos e cupons",
+    "description": "Alinhar as 18 tabelas de billing, assinaturas, charges, invoices, refunds, providers, cupons e créditos, com bigint nos centavos e backfill dos campos novos.",
+    "priority": "medium",
+    "depends_on": [
+      "T14"
+    ],
+    "phase": "Fase 4 — Alinhar tabelas comuns",
+    "files": [
+      "src/creator/billing/models.py",
+      "src/creator/credit/models.py",
+      "src/creator/coupon/models.py",
+      "migrations/versions/0015_*.py",
+      "docs/openapi.yaml"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T16",
+    "title": "ADR-029, 11 legadas e 2 tabelas sem alvo",
+    "description": "Mapear cada tabela legada ao alvo final ou justificar retenção com prazo, remover as aprovadas, ajustar consumidores e decidir provider_customers e provider_subscriptions.",
+    "priority": "medium",
+    "depends_on": [
+      "T15"
+    ],
+    "phase": "Fase 5 — Aposentadoria do legado",
+    "files": [
+      "docs/adr/0029-legacy-table-retirement.md",
+      "migrations/versions/0017_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T17",
+    "title": "Consolidar a baseline",
+    "description": "Regenerar 0001_sqlite_baseline do metadata final, remover revisões intermediárias e provar convergência com make snapshot-contract sem diff.",
+    "priority": "high",
+    "depends_on": [
+      "T13",
+      "T15",
+      "T16"
+    ],
+    "phase": "Fase 6 — Consolidação e fechamento",
+    "files": [
+      "migrations/versions/0001_sqlite_baseline.py",
+      "docs/adr/0028-sqlite-final-schema-alignment.md"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T18",
+    "title": "Fechamento do épico",
+    "description": "Regenerar relatório de paridade e OpenAPI, atualizar tracker, épico 0057 e #159 com evidência de CI e rodar os três gates finais.",
+    "priority": "high",
+    "depends_on": [
+      "T17"
+    ],
+    "phase": "Fase 6 — Consolidação e fechamento",
+    "files": [
+      "docs/openapi.yaml",
+      "docs/migration/schema-final-alignment.md",
+      "docs/ADR-ISSUE-TRACKER.md"
+    ],
+    "size": "S"
+  },
+  {
+    "id": "T19",
+    "title": "Snapshot como gate, índices no fixture e teste de upgrade anterior",
+    "description": "Adicionar --check ao snapshot_contract e ao make check, incluir CREATE INDEX no schema_ddl.sql, comparar bytes canônicos e provar com schema_prev_ddl.sql que uma revisão esquecida é detectada, com compare_type e render_as_batch no env.py.",
+    "priority": "high",
+    "depends_on": [
+      "T2"
+    ],
+    "phase": "Fase 0 — Contrato, paridade e portabilidade",
+    "files": [
+      "scripts/snapshot_contract.py",
+      "Makefile",
+      "migrations/env.py",
+      "tests/test_schema_inventory.py",
+      "tests/contracts/schema_prev_ddl.sql"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T20",
+    "title": "Triggers, funções e view do dump",
+    "description": "Inventariar as 69 funções/triggers e a view charges_with_last_transaction e classificar cada objeto em trigger SQLite, guarda de aplicação com teste ou fora de escopo justificado, cobrindo obrigatoriamente ledger e histórico append-only.",
+    "priority": "high",
+    "depends_on": [
+      "T15"
+    ],
+    "phase": "Fase 5 — Aposentadoria do legado",
+    "files": [
+      "docs/migration/storage-objects-matrix.md",
+      "migrations/versions/0018_*.py",
+      "tests/test_storage_objects.py"
+    ],
+    "size": "M"
+  }
 ]
-```
+``````

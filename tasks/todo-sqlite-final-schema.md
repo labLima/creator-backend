@@ -11,9 +11,10 @@
 ## Fase 0 — Contrato, paridade e portabilidade
 
 - [ ] **T1** (SHC-2, S) ADR-028, épico e tracker — depende de —
-- [ ] **T2** (SHC-3, M) Teste de paridade contra o DDL final — depende de T1
-- [ ] **T3** (SHC-4, S) Helpers portáveis de coluna, enum e índice — depende de T1
+- [ ] **T2** (SHC-3, L) Comparador único e teste de paridade com orçamento — depende de T1
+- [ ] **T3** (SHC-4, S) Helpers portáveis de enum e nome de índice — depende de T1
 - [ ] **T4** (SHC-5, M) Portabilidade das CHECK constraints e defaults — depende de T3
+- [ ] **T19** (SHC-20, M) Snapshot como gate, índices no fixture e teste de upgrade anterior — depende de T2
 
 ### Checkpoint — Fase 0 — Contrato, paridade e portabilidade
 
@@ -35,7 +36,7 @@
 
 ## Fase 2 — Renomear e redesenhar (expand)
 
-- [ ] **T8** (SHC-9, S) Renomear workspace_memberships para workspace_members — depende de T4
+- [ ] **T8** (SHC-9, M) workspace_memberships para workspace_members com migração de valores — depende de T4
 - [ ] **T9** (SHC-10, M) planning para content_plans e satélites — depende de T4
 - [ ] **T10** (SHC-11, M) post_structure e design_structure para posts, captions, post_designs e design_slides — depende de T4
 - [ ] **T11** (SHC-12, M) generated_image para generated_images e image_resizes — depende de T4
@@ -71,6 +72,7 @@
 ## Fase 5 — Aposentadoria do legado
 
 - [ ] **T16** (SHC-17, M) ADR-029, 11 legadas e 2 tabelas sem alvo — depende de T15
+- [ ] **T20** (SHC-21, M) Triggers, funções e view do dump — depende de T15
 
 ### Checkpoint — Fase 5 — Aposentadoria do legado
 

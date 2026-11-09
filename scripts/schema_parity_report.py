@@ -94,26 +94,81 @@ def split_top_level(text: str) -> list[str]:
 
 
 def statements(sql: str) -> list[str]:
+    """Split a PostgreSQL dump into statements, respecting quotes and comments.
+
+    A naive ``sql.split(";")`` breaks on semicolons inside string literals, inside
+    ``$$``-quoted function bodies and inside comments. This scanner tracks single
+    quotes, identifiers, dollar-quoted blocks and line comments so every statement
+    keeps its body intact.
+    """
     out: list[str] = []
     cur: list[str] = []
-    in_quote = False
     depth = 0
-    for ch in sql:
+    i = 0
+    length = len(sql)
+
+    while i < length:
+        ch = sql[i]
+
+        if ch == "-" and sql.startswith("--", i):
+            newline = sql.find("\n", i)
+            if newline == -1:
+                break
+            i = newline + 1
+            cur.append("\n")
+            continue
+
+        if ch == "'":
+            end = i + 1
+            while end < length:
+                if sql[end] == "'":
+                    if end + 1 < length and sql[end + 1] == "'":
+                        end += 2
+                        continue
+                    break
+                end += 1
+            cur.append(sql[i : end + 1])
+            i = end + 1
+            continue
+
         if ch == '"':
-            in_quote = not in_quote
-        if not in_quote:
-            if ch == "(":
-                depth += 1
-            elif ch == ")":
-                depth -= 1
-        if ch == ";" and not in_quote and depth == 0:
-            if "".join(cur).strip():
-                out.append("".join(cur).strip())
+            end = sql.find('"', i + 1)
+            if end == -1:
+                end = length - 1
+            cur.append(sql[i : end + 1])
+            i = end + 1
+            continue
+
+        if ch == "$":
+            match = re.match(r"\$[A-Za-z_0-9]*\$", sql[i:])
+            if match:
+                tag = match.group(0)
+                end = sql.find(tag, i + len(tag))
+                if end == -1:
+                    cur.append(sql[i:])
+                    i = length
+                    continue
+                cur.append(sql[i : end + len(tag)])
+                i = end + len(tag)
+                continue
+
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+
+        if ch == ";" and depth == 0:
+            text = "".join(cur).strip()
+            if text:
+                out.append(text)
             cur = []
         else:
             cur.append(ch)
-    if "".join(cur).strip():
-        out.append("".join(cur).strip())
+        i += 1
+
+    tail = "".join(cur).strip()
+    if tail:
+        out.append(tail)
 
     cleaned: list[str] = []
     for stmt in out:
@@ -158,6 +213,7 @@ def parse_final(sql: str) -> dict[str, Any]:
     indexes: list[dict[str, Any]] = []
     enums: list[str] = []
     fks: list[dict[str, Any]] = []
+    storage_objects: list[dict[str, str]] = []
     for stmt in statements(sql):
         em = re.match(r'CREATE TYPE "([^"]+)"', stmt)
         if em:
@@ -208,6 +264,14 @@ def parse_final(sql: str) -> dict[str, Any]:
             tables[name] = {"columns": cols, "constraints": cons}
             continue
 
+        obj = re.match(
+            r"CREATE (?:OR REPLACE )?(FUNCTION|TRIGGER|VIEW)\s+\"?([^\"\s(]+)",
+            stmt,
+        )
+        if obj:
+            storage_objects.append({"kind": obj.group(1), "name": obj.group(2)})
+            continue
+
         fk = re.match(
             r'ALTER TABLE "([^"]+)" ADD (?:CONSTRAINT "[^"]+" )?FOREIGN KEY\s*\(([^)]+)\)\s*'
             r'REFERENCES\s+"([^"]+)"\s*\(([^)]+)\)(?:\s+ON DELETE ([A-Z ]+?))?(?:\s+DEFERRABLE|$)',
@@ -243,7 +307,13 @@ def parse_final(sql: str) -> dict[str, Any]:
                     "definition": re.sub(r"\s+", " ", stmt),
                 }
             )
-    return {"tables": tables, "indexes": indexes, "enums": enums, "fks": fks}
+    return {
+        "tables": tables,
+        "indexes": indexes,
+        "enums": enums,
+        "fks": fks,
+        "storage_objects": storage_objects,
+    }
 
 
 def parse_models() -> dict[str, Any]:
@@ -366,7 +436,10 @@ def compare(final: dict[str, Any], models: dict[str, Any]) -> dict[str, Any]:
         and fk["ondelete"].upper() != model_fks[(t, cols)]["ondelete"].upper()
     )
     gap["final_fk_count"] = len(final_fks)
-    gap["composite_fk_count"] = sum(1 for fk in final_fks.values() if fk["composite"])
+    composites = [fk for fk in final_fks.values() if fk["composite"]]
+    gap["composite_fk_count"] = len(composites)
+    gap["composite_fk_workspace"] = sum(1 for fk in composites if "workspace_id" in fk["columns"])
+    gap["composite_fk_brand"] = sum(1 for fk in composites if "brand_id" in fk["columns"])
     return gap
 
 
@@ -410,13 +483,18 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
         f"{sum(1 for i in final['indexes'] if i['unique'])} UNIQUE)",
         f"- Tabelas novas a criar: **{len(new_tables)}**",
         f"- Nome divergente: **{len(RENAMES)}** "
-        f"({simple_renames} rename simples, "
+        f"({simple_renames} rename com migração de valores, "
         f"{len(RENAMES) - simple_renames} redesenhos)",
         f"- Extensões de ADR preservadas: **{len(preserved)}**",
         f"- Tabelas legadas a decidir: **{len(legacy)}**",
         f"- Tabelas sem alvo no modelo final: **{len(dropped)}**",
+        f"- Funções/triggers/views no modelo final: **{len(final['storage_objects'])}** "
+        f"({sum(1 for o in final['storage_objects'] if o['kind'] == 'FUNCTION')} funções, "
+        f"{sum(1 for o in final['storage_objects'] if o['kind'] == 'TRIGGER')} triggers, "
+        f"{sum(1 for o in final['storage_objects'] if o['kind'] == 'VIEW')} view)",
         f"- Foreign keys no modelo final: **{gap['final_fk_count']}** "
-        f"({gap['composite_fk_count']} compostas com `workspace_id`)",
+        f"({gap['composite_fk_count']} compostas: {gap['composite_fk_workspace']} com "
+        f"`workspace_id` e {gap['composite_fk_brand']} com `brand_id`)",
         f"- FKs ausentes no ORM: **{len(gap['fk_only_in_final'])}**; "
         f"ON DELETE divergente: **{len(gap['fk_ondelete_mismatch'])}**; "
         f"FKs só no ORM: **{len(gap['fk_only_in_model'])}**",
@@ -425,7 +503,12 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
         "",
         "O nome muda, mas isso **não** implica `ALTER TABLE ... RENAME`: a maioria dos casos é",
         "redesenho de modelo, com colunas redistribuídas para as tabelas satélite novas.",
-        "A coluna Veredito separa rename simples de substituição com migração de consumidores.",
+        "A coluna Veredito separa rename de substituição com migração de consumidores.",
+        "",
+        "O único rename (`workspace_memberships` → `workspace_members`) também exige migração de",
+        "dados: o vocabulário de `role` muda (`owner/admin/editor/viewer` →",
+        "`OWNER/MANAGER/EDITOR/VIEWER`), entra `status` e sai `deleted_at`, que hoje é filtrado",
+        "pelas consultas. Não é `ALTER TABLE ... RENAME` puro.",
         "",
         "| Atual | Final | Colunas | Veredito |",
         "| --- | --- | --- | --- |",
@@ -488,9 +571,11 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
     lines += [
         "## 4. Foreign keys",
         "",
-        f"O modelo final declara {gap['final_fk_count']} FKs em `ALTER TABLE` no fim do dump",
-        f"({gap['composite_fk_count']} são compostas e incluem `workspace_id`, exigindo UNIQUE",
-        "composta no alvo). SQLite não aceita `ALTER TABLE ... ADD CONSTRAINT`: essas FKs",
+        f"O modelo final declara {gap['final_fk_count']} FKs em `ALTER TABLE` no fim do dump.",
+        f"São {gap['composite_fk_count']} compostas — {gap['composite_fk_workspace']} com "
+        f"`workspace_id` e {gap['composite_fk_brand']} com `brand_id` — e cada uma exige UNIQUE",
+        "composta no alvo com a mesma chave. SQLite não aceita",
+        "`ALTER TABLE ... ADD CONSTRAINT`: essas FKs",
         "precisam existir nas models para valerem no baseline criado por `create_all()`.",
         "",
         "> FKs das tabelas com nome divergente (seção 1) contam como ausentes porque a",
@@ -517,9 +602,12 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
     lines += [
         "## 5. Índices por tabela",
         "",
-        f"O modelo final declara {len(final['indexes'])} índices. `SQLite` aceita nomes",
-        "automáticos, mas a paridade precisa ser decidida tabela a tabela:",
-        "nome, colunas, UNIQUE e predicado parcial.",
+        f"O modelo final declara {len(final['indexes'])} índices: "
+        f"{sum(1 for i in final['indexes'] if i['name'])} com nome explícito e "
+        f"{len(unnamed)} anônimos.",
+        "SQLite **exige** nome em `CREATE INDEX` (não existe `CREATE INDEX ON tabela`), então os",
+        "anônimos recebem nome na metadata. Os nomes explícitos do dump (`idx_m8_*`, `uq_*`) são",
+        "preservados para manter a paridade com a fonte.",
         "",
     ]
     by_table: dict[str, list[dict[str, Any]]] = {}
@@ -540,7 +628,23 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
             lines.append("")
 
     lines += [
-        "## 7. Tabelas fora do modelo final",
+        "## 7. Funções, triggers e views",
+        "",
+        "Estes objetos carregam regra de negócio no banco (imutabilidade do ledger, validação de",
+        "lote, `updated_at`, snapshot de cupom, histórico append-only). Eles não são expressos por",
+        "models e não entram na paridade tabela-coluna, mas precisam de decisão explícita objeto a",
+        "objeto: portar como trigger SQLite, mover para a aplicação com teste equivalente, ou",
+        "declarar fora de escopo com justificativa. Nenhum fica sem classificação.",
+        "",
+        "| Tipo | Nome |",
+        "| --- | --- |",
+    ]
+    for obj in final["storage_objects"]:
+        lines.append(f"| {obj['kind']} | `{obj['name']}` |")
+    lines.append("")
+
+    lines += [
+        "## 8. Tabelas fora do modelo final",
         "",
         "| Tabela | Categoria | Ação |",
         "| --- | --- | --- |",

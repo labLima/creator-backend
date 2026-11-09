@@ -36,12 +36,12 @@ Relatório reproduzível por `python scripts/schema_parity_report.py`:
 | --- | --- | --- |
 | Tabelas | 54 | 53 |
 | Tipos ENUM | 52 | 0 nativos (String + CHECK) |
-| Índices | 173 (123 sem nome, 54 UNIQUE) | parcial |
+| Índices | 173 (50 nomeados, 123 anônimos, 54 UNIQUE) | parcial |
 | Tabelas só no modelo final | 18 (+5 renomeações) | — |
 | Tabelas só no ORM | — | 4 extensões, 11 legadas, 2 sem alvo |
 | Tabelas comuns com divergência | 31 de 31 | — |
-| Foreign keys | 101 (10 compostas) | 36 equivalentes, 65 a criar |
-| CHECK constraints | 80 (15 com regex, 3 com `num_nonnulls`) | portabilidade pendente |
+| Foreign keys | 101 (10 compostas: 6 com `workspace_id`, 4 com `brand_id`) | 36 equivalentes, 65 a criar |
+| CHECK constraints | 80 (15 com regex: 12 moeda, UF, CEP, cor; 3 com `num_nonnulls`) | portabilidade pendente |
 
 Gate de baseline na branch: `make check` verde (lint, format, mypy, pytest,
 `alembic check` sem operações pendentes).
@@ -111,6 +111,14 @@ Uma issue por tarefa do plano, cada uma declarando o workspace
 | T16 | `SHC-17` | [T16] ADR-029, 11 legadas e 2 tabelas sem alvo |
 | T17 | `SHC-18` | [T17] Consolidar a baseline |
 | T18 | `SHC-19` | [T18] Fechamento do épico |
+| T19 | `SHC-20` | [T19] Snapshot como gate, índices no fixture e teste de upgrade anterior |
+| T20 | `SHC-21` | [T20] Triggers, funções e view do dump |
+
+## Objetos de armazenamento
+
+O dump também declara 69 funções/triggers e a view
+`charges_with_last_transaction`, decididos objeto a objeto na tarefa T20
+(`SHC-21`).
 
 ## Critérios de aceite
 

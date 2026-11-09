@@ -3,144 +3,210 @@
 - Status: accepted
 - Fonte: decisão da Fase 2 (schema), 2026-11-09
 - Tracker: [docs/issues/0057](../issues/0057-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159)
-- ADRs relacionadas: [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão), [ADR-015](0015-database-diagram-alignment.md) (alinhamento ao diagrama)
-- Issues de implementação: `SHC-2` a `SHC-19` no board `SHC` do Shared Context; plano em [`tasks/plan-sqlite-final-schema.md`](../../tasks/plan-sqlite-final-schema.md)
+- ADRs relacionadas: [ADR-020](0020-self-hosted-authentication.md) (autenticação própria), [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão), [ADR-015](0015-database-diagram-alignment.md) (alinhamento ao diagrama)
+- Issues de implementação: `SHC-2` a `SHC-20` no board `SHC` do Shared Context; plano em [`tasks/plan-sqlite-final-schema.md`](../../tasks/plan-sqlite-final-schema.md)
 
 ## Contexto
 
-A troca de PostgreSQL por SQLite foi concluída na ADR-021: `DATABASE_URL` padrão
-`sqlite+pysqlite:///./.local/db/creator.db`, `PRAGMA foreign_keys=ON`/WAL/busy_timeout,
-baseline `0001_sqlite_baseline` criada por `Base.metadata.create_all()` e migrations
-PostgreSQL arquivadas em `migrations/legacy_postgres/`.
+A troca de PostgreSQL por SQLite foi concluída na ADR-021. O que falta é a paridade entre o
+schema vivo e a modelagem final. O dump `docs/migration/Creator_DB_final.sql` (sha256
+`619512b7…b583`) declara **54 tabelas, 52 tipos ENUM, 173 índices, 101 foreign keys, 80 CHECK
+constraints, 69 funções/triggers e 1 view**; o metadata tem **53 tabelas** e diverge em **31
+tabelas comuns**, além de **18 tabelas ausentes**, **1 rename com migração de valores** e **4
+redesenhos de modelo**.
 
-O que não foi concluído é a paridade entre o schema vivo e a modelagem final. O dump
-`docs/migration/Creator_DB_final.sql` (sha256 `619512b7…b583`) declara **54 tabelas, 52
-tipos ENUM, 173 índices, 101 foreign keys e 80 CHECK constraints**; o metadata tem **53
-tabelas** e diverge em **31 tabelas comuns**, além de **18 tabelas ausentes**, **1 rename
-viável** e **4 redesenhos de modelo**. O relatório
-[`docs/migration/schema-final-alignment.md`](../migration/schema-final-alignment.md) mede o
-delta e é regenerável por `scripts/schema_parity_report.py`.
+O banco é pré-produção, mas a decisão de reconstruir ou migrar é irreversível para quem já tem
+volume, então precisa de condição explícita de inversão.
 
-O banco é pré-produção. Ainda assim, a decisão de reconstruir ou migrar é irreversível para
-quem já tem volume, então precisa de condição explícita de inversão.
+### Fatos que restringem a decisão
+
+1. **A modelagem final não é a única fonte de verdade.** Ela não contém `users.password_hash`
+   nem `users.global_role`, que a ADR-020 exige para autenticação própria. Também não contém as
+   quatro extensões de ADR já aceitas (`auth_sessions`, `outbox_events`, `activity_events`,
+   `content_text_versions`) nem as 13 tabelas ainda sem alvo (`11 legadas + 2 de provider`).
+2. **`alembic check` é hoje vacuous.** `0001_sqlite_baseline.upgrade()` chama
+   `Base.metadata.create_all()` com o metadata corrente; um banco novo já nasce com as colunas
+   novas antes das revisões seguintes rodarem, então `scripts/check_migrations.py` não detecta
+   uma revisão esquecida. `tests/test_schema_inventory.py` documenta esse mesmo modo de falha.
+3. **O snapshot de schema não vê índices.** `scripts/snapshot_contract.py` emite apenas
+   `CreateTable` e `tests/contracts/schema_ddl.sql` não tem `CREATE INDEX`; mudanças só de
+   índice são invisíveis. O snapshot também não é executado por `make check`.
+4. **Índices anônimos não existem em SQLite.** `CREATE INDEX ON tabela (...)` é sintaxe
+   inválida; todo índice precisa de nome. Dos 173 índices do dump, 50 têm nome explícito
+   (`idx_m8_*`, `uq_*`) e 123 são anônimos.
+5. **As FKs compostas não são todas de `workspace_id`.** São 10: 6 incluem `workspace_id` e 4
+   incluem `brand_id` (`coupon_redemptions`/`workspace_credit_transactions` → `orders`,
+   `workspace_credit_lot_consumptions` → `workspace_credit_lots`, e duas de
+   `brand_business_details` → `campaigns`/`personas`). Cada uma exige UNIQUE composta no alvo
+   com a mesma chave.
+6. **Os CHECKs usam operadores que SQLite não tem.** São 80 CHECKs; 15 usam regex PostgreSQL
+   (`~`): 12 de moeda, 1 de UF, 1 de CEP e 1 de cor hexadecimal. Outros 3 usam
+   `num_nonnulls(...)`.
+7. **O dump tem lógica de armazenamento, não só tabelas.** 69 funções/triggers (imutabilidade do
+   ledger de créditos, validação de lote, `updated_at`, snapshot de cupom, histórico
+   append-only de assinatura) e a view `charges_with_last_transaction` não são expressos por
+   models.
+8. **Tabelas do modelo final remapeiam dados, não só nomes.** `workspace_role` no dump é
+   `OWNER/MANAGER/EDITOR/VIEWER`; o código usa `owner/admin/editor/viewer`. `workspace_members`
+   troca `deleted_at` por `status`, e várias consultas filtram `deleted_at IS NULL`.
 
 ## Decisão
 
-### 1. Incremental agora, baseline única no fim, com condição de inversão
+### 1. Incremental agora, baseline consolidada no fim, com condição de inversão
 
-O trabalho é executado em revisões Alembic encadeadas a partir da head atual
-(`0005_content_text_versions`), uma por tarefa, para que cada PR fique verde. A fase final
-regenera `0001_sqlite_baseline` do metadata final e remove as revisões intermediárias,
-produzindo uma baseline única. O `make snapshot-contract` sem diff é a prova de que o
-squash preservou o schema.
+O trabalho usa revisões Alembic encadeadas a partir da head atual (`0005_content_text_versions`),
+uma por tarefa, e a fase final regenera `0001_sqlite_baseline` e remove as revisões
+intermediárias. A prova de equivalência é `make snapshot-contract --check` sem diff.
 
-**Condição de inversão:** se existir banco com dados a preservar, a consolidação da baseline
-fica proibida e a estratégia vira migração incremental permanente, com backfill obrigatório
-também para as 31 tabelas alinhadas.
+**Condição de inversão:** se existir banco com dados a preservar, a consolidação fica proibida e
+a estratégia vira migração incremental permanente, com backfill obrigatório também nas 31
+tabelas alinhadas.
 
-### 2. Expand → backfill → contract para as mudanças de modelo
+### 2. A modelagem final é a referência, com exceções declaradas
 
-As quatro mudanças não são renames: `planning` (24 colunas) → `content_plans` (11) +
-`content_plan_items` + `content_plan_special_dates`; `post_structure` (18) → `posts` (17) +
-`captions` + `post_designs` + `design_slides`; `design_structure` (5) → `post_designs` (6);
-`generated_image` (11) → `generated_images` (23) + `image_resizes`. Cada uma segue três
-etapas em PRs separados:
+O conjunto-alvo **não é 54 tabelas**: é `54 do dump` + `4 extensões de ADR` + `13 tabelas ainda
+sem alvo` = **71 tabelas** durante a execução, caindo para 58 quando a ADR-029 decidir as 13. As
+exceções são constantes declaradas no teste de paridade, nunca condições espalhadas:
 
-1. **expand** — criar as tabelas novas ao lado das antigas, sem remover nada;
-2. **backfill** — script idempotente que copia os dados e reporta contagens e invariantes;
-3. **contract** — remover as tabelas antigas e o script.
+- **Extensões de ADR preservadas:** `auth_sessions`, `outbox_events`, `activity_events`,
+  `content_text_versions`.
+- **Extensão de autenticação (emenda à ADR-020):** `users.password_hash` e `users.global_role`
+  permanecem; são a única fonte de credencial local. `users.external_id` é absorvido por
+  `users.auth_provider_id` na migração, e `users.cnpj`/`users.cpf` são removidos se não tiverem
+  consumidor (verificado em T14).
+- **Tabelas sem alvo:** `provider_customers` e `provider_subscriptions`, decididas na ADR-029.
 
-Nenhum PR mistura expand e contract. O rollback de cada etapa é o `downgrade` da própria
-revisão. O único rename simples é `workspace_memberships` → `workspace_members` (7 → 8
-colunas), que não precisa de expand.
+Colunas exigidas pelo dump e ausentes por decisão de produto (por exemplo `users.email`
+`varchar(254)`) são migradas; o `String(320)` atual deixa de valer e o teste
+`tests/test_schema_models.py` é atualizado na mesma PR.
 
-### 3. Fonte de verdade versionada
+### 3. Expand → backfill → contract, incluindo o rename
 
-`docs/migration/Creator_DB_final.sql` é a fonte da modelagem final, versionada no
-repositório. `scripts/schema_parity_report.py` é a única implementação de comparação contra
-`Base.metadata` e gera o relatório de paridade. Nenhuma issue pode declarar paridade sem
-rodar esse script.
+Nem `workspace_memberships` é rename sem migração: além do nome, muda o vocabulário de `role`,
+entra `status`, sai `deleted_at`. As cinco mudanças seguem três etapas em PRs separados:
 
-### 4. Teste de paridade no inventário congelado
+1. **expand** — criar tabelas/colunas novas ao lado das antigas, sem remover nada;
+2. **backfill** — script idempotente que copia e normaliza dados (`owner→OWNER`,
+   `admin→MANAGER`, `deleted_at IS NOT NULL→status=…`), com relatório de contagens;
+3. **contract** — remover tabelas/colunas antigas e o script.
 
-As asserções de paridade vivem em `tests/test_schema_inventory.py`, o mesmo módulo que já
-congela o schema, para não existirem dois parsers de DDL. O módulo ganha a fixture
-`tests/contracts/creator_db_final.sql` (cópia com sha256 verificado no teste) e asserta seis
-dimensões contra `Base.metadata`:
+Nenhum PR mistura expand e contract. **O `downgrade` do contract recria tabelas vazias, não
+devolve dados**; a reversão de dados depende do backup, e isso é explicitado na issue de
+execução. Remoção de tabela só ocorre depois de models, DTOs, OpenAPI, testes e consumidores
+migrados, como exige a ADR-015.
 
-1. conjunto exato de tabelas (54 finais + 4 extensões declaradas);
-2. conjunto de colunas por tabela;
-3. nullability e tamanho de `String` por coluna;
-4. vocabulário de enum por coluna;
-5. índices por nome, colunas ordenadas, unicidade e predicado parcial;
-6. foreign keys por colunas, alvo e `ON DELETE`.
+### 4. Fonte de verdade e comparador únicos
 
-As exceções (extensões de ADR e retenções de legado) ficam em constantes declaradas no
-módulo, nunca em condições espalhadas. As falhas agregam todas as divergências com contagem
-por categoria, para um único diagnóstico por execução.
+`docs/migration/Creator_DB_final.sql` é a fonte versionada. O parser e a comparação vivem em
+`src/creator/infrastructure/database/final_schema.py`, importáveis por script e testes (o
+projeto já instala `src` em modo editável; `scripts/` e `tests/` não se importam entre si).
+`scripts/schema_parity_report.py` passa a ser um fino invólucro desse módulo. Duas
+implementações de parsing seriam duas verdades — proibido.
 
-### 5. Nomes de índice são contrato
+### 5. Oito dimensões de paridade, com ratchet explícito
 
-O snapshot DDL precisa ser determinístico e 123 dos 173 índices do dump são anônimos.
-Todo índice passa a seguir `ix_<tabela>_<colunas>` e `uq_<tabela>_<colunas>`. Índice
-anônimo no dump recebe nome na metadata e o mapeamento correspondente é registrado no
-teste de paridade, resolvendo a divergência no sentido metadata → dump.
+As asserções ficam em `tests/test_schema_inventory.py`, junto dos fixtures congelados, e cobrem:
+tabelas; colunas e PK; nullability, tamanho de `String` e largura `Integer`/`BigInteger`; enums;
+índices e UNIQUE; FKs (colunas locais, alvo, colunas do alvo, `ON DELETE`); CHECKs; e presença
+de defaults.
 
-### 6. `make snapshot-contract` é gate de toda PR que muda schema
+Como o alinhamento é incremental e o gate precisa ficar verde, o estado conhecido vive em
+`tests/contracts/schema_parity_budget.json`, com `dump_sha256`, contagem por categoria e
+`gap_digest`. O teste exige **igualdade** com o orçamento:
 
-Qualquer mudança de schema regenera `tests/contracts/schema_tables.json` e
-`tests/contracts/schema_ddl.sql` **na mesma PR**, com o diff revisado. O diff é a evidência
-auditável da mudança; separar em outra PR quebra a rastreabilidade e elimina a revisão.
+- divergência maior que o orçamento → falha (`schema debt GREW`);
+- divergência menor que o orçamento → falha (`ratchet stale: reduza o orçamento nesta PR`).
 
-### 7. Portabilidade de constraints é trabalho explícito
+Assim cada PR que corrige uma tabela reduz uma contagem e o digest na mesma diff — a evidência
+de progresso é o próprio diff. `xfail`, skip e allowlist por tabela são rejeitados porque não
+forçam a limpeza. Ao final, todas as contagens são zero e o arquivo de orçamento fica só com os
+hashes.
 
-SQLite não aceita `ALTER TABLE ... ADD CONSTRAINT`, então as 101 FKs do dump precisam estar
-nas models para valerem no baseline criado por `create_all()`. Dez delas são **compostas e
-incluem `workspace_id`**, o que exige UNIQUE composta com a mesma chave no alvo. O `ON
-DELETE` do dump (40 CASCADE, 31 RESTRICT, 30 SET NULL) é preservado.
+CHECKs não são comparáveis por texto entre PostgreSQL e SQLite. O módulo declara
+`CHECK_MAP`, mapeando cada CHECK do dump ao CHECK portável equivalente, e o teste falha se
+algum CHECK do dump ficar sem entrada ou se a entrada apontar para uma coluna inexistente.
 
-Das 80 CHECK constraints, 15 usam regex PostgreSQL (`currency ~ '^[A-Z]{3}$'`) e 3 usam
-`num_nonnulls(...)`. Ambas são traduzidas por helpers em
-`creator/infrastructure/database/` para expressões SQLite (`GLOB`/`LIKE`/`length`/`upper` e
-soma de `CASE WHEN ... IS NOT NULL`), com teste de equivalência semântica por helper.
-`gen_random_uuid()` vira default Python `uuid4` e `now()` vira `CURRENT_TIMESTAMP`/helper UTC.
+### 6. Snapshot passa a ser gate e a incluir índices
 
-### 8. Enums com vocabulário 1:1
+`scripts/snapshot_contract.py` ganha `--check` (não escreve, falha se divergir) e
+`make check` passa a rodar `snapshot-contract --check`. O fixture `tests/contracts/schema_ddl.sql`
+passa a conter, além dos `CREATE TABLE`, os `CREATE INDEX` canônicos — ordenados e com nome —,
+porque sem isso mudanças só de índice são invisíveis. A comparação deixa de colapsar todo
+whitespace: normaliza apenas fim de linha e espaço final, comparando bytes canônicos. Foi
+exatamente essa normalização frouxa que escondeu o gerador emitindo espaço final.
 
-Os 52 tipos ENUM viram `Enum(native_enum=False, create_constraint=True)` ou `String` +
-`CHECK`, definidos num módulo único de constantes importado pelas models. O vocabulário
-precisa ser idêntico ao do dump, inclusive valores ainda sem uso previsto; divergência de
-valor falha o teste de paridade.
+### 7. Verificação de migração deixa de ser vacuous
 
-### 9. Preservação e aposentadoria
+Duas medidas, ambas na fase 0:
 
-Quatro tabelas são extensões de ADR e não existem no modelo final, permanecendo como
-exceção declarada: `auth_sessions`, `outbox_events`, `activity_events`,
-`content_text_versions`. As 11 tabelas legadas e as 2 sem alvo no modelo final
-(`provider_customers`, `provider_subscriptions`) são decididas na **ADR-029**, com
-mapeamento tabela → alvo, ordem de remoção e verificação de consumidores.
+- `migrations/env.py` passa a usar `compare_type=True` e `render_as_batch=True`;
+- um teste de upgrade a partir de schema anterior: `tests/contracts/schema_prev_ddl.sql` (cópia
+  canônica do schema na head anterior) é carregado num banco, estampado na revisão
+  correspondente, e `alembic upgrade head` roda; o resultado precisa bater com `Base.metadata` e
+  com o orçamento. O fixture é renovado a cada fase que muda schema.
+
+A baseline congelada (`create_all` a partir de um snapshot de metadata) é a alternativa
+descartada por ora: ela conflita com `0001_sqlite_baseline` já aplicada em bancos existentes e
+seria mais invasiva que o teste de upgrade.
+
+### 8. Índices: preservar nomes explícitos, nomear só os anônimos
+
+Os 50 índices com nome no dump mantêm o nome (`idx_m8_*`, `uq_*`), porque renomear quebraria a
+paridade com a fonte. A convenção `ix_<tabela>_<colunas>` e `uq_<tabela>_<colunas>` vale apenas
+para os 123 anônimos, e o mapeamento fica no teste. A afirmação anterior de que SQLite aceita
+nomes automáticos está errada e não se aplica.
+
+### 9. Portabilidade de constraints
+
+FKs precisam estar nas models (SQLite não aceita `ALTER TABLE ... ADD CONSTRAINT`); as 10
+compostas exigem UNIQUE composta no alvo com a chave exata. O `ON DELETE` é preservado (40
+CASCADE, 31 RESTRICT, 30 SET NULL).
+
+Os 15 CHECKs com regex viram helpers com teste de equivalência: moeda (`GLOB '[A-Z][A-Z][A-Z]'`),
+UF, CEP e cor hexadecimal. Os 3 `num_nonnulls` viram soma de `CASE WHEN ... IS NOT NULL`, com
+helper `exactly_one_of`/`at_most_one_of`. `gen_random_uuid()` vira default Python `uuid4` e
+`now()` vira `CURRENT_TIMESTAMP`/helper UTC.
+
+### 10. Enums com vocabulário 1:1
+
+Os 52 tipos viram `Enum(native_enum=False, create_constraint=True)` ou `String` + `CHECK`, num
+módulo único de constantes (`creator/infrastructure/database/enums.py`) importado pelas models.
+O vocabulário é idêntico ao do dump, inclusive valores sem uso previsto.
+
+### 11. Triggers, funções e view precisam de decisão própria
+
+As 69 funções/triggers e a view não entram na paridade tabela-coluna, mas também não
+podem desaparecer silenciosamente: eles hoje sustentam imutabilidade do ledger, validação de
+lote, `updated_at`, snapshot de cupom e histórico append-only. A tarefa T19 inventaria objeto a
+objeto e classifica em (a) portar como trigger SQLite, (b) mover para a aplicação com teste
+equivalente, ou (c) declarar fora de escopo com justificativa. Nenhum objeto fica sem
+classificação; os invariantes do ledger e do histórico de assinatura são obrigatoriamente
+cobertos por (a) ou (b).
+
+### 12. Rastreabilidade
+
+ADR-028 é a decisão primária desta frente; ADR-015 e ADR-021 são relacionadas. `docs/issues/0057`
+e o tracker passam a apontar ADR-028 como primária. A ADR-029 (aposentadoria do legado) é criada
+em T16, não antes, e o conjunto de 71 tabelas só reduz depois dela.
 
 ## Consequências
 
-O schema passa a ter uma definição única e verificável, com paridade automatizada e diff de
-contrato revisável em cada PR. O custo é volume de PRs: 18 tarefas, com pelo menos uma
-revisão Alembic por tarefa que muda schema, e a necessidade de regenerar os fixtures em cada
-uma.
+O schema ganha uma definição única e verificável, com paridade automatizada, orçamento de dívida
+que só diminui e diff de contrato revisável em cada PR. O custo é volume de PRs e a disciplina de
+regenerar snapshot, orçamento e o fixture de upgrade em cada mudança de schema.
 
-A consolidação da baseline reduz dívida, mas é destrutiva para bancos existentes; por isso
-depende da condição de inversão do item 1 e de procedimento documentado de reset do banco de
-dev.
+Efeitos colaterais já conhecidos, que precisam ser tratados nas mesmas PRs:
 
-Cuidados obrigatórios:
-
-- `ALTER TABLE` limitado do SQLite exige `render_as_batch`/`batch_alter_table` nas alterações
-  de coluna (lotes A e B).
-- A ordem de criação respeita dependências: satélites só entram depois do pai; FK composta só
-  depois da UNIQUE composta no alvo.
-- `docs/openapi.yaml` é atualizado antes de qualquer mudança de payload HTTP (membership
-  status, posts com aprovação/agendamento, créditos).
-- `tests/test_module_boundaries.py` continua valendo: tabela nova nasce em
-  `<entity>/models.py` + `repository.py`.
+- `tests/test_schema_migration_matrix.py` exige que toda tabela do metadata apareça em
+  `docs/SCHEMA-MIGRATION-MATRIX.md`; as 18 tabelas novas obrigam atualizar a matriz.
+- `tests/test_schema_models.py` fixa `users.email` em 320; passa a 254.
+- `tests/contracts/schema_tables.json` e `schema_ddl.sql` mudam em quase toda tarefa.
+- `ALTER TABLE` limitado do SQLite exige `render_as_batch`/`batch_alter_table`.
+- A ordem de criação respeita dependências: satélite depois do pai, FK composta depois da UNIQUE
+  composta no alvo.
+- `docs/openapi.yaml` é atualizado antes de mudança de payload HTTP.
+- `tests/test_module_boundaries.py` continua valendo: tabela nova nasce em `<entity>/models.py` +
+  `repository.py`.
 
 ## Fora de escopo
 
@@ -148,3 +214,5 @@ Cuidados obrigatórios:
 - ETL de dados PostgreSQL para SQLite (decisão C1, #99).
 - Redesenhar a modelagem final ou criar entidades de produto novas.
 - Interface do Lovable.
+- Paridade de texto SQL literal de CHECKs entre PostgreSQL e SQLite; a paridade é estrutural e de
+  vocabulário, com `CHECK_MAP` declarado.
