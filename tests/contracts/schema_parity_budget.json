@@ -2,23 +2,23 @@
   "dump_sha256": "619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583",
   "fixture_sha256": "619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583",
   "counts": {
-    "table_missing": 10,
+    "table_missing": 9,
     "table_extra": 4,
     "allowlisted": 17,
     "rename_collision": 0,
     "pk_mismatch": 0,
-    "column_missing": 130,
+    "column_missing": 129,
     "column_extra": 115,
-    "nullability": 10,
+    "nullability": 11,
     "width": 27,
     "kind": 1,
     "enum": 34,
     "unique_missing": 4,
     "unique_extra": 7,
-    "index_missing": 104,
-    "index_extra": 3,
+    "index_missing": 101,
+    "index_extra": 4,
     "index_name": 27,
-    "fk_missing": 44,
+    "fk_missing": 39,
     "fk_extra": 49,
     "fk_ondelete": 35,
     "check_missing": 56,
@@ -26,5 +26,5 @@
     "default_missing": 6,
     "default_value": 0
   },
-  "gap_digest": "833bc6646d013fb386843a13a09651b2c13e567ccc620213dacf8d0ea9fe2a83"
+  "gap_digest": "094afbc747dc435f8490f1d6f29414372ac8fa05daf96510093a97cc5d57cc6c"
 }

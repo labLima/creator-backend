@@ -92,6 +92,7 @@ Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
 | `fiscal_invoices` | T7 (`0008`) | ativo | nenhum ainda; metadados fiscais com origem exclusiva |
 | `workspace_credit_lots` | T7 (`0008`) | ativo | nenhum ainda; lote de créditos com validade |
 | `workspace_credit_lot_consumptions` | T7 (`0008`) | ativo | nenhum ainda; consumo de lote sem dupla contagem |
+| `brand_business_details` | T22 (`0011`) | ativo | nenhum ainda; briefing gerado com FKs compostas de tenant |
 
 ## Regras
 

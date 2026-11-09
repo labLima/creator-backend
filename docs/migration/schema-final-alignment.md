@@ -8,34 +8,34 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **65**
+- Tabelas no metadata atual: **66**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **700**
+- Divergências: **692**
 
 ## Divergências por categoria
 
 | Categoria | Ocorrências |
 | --- | --- |
-| `table_missing` | 10 |
+| `table_missing` | 9 |
 | `table_extra` | 4 |
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 130 |
+| `column_missing` | 129 |
 | `column_extra` | 115 |
-| `nullability` | 10 |
+| `nullability` | 11 |
 | `width` | 27 |
 | `kind` | 1 |
 | `enum` | 34 |
 | `unique_missing` | 4 |
 | `unique_extra` | 7 |
-| `index_missing` | 104 |
-| `index_extra` | 3 |
+| `index_missing` | 101 |
+| `index_extra` | 4 |
 | `index_name` | 27 |
-| `fk_missing` | 44 |
+| `fk_missing` | 39 |
 | `fk_extra` | 49 |
 | `fk_ondelete` | 35 |
 | `check_missing` | 56 |
@@ -54,7 +54,6 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 ## 2. Tabelas do modelo final ausentes no ORM
 
-- **`brand_business_details`** (10 colunas, 0 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `output`, `model`, `spec_version`, `created_by`, `created_at`, `updated_at`
 - **`captions`** (8 colunas, 1 CHECKs): `id`, `post_id`, `created_by`, `body`, `version`, `is_current`, `created_at`, `updated_at`
 - **`content_plan_items`** (6 colunas, 1 CHECKs): `id`, `content_plan_id`, `format`, `quantity`, `created_at`, `updated_at`
 - **`content_plan_special_dates`** (6 colunas, 0 CHECKs): `id`, `content_plan_id`, `special_date`, `label`, `created_at`, `updated_at`
@@ -69,7 +68,7 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 Total: **288**.
 
-### `column_missing` (130)
+### `column_missing` (129)
 
 - `billing_accounts.document_hash`
 - `billing_accounts.external_code`
@@ -103,7 +102,6 @@ Total: **288**.
 - `brands.promise`
 - `brands.restrictions`
 - `brands.segment`
-- `campaigns.brand_id`
 - `campaigns.expected_action`
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
@@ -320,13 +318,14 @@ Total: **288**.
 - `workspace_invites.token`
 - `workspace_invites.uses_count`
 
-### `nullability` (10)
+### `nullability` (11)
 
 - `billing_accounts.provider: final NOT NULL, model nullable`
 - `billing_addresses.city: final NOT NULL, model nullable`
 - `billing_addresses.number: final NOT NULL, model nullable`
 - `billing_addresses.state: final NOT NULL, model nullable`
 - `billing_addresses.zip_code: final NOT NULL, model nullable`
+- `campaigns.brand_id: final NOT NULL, model nullable`
 - `invoices.subscription_id: final NOT NULL, model nullable`
 - `plan_items.status: final NOT NULL, model nullable`
 - `subscriptions.installments: final NOT NULL, model nullable`
@@ -415,9 +414,9 @@ Total: **34**.
 
 ## 5. Índices
 
-Total: **134**.
+Total: **132**.
 
-### `index_missing` (104)
+### `index_missing` (101)
 
 - `billing_accounts: (document_hash)`
 - `billing_accounts: (user_id)`
@@ -431,12 +430,11 @@ Total: **134**.
 - `brand_assets: (brand_id)`
 - `brand_assets: (created_by)`
 - `brand_assets: UNIQUE (storage_bucket, storage_key)`
+- `brand_business_details: (created_by) WHERE created_by is not null`
 - `brand_colors: (brand_id)`
 - `brands: (created_by) WHERE created_by is not null`
 - `brands: (workspace_id)`
-- `campaigns: (brand_id)`
 - `campaigns: (created_by) WHERE created_by is not null`
-- `campaigns: UNIQUE (id, brand_id)`
 - `charges: (billing_account_id, status)`
 - `charges: (code)`
 - `charges: (invoice_id)`
@@ -477,9 +475,7 @@ Total: **134**.
 - `orders: (workspace_id)`
 - `orders: UNIQUE (id, workspace_id)`
 - `orders: UNIQUE (provider, external_id)`
-- `personas: (brand_id)`
 - `personas: (created_by) WHERE created_by is not null`
-- `personas: UNIQUE (id, brand_id)`
 - `plan_items: (plan_id)`
 - `plan_items: UNIQUE (provider, external_id)`
 - `plans: UNIQUE (provider, external_id)`
@@ -524,8 +520,9 @@ Total: **134**.
 - `workspace_invites: (status)`
 - `workspace_invites: (workspace_id)`
 
-### `index_extra` (3)
+### `index_extra` (4)
 
+- `brand_business_details: (created_by)`
 - `brands: (created_by_user_id)`
 - `brands: (workspace_id, deleted_at, created_at)`
 - `users: (deleted_at)`
@@ -562,18 +559,13 @@ Total: **134**.
 
 ## 6. Foreign keys
 
-Total: **128**.
+Total: **123**.
 
-### `fk_missing` (44)
+### `fk_missing` (39)
 
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `brand_assets['created_by']->users['id'] [SET NULL]`
-- `brand_business_details['brand_id']->brands['id'] [CASCADE]`
-- `brand_business_details['campaign_id', 'brand_id']->campaigns['id', 'brand_id'] [CASCADE]`
-- `brand_business_details['created_by']->users['id'] [SET NULL]`
-- `brand_business_details['persona_id', 'brand_id']->personas['id', 'brand_id'] [CASCADE]`
 - `brands['created_by']->users['id'] [SET NULL]`
-- `campaigns['brand_id']->brands['id'] [CASCADE]`
 - `captions['created_by']->users['id'] [SET NULL]`
 - `captions['post_id']->posts['id'] [CASCADE]`
 - `charges['order_id']->orders['id'] [SET NULL]`

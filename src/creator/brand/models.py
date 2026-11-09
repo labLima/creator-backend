@@ -197,3 +197,58 @@ class BrandValue(Base):
     updated_at: Mapped[datetime] = mapped_column(
         timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class BrandBusinessDetails(Base):
+    __tablename__ = "brand_business_details"
+    __table_args__ = (
+        Index(
+            "ix_brand_business_details_brand_id_campaign_id_persona_id",
+            "brand_id",
+            "campaign_id",
+            "persona_id",
+        ),
+        Index("ix_brand_business_details_created_at", "created_at"),
+        Index(
+            "idx_m8_brand_business_details_campaign_id_brand_id",
+            "campaign_id",
+            "brand_id",
+        ),
+        Index(
+            "idx_m8_brand_business_details_persona_id_brand_id",
+            "persona_id",
+            "brand_id",
+        ),
+        Index("idx_m8_brand_business_details_created_by", "created_by"),
+        ForeignKeyConstraint(
+            ["campaign_id", "brand_id"],
+            ["campaigns.id", "campaigns.brand_id"],
+            ondelete="CASCADE",
+            name="fk_brand_business_details_campaign",
+        ),
+        ForeignKeyConstraint(
+            ["persona_id", "brand_id"],
+            ["personas.id", "personas.brand_id"],
+            ondelete="CASCADE",
+            name="fk_brand_business_details_persona",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    brand_id: Mapped[UUID] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=False
+    )
+    campaign_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    persona_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    output: Mapped[dict[str, object]] = mapped_column(json_type, nullable=False)
+    model: Mapped[str | None] = mapped_column(String(50))
+    spec_version: Mapped[str | None] = mapped_column(String(50))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )

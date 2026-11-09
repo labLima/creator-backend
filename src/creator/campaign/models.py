@@ -32,6 +32,15 @@ timestamp = timestamp_tz
 
 class Campaign(SchemaRow, Base):
     __tablename__ = "campaigns"
+    __table_args__ = (
+        Index("uq_campaigns_id_brand_id", "id", "brand_id", unique=True),
+        Index("ix_campaigns_brand_id", "brand_id"),
+    )
+
+    # Nullable until the T14 backfill: the final modeling requires NOT NULL.
+    brand_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=True
+    )
     workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(30), nullable=False)

@@ -227,6 +227,24 @@ CREATE TABLE brand_assets (
 	FOREIGN KEY(brand_id) REFERENCES brands (id)
 )
 
+CREATE TABLE brand_business_details (
+	id CHAR(32) NOT NULL,
+	brand_id CHAR(32) NOT NULL,
+	campaign_id CHAR(32) NOT NULL,
+	persona_id CHAR(32) NOT NULL,
+	output JSON NOT NULL,
+	model VARCHAR(50),
+	spec_version VARCHAR(50),
+	created_by CHAR(32),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT fk_brand_business_details_campaign FOREIGN KEY(campaign_id, brand_id) REFERENCES campaigns (id, brand_id) ON DELETE CASCADE,
+	CONSTRAINT fk_brand_business_details_persona FOREIGN KEY(persona_id, brand_id) REFERENCES personas (id, brand_id) ON DELETE CASCADE,
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE,
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
+)
+
 CREATE TABLE brand_colors (
 	brand_id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
@@ -332,6 +350,7 @@ CREATE TABLE campaign_voices (
 )
 
 CREATE TABLE campaigns (
+	brand_id CHAR(32),
 	workspace_id CHAR(32) NOT NULL,
 	created_by CHAR(32) NOT NULL,
 	name VARCHAR(30) NOT NULL,
@@ -346,6 +365,7 @@ CREATE TABLE campaigns (
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE,
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
 	FOREIGN KEY(created_by) REFERENCES users (id)
 )
@@ -1313,6 +1333,16 @@ CREATE INDEX ix_auth_sessions_family_id ON auth_sessions (family_id)
 
 CREATE INDEX ix_auth_sessions_user_id ON auth_sessions (user_id)
 
+CREATE INDEX idx_m8_brand_business_details_campaign_id_brand_id ON brand_business_details (campaign_id, brand_id)
+
+CREATE INDEX idx_m8_brand_business_details_created_by ON brand_business_details (created_by)
+
+CREATE INDEX idx_m8_brand_business_details_persona_id_brand_id ON brand_business_details (persona_id, brand_id)
+
+CREATE INDEX ix_brand_business_details_brand_id_campaign_id_persona_id ON brand_business_details (brand_id, campaign_id, persona_id)
+
+CREATE INDEX ix_brand_business_details_created_at ON brand_business_details (created_at)
+
 CREATE UNIQUE INDEX uq_brand_hashtags_brand_id_hashtag ON brand_hashtags (brand_id, hashtag)
 
 CREATE INDEX ix_brand_settings_workspace_id ON brand_settings (workspace_id)
@@ -1326,6 +1356,10 @@ CREATE INDEX ix_brands_workspace_filter ON brands (workspace_id, deleted_at, cre
 CREATE UNIQUE INDEX uq_campaign_hashtags_campaign_id_hashtag ON campaign_hashtags (campaign_id, hashtag)
 
 CREATE UNIQUE INDEX uq_campaign_voices_campaign_id_voice ON campaign_voices (campaign_id, voice)
+
+CREATE INDEX ix_campaigns_brand_id ON campaigns (brand_id)
+
+CREATE UNIQUE INDEX uq_campaigns_id_brand_id ON campaigns (id, brand_id)
 
 CREATE INDEX idx_charge_transactions_latest ON charge_transactions (charge_id, created_at, id)
 
@@ -1384,6 +1418,10 @@ CREATE INDEX ix_outbox_events_dispatch ON outbox_events (published_at, available
 CREATE INDEX ix_outbox_events_workspace ON outbox_events (workspace_id, created_at)
 
 CREATE UNIQUE INDEX uq_persona_interests_persona_id_interest ON persona_interests (persona_id, interest)
+
+CREATE INDEX ix_personas_brand_id ON personas (brand_id)
+
+CREATE UNIQUE INDEX uq_personas_id_brand_id ON personas (id, brand_id)
 
 CREATE UNIQUE INDEX uq_plan_payment_methods_plan_id_method ON plan_payment_methods (plan_id, method)
 

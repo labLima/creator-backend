@@ -245,7 +245,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ### T6 — Satélites de Brand e Campanha
 
-**Descrição:** Criar `brand_hashtags`, `brand_values`, `campaign_hashtags` e `campaign_voices`, com unicidade de hashtag/valor/voz por pai e FKs em cascata. `brand_business_details` fica para T14: as FKs compostas exigem `campaigns.brand_id` e os UNIQUE `(id, brand_id)` de campaigns/personas, que chegam com o alinhamento das campanhas.
+**Descrição:** Criar `brand_hashtags`, `brand_values`, `campaign_hashtags` e `campaign_voices`, com unicidade de hashtag/valor/voz por pai e FKs em cascata. `brand_business_details` fica em T22, que também adiciona `campaigns.brand_id` e os UNIQUE `(id, brand_id)` de campaigns/personas.
 
 **Critérios de aceite:**
 - [ ] Cinco tabelas com colunas e UNIQUE do dump.
@@ -324,6 +324,26 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Arquivos prováveis:** `src/creator/domain/auth.py`, `src/creator/infrastructure/persistence/sql.py`, `src/creator/workspace/repository.py`, `src/creator/services/agents/runner.py`, `migrations/versions/0021_*.py`
 **Tamanho:** M
 
+### T22 — Chaves pai de campanhas/personas e `brand_business_details`
+
+**Descrição:** Adicionar `campaigns.brand_id` (nullable enquanto não houver backfill), o UNIQUE `(id, brand_id)` e os índices de `brand_id` em campaigns e personas, e criar `brand_business_details` com as FKs compostas para `campaigns(id, brand_id)` e `personas(id, brand_id)`. É o pré-requisito de T9, T10 e T11.
+
+**Critérios de aceite:**
+- [ ] `campaigns.brand_id` presente, FK `CASCADE` e índice `ix_campaigns_brand_id`; UNIQUE `uq_campaigns_id_brand_id`.
+- [ ] `personas` com UNIQUE `uq_personas_id_brand_id` e `ix_personas_brand_id`.
+- [ ] `brand_business_details` com colunas, JSON `output`, FKs compostas e os cinco índices do dump.
+- [ ] Revisão Alembic com `downgrade` funcional e guarda para banco novo.
+- [ ] A dívida de `campaigns.brand_id` NULL (dump exige NOT NULL) fica declarada no orçamento até o backfill de T14.
+
+**Verificação:**
+- [ ] `pytest tests/test_schema_inventory.py -q` (upgrade anterior converge).
+- [ ] Teste de introspecção das duas FKs compostas e do UNIQUE pai.
+- [ ] `make snapshot-contract` e revisão do diff.
+
+**Dependências:** T21
+**Arquivos prováveis:** `src/creator/campaign/models.py`, `src/creator/persona/models.py`, `src/creator/brand/models.py`, `migrations/versions/0011_*.py`
+**Tamanho:** M
+
 ### T9 — `planning` → `content_plans` + satélites
 
 **Descrição:** Expand do redesenho de planejamento. Criar `content_plans` (11 colunas) e as satélites `content_plan_items` e `content_plan_special_dates`; a persona inline deixa de viver no plano e passa a apontar `personas`.
@@ -337,7 +357,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `pytest tests/test_schema_inventory.py -q` → 3 ausentes (`captions`, `design_slides`, `image_resizes`).
 - [ ] `alembic upgrade head && alembic downgrade -1 && alembic upgrade head`.
 
-**Dependências:** T4
+**Dependências:** T4, T22
 **Arquivos prováveis:** `src/creator/planning/models.py`, `src/creator/planning/repository.py`, `migrations/versions/0010_*.py`
 **Tamanho:** M
 
@@ -354,7 +374,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `pytest tests/test_schema_inventory.py -q` → 1 ausente (`image_resizes`).
 - [ ] `pytest tests/ -q -k "post or design or caption"` verde.
 
-**Dependências:** T4
+**Dependências:** T4, T22
 **Arquivos prováveis:** `src/creator/content/models.py`, `src/creator/design_structure/models.py`, `migrations/versions/0011_*.py`, `docs/openapi.yaml`
 **Tamanho:** M
 
@@ -371,7 +391,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `pytest tests/test_schema_inventory.py -q` → 0 ausentes.
 - [ ] `python scripts/check_migrations.py` e `make check`.
 
-**Dependências:** T4
+**Dependências:** T4, T22
 **Arquivos prováveis:** `src/creator/generation/models.py`, `migrations/versions/0012_*.py`
 **Tamanho:** M
 
@@ -624,7 +644,7 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 | `brand_hashtags` | criar | T6 |
 | `brand_colors` | alinhar: +3 col, −15 col | T14 |
 | `brand_assets` | alinhar: +3 col, −2 col, 1 enum | T14 |
-| `brand_business_details` | criar | T14 |
+| `brand_business_details` | criar | T22 |
 
 #### Campanha
 
@@ -876,7 +896,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
     "description": "Expand do redesenho de planejamento: content_plans com 11 colunas, content_plan_items e content_plan_special_dates, mantendo planning intacta.",
     "priority": "high",
     "depends_on": [
-      "T4"
+      "T4",
+      "T22"
     ],
     "phase": "Fase 2 — Renomear e redesenhar (expand)",
     "files": [
@@ -892,7 +913,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
     "description": "Expand do redesenho editorial: posts com 17 colunas e CHECKs de aprovação/agendamento, captions versionadas, post_designs com format/ratio e design_slides ordenados.",
     "priority": "high",
     "depends_on": [
-      "T4"
+      "T4",
+      "T22"
     ],
     "phase": "Fase 2 — Renomear e redesenhar (expand)",
     "files": [
@@ -909,7 +931,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
     "description": "Expand do redesenho de mídia: generated_images com 23 colunas e 9 CHECKs portadas, image_resizes com UNIQUE (source_image_id, ratio).",
     "priority": "high",
     "depends_on": [
-      "T4"
+      "T4",
+      "T22"
     ],
     "phase": "Fase 2 — Renomear e redesenhar (expand)",
     "files": [
@@ -1087,6 +1110,23 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
       "src/creator/workspace/repository.py",
       "src/creator/services/agents/runner.py",
       "migrations/versions/0021_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T22",
+    "title": "Chaves pai de campanhas/personas e brand_business_details",
+    "description": "Adiciona campaigns.brand_id, UNIQUE (id, brand_id) e índices de brand_id em campaigns/personas, e cria brand_business_details com FKs compostas para campaigns/personas.",
+    "priority": "high",
+    "depends_on": [
+      "T21"
+    ],
+    "phase": "Fase 2 — Renomear e redesenhar (expand)",
+    "files": [
+      "src/creator/campaign/models.py",
+      "src/creator/persona/models.py",
+      "src/creator/brand/models.py",
+      "migrations/versions/0011_*.py"
     ],
     "size": "M"
   }

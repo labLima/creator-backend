@@ -28,6 +28,11 @@ timestamp = timestamp_tz
 
 class Persona(SchemaRow, Base):
     __tablename__ = "personas"
+    __table_args__ = (
+        Index("uq_personas_id_brand_id", "id", "brand_id", unique=True),
+        Index("ix_personas_brand_id", "brand_id"),
+    )
+
     brand_id: Mapped[UUID] = mapped_column(ForeignKey("brands.id"), nullable=False)
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(30), nullable=False)
