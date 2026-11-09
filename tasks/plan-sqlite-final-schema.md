@@ -455,8 +455,7 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 | --- | --- | --- |
 | `users` | alinhar: +1 col, −5 col, !1 null, 1 tamanho | T14 |
 | `workspaces` | alinhar: índices | T14 |
-| `workspace_members`
-(hoje `workspace_memberships`) | renomear + alinhar | T8 |
+| `workspace_members` (hoje `workspace_memberships`) | renomear + alinhar | T8 |
 | `workspace_invites` | alinhar: +1 col, −4 col, 1 tamanho, 3 enum | T14 |
 | `workspace_invite_usages` | alinhar: −4 col, !1 null | T14 |
 
@@ -532,23 +531,19 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 
 | Tabela final | Ação | Tarefa |
 | --- | --- | --- |
-| `content_plans`
-(hoje `planning`) | redesenhar (expand → contract) | T9 |
+| `content_plans` (hoje `planning`) | redesenhar (expand → contract) | T9 |
 | `content_plan_items` | criar | T9 |
 | `content_plan_special_dates` | criar | T9 |
-| `posts`
-(hoje `post_structure`) | redesenhar (expand → contract) | T10 |
+| `posts` (hoje `post_structure`) | redesenhar (expand → contract) | T10 |
 | `captions` | criar | T10 |
-| `post_designs`
-(hoje `design_structure`) | redesenhar (expand → contract) | T10 |
+| `post_designs` (hoje `design_structure`) | redesenhar (expand → contract) | T10 |
 | `design_slides` | criar | T10 |
 
 #### Geração e Mídia
 
 | Tabela final | Ação | Tarefa |
 | --- | --- | --- |
-| `generated_images`
-(hoje `generated_image`) | redesenhar (expand → contract) | T11 |
+| `generated_images` (hoje `generated_image`) | redesenhar (expand → contract) | T11 |
 | `image_resizes` | criar | T11 |
 
 #### Conformidade e Auditoria
