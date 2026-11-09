@@ -18,6 +18,7 @@ from creator.brand import models as _brand_tables  # noqa: F401
 from creator.campaign import models as _campaign_tables  # noqa: F401
 from creator.charge import models as _charge_tables  # noqa: F401
 from creator.content import models as _content_tables  # noqa: F401
+from creator.content_plan import models as _content_plan_tables  # noqa: F401
 from creator.coupon import models as _coupon_tables  # noqa: F401
 from creator.credit import models as _credit_tables  # noqa: F401
 from creator.credit_package import models as _credit_package_tables  # noqa: F401

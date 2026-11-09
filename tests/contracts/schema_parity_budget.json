@@ -2,7 +2,7 @@
   "dump_sha256": "619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583",
   "fixture_sha256": "619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583",
   "counts": {
-    "table_missing": 9,
+    "table_missing": 6,
     "table_extra": 4,
     "allowlisted": 17,
     "rename_collision": 0,
@@ -11,20 +11,20 @@
     "column_extra": 115,
     "nullability": 11,
     "width": 27,
-    "kind": 1,
+    "kind": 4,
     "enum": 34,
     "unique_missing": 4,
     "unique_extra": 7,
     "index_missing": 100,
     "index_extra": 3,
     "index_name": 27,
-    "fk_missing": 39,
+    "fk_missing": 33,
     "fk_extra": 49,
     "fk_ondelete": 35,
-    "check_missing": 56,
-    "check_extra": 17,
+    "check_missing": 58,
+    "check_extra": 20,
     "default_missing": 6,
     "default_value": 0
   },
-  "gap_digest": "790e84461ec7124ea2274a1e53b3916667dacada62c9765f37d486e91f49b07f"
+  "gap_digest": "8ddba8dbe4b3de7bb6cb7aa1ed156e01dce154efbbe8475851ea0ac0d6339508"
 }

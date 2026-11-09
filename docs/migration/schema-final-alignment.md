@@ -8,18 +8,18 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **66**
+- Tabelas no metadata atual: **69**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **690**
+- Divergências: **689**
 
 ## Divergências por categoria
 
 | Categoria | Ocorrências |
 | --- | --- |
-| `table_missing` | 9 |
+| `table_missing` | 6 |
 | `table_extra` | 4 |
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
@@ -28,18 +28,18 @@
 | `column_extra` | 115 |
 | `nullability` | 11 |
 | `width` | 27 |
-| `kind` | 1 |
+| `kind` | 4 |
 | `enum` | 34 |
 | `unique_missing` | 4 |
 | `unique_extra` | 7 |
 | `index_missing` | 100 |
 | `index_extra` | 3 |
 | `index_name` | 27 |
-| `fk_missing` | 39 |
+| `fk_missing` | 33 |
 | `fk_extra` | 49 |
 | `fk_ondelete` | 35 |
-| `check_missing` | 56 |
-| `check_extra` | 17 |
+| `check_missing` | 58 |
+| `check_extra` | 20 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
 
@@ -55,9 +55,6 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 ## 2. Tabelas do modelo final ausentes no ORM
 
 - **`captions`** (8 colunas, 1 CHECKs): `id`, `post_id`, `created_by`, `body`, `version`, `is_current`, `created_at`, `updated_at`
-- **`content_plan_items`** (6 colunas, 1 CHECKs): `id`, `content_plan_id`, `format`, `quantity`, `created_at`, `updated_at`
-- **`content_plan_special_dates`** (6 colunas, 0 CHECKs): `id`, `content_plan_id`, `special_date`, `label`, `created_at`, `updated_at`
-- **`content_plans`** (11 colunas, 1 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `created_by`, `briefing`, `start_date`, `end_date`, `created_at`, `updated_at`, `deleted_at`
 - **`design_slides`** (9 colunas, 1 CHECKs): `id`, `post_design_id`, `position`, `headline`, `subtitle`, `cta`, `art_direction`, `created_at`, `updated_at`
 - **`generated_images`** (23 colunas, 9 CHECKs): `id`, `design_slide_id`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `model`, `prompt`, `created_by`, `error_message`, `generation_status`, `is_current`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `feedback_type`, `feedback_text`, `created_at`, `updated_at`, `deleted_at`
 - **`image_resizes`** (14 colunas, 4 CHECKs): `id`, `source_image_id`, `ratio`, `status`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `error_message`, `created_by`, `created_at`, `updated_at`
@@ -557,9 +554,9 @@ Total: **130**.
 
 ## 6. Foreign keys
 
-Total: **123**.
+Total: **117**.
 
-### `fk_missing` (39)
+### `fk_missing` (33)
 
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `brand_assets['created_by']->users['id'] [SET NULL]`
@@ -568,12 +565,6 @@ Total: **123**.
 - `captions['post_id']->posts['id'] [CASCADE]`
 - `charges['order_id']->orders['id'] [SET NULL]`
 - `charges['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
-- `content_plan_items['content_plan_id']->content_plans['id'] [CASCADE]`
-- `content_plan_special_dates['content_plan_id']->content_plans['id'] [CASCADE]`
-- `content_plans['brand_id']->brands['id'] [CASCADE]`
-- `content_plans['campaign_id', 'brand_id']->campaigns['id', 'brand_id'] [CASCADE]`
-- `content_plans['created_by']->users['id'] [SET NULL]`
-- `content_plans['persona_id', 'brand_id']->personas['id', 'brand_id'] [CASCADE]`
 - `coupon_redemptions['credit_transaction_id']->workspace_credit_transactions['id'] [SET NULL]`
 - `coupon_redemptions['invoice_id']->invoices['id'] [SET NULL]`
 - `coupon_redemptions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
@@ -693,9 +684,9 @@ Total: **123**.
 
 ## 7. CHECK constraints
 
-Total: **73**.
+Total: **78**.
 
-### `check_missing` (56)
+### `check_missing` (58)
 
 - `unmapped:billing_accounts.chk_billing_accounts_company_name`
 - `unmapped:billing_accounts.chk_billing_accounts_document_pair`
@@ -708,6 +699,8 @@ Total: **73**.
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
 - `unmapped:charges.chk_charges_installments`
+- `unmapped:content_plan_items.content_plan_items.quantity`
+- `unmapped:content_plans.chk_content_plans_period_order`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_amount_nonnegative`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_currency_format`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_discount_percent`
@@ -754,13 +747,16 @@ Total: **73**.
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_by_type`
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_positive`
 
-### `check_extra` (17)
+### `check_extra` (20)
 
 - `brands.ck_brands_deleted_after_created`
 - `campaign_voices.campaign_voice`
 - `charge_transactions.chk_charge_transactions_amount_nonnegative`
 - `charge_transactions.payment_provider`
 - `charge_transactions.transaction_status`
+- `content_plan_items.ck_content_plan_items_quantity`
+- `content_plan_items.content_format`
+- `content_plans.chk_content_plans_period_order`
 - `fiscal_invoices.chk_fiscal_invoices_amount_nonnegative`
 - `fiscal_invoices.chk_fiscal_invoices_currency_format`
 - `fiscal_invoices.chk_fiscal_invoices_one_origin`

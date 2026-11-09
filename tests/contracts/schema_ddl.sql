@@ -406,6 +406,50 @@ CREATE TABLE charges (
 	FOREIGN KEY(invoice_id) REFERENCES invoices (id)
 )
 
+CREATE TABLE content_plan_items (
+	id CHAR(32) NOT NULL,
+	content_plan_id CHAR(32) NOT NULL,
+	format VARCHAR(8) NOT NULL,
+	quantity INTEGER DEFAULT 0 NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT ck_content_plan_items_quantity CHECK (quantity >= 0),
+	FOREIGN KEY(content_plan_id) REFERENCES content_plans (id) ON DELETE CASCADE,
+	CONSTRAINT content_format CHECK (format IN ('IMAGE', 'CAROUSEL', 'STORIES'))
+)
+
+CREATE TABLE content_plan_special_dates (
+	id CHAR(32) NOT NULL,
+	content_plan_id CHAR(32) NOT NULL,
+	special_date DATE NOT NULL,
+	label VARCHAR(50),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(content_plan_id) REFERENCES content_plans (id) ON DELETE CASCADE
+)
+
+CREATE TABLE content_plans (
+	id CHAR(32) NOT NULL,
+	brand_id CHAR(32) NOT NULL,
+	campaign_id CHAR(32) NOT NULL,
+	persona_id CHAR(32) NOT NULL,
+	created_by CHAR(32),
+	briefing VARCHAR(400),
+	start_date DATE,
+	end_date DATE,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	deleted_at DATETIME,
+	PRIMARY KEY (id),
+	CONSTRAINT fk_content_plans_campaign FOREIGN KEY(campaign_id, brand_id) REFERENCES campaigns (id, brand_id) ON DELETE CASCADE,
+	CONSTRAINT fk_content_plans_persona FOREIGN KEY(persona_id, brand_id) REFERENCES personas (id, brand_id) ON DELETE CASCADE,
+	CONSTRAINT chk_content_plans_period_order CHECK (start_date IS NULL OR end_date IS NULL OR end_date >= start_date),
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE,
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
+)
+
 CREATE TABLE content_text_versions (
 	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
@@ -1368,6 +1412,22 @@ CREATE INDEX ix_charge_transactions_created_at ON charge_transactions (created_a
 CREATE INDEX ix_charge_transactions_status ON charge_transactions (status)
 
 CREATE UNIQUE INDEX uq_charge_transactions_charge_provider_external ON charge_transactions (charge_id, provider, external_id)
+
+CREATE UNIQUE INDEX uq_content_plan_items_content_plan_id_format ON content_plan_items (content_plan_id, format)
+
+CREATE UNIQUE INDEX uq_content_plan_special_dates_plan_date_label ON content_plan_special_dates (content_plan_id, special_date, label)
+
+CREATE INDEX idx_m8_content_plans_campaign_id_brand_id ON content_plans (campaign_id, brand_id)
+
+CREATE INDEX idx_m8_content_plans_created_by ON content_plans (created_by) WHERE created_by IS NOT NULL
+
+CREATE INDEX idx_m8_content_plans_persona_id_brand_id ON content_plans (persona_id, brand_id)
+
+CREATE INDEX ix_content_plans_brand_id ON content_plans (brand_id)
+
+CREATE INDEX ix_content_plans_campaign_id ON content_plans (campaign_id)
+
+CREATE INDEX ix_content_plans_persona_id ON content_plans (persona_id)
 
 CREATE INDEX ix_content_text_versions_content_version ON content_text_versions (content_id, version_number)
 

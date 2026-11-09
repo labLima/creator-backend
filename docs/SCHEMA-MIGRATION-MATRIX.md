@@ -93,6 +93,9 @@ Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
 | `workspace_credit_lots` | T7 (`0008`) | ativo | nenhum ainda; lote de créditos com validade |
 | `workspace_credit_lot_consumptions` | T7 (`0008`) | ativo | nenhum ainda; consumo de lote sem dupla contagem |
 | `brand_business_details` | T22 (`0011`) | ativo | nenhum ainda; briefing gerado com FKs compostas de tenant |
+| `content_plans` | T9 (`0012`) | ativo (expand) | substitui `planning` no contract T13 |
+| `content_plan_items` | T9 (`0012`) | ativo | quantidades por formato do plano |
+| `content_plan_special_dates` | T9 (`0012`) | ativo | datas especiais por plano |
 
 ## Regras
 
