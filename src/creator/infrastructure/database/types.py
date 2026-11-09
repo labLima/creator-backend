@@ -13,6 +13,9 @@ from uuid import uuid4
 from sqlalchemy import JSON, DateTime, TypeDecorator, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 
+from creator.infrastructure.database.naming import index_name, unique_index_name
+from creator.infrastructure.database.portable_enums import enum_column
+
 
 class UTCDateTime(TypeDecorator[datetime]):
     """Persist timestamps as UTC and always return timezone-aware values.
@@ -44,4 +47,13 @@ uuid_default = uuid4
 timestamp_tz = UTCDateTime()
 json_type = JSON().with_variant(JSONB(), "postgresql")
 
-__all__ = ["UTCDateTime", "json_type", "timestamp_tz", "uuid_default", "uuid_pk"]
+__all__ = [
+    "UTCDateTime",
+    "enum_column",
+    "index_name",
+    "json_type",
+    "timestamp_tz",
+    "unique_index_name",
+    "uuid_default",
+    "uuid_pk",
+]
