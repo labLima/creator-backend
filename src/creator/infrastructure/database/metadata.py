@@ -22,6 +22,7 @@ from creator.coupon import models as _coupon_tables  # noqa: F401
 from creator.credit import models as _credit_tables  # noqa: F401
 from creator.credit_package import models as _credit_package_tables  # noqa: F401
 from creator.design_structure import models as _design_structure_tables  # noqa: F401
+from creator.fiscal_invoice import models as _fiscal_invoice_tables  # noqa: F401
 from creator.generation import models as _generation_tables  # noqa: F401
 from creator.invoice import models as _invoice_tables  # noqa: F401
 from creator.notification import models as _notification_tables  # noqa: F401

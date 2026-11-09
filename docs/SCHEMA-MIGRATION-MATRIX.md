@@ -87,6 +87,11 @@ Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
 | `brand_values` | T6 (`0007`) | ativo | nenhum ainda; valores por marca |
 | `campaign_hashtags` | T6 (`0007`) | ativo | nenhum ainda; hashtags por campanha |
 | `campaign_voices` | T6 (`0007`) | ativo | nenhum ainda; vozes por campanha com vocabulário fechado |
+| `plan_payment_methods` | T7 (`0008`) | ativo | nenhum ainda; meios e parcelamento por plano |
+| `charge_transactions` | T7 (`0008`) | ativo | nenhum ainda; transações por cobrança com idempotência |
+| `fiscal_invoices` | T7 (`0008`) | ativo | nenhum ainda; metadados fiscais com origem exclusiva |
+| `workspace_credit_lots` | T7 (`0008`) | ativo | nenhum ainda; lote de créditos com validade |
+| `workspace_credit_lot_consumptions` | T7 (`0008`) | ativo | nenhum ainda; consumo de lote sem dupla contagem |
 
 ## Regras
 

@@ -8,25 +8,120 @@ it byte for byte.
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    CheckConstraint,
     ForeignKey,
+    ForeignKeyConstraint,
+    Index,
     Integer,
     String,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import timestamp_tz, uuid_pk
+from creator.infrastructure.database.types import timestamp_tz, uuid_default, uuid_pk
 
 timestamp = timestamp_tz
 
 
 class WorkspaceCreditTransaction(SchemaRow, Base):
     __tablename__ = "workspace_credit_transactions"
+    __table_args__ = (Index("uq_credit_tx_id_workspace", "id", "workspace_id", unique=True),)
     workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     transaction_type: Mapped[str] = mapped_column(String(30), nullable=False)
     reference_type: Mapped[str | None] = mapped_column(String(40))
     reference_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+
+
+class WorkspaceCreditLot(Base):
+    __tablename__ = "workspace_credit_lots"
+    __table_args__ = (
+        Index("uq_credit_lots_id_workspace", "id", "workspace_id", unique=True),
+        Index("ix_workspace_credit_lots_workspace_id_expires_at", "workspace_id", "expires_at"),
+        Index(
+            "idx_m8_workspace_credit_lots_grant_transaction_id_workspace_id",
+            "grant_transaction_id",
+            "workspace_id",
+        ),
+        ForeignKeyConstraint(
+            ["grant_transaction_id", "workspace_id"],
+            [
+                "workspace_credit_transactions.id",
+                "workspace_credit_transactions.workspace_id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_credit_lots_grant_transaction",
+        ),
+        CheckConstraint(
+            "original_amount > 0 AND remaining_amount >= 0 AND remaining_amount <= original_amount",
+            name="chk_credit_lots_amounts",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    grant_transaction_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False, unique=True)
+    original_amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    remaining_amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(timestamp)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class WorkspaceCreditLotConsumption(Base):
+    __tablename__ = "workspace_credit_lot_consumptions"
+    __table_args__ = (
+        Index("ix_workspace_credit_lot_consumptions_transaction_id", "transaction_id"),
+        Index(
+            "uq_workspace_credit_lot_consumptions_lot_id_transaction_id",
+            "lot_id",
+            "transaction_id",
+            unique=True,
+        ),
+        Index(
+            "idx_m8_workspace_credit_lot_consumptions_lot_id_workspace_id",
+            "lot_id",
+            "workspace_id",
+        ),
+        Index(
+            "idx_m8_lot_consumptions_transaction_workspace",
+            "transaction_id",
+            "workspace_id",
+        ),
+        ForeignKeyConstraint(
+            ["lot_id", "workspace_id"],
+            ["workspace_credit_lots.id", "workspace_credit_lots.workspace_id"],
+            ondelete="RESTRICT",
+            name="fk_lot_consumptions_lot",
+        ),
+        ForeignKeyConstraint(
+            ["transaction_id", "workspace_id"],
+            [
+                "workspace_credit_transactions.id",
+                "workspace_credit_transactions.workspace_id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_lot_consumptions_transaction",
+        ),
+        CheckConstraint("amount > 0", name="chk_lot_consumptions_amount"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    workspace_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    lot_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    transaction_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )

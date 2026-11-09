@@ -350,6 +350,24 @@ CREATE TABLE campaigns (
 	FOREIGN KEY(created_by) REFERENCES users (id)
 )
 
+CREATE TABLE charge_transactions (
+	id CHAR(32) NOT NULL,
+	charge_id CHAR(32) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	status VARCHAR(26) NOT NULL,
+	amount_cents BIGINT NOT NULL,
+	gateway_response JSON,
+	antifraud_response JSON,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT chk_charge_transactions_amount_nonnegative CHECK (amount_cents >= 0),
+	FOREIGN KEY(charge_id) REFERENCES charges (id) ON DELETE CASCADE,
+	CONSTRAINT payment_provider CHECK (provider IN ('PAGARME', 'STRIPE')),
+	CONSTRAINT transaction_status CHECK (status IN ('AUTHORIZED_PENDING_CAPTURE', 'NOT_AUTHORIZED', 'CAPTURED', 'PARTIAL_CAPTURE', 'WAITING_CAPTURE', 'REFUNDED', 'VOIDED', 'PARTIAL_REFUNDED', 'PARTIAL_VOID', 'ERROR_ON_VOIDING', 'ERROR_ON_REFUNDING', 'WAITING_CANCELLATION', 'WITH_ERROR', 'FAILED', 'WAITING_PAYMENT', 'PENDING_REFUND', 'GENERATED', 'VIEWED', 'PAID', 'CHARGEDBACK'))
+)
+
 CREATE TABLE charges (
 	billing_account_id CHAR(32) NOT NULL,
 	invoice_id CHAR(32),
@@ -477,6 +495,39 @@ CREATE TABLE design_structure (
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
 	FOREIGN KEY(post_structure_id) REFERENCES post_structure (id)
+)
+
+CREATE TABLE fiscal_invoices (
+	id CHAR(32) NOT NULL,
+	billing_account_id CHAR(32) NOT NULL,
+	order_id CHAR(32),
+	invoice_id CHAR(32),
+	subscription_id CHAR(32),
+	number VARCHAR(30),
+	series VARCHAR(10),
+	access_key VARCHAR(50),
+	service_code VARCHAR(20),
+	amount_cents BIGINT NOT NULL,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	status VARCHAR(10) DEFAULT 'PENDING' NOT NULL,
+	pdf_storage_bucket VARCHAR(63),
+	pdf_storage_key VARCHAR(1024),
+	xml_storage_bucket VARCHAR(63),
+	xml_storage_key VARCHAR(1024),
+	error_message VARCHAR,
+	issued_at DATETIME,
+	canceled_at DATETIME,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT chk_fiscal_invoices_one_origin CHECK ((CASE WHEN order_id IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN invoice_id IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN subscription_id IS NOT NULL THEN 1 ELSE 0 END) = 1),
+	CONSTRAINT chk_fiscal_invoices_amount_nonnegative CHECK (amount_cents >= 0),
+	CONSTRAINT chk_fiscal_invoices_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE RESTRICT,
+	FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE RESTRICT,
+	FOREIGN KEY(invoice_id) REFERENCES invoices (id) ON DELETE RESTRICT,
+	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id) ON DELETE RESTRICT,
+	CONSTRAINT fiscal_invoice_status CHECK (status IN ('PENDING', 'PROCESSING', 'ISSUED', 'CANCELED', 'FAILED'))
 )
 
 CREATE TABLE generated_image (
@@ -785,6 +836,19 @@ CREATE TABLE plan_items (
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
 	FOREIGN KEY(plan_id) REFERENCES plans (id) ON DELETE CASCADE
+)
+
+CREATE TABLE plan_payment_methods (
+	id CHAR(32) NOT NULL,
+	plan_id CHAR(32) NOT NULL,
+	method VARCHAR(11) NOT NULL,
+	max_installments INTEGER DEFAULT 1 NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT chk_plan_payment_methods_max_installments CHECK (max_installments >= 1),
+	FOREIGN KEY(plan_id) REFERENCES plans (id) ON DELETE CASCADE,
+	CONSTRAINT payment_method_type CHECK (method IN ('CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'))
 )
 
 CREATE TABLE planning (
@@ -1099,6 +1163,35 @@ CREATE TABLE users (
 	CONSTRAINT global_role CHECK (global_role IN ('admin', 'gestor', 'membro'))
 )
 
+CREATE TABLE workspace_credit_lot_consumptions (
+	id CHAR(32) NOT NULL,
+	workspace_id CHAR(32) NOT NULL,
+	lot_id CHAR(32) NOT NULL,
+	transaction_id CHAR(32) NOT NULL,
+	amount INTEGER NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT fk_lot_consumptions_lot FOREIGN KEY(lot_id, workspace_id) REFERENCES workspace_credit_lots (id, workspace_id) ON DELETE RESTRICT,
+	CONSTRAINT fk_lot_consumptions_transaction FOREIGN KEY(transaction_id, workspace_id) REFERENCES workspace_credit_transactions (id, workspace_id) ON DELETE RESTRICT,
+	CONSTRAINT chk_lot_consumptions_amount CHECK (amount > 0)
+)
+
+CREATE TABLE workspace_credit_lots (
+	id CHAR(32) NOT NULL,
+	workspace_id CHAR(32) NOT NULL,
+	grant_transaction_id CHAR(32) NOT NULL,
+	original_amount INTEGER NOT NULL,
+	remaining_amount INTEGER NOT NULL,
+	expires_at DATETIME,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT fk_credit_lots_grant_transaction FOREIGN KEY(grant_transaction_id, workspace_id) REFERENCES workspace_credit_transactions (id, workspace_id) ON DELETE RESTRICT,
+	CONSTRAINT chk_credit_lots_amounts CHECK (original_amount > 0 AND remaining_amount >= 0 AND remaining_amount <= original_amount),
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
+	UNIQUE (grant_transaction_id)
+)
+
 CREATE TABLE workspace_credit_transactions (
 	workspace_id CHAR(32) NOT NULL,
 	amount INTEGER NOT NULL,
@@ -1232,6 +1325,14 @@ CREATE UNIQUE INDEX uq_campaign_hashtags_campaign_id_hashtag ON campaign_hashtag
 
 CREATE UNIQUE INDEX uq_campaign_voices_campaign_id_voice ON campaign_voices (campaign_id, voice)
 
+CREATE INDEX idx_charge_transactions_latest ON charge_transactions (charge_id, created_at, id)
+
+CREATE INDEX ix_charge_transactions_created_at ON charge_transactions (created_at)
+
+CREATE INDEX ix_charge_transactions_status ON charge_transactions (status)
+
+CREATE UNIQUE INDEX uq_charge_transactions_charge_provider_external ON charge_transactions (charge_id, provider, external_id)
+
 CREATE INDEX ix_content_text_versions_content_version ON content_text_versions (content_id, version_number)
 
 CREATE INDEX ix_contents_created_by_user_id ON contents (created_by_user_id)
@@ -1239,6 +1340,20 @@ CREATE INDEX ix_contents_created_by_user_id ON contents (created_by_user_id)
 CREATE INDEX ix_contents_workspace_created_id ON contents (workspace_id, deleted_at, created_at, id)
 
 CREATE INDEX ix_contents_workspace_filter ON contents (workspace_id, type, deleted_at, created_at)
+
+CREATE INDEX ix_fiscal_invoices_billing_account_id ON fiscal_invoices (billing_account_id)
+
+CREATE INDEX ix_fiscal_invoices_invoice_id ON fiscal_invoices (invoice_id)
+
+CREATE INDEX ix_fiscal_invoices_order_id ON fiscal_invoices (order_id)
+
+CREATE INDEX ix_fiscal_invoices_status ON fiscal_invoices (status)
+
+CREATE INDEX ix_fiscal_invoices_subscription_id ON fiscal_invoices (subscription_id)
+
+CREATE UNIQUE INDEX uq_fiscal_invoices_access_key ON fiscal_invoices (access_key)
+
+CREATE UNIQUE INDEX uq_fiscal_invoices_number_series_account ON fiscal_invoices (billing_account_id, series, number)
 
 CREATE INDEX ix_generation_job_status_events_job_occurred_at ON generation_job_status_events (generation_job_id, occurred_at)
 
@@ -1268,6 +1383,8 @@ CREATE INDEX ix_outbox_events_workspace ON outbox_events (workspace_id, created_
 
 CREATE UNIQUE INDEX uq_persona_interests_persona_id_interest ON persona_interests (persona_id, interest)
 
+CREATE UNIQUE INDEX uq_plan_payment_methods_plan_id_method ON plan_payment_methods (plan_id, method)
+
 CREATE INDEX ix_projects_brand_id ON projects (brand_id)
 
 CREATE INDEX ix_projects_created_by_user_id ON projects (created_by_user_id)
@@ -1279,6 +1396,22 @@ CREATE INDEX ix_settings_user_id ON settings (user_id)
 CREATE UNIQUE INDEX uq_user_consents_user_id_type_document_version ON user_consents (user_id, type, document_version)
 
 CREATE INDEX ix_users_deleted_at ON users (deleted_at)
+
+CREATE INDEX idx_m8_lot_consumptions_transaction_workspace ON workspace_credit_lot_consumptions (transaction_id, workspace_id)
+
+CREATE INDEX idx_m8_workspace_credit_lot_consumptions_lot_id_workspace_id ON workspace_credit_lot_consumptions (lot_id, workspace_id)
+
+CREATE INDEX ix_workspace_credit_lot_consumptions_transaction_id ON workspace_credit_lot_consumptions (transaction_id)
+
+CREATE UNIQUE INDEX uq_workspace_credit_lot_consumptions_lot_id_transaction_id ON workspace_credit_lot_consumptions (lot_id, transaction_id)
+
+CREATE INDEX idx_m8_workspace_credit_lots_grant_transaction_id_workspace_id ON workspace_credit_lots (grant_transaction_id, workspace_id)
+
+CREATE INDEX ix_workspace_credit_lots_workspace_id_expires_at ON workspace_credit_lots (workspace_id, expires_at)
+
+CREATE UNIQUE INDEX uq_credit_lots_id_workspace ON workspace_credit_lots (id, workspace_id)
+
+CREATE UNIQUE INDEX uq_credit_tx_id_workspace ON workspace_credit_transactions (id, workspace_id)
 
 CREATE INDEX ix_workspace_memberships_user_id ON workspace_memberships (user_id)
 

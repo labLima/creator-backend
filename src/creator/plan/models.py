@@ -8,19 +8,29 @@ it byte for byte.
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    CheckConstraint,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import json_type, timestamp_tz
+from creator.infrastructure.database.types import (
+    enum_column,
+    json_type,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
@@ -52,3 +62,24 @@ class PlanItem(SchemaRow, Base):
     price_cents: Mapped[int] = mapped_column(nullable=False)
     price_brackets: Mapped[dict[str, object] | None] = mapped_column(json_type)
     status: Mapped[str | None] = mapped_column(String(20))
+
+
+class PlanPaymentMethod(Base):
+    __tablename__ = "plan_payment_methods"
+    __table_args__ = (
+        Index("uq_plan_payment_methods_plan_id_method", "plan_id", "method", unique=True),
+        CheckConstraint("max_installments >= 1", name="chk_plan_payment_methods_max_installments"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    plan_id: Mapped[UUID] = mapped_column(
+        ForeignKey("plans.id", ondelete="CASCADE"), nullable=False
+    )
+    method: Mapped[str] = mapped_column(enum_column("payment_method_type"), nullable=False)
+    max_installments: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )

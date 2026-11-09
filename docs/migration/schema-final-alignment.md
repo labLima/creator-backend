@@ -8,18 +8,18 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **60**
+- Tabelas no metadata atual: **65**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **716**
+- Divergências: **722**
 
 ## Divergências por categoria
 
 | Categoria | Ocorrências |
 | --- | --- |
-| `table_missing` | 15 |
+| `table_missing` | 10 |
 | `table_extra` | 4 |
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
@@ -32,14 +32,14 @@
 | `enum` | 35 |
 | `unique_missing` | 4 |
 | `unique_extra` | 7 |
-| `index_missing` | 108 |
-| `index_extra` | 11 |
-| `index_name` | 29 |
-| `fk_missing` | 55 |
+| `index_missing` | 109 |
+| `index_extra` | 14 |
+| `index_name` | 28 |
+| `fk_missing` | 45 |
 | `fk_extra` | 49 |
 | `fk_ondelete` | 35 |
-| `check_missing` | 49 |
-| `check_extra` | 6 |
+| `check_missing` | 56 |
+| `check_extra` | 17 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
 
@@ -57,19 +57,14 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 - **`brand_business_details`** (10 colunas, 0 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `output`, `model`, `spec_version`, `created_by`, `created_at`, `updated_at`
 - **`captions`** (8 colunas, 1 CHECKs): `id`, `post_id`, `created_by`, `body`, `version`, `is_current`, `created_at`, `updated_at`
-- **`charge_transactions`** (10 colunas, 1 CHECKs): `id`, `charge_id`, `provider`, `external_id`, `status`, `amount_cents`, `gateway_response`, `antifraud_response`, `created_at`, `updated_at`
 - **`content_plan_items`** (6 colunas, 1 CHECKs): `id`, `content_plan_id`, `format`, `quantity`, `created_at`, `updated_at`
 - **`content_plan_special_dates`** (6 colunas, 0 CHECKs): `id`, `content_plan_id`, `special_date`, `label`, `created_at`, `updated_at`
 - **`content_plans`** (11 colunas, 1 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `created_by`, `briefing`, `start_date`, `end_date`, `created_at`, `updated_at`, `deleted_at`
 - **`design_slides`** (9 colunas, 1 CHECKs): `id`, `post_design_id`, `position`, `headline`, `subtitle`, `cta`, `art_direction`, `created_at`, `updated_at`
-- **`fiscal_invoices`** (21 colunas, 3 CHECKs): `id`, `billing_account_id`, `order_id`, `invoice_id`, `subscription_id`, `number`, `series`, `access_key`, `service_code`, `amount_cents`, `currency`, `status`, `pdf_storage_bucket`, `pdf_storage_key`, `xml_storage_bucket`, `xml_storage_key`, `error_message`, `issued_at`, `canceled_at`, `created_at`, `updated_at`
 - **`generated_images`** (23 colunas, 9 CHECKs): `id`, `design_slide_id`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `model`, `prompt`, `created_by`, `error_message`, `generation_status`, `is_current`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `feedback_type`, `feedback_text`, `created_at`, `updated_at`, `deleted_at`
 - **`image_resizes`** (14 colunas, 4 CHECKs): `id`, `source_image_id`, `ratio`, `status`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `error_message`, `created_by`, `created_at`, `updated_at`
-- **`plan_payment_methods`** (6 colunas, 1 CHECKs): `id`, `plan_id`, `method`, `max_installments`, `created_at`, `updated_at`
 - **`post_designs`** (6 colunas, 1 CHECKs): `id`, `post_id`, `format`, `ratio`, `created_at`, `updated_at`
 - **`posts`** (17 colunas, 6 CHECKs): `id`, `content_plan_id`, `created_by`, `title`, `objective`, `big_idea`, `main_message`, `publication_status`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `scheduled_at`, `published_at`, `created_at`, `updated_at`, `deleted_at`
-- **`workspace_credit_lot_consumptions`** (6 colunas, 1 CHECKs): `id`, `workspace_id`, `lot_id`, `transaction_id`, `amount`, `created_at`
-- **`workspace_credit_lots`** (8 colunas, 1 CHECKs): `id`, `workspace_id`, `grant_transaction_id`, `original_amount`, `remaining_amount`, `expires_at`, `created_at`, `updated_at`
 
 ## 3. Colunas, tipos e nullability
 
@@ -425,9 +420,9 @@ Total: **35**.
 
 ## 5. Índices
 
-Total: **148**.
+Total: **151**.
 
-### `index_missing` (108)
+### `index_missing` (109)
 
 - `billing_accounts: (document_hash)`
 - `billing_accounts: (user_id)`
@@ -468,6 +463,8 @@ Total: **148**.
 - `coupons: (is_active)`
 - `coupons: (type)`
 - `coupons: UNIQUE (code) WHERE deleted_at is null`
+- `fiscal_invoices: UNIQUE (access_key) WHERE access_key is not null`
+- `fiscal_invoices: UNIQUE (billing_account_id, series, number) WHERE series is not null and number is not null`
 - `invoices: (billing_account_id)`
 - `invoices: (status, due_at)`
 - `invoices: (subscription_id, due_at)`
@@ -524,7 +521,6 @@ Total: **148**.
 - `workspace_credit_transactions: (created_by) WHERE created_by is not null`
 - `workspace_credit_transactions: (workspace_id, created_at)`
 - `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
-- `workspace_credit_transactions: UNIQUE (id, workspace_id)`
 - `workspace_credit_transactions: UNIQUE (image_resize_id, type)`
 - `workspace_credit_transactions: UNIQUE (invoice_id, type)`
 - `workspace_credit_transactions: UNIQUE (order_id, type)`
@@ -538,21 +534,24 @@ Total: **148**.
 - `workspace_memberships: (workspace_id, role)`
 - `workspace_memberships: UNIQUE (workspace_id, user_id)`
 
-### `index_extra` (11)
+### `index_extra` (14)
 
 - `brands: (created_by_user_id)`
 - `brands: (workspace_id, deleted_at, created_at)`
 - `brands: UNIQUE (id, workspace_id)`
 - `coupons: UNIQUE (code)`
+- `fiscal_invoices: UNIQUE (access_key)`
+- `fiscal_invoices: UNIQUE (billing_account_id, series, number)`
 - `plans: UNIQUE (code)`
 - `users: (deleted_at)`
 - `users: UNIQUE (email)`
 - `users: UNIQUE (external_id)`
+- `workspace_credit_lots: UNIQUE (grant_transaction_id)`
 - `workspace_invites: UNIQUE (token)`
 - `workspace_memberships: (workspace_id)`
 - `workspace_memberships: UNIQUE (user_id, workspace_id) WHERE deleted_at is null`
 
-### `index_name` (29)
+### `index_name` (28)
 
 - `billing_addresses: missing index name uq_billing_addresses_default`
 - `billing_payment_methods: missing index name idx_m8_billing_payment_methods_billing_address_id`
@@ -579,16 +578,15 @@ Total: **148**.
 - `subscriptions: missing index name uq_subscriptions_workspace_current`
 - `users: missing index name uq_users_email_active`
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
-- `workspace_credit_transactions: missing index name uq_credit_tx_id_workspace`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
 - `workspace_invites: missing index name idx_m8_workspace_invites_created_by`
 - `workspace_memberships: missing index name uq_workspace_members_workspace_user`
 
 ## 6. Foreign keys
 
-Total: **139**.
+Total: **129**.
 
-### `fk_missing` (55)
+### `fk_missing` (45)
 
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `brand_assets['created_by']->users['id'] [SET NULL]`
@@ -600,7 +598,6 @@ Total: **139**.
 - `campaigns['brand_id']->brands['id'] [CASCADE]`
 - `captions['created_by']->users['id'] [SET NULL]`
 - `captions['post_id']->posts['id'] [CASCADE]`
-- `charge_transactions['charge_id']->charges['id'] [CASCADE]`
 - `charges['order_id']->orders['id'] [SET NULL]`
 - `charges['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
 - `content_plan_items['content_plan_id']->content_plans['id'] [CASCADE]`
@@ -615,16 +612,11 @@ Total: **139**.
 - `coupon_redemptions['subscription_id', 'workspace_id']->subscriptions['id', 'workspace_id'] [RESTRICT]`
 - `coupon_redemptions['user_id']->users['id'] [RESTRICT]`
 - `design_slides['post_design_id']->post_designs['id'] [CASCADE]`
-- `fiscal_invoices['billing_account_id']->billing_accounts['id'] [RESTRICT]`
-- `fiscal_invoices['invoice_id']->invoices['id'] [RESTRICT]`
-- `fiscal_invoices['order_id']->orders['id'] [RESTRICT]`
-- `fiscal_invoices['subscription_id']->subscriptions['id'] [RESTRICT]`
 - `generated_images['approved_by']->users['id'] [SET NULL]`
 - `generated_images['created_by']->users['id'] [SET NULL]`
 - `generated_images['design_slide_id']->design_slides['id'] [CASCADE]`
 - `image_resizes['created_by']->users['id'] [SET NULL]`
 - `image_resizes['source_image_id']->generated_images['id'] [CASCADE]`
-- `plan_payment_methods['plan_id']->plans['id'] [CASCADE]`
 - `post_designs['post_id']->posts['id'] [CASCADE]`
 - `posts['approved_by']->users['id'] [SET NULL]`
 - `posts['content_plan_id']->content_plans['id'] [CASCADE]`
@@ -635,10 +627,6 @@ Total: **139**.
 - `subscription_history['new_plan_id']->plans['id'] [SET NULL]`
 - `subscription_history['old_plan_id']->plans['id'] [SET NULL]`
 - `subscriptions['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
-- `workspace_credit_lot_consumptions['lot_id', 'workspace_id']->workspace_credit_lots['id', 'workspace_id'] [RESTRICT]`
-- `workspace_credit_lot_consumptions['transaction_id', 'workspace_id']->workspace_credit_transactions['id', 'workspace_id'] [RESTRICT]`
-- `workspace_credit_lots['grant_transaction_id', 'workspace_id']->workspace_credit_transactions['id', 'workspace_id'] [RESTRICT]`
-- `workspace_credit_lots['workspace_id']->workspaces['id'] [RESTRICT]`
 - `workspace_credit_transactions['created_by']->users['id'] [SET NULL]`
 - `workspace_credit_transactions['generated_image_id']->generated_images['id'] [RESTRICT]`
 - `workspace_credit_transactions['image_resize_id']->image_resizes['id'] [RESTRICT]`
@@ -738,9 +726,9 @@ Total: **139**.
 
 ## 7. CHECK constraints
 
-Total: **55**.
+Total: **73**.
 
-### `check_missing` (49)
+### `check_missing` (56)
 
 - `unmapped:billing_accounts.chk_billing_accounts_company_name`
 - `unmapped:billing_accounts.chk_billing_accounts_document_pair`
@@ -749,6 +737,7 @@ Total: **55**.
 - `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_month`
 - `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_year`
 - `unmapped:brand_colors.chk_brand_colors_hex`
+- `unmapped:charge_transactions.chk_charge_transactions_amount_nonnegative`
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
 - `unmapped:charges.chk_charges_installments`
@@ -763,6 +752,9 @@ Total: **55**.
 - `unmapped:coupons.chk_coupons_type_exclusive_fields`
 - `unmapped:credit_packages.chk_credit_packages_currency_format`
 - `unmapped:credit_packages.chk_credit_packages_price_nonnegative`
+- `unmapped:fiscal_invoices.chk_fiscal_invoices_amount_nonnegative`
+- `unmapped:fiscal_invoices.chk_fiscal_invoices_currency_format`
+- `unmapped:fiscal_invoices.chk_fiscal_invoices_one_origin`
 - `unmapped:invoices.chk_invoices_cents_nonnegative`
 - `unmapped:invoices.chk_invoices_currency_format`
 - `unmapped:invoices.chk_invoices_installments`
@@ -772,6 +764,7 @@ Total: **55**.
 - `unmapped:orders.chk_orders_currency_format`
 - `unmapped:plan_items.chk_plan_items_currency_format`
 - `unmapped:plan_items.chk_plan_items_price_nonnegative`
+- `unmapped:plan_payment_methods.plan_payment_methods.max_installments`
 - `unmapped:plans.chk_plans_cents_nonnegative`
 - `unmapped:plans.chk_plans_currency_format`
 - `unmapped:provider_disputes.chk_provider_disputes_amount_nonnegative`
@@ -784,6 +777,8 @@ Total: **55**.
 - `unmapped:subscriptions.chk_subscriptions_cents_nonnegative`
 - `unmapped:subscriptions.chk_subscriptions_currency_format`
 - `unmapped:subscriptions.chk_subscriptions_installments`
+- `unmapped:workspace_credit_lot_consumptions.workspace_credit_lot_consumptions.amount`
+- `unmapped:workspace_credit_lots.chk_credit_lots_amounts`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`
@@ -792,12 +787,23 @@ Total: **55**.
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_by_type`
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_positive`
 
-### `check_extra` (6)
+### `check_extra` (17)
 
 - `brands.ck_brands_deleted_after_created`
 - `campaign_voices.campaign_voice`
+- `charge_transactions.chk_charge_transactions_amount_nonnegative`
+- `charge_transactions.payment_provider`
+- `charge_transactions.transaction_status`
+- `fiscal_invoices.chk_fiscal_invoices_amount_nonnegative`
+- `fiscal_invoices.chk_fiscal_invoices_currency_format`
+- `fiscal_invoices.chk_fiscal_invoices_one_origin`
+- `fiscal_invoices.fiscal_invoice_status`
+- `plan_payment_methods.chk_plan_payment_methods_max_installments`
+- `plan_payment_methods.payment_method_type`
 - `user_consents.consent_type`
 - `users.global_role`
+- `workspace_credit_lot_consumptions.chk_lot_consumptions_amount`
+- `workspace_credit_lots.chk_credit_lots_amounts`
 - `workspace_memberships.ck_memberships_deleted_after_created`
 - `workspace_memberships.workspace_role`
 

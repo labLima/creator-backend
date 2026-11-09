@@ -8,17 +8,28 @@ it byte for byte.
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
     ForeignKey,
+    Index,
     String,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import json_type, timestamp_tz
+from creator.infrastructure.database.types import (
+    enum_column,
+    json_type,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
@@ -36,4 +47,44 @@ class Charge(SchemaRow, Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     metadata_json: Mapped[dict[str, object]] = mapped_column(
         "metadata", json_type, nullable=False, server_default=text("'{}'")
+    )
+
+
+class ChargeTransaction(Base):
+    __tablename__ = "charge_transactions"
+    __table_args__ = (
+        Index(
+            "uq_charge_transactions_charge_provider_external",
+            "charge_id",
+            "provider",
+            "external_id",
+            unique=True,
+        ),
+        Index("ix_charge_transactions_status", "status"),
+        Index("ix_charge_transactions_created_at", "created_at"),
+        # Keyset pagination index. The dump declares DESC NULLS LAST; SQLite accepts
+        # the same columns without ordering, and the comparator compares columns.
+        Index("idx_charge_transactions_latest", "charge_id", "created_at", "id"),
+        CheckConstraint("amount_cents >= 0", name="chk_charge_transactions_amount_nonnegative"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    charge_id: Mapped[UUID] = mapped_column(
+        ForeignKey("charges.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(
+        enum_column("payment_provider"),
+        nullable=False,
+        server_default=text("'PAGARME'"),
+    )
+    external_id: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(enum_column("transaction_status"), nullable=False)
+    amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    gateway_response: Mapped[dict[str, object] | None] = mapped_column(json_type)
+    antifraud_response: Mapped[dict[str, object] | None] = mapped_column(json_type)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
     )
