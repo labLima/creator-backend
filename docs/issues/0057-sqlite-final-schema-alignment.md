@@ -123,10 +123,11 @@ Uma issue por tarefa do plano, cada uma declarando o workspace
 | `SHC-20` | T19 — snapshot gate e upgrade anterior | done | `snapshot_contract.py --check`; `schema_prev_ddl.sql`; prova de mutação |
 | `SHC-4` | T3 — enums e nomes de índice | done | `portable_enums.py`; `naming.py`; 6 testes |
 | `SHC-5` | T4 — CHECKs portáveis e defaults | done | `constraints.py`; 30 testes de equivalência |
+| `SHC-6` | T5 — audit, consent, persona interests | done | revisões 0006; 14 testes de comportamento |
+| `SHC-7` | T6 — brand/campaign satellites | done | revisões 0007; `brand_business_details` movida para T14 |
 
-Estado do orçamento de paridade após a fundação: **729 divergências** (22 tabelas
-ausentes, 4 excedentes, 17 allowlisted, 132 colunas faltantes, 116 excedentes, 108
-índices ausentes, 63 FKs ausentes). O orçamento só pode encolher.
+Estado do orçamento de paridade: **716 divergências** (15 tabelas ausentes, 17
+allowlisted, 108 índices ausentes, 59 FKs ausentes). O orçamento só pode encolher.
 
 ## Objetos de armazenamento
 
