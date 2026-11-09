@@ -133,9 +133,11 @@ cuida do vocabulário de papel), cada uma declarando o workspace
 | `SHC-23` | T22 — chaves pai de campaigns/personas e brand_business_details | done | revisão 0011; FKs compostas de tenant |
 | `SHC-10` | T9 — content_plans e satélites | done | revisão 0012; expand do planejamento |
 | `SHC-11` | T10 — posts, captions, post_designs, design_slides | done | revisão 0013; expand editorial |
+| `SHC-12` | T11 — generated_images e image_resizes | done | revisão 0014; **0 tabelas ausentes** |
 
-Orçamento de paridade: **702 divergências** (2 tabelas ausentes, 17 allowlisted,
-101 índices ausentes, 11 FKs ausentes). O orçamento só pode encolher.
+Orçamento de paridade: **728 divergências**, com **0 tabelas ausentes**. O restante é
+alinhamento de colunas/índices/FKs/CHECKs nas tabelas existentes (T14/T15) e as
+legacy substituídas no contract (T13).
 
 T8 foi dividida: o vocabulário de `role` e a autorização por papel ficam em T21
 (`SHC-22`).
