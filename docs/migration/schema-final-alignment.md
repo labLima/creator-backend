@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **722**
+- Divergências: **711**
 
 ## Divergências por categoria
 
@@ -32,8 +32,8 @@
 | `enum` | 35 |
 | `unique_missing` | 4 |
 | `unique_extra` | 7 |
-| `index_missing` | 109 |
-| `index_extra` | 14 |
+| `index_missing` | 107 |
+| `index_extra` | 5 |
 | `index_name` | 28 |
 | `fk_missing` | 45 |
 | `fk_extra` | 49 |
@@ -420,9 +420,9 @@ Total: **35**.
 
 ## 5. Índices
 
-Total: **151**.
+Total: **140**.
 
-### `index_missing` (109)
+### `index_missing` (107)
 
 - `billing_accounts: (document_hash)`
 - `billing_accounts: (user_id)`
@@ -463,8 +463,6 @@ Total: **151**.
 - `coupons: (is_active)`
 - `coupons: (type)`
 - `coupons: UNIQUE (code) WHERE deleted_at is null`
-- `fiscal_invoices: UNIQUE (access_key) WHERE access_key is not null`
-- `fiscal_invoices: UNIQUE (billing_account_id, series, number) WHERE series is not null and number is not null`
 - `invoices: (billing_account_id)`
 - `invoices: (status, due_at)`
 - `invoices: (subscription_id, due_at)`
@@ -534,20 +532,11 @@ Total: **151**.
 - `workspace_memberships: (workspace_id, role)`
 - `workspace_memberships: UNIQUE (workspace_id, user_id)`
 
-### `index_extra` (14)
+### `index_extra` (5)
 
 - `brands: (created_by_user_id)`
 - `brands: (workspace_id, deleted_at, created_at)`
-- `brands: UNIQUE (id, workspace_id)`
-- `coupons: UNIQUE (code)`
-- `fiscal_invoices: UNIQUE (access_key)`
-- `fiscal_invoices: UNIQUE (billing_account_id, series, number)`
-- `plans: UNIQUE (code)`
 - `users: (deleted_at)`
-- `users: UNIQUE (email)`
-- `users: UNIQUE (external_id)`
-- `workspace_credit_lots: UNIQUE (grant_transaction_id)`
-- `workspace_invites: UNIQUE (token)`
 - `workspace_memberships: (workspace_id)`
 - `workspace_memberships: UNIQUE (user_id, workspace_id) WHERE deleted_at is null`
 

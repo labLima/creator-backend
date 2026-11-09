@@ -29,13 +29,19 @@ timestamp = timestamp_tz
 class FiscalInvoice(Base):
     __tablename__ = "fiscal_invoices"
     __table_args__ = (
-        Index("uq_fiscal_invoices_access_key", "access_key", unique=True),
+        Index(
+            "uq_fiscal_invoices_access_key",
+            "access_key",
+            unique=True,
+            sqlite_where=text("access_key IS NOT NULL"),
+        ),
         Index(
             "uq_fiscal_invoices_number_series_account",
             "billing_account_id",
             "series",
             "number",
             unique=True,
+            sqlite_where=text("series IS NOT NULL AND number IS NOT NULL"),
         ),
         Index("ix_fiscal_invoices_billing_account_id", "billing_account_id"),
         Index("ix_fiscal_invoices_status", "status"),

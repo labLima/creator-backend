@@ -15,8 +15,8 @@
     "enum": 35,
     "unique_missing": 4,
     "unique_extra": 7,
-    "index_missing": 109,
-    "index_extra": 14,
+    "index_missing": 107,
+    "index_extra": 5,
     "index_name": 28,
     "fk_missing": 45,
     "fk_extra": 49,
@@ -26,5 +26,5 @@
     "default_missing": 6,
     "default_value": 0
   },
-  "gap_digest": "8c53223d4dedb7cbc405f5e91edda2b03b71900253239eb02358f5a8aa7fd29d"
+  "gap_digest": "1e65bea6421a6bdb0c2a8c22d8c5504397bf0b604a333779b1728f6f429c793f"
 }

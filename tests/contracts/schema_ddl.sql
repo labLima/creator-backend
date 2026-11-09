@@ -1351,9 +1351,9 @@ CREATE INDEX ix_fiscal_invoices_status ON fiscal_invoices (status)
 
 CREATE INDEX ix_fiscal_invoices_subscription_id ON fiscal_invoices (subscription_id)
 
-CREATE UNIQUE INDEX uq_fiscal_invoices_access_key ON fiscal_invoices (access_key)
+CREATE UNIQUE INDEX uq_fiscal_invoices_access_key ON fiscal_invoices (access_key) WHERE access_key IS NOT NULL
 
-CREATE UNIQUE INDEX uq_fiscal_invoices_number_series_account ON fiscal_invoices (billing_account_id, series, number)
+CREATE UNIQUE INDEX uq_fiscal_invoices_number_series_account ON fiscal_invoices (billing_account_id, series, number) WHERE series IS NOT NULL AND number IS NOT NULL
 
 CREATE INDEX ix_generation_job_status_events_job_occurred_at ON generation_job_status_events (generation_job_id, occurred_at)
 

@@ -125,9 +125,10 @@ Uma issue por tarefa do plano, cada uma declarando o workspace
 | `SHC-5` | T4 — CHECKs portáveis e defaults | done | `constraints.py`; 30 testes de equivalência |
 | `SHC-6` | T5 — audit, consent, persona interests | done | revisões 0006; 14 testes de comportamento |
 | `SHC-7` | T6 — brand/campaign satellites | done | revisões 0007; `brand_business_details` movida para T14 |
+| `SHC-8` | T7 — billing/credit satellites | review | revisão 0008; FKs compostas com `workspace_id` |
 
-Estado do orçamento de paridade: **716 divergências** (15 tabelas ausentes, 17
-allowlisted, 108 índices ausentes, 59 FKs ausentes). O orçamento só pode encolher.
+Estado do orçamento de paridade: **722 divergências** (10 tabelas ausentes, 17
+allowlisted, 109 índices ausentes, 45 FKs ausentes). O orçamento só pode encolher.
 
 ## Objetos de armazenamento
 

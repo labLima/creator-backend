@@ -647,10 +647,6 @@ def parse_models(metadata: MetaData) -> dict[str, ModelTable]:
             if isinstance(unique_constraint, sa.UniqueConstraint)
         }
         unique_columns.update((column.name,) for column in table.columns if column.unique)
-        indexes.extend(
-            IndexSignature(table=table.name, columns=cols, unique=True, predicate=None)
-            for cols in sorted(unique_columns)
-        )
 
         foreign_keys: list[ForeignKey] = []
         for fk_constraint in table.foreign_key_constraints:

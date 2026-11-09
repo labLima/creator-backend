@@ -151,13 +151,18 @@ def upgrade() -> None:
             ),
         )
         op.create_index(
-            "uq_fiscal_invoices_access_key", "fiscal_invoices", ["access_key"], unique=True
+            "uq_fiscal_invoices_access_key",
+            "fiscal_invoices",
+            ["access_key"],
+            unique=True,
+            sqlite_where=sa.text("access_key IS NOT NULL"),
         )
         op.create_index(
             "uq_fiscal_invoices_number_series_account",
             "fiscal_invoices",
             ["billing_account_id", "series", "number"],
             unique=True,
+            sqlite_where=sa.text("series IS NOT NULL AND number IS NOT NULL"),
         )
         op.create_index(
             "ix_fiscal_invoices_billing_account_id", "fiscal_invoices", ["billing_account_id"]

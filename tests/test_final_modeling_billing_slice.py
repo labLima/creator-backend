@@ -224,3 +224,47 @@ def test_parent_unique_keys_exist_for_composite_foreign_keys(engine: sa.Engine) 
     assert transaction_indexes["uq_credit_tx_id_workspace"]["unique"]
     lot_indexes = {index["name"]: index for index in inspector.get_indexes("workspace_credit_lots")}
     assert lot_indexes["uq_credit_lots_id_workspace"]["unique"]
+
+
+def test_fiscal_invoice_unique_indexes_are_partial(engine: sa.Engine) -> None:
+    """Two documents without an access key are allowed; a duplicate key is not."""
+    statement = sa.text(
+        "INSERT INTO fiscal_invoices "
+        "(id, billing_account_id, order_id, amount_cents, currency, status, "
+        "access_key, series, number, created_at, updated_at) "
+        "VALUES (:id, :account, :origin, 100, 'BRL', 'PENDING', :access_key, "
+        ":series, :number, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    )
+
+    def row(**overrides: object) -> dict[str, object]:
+        base: dict[str, object] = {
+            "id": uuid4().hex,
+            "account": uuid4().hex,
+            "origin": uuid4().hex,
+            "access_key": None,
+            "series": None,
+            "number": None,
+        }
+        base.update(overrides)
+        return base
+
+    with engine.begin() as connection:
+        # partial index: rows without an access key do not collide
+        connection.execute(statement, row())
+        connection.execute(statement, row())
+
+        key = "35260112345678000199550010000000011000000017"
+        connection.execute(statement, row(access_key=key))
+        with pytest.raises(IntegrityError) as error:
+            connection.execute(statement, row(access_key=key))
+        assert "fiscal_invoices" in str(error.value)
+
+        # partial index: number/series collide only for the same billing account
+        account = uuid4().hex
+        connection.execute(
+            statement, row(account=account, access_key="k-1", series="1", number="1")
+        )
+        with pytest.raises(IntegrityError):
+            connection.execute(
+                statement, row(account=account, access_key="k-2", series="1", number="1")
+            )
