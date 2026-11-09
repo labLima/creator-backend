@@ -103,6 +103,18 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
     atualizado antes de qualquer mudança de payload HTTP (membership status, posts com
     aprovação/agendamento, créditos).
 
+## Dependências descobertas na execução (2026-11-09)
+
+- **T9, T10 e T11 dependem de T14.** `content_plans`, `posts`/`post_designs` e
+  `brand_business_details` têm FKs compostas para `campaigns(id, brand_id)` e
+  `personas(id, brand_id)`. `campaigns` ainda não tem `brand_id` e falta o UNIQUE
+  `(id, brand_id)` nas duas tabelas, então essas fatias não podem ser criadas antes do
+  alinhamento de campanhas/personas. T14 (ou uma fatia inicial dela) precede T9–T11.
+- **T8 foi dividida.** A renomeação + `status`/`invited_by` + remoção de `deleted_at` é
+  uma fatia própria; trocar o vocabulário de `role` e as regras de autorização é outra
+  (T21), porque toca `ROLE_RANK`, `minimum_role="admin"`, workers e testes de auth em 21
+  arquivos. Cada fatia precisa fechar verde.
+
 ## Fase 0 — Contrato, paridade e portabilidade
 
 ### T1 — ADR-028, épico e tracker
@@ -275,11 +287,11 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ### T8 — `workspace_memberships` → `workspace_members` com migração de valores
 
-**Descrição:** Renomear a tabela e migrar dados e código: `role` passa de `owner/admin/editor/viewer` para `OWNER/MANAGER/EDITOR/VIEWER`, entra `status` (`member_status`), sai `deleted_at` (hoje filtrado em consultas de autorização). Inclui revisão de renomeação, revisão de backfill de valores e ajuste de repositório, autorização e testes.
+**Descrição:** Renomear `workspace_memberships` → `workspace_members`, adicionar `status` (`member_status`) e `invited_by` (`ON DELETE SET NULL`), remover `deleted_at` e o CHECK associado, e trocar a unicidade parcial por `UNIQUE (workspace_id, user_id)` com os índices do dump. Migrar o repositório de soft delete para exclusão física. O vocabulário de `role` permanece como está nesta fatia.
 
 **Critérios de aceite:**
-- [ ] `RENAME_MAP` e mapa de valores (`owner→OWNER`, `admin→MANAGER`, `editor→EDITOR`, `viewer→VIEWER`) declarados no teste de paridade.
-- [ ] `deleted_at IS NOT NULL` vira `status` equivalente antes de remover a coluna; consultas de autorização migradas.
+- [ ] `RENAME_MAP` fica vazio (nomes alinhados) e o parâmetro `updated_at` continua íntegro.
+- [ ] `deleted_at IS NOT NULL` vira `status = 'REMOVED'` antes de remover a coluna; consultas de autorização deixam de filtrar `deleted_at`.
 - [ ] Tabela, índices e UNIQUE(workspace_id, user_id) conforme o dump.
 - [ ] Revisão `0009_*` com rename e `0010_*` com backfill + drop de `deleted_at`; ambas com downgrade.
 - [ ] Nenhuma referência ao nome ou aos valores antigos em `src`, `tests`, `migrations`.
@@ -291,6 +303,25 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 **Dependências:** T4
 **Arquivos prováveis:** `src/creator/workspace/models.py`, `src/creator/workspace/repository.py`, `src/creator/domain/auth.py`, `migrations/versions/0009_*.py`, `migrations/versions/0010_*.py`
+**Tamanho:** M
+
+### T21 — Vocabulário de `workspace_role` e autorização
+
+**Descrição:** Trocar o vocabulário do papel de vínculo de `owner/admin/editor/viewer` para `OWNER/MANAGER/EDITOR/VIEWER` (com `admin→MANAGER`), ajustando `ROLE_RANK`, `minimum_role`, workers, serviços e testes de autorização. Inclui revisão de backfill dos valores existentes.
+
+**Critérios de aceite:**
+- [ ] `WorkspaceRole` com os quatro valores do dump e `ROLE_RANK` coerente.
+- [ ] Nenhuma comparação com `"admin"`, `"owner"`, `"editor"` ou `"viewer"` minúsculos em código de autorização.
+- [ ] Revisão com backfill `owner→OWNER`, `admin→MANAGER`, `editor→EDITOR`, `viewer→VIEWER` e downgrade inverso.
+- [ ] Testes de autorização por papel cobrindo os quatro valores.
+
+**Verificação:**
+- [ ] `grep -rn '"admin"\|"owner"\|"viewer"' src/creator/domain src/creator/workspace src/creator/infrastructure/persistence` sem resultados de papel de workspace.
+- [ ] `pytest tests/test_authorization_denials.py tests/test_activity_events.py -q`.
+- [ ] `make check` verde.
+
+**Dependências:** T8
+**Arquivos prováveis:** `src/creator/domain/auth.py`, `src/creator/infrastructure/persistence/sql.py`, `src/creator/workspace/repository.py`, `src/creator/services/agents/runner.py`, `migrations/versions/0021_*.py`
 **Tamanho:** M
 
 ### T9 — `planning` → `content_plans` + satélites
@@ -824,8 +855,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
   },
   {
     "id": "T8",
-    "title": "workspace_memberships para workspace_members com migração de valores",
-    "description": "Renomear a tabela, migrar role owner/admin/editor/viewer para OWNER/MANAGER/EDITOR/VIEWER, introduzir status, remover deleted_at das consultas de autorização e preservar UNIQUE(workspace_id, user_id).",
+    "title": "workspace_members: rename, status, invited_by e exclusão física",
+    "description": "Renomear workspace_memberships para workspace_members, adicionar status e invited_by, remover deleted_at e o CHECK, trocar a unicidade parcial por UNIQUE (workspace_id, user_id) e migrar o repositório de soft delete para exclusão física. Vocabulário de role fica para T21.",
     "priority": "high",
     "depends_on": [
       "T4"
@@ -834,9 +865,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
     "files": [
       "src/creator/workspace/models.py",
       "src/creator/workspace/repository.py",
-      "src/creator/domain/auth.py",
-      "migrations/versions/0009_*.py",
-      "migrations/versions/0010_*.py"
+      "src/creator/notification/models.py",
+      "migrations/versions/0009_workspace_members.py"
     ],
     "size": "M"
   },
@@ -1041,6 +1071,24 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
       "tests/test_storage_objects.py"
     ],
     "size": "M"
+  },
+  {
+    "id": "T21",
+    "title": "Vocabulário de workspace_role e autorização",
+    "description": "Trocar owner/admin/editor/viewer por OWNER/MANAGER/EDITOR/VIEWER, ajustar ROLE_RANK, minimum_role, workers e testes, com backfill e downgrade do vocabulário.",
+    "priority": "high",
+    "depends_on": [
+      "T8"
+    ],
+    "phase": "Fase 2 — Renomear e redesenhar (expand)",
+    "files": [
+      "src/creator/domain/auth.py",
+      "src/creator/infrastructure/persistence/sql.py",
+      "src/creator/workspace/repository.py",
+      "src/creator/services/agents/runner.py",
+      "migrations/versions/0021_*.py"
+    ],
+    "size": "M"
   }
 ]
-``````
+```

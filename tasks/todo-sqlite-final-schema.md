@@ -36,10 +36,11 @@
 
 ## Fase 2 — Renomear e redesenhar (expand)
 
-- [ ] **T8** (SHC-9, M) workspace_memberships para workspace_members com migração de valores — depende de T4
+- [ ] **T8** (SHC-9, M) workspace_members: rename, status, invited_by e exclusão física — depende de T4
 - [ ] **T9** (SHC-10, M) planning para content_plans e satélites — depende de T4
 - [ ] **T10** (SHC-11, M) post_structure e design_structure para posts, captions, post_designs e design_slides — depende de T4
 - [ ] **T11** (SHC-12, M) generated_image para generated_images e image_resizes — depende de T4
+- [ ] **T21** (SHC-22, M) Vocabulário de workspace_role e autorização — depende de T8
 
 ### Checkpoint — Fase 2 — Renomear e redesenhar (expand)
 

@@ -88,7 +88,8 @@ Nome divergente — apenas 1 é rename simples, 4 são redesenhos de modelo:
 
 ## Issues de implementação (board `SHC`)
 
-Uma issue por tarefa do plano, cada uma declarando o workspace
+Uma issue por tarefa do plano (T8 foi dividida: T8 mantém rename/colunas e T21
+cuida do vocabulário de papel), cada uma declarando o workspace
 `/home/emanueljtrodrigues/Documents/LeFil/creator-backend`.
 
 | Tarefa | Issue | Título |
@@ -113,28 +114,7 @@ Uma issue por tarefa do plano, cada uma declarando o workspace
 | T18 | `SHC-19` | [T18] Fechamento do épico |
 | T19 | `SHC-20` | [T19] Snapshot como gate, índices no fixture e teste de upgrade anterior |
 | T20 | `SHC-21` | [T20] Triggers, funções e view do dump |
-
-## Progresso
-
-| Issue | Tarefa | Estado | Evidência |
-| --- | --- | --- | --- |
-| `SHC-2` | T1 — ADR-028, épico e tracker | done | `docs/adr/0028-sqlite-final-schema-alignment.md`; tracker |
-| `SHC-3` | T2 — comparador único e orçamento | done | `final_schema.py`; `schema_parity_budget.json`; 27 testes |
-| `SHC-20` | T19 — snapshot gate e upgrade anterior | done | `snapshot_contract.py --check`; `schema_prev_ddl.sql`; prova de mutação |
-| `SHC-4` | T3 — enums e nomes de índice | done | `portable_enums.py`; `naming.py`; 6 testes |
-| `SHC-5` | T4 — CHECKs portáveis e defaults | done | `constraints.py`; 30 testes de equivalência |
-| `SHC-6` | T5 — audit, consent, persona interests | done | revisões 0006; 14 testes de comportamento |
-| `SHC-7` | T6 — brand/campaign satellites | done | revisões 0007; `brand_business_details` movida para T14 |
-| `SHC-8` | T7 — billing/credit satellites | done | revisão 0008; FKs compostas e índices parciais |
-
-Estado do orçamento de paridade: **711 divergências** (10 tabelas ausentes, 17
-allowlisted, 107 índices ausentes, 45 FKs ausentes). O orçamento só pode encolher.
-
-## Objetos de armazenamento
-
-O dump também declara 69 funções/triggers e a view
-`charges_with_last_transaction`, decididos objeto a objeto na tarefa T20
-(`SHC-21`).
+| T21 | `SHC-22` | [T21] Vocabulário de workspace_role e autorização |
 
 ## Critérios de aceite
 
