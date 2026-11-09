@@ -85,37 +85,109 @@ def _chain(connection: sa.Connection) -> dict[str, str]:
     }
 
 
+def _tenant(connection: sa.Connection, workspace: str, user: str, name: str) -> dict[str, str]:
+    brand, campaign, persona = uuid4(), uuid4(), uuid4()
+    connection.execute(
+        sa.text(
+            "INSERT INTO brands "
+            "(id, workspace_id, created_by_user_id, name, metadata, created_at, updated_at) "
+            "VALUES (:id, :workspace, :user, :name, '{}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        ),
+        {"id": brand.hex, "workspace": workspace, "user": user, "name": name},
+    )
+    connection.execute(
+        sa.text(
+            "INSERT INTO campaigns "
+            "(id, brand_id, workspace_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :brand, :workspace, :user, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        ),
+        {
+            "id": campaign.hex,
+            "brand": brand.hex,
+            "workspace": workspace,
+            "user": user,
+            "name": name,
+        },
+    )
+    connection.execute(
+        sa.text(
+            "INSERT INTO personas (id, brand_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :brand, :user, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        ),
+        {"id": persona.hex, "brand": brand.hex, "user": user, "name": name},
+    )
+    return {"brand": brand.hex, "campaign": campaign.hex, "persona": persona.hex}
+
+
+def _insert_details(connection: sa.Connection, *, brand: str, campaign: str, persona: str) -> None:
+    connection.execute(
+        sa.text(
+            "INSERT INTO brand_business_details "
+            "(id, brand_id, campaign_id, persona_id, output, created_at, updated_at) "
+            "VALUES (:id, :brand, :campaign, :persona, '{}', "
+            "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        ),
+        {
+            "id": uuid4().hex,
+            "brand": brand,
+            "campaign": campaign,
+            "persona": persona,
+        },
+    )
+
+
 def test_business_details_requires_matching_tenant(engine: sa.Engine) -> None:
     with engine.begin() as connection:
-        chain = _chain(connection)
+        base = _chain(connection)
+        workspace = connection.execute(
+            sa.text("SELECT workspace_id FROM brands WHERE id = :id"),
+            {"id": base["brand"]},
+        ).scalar_one()
+        other = _tenant(connection, workspace, base["user"], "brand-b")
+
+        # A consistent pair is accepted.
+        _insert_details(
+            connection,
+            brand=base["brand"],
+            campaign=base["campaign"],
+            persona=base["persona"],
+        )
+
+        # Every cross-tenant pairing must be rejected by a composite FK, with a
+        # real brand B so the plain brand_id FK cannot be the failing one.
+        for brand, campaign, persona in (
+            (other["brand"], base["campaign"], base["persona"]),
+            (base["brand"], other["campaign"], base["persona"]),
+            (base["brand"], base["campaign"], other["persona"]),
+            (other["brand"], other["campaign"], base["persona"]),
+        ):
+            with pytest.raises(IntegrityError):
+                _insert_details(connection, brand=brand, campaign=campaign, persona=persona)
+
+
+def test_business_details_rejects_campaign_without_brand(engine: sa.Engine) -> None:
+    with engine.begin() as connection:
+        base = _chain(connection)
+        workspace = connection.execute(
+            sa.text("SELECT workspace_id FROM brands WHERE id = :id"),
+            {"id": base["brand"]},
+        ).scalar_one()
+        campaign = uuid4().hex
         connection.execute(
             sa.text(
-                "INSERT INTO brand_business_details "
-                "(id, brand_id, campaign_id, persona_id, output, created_at, updated_at) "
-                "VALUES (:id, :brand, :campaign, :persona, '{}', "
+                "INSERT INTO campaigns "
+                "(id, workspace_id, created_by, name, created_at, updated_at) "
+                "VALUES (:id, :workspace, :user, 'legacy', "
                 "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
             ),
-            {
-                "id": uuid4().hex,
-                "brand": chain["brand"],
-                "campaign": chain["campaign"],
-                "persona": chain["persona"],
-            },
+            {"id": campaign, "workspace": workspace, "user": base["user"]},
         )
         with pytest.raises(IntegrityError):
-            connection.execute(
-                sa.text(
-                    "INSERT INTO brand_business_details "
-                    "(id, brand_id, campaign_id, persona_id, output, created_at, updated_at) "
-                    "VALUES (:id, :other_brand, :campaign, :persona, '{}', "
-                    "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-                ),
-                {
-                    "id": uuid4().hex,
-                    "other_brand": uuid4().hex,
-                    "campaign": chain["campaign"],
-                    "persona": chain["persona"],
-                },
+            _insert_details(
+                connection,
+                brand=base["brand"],
+                campaign=campaign,
+                persona=base["persona"],
             )
 
 

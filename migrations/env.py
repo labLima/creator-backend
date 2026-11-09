@@ -39,6 +39,16 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        # Migrations rebuild tables (SQLite cannot ALTER constraints). With
+        # foreign keys ON, DROP TABLE runs an implicit DELETE and cascades into
+        # child rows; the rebuild would silently lose campaign/invite data.
+        # Enforcement is restored on every application connection by
+        # create_database_engine().
+        if connection.dialect.name == "sqlite":
+            # Run on the DBAPI connection: an ORM-level execute would open a
+            # transaction and the PRAGMA would be a no-op inside it.
+            driver_connection = connection.connection.driver_connection
+            driver_connection.execute("PRAGMA foreign_keys=OFF")
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

@@ -19,9 +19,11 @@ depends_on = None
 
 def upgrade() -> None:
     inspector = sa.inspect(op.get_bind())
-    if inspector.has_table("brand_business_details"):
-        # Fresh database: the baseline already created the final shape.
+    campaign_columns = {column["name"] for column in inspector.get_columns("campaigns")}
+    if inspector.has_table("brand_business_details") and "brand_id" in campaign_columns:
+        # Fresh database (or a completed migration): the final shape is present.
         return
+    brand_expression = "brand_id" if "brand_id" in campaign_columns else "NULL"
 
     # A column added with ``ALTER TABLE ... ADD COLUMN REFERENCES`` reflects
     # without its ON DELETE action, so the table is rebuilt with the final shape
@@ -52,7 +54,8 @@ def upgrade() -> None:
         "INSERT INTO campaigns_new "
         "(id, brand_id, workspace_id, created_by, name, description, target_audience, "
         "objectives, voice, start_at, end_at, created_at, updated_at, deleted_at) "
-        "SELECT id, NULL, workspace_id, created_by, name, description, target_audience, "
+        f"SELECT id, {brand_expression}, workspace_id, created_by, name, description, "
+        "target_audience, "
         "objectives, voice, start_at, end_at, created_at, updated_at, deleted_at "
         "FROM campaigns"
     )
@@ -118,7 +121,10 @@ def upgrade() -> None:
         ["persona_id", "brand_id"],
     )
     op.create_index(
-        "idx_m8_brand_business_details_created_by", "brand_business_details", ["created_by"]
+        "idx_m8_brand_business_details_created_by",
+        "brand_business_details",
+        ["created_by"],
+        sqlite_where=sa.text("created_by IS NOT NULL"),
     )
 
 

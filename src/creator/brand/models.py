@@ -219,7 +219,11 @@ class BrandBusinessDetails(Base):
             "persona_id",
             "brand_id",
         ),
-        Index("idx_m8_brand_business_details_created_by", "created_by"),
+        Index(
+            "idx_m8_brand_business_details_created_by",
+            "created_by",
+            sqlite_where=text("created_by IS NOT NULL"),
+        ),
         ForeignKeyConstraint(
             ["campaign_id", "brand_id"],
             ["campaigns.id", "campaigns.brand_id"],

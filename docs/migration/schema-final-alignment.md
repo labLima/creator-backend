@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **692**
+- Divergências: **690**
 
 ## Divergências por categoria
 
@@ -32,8 +32,8 @@
 | `enum` | 34 |
 | `unique_missing` | 4 |
 | `unique_extra` | 7 |
-| `index_missing` | 101 |
-| `index_extra` | 4 |
+| `index_missing` | 100 |
+| `index_extra` | 3 |
 | `index_name` | 27 |
 | `fk_missing` | 39 |
 | `fk_extra` | 49 |
@@ -414,9 +414,9 @@ Total: **34**.
 
 ## 5. Índices
 
-Total: **132**.
+Total: **130**.
 
-### `index_missing` (101)
+### `index_missing` (100)
 
 - `billing_accounts: (document_hash)`
 - `billing_accounts: (user_id)`
@@ -430,7 +430,6 @@ Total: **132**.
 - `brand_assets: (brand_id)`
 - `brand_assets: (created_by)`
 - `brand_assets: UNIQUE (storage_bucket, storage_key)`
-- `brand_business_details: (created_by) WHERE created_by is not null`
 - `brand_colors: (brand_id)`
 - `brands: (created_by) WHERE created_by is not null`
 - `brands: (workspace_id)`
@@ -520,9 +519,8 @@ Total: **132**.
 - `workspace_invites: (status)`
 - `workspace_invites: (workspace_id)`
 
-### `index_extra` (4)
+### `index_extra` (3)
 
-- `brand_business_details: (created_by)`
 - `brands: (created_by_user_id)`
 - `brands: (workspace_id, deleted_at, created_at)`
 - `users: (deleted_at)`

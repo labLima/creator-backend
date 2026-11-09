@@ -1335,7 +1335,7 @@ CREATE INDEX ix_auth_sessions_user_id ON auth_sessions (user_id)
 
 CREATE INDEX idx_m8_brand_business_details_campaign_id_brand_id ON brand_business_details (campaign_id, brand_id)
 
-CREATE INDEX idx_m8_brand_business_details_created_by ON brand_business_details (created_by)
+CREATE INDEX idx_m8_brand_business_details_created_by ON brand_business_details (created_by) WHERE created_by IS NOT NULL
 
 CREATE INDEX idx_m8_brand_business_details_persona_id_brand_id ON brand_business_details (persona_id, brand_id)
 
