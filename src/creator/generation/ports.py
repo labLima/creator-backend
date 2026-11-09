@@ -246,7 +246,14 @@ class ImageGenerationRepository(Protocol):
     ) -> GenerationJobRecord: ...
 
     def mark_scene_review_pending(
-        self, job_id: UUID, *, storage_path: str, mime_type: str, width: int, height: int
+        self,
+        job_id: UUID,
+        *,
+        storage_path: str,
+        mime_type: str,
+        width: int,
+        height: int,
+        stage: str = "FINAL",
     ) -> None: ...
 
     def decide_scene_review(self, job_id: UUID, *, approve: bool) -> GenerationJobRecord: ...

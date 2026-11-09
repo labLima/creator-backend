@@ -788,7 +788,7 @@ def _image_data(image: ImageRecord, *, public_url: str | None = None) -> dict[st
         "id": str(image.id),
         "workspace_id": str(image.workspace_id),
         "content_id": str(image.content_id),
-        "generation_id": str(image.generation_id),
+        "generation_id": str(image.generation_id) if image.generation_id else None,
         "version_number": image.version_number,
         "storage_path": image.storage_path,
         "public_url": public_url or image.public_url,

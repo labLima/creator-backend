@@ -9,13 +9,14 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from creator.api.dependencies import (
     get_content_application,
     get_current_user,
     get_llm_provider,
+    get_storage_provider,
 )
 from creator.api.errors import (
     not_found,
@@ -43,6 +44,7 @@ from creator.content.improvement_service import (
 )
 from creator.content.ports import ContentFilters
 from creator.content.schemas import (
+    IMPORT_IMAGE_RESPONSE_SCHEMA,
     ContentCreateRequest,
     ContentUpdateRequest,
     GenerateContentRequest,
@@ -72,9 +74,63 @@ from creator.services.ai.provider import (
     LLMTransientError,
     ProviderNotConfiguredError,
 )
+from creator.services.storage.provider import StorageProvider
 from creator.user.ports import UserRecord
 
 router = APIRouter()
+
+
+@router.post(
+    "/api/v1/contents/import-image",
+    tags=["Contents"],
+    operation_id="importContentImage",
+    status_code=201,
+    responses={
+        201: {
+            "description": "Imported Content and its first IMAGE Content Version.",
+            "content": {"application/json": {"schema": IMPORT_IMAGE_RESPONSE_SCHEMA}},
+        },
+        403: {"$ref": "#/components/responses/WorkspaceAccessDenied"},
+        404: {"$ref": "#/components/responses/NotFound"},
+        413: {
+            "description": "Image exceeds the upload limit.",
+            "content": {
+                "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+            },
+        },
+    },
+)
+async def import_content_image(
+    request: Request,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    application: Annotated[ContentApplication, Depends(get_content_application)],
+    storage: Annotated[StorageProvider, Depends(get_storage_provider)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    brand_id: Annotated[UUID, Form()],
+    file: Annotated[UploadFile, File()],
+    title: Annotated[str | None, Form(max_length=255)] = None,
+) -> JSONResponse:
+    workspace_id = application.authorize_image_import(user=current_user, brand_id=brand_id)
+    limit = min(settings.storage_max_object_bytes, 10 * 1024 * 1024)
+    try:
+        content = await file.read(limit + 1)
+        if len(content) > limit:
+            raise HTTPException(
+                status_code=413,
+                detail={"code": "IMAGE_TOO_LARGE", "message": "Image exceeds upload limit"},
+            )
+        detail = application.import_image(
+            storage=storage,
+            user=current_user,
+            brand_id=brand_id,
+            workspace_id=workspace_id,
+            content=content,
+            mime_type=file.content_type,
+            title=title,
+        )
+        return success_response(_content_detail_data(detail), request, status_code=201)
+    finally:
+        await file.close()
 
 
 @router.post(

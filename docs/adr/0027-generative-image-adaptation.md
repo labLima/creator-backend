@@ -25,6 +25,14 @@ deste repositório, sem trabalho de interface ou mudanças no Lovable.
 
 ## Decisão
 
+Uma imagem enviada pelo Principal pode originar um Content IMAGE e sua primeira
+Content Version, vinculados a um Brand autorizado. Os bytes são validados e
+armazenados de forma imutável; a versão importada não representa uma Generation
+e não possui model ou prompt de provider. O mesmo TRANSFORM aceita a versão
+importada ou uma versão gerada, mantendo a autorização e a revisão humana.
+O fluxo de importação é rastreado em [#160](https://github.com/labLima/creator-backend/issues/160)
+e [0057](../issues/0057-image-import.md).
+
 Estender `IMAGE/TRANSFORM` existente. A origem é uma Content Version IMAGE
 específica, não apenas o Content corrente: antes de enfileirar, a aplicação
 autoriza o Content e a versão no Workspace e Brand da Generation e resolve os

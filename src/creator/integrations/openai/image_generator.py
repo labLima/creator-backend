@@ -102,15 +102,17 @@ class OpenAIImageGenerator:
                 )
                 if extension is None:
                     raise ImageProviderInvalidResponseError("Unsupported source image MIME type")
-                response = self._client.images.edit(
-                    model=model,
-                    prompt=request.prompt,
-                    image=(f"source.{extension}", request.source_image),
-                    size=provider_size,
-                    quality="auto",
-                    output_format=output_format,
-                    input_fidelity="high",
-                )
+                edit_options: dict[str, Any] = {
+                    "model": model,
+                    "prompt": request.prompt,
+                    "image": (f"source.{extension}", request.source_image),
+                    "size": provider_size,
+                    "quality": "auto",
+                    "output_format": output_format,
+                }
+                if not model.lower().startswith("gpt-image-2"):
+                    edit_options["input_fidelity"] = "high"
+                response = self._client.images.edit(**edit_options)
             else:
                 response = self._client.images.generate(
                     model=model,
@@ -146,6 +148,11 @@ class OpenAIImageGenerator:
             raise ImageProviderInvalidResponseError(
                 "OpenAI returned invalid image bytes"
             ) from error
+
+        if final_size and (width, height) != _parse_size(provider_size):
+            raise ImageProviderInvalidResponseError(
+                "OpenAI returned dimensions different from the requested render size"
+            )
 
         metadata = {
             "provider": "openai",

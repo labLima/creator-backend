@@ -16,6 +16,7 @@ from creator.content.generation_service import (
     GenerateContentCommand,
     generate_content,
 )
+from creator.content.image_import import authorize_import, import_image
 from creator.content.improvement_service import (
     ImproveContentCommand,
     ImprovedContentPreview,
@@ -31,6 +32,7 @@ from creator.core.pagination import Page, PageRequest
 from creator.domain.exceptions import EntityNotFoundError
 from creator.post_structure.ports import PostStructureRecord
 from creator.services.ai.provider import LLMProvider
+from creator.services.storage.provider import StorageProvider
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -40,6 +42,31 @@ class ContentApplication:
 
     def __init__(self, unit_of_work: UnitOfWork) -> None:
         self._unit_of_work = unit_of_work
+
+    def authorize_image_import(self, *, user: UserRecord, brand_id: UUID) -> UUID:
+        return authorize_import(self._unit_of_work, user, brand_id)
+
+    def import_image(
+        self,
+        *,
+        storage: StorageProvider,
+        user: UserRecord,
+        brand_id: UUID,
+        workspace_id: UUID,
+        content: bytes,
+        mime_type: str | None,
+        title: str | None,
+    ) -> ContentDetailRecord:
+        return import_image(
+            uow=self._unit_of_work,
+            storage=storage,
+            user=user,
+            brand_id=brand_id,
+            workspace_id=workspace_id,
+            content=content,
+            mime_type=mime_type,
+            title=title,
+        )
 
     def generate_content(
         self,

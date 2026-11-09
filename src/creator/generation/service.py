@@ -692,6 +692,9 @@ def submit_image_regeneration(
     if original_image is None:
         raise EntityNotFoundError("Image not found")
 
+    if original_image.prompt is None or original_image.generation_id is None:
+        raise EntityNotFoundError("Generated image not found")
+
     stored_settings = unit_of_work.user.settings.get_by_user_id(user.id)
     resolved_style = (
         style

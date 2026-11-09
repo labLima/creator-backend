@@ -1177,6 +1177,71 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
+  /api/v1/contents/import-image:
+    post:
+      operationId: importContentImage
+      tags: [Contents]
+      security:
+      - CreatorSessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [brand_id, file]
+              properties:
+                brand_id: {type: string, format: uuid}
+                title:
+                  anyOf:
+                  - {type: string, maxLength: 255}
+                  - {type: 'null'}
+                file: {type: string, contentMediaType: application/octet-stream}
+      responses:
+        '201':
+          description: Imported Content and its first IMAGE Content Version.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, meta]
+                properties:
+                  success: {const: true}
+                  data:
+                    type: object
+                    required: [id, images]
+                    properties:
+                      id: {type: string, format: uuid}
+                      images:
+                        type: array
+                        items:
+                          type: object
+                          required: [id]
+                          properties:
+                            id: {type: string, format: uuid}
+                  meta:
+                    type: object
+                    required: [request_id]
+                    properties:
+                      request_id: {type: string, format: uuid}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/WorkspaceAccessDenied'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: Image exceeds the upload limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/contents/{id}:
     get:
       operationId: getContentCanonical
@@ -7386,11 +7451,14 @@ components:
           $ref: '#/components/schemas/Image'
         scene_review:
           type: object
-          required: [status, image_url]
+          required: [status, stage, image_url]
           properties:
             status:
               type: string
               enum: [PENDING, APPROVED]
+            stage:
+              type: string
+              enum: [INTERMEDIATE, FINAL]
             image_url:
               type: string
               format: uri
@@ -7496,7 +7564,7 @@ components:
           type: string
           format: uuid
         generation_id:
-          type: string
+          type: [string, 'null']
           format: uuid
         version_number:
           type: integer
@@ -7521,10 +7589,10 @@ components:
           type: integer
           minimum: 1
         model:
-          type: string
+          type: [string, 'null']
           maxLength: 255
         prompt:
-          type: string
+          type: [string, 'null']
           minLength: 1
           maxLength: 20000
         metadata:

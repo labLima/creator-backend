@@ -443,7 +443,7 @@ async def test_independent_scene_review_resumes_same_scene(
         rejected_id = rejected_job.json()["data"]["id"]
         image_generation_worker.run_image_generation(rejected_id)
         rejected_scene_path = next(
-            path for path in state.e2e_storage.objects if f"/{rejected_id}." in path
+            path for path in state.e2e_storage.objects if f"/{rejected_id}-intermediate." in path
         )
         real_delete = state.e2e_storage.delete
         delete_failures_left = 1

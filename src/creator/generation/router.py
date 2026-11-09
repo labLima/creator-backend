@@ -151,6 +151,7 @@ def get_independent_generation_job(
                 try:
                     result["scene_review"] = {
                         "status": review["status"],
+                        "stage": review.get("stage", "FINAL"),
                         "image_url": storage.get_url(path),
                     }
                 except StorageUrlError:

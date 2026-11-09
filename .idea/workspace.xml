@@ -5,18 +5,33 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/ADR-ISSUE-TRACKER.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/ADR-ISSUE-TRACKER.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/adr/0027-generative-image-adaptation.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/adr/0027-generative-image-adaptation.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/issues/0056-generative-image-adaptation.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/issues/0056-generative-image-adaptation.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/openapi.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docs/openapi.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/generation/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/api/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/api/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/application/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/application/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/content/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/content/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/content/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/content/ports.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/content/repository.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/content/repository.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/content/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/content/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/content/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/content/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/content/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/content/service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/generation/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/ports.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/generation/repository.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/repository.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/generation/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/router.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/generation/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/service.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/integrations/openai/image_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/integrations/openai/image_generator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/services/ai/image_provider.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/ai/image_provider.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/workers/image_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/image_generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_image_generation_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_image_generation_worker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_independent_generation_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_independent_generation_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/contracts/route_table.json" beforeDir="false" afterPath="$PROJECT_DIR$/tests/contracts/route_table.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/contracts/schema_ddl.sql" beforeDir="false" afterPath="$PROJECT_DIR$/tests/contracts/schema_ddl.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/test_contract_flows.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_contract_flows.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_app_structure.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_app_structure.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/test_openai_adapters.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openai_adapters.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/test_openapi_contract.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openapi_contract.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_openapi_operation_id_parity.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openapi_operation_id_parity.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -122,7 +137,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "feat/split-generation",
+    "git-widget-placeholder": "feat/desdobramento",
     "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "C:/Users/Kelve/PycharmProjects/creator-backend-python",
     "node.js.detected.package.eslint": "true",
