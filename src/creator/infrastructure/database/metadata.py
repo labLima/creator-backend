@@ -32,6 +32,7 @@ from creator.payment_method import models as _payment_method_tables  # noqa: F40
 from creator.persona import models as _persona_tables  # noqa: F401
 from creator.plan import models as _plan_tables  # noqa: F401
 from creator.planning import models as _planning_tables  # noqa: F401
+from creator.post import models as _post_tables  # noqa: F401
 from creator.post_structure import models as _post_structure_tables  # noqa: F401
 from creator.project import models as _project_tables  # noqa: F401
 from creator.refund import models as _refund_tables  # noqa: F401

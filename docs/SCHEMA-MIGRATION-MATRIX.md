@@ -96,6 +96,10 @@ Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
 | `content_plans` | T9 (`0012`) | ativo (expand) | substitui `planning` no contract T13 |
 | `content_plan_items` | T9 (`0012`) | ativo | quantidades por formato do plano |
 | `content_plan_special_dates` | T9 (`0012`) | ativo | datas especiais por plano |
+| `posts` | T10 (`0013`) | ativo (expand) | substitui `post_structure` no contract T13 |
+| `captions` | T10 (`0013`) | ativo | legendas versionadas por post |
+| `post_designs` | T10 (`0013`) | ativo | formato/proporção da arte por post |
+| `design_slides` | T10 (`0013`) | ativo | slides ordenados por design |
 
 ## Regras
 

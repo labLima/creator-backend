@@ -370,6 +370,21 @@ CREATE TABLE campaigns (
 	FOREIGN KEY(created_by) REFERENCES users (id)
 )
 
+CREATE TABLE captions (
+	id CHAR(32) NOT NULL,
+	post_id CHAR(32) NOT NULL,
+	created_by CHAR(32),
+	body VARCHAR(2000) NOT NULL,
+	version INTEGER DEFAULT 1 NOT NULL,
+	is_current BOOLEAN DEFAULT true NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT ck_captions_version CHECK (version >= 1),
+	FOREIGN KEY(post_id) REFERENCES posts (id) ON DELETE CASCADE,
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
+)
+
 CREATE TABLE charge_transactions (
 	id CHAR(32) NOT NULL,
 	charge_id CHAR(32) NOT NULL,
@@ -549,6 +564,21 @@ CREATE TABLE credit_packages (
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
 	UNIQUE (code)
+)
+
+CREATE TABLE design_slides (
+	id CHAR(32) NOT NULL,
+	post_design_id CHAR(32) NOT NULL,
+	position INTEGER NOT NULL,
+	headline VARCHAR(50),
+	subtitle VARCHAR(40),
+	cta VARCHAR(30),
+	art_direction VARCHAR(1000) NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT ck_design_slides_position CHECK (position >= 0),
+	FOREIGN KEY(post_design_id) REFERENCES post_designs (id) ON DELETE CASCADE
 )
 
 CREATE TABLE design_structure (
@@ -962,6 +992,20 @@ CREATE TABLE plans (
 	UNIQUE (code)
 )
 
+CREATE TABLE post_designs (
+	id CHAR(32) NOT NULL,
+	post_id CHAR(32) NOT NULL,
+	format VARCHAR(8) NOT NULL,
+	ratio VARCHAR(10) NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT chk_post_designs_stories_ratio CHECK (format <> 'STORIES' OR ratio = 'RATIO_9_16'),
+	FOREIGN KEY(post_id) REFERENCES posts (id) ON DELETE CASCADE,
+	CONSTRAINT content_format CHECK (format IN ('IMAGE', 'CAROUSEL', 'STORIES')),
+	CONSTRAINT art_ratio CHECK (ratio IN ('RATIO_4_5', 'RATIO_1_1', 'RATIO_9_16', 'RATIO_16_9'))
+)
+
 CREATE TABLE post_structure (
 	workspace_id CHAR(32) NOT NULL,
 	planning_id CHAR(32) NOT NULL,
@@ -985,6 +1029,38 @@ CREATE TABLE post_structure (
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
 	FOREIGN KEY(planning_id) REFERENCES planning (id),
 	FOREIGN KEY(created_by) REFERENCES users (id)
+)
+
+CREATE TABLE posts (
+	id CHAR(32) NOT NULL,
+	content_plan_id CHAR(32) NOT NULL,
+	created_by CHAR(32),
+	title VARCHAR(100),
+	objective VARCHAR(300),
+	big_idea VARCHAR(150),
+	main_message VARCHAR(150),
+	publication_status VARCHAR(9) DEFAULT 'DRAFT' NOT NULL,
+	approval_status VARCHAR(8) DEFAULT 'PENDING' NOT NULL,
+	approved_by CHAR(32),
+	approved_at DATETIME,
+	rejection_reason VARCHAR(500),
+	scheduled_at DATETIME,
+	published_at DATETIME,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	deleted_at DATETIME,
+	PRIMARY KEY (id),
+	CONSTRAINT chk_posts_approval_pair CHECK ((approved_at IS NULL) = (approved_by IS NULL)),
+	CONSTRAINT chk_posts_rejected_reason CHECK (approval_status <> 'REJECTED' OR rejection_reason IS NOT NULL),
+	CONSTRAINT chk_posts_approved_metadata CHECK (approval_status <> 'APPROVED' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL)),
+	CONSTRAINT chk_posts_scheduled_at CHECK (publication_status <> 'SCHEDULED' OR scheduled_at IS NOT NULL),
+	CONSTRAINT chk_posts_published_at CHECK (publication_status <> 'PUBLISHED' OR published_at IS NOT NULL),
+	CONSTRAINT chk_posts_publish_requires_approval CHECK (publication_status = 'DRAFT' OR approval_status = 'APPROVED'),
+	FOREIGN KEY(content_plan_id) REFERENCES content_plans (id) ON DELETE CASCADE,
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL,
+	CONSTRAINT publication_status CHECK (publication_status IN ('DRAFT', 'SCHEDULED', 'PUBLISHED')),
+	CONSTRAINT approval_status CHECK (approval_status IN ('PENDING', 'APPROVED', 'REJECTED')),
+	FOREIGN KEY(approved_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE projects (
@@ -1405,6 +1481,12 @@ CREATE INDEX ix_campaigns_brand_id ON campaigns (brand_id)
 
 CREATE UNIQUE INDEX uq_campaigns_id_brand_id ON campaigns (id, brand_id)
 
+CREATE INDEX idx_m8_captions_created_by ON captions (created_by) WHERE created_by IS NOT NULL
+
+CREATE UNIQUE INDEX uq_captions_current ON captions (post_id) WHERE is_current
+
+CREATE UNIQUE INDEX uq_captions_post_id_version ON captions (post_id, version)
+
 CREATE INDEX idx_charge_transactions_latest ON charge_transactions (charge_id, created_at, id)
 
 CREATE INDEX ix_charge_transactions_created_at ON charge_transactions (created_at)
@@ -1436,6 +1518,8 @@ CREATE INDEX ix_contents_created_by_user_id ON contents (created_by_user_id)
 CREATE INDEX ix_contents_workspace_created_id ON contents (workspace_id, deleted_at, created_at, id)
 
 CREATE INDEX ix_contents_workspace_filter ON contents (workspace_id, type, deleted_at, created_at)
+
+CREATE UNIQUE INDEX uq_design_slides_post_design_id_position ON design_slides (post_design_id, position)
 
 CREATE INDEX ix_fiscal_invoices_billing_account_id ON fiscal_invoices (billing_account_id)
 
@@ -1484,6 +1568,22 @@ CREATE INDEX ix_personas_brand_id ON personas (brand_id)
 CREATE UNIQUE INDEX uq_personas_id_brand_id ON personas (id, brand_id)
 
 CREATE UNIQUE INDEX uq_plan_payment_methods_plan_id_method ON plan_payment_methods (plan_id, method)
+
+CREATE INDEX ix_post_designs_post_id ON post_designs (post_id)
+
+CREATE INDEX idx_m8_posts_created_by ON posts (created_by) WHERE created_by IS NOT NULL
+
+CREATE INDEX ix_posts_approval_status ON posts (approval_status)
+
+CREATE INDEX ix_posts_approved_by ON posts (approved_by)
+
+CREATE INDEX ix_posts_content_plan_id_created_at ON posts (content_plan_id, created_at)
+
+CREATE INDEX ix_posts_content_plan_id_publication_status ON posts (content_plan_id, publication_status)
+
+CREATE INDEX ix_posts_publication_status ON posts (publication_status)
+
+CREATE INDEX ix_posts_scheduled_at ON posts (scheduled_at)
 
 CREATE INDEX ix_projects_brand_id ON projects (brand_id)
 
