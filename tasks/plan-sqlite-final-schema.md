@@ -427,7 +427,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ### T14 — Lote A: identidade, notificações, brand, campanha, persona (13 tabelas)
 
-**Descrição:** Alinhar `users`, `workspaces`, `workspace_invites`, `workspace_invite_usages`, `notifications`, `notification_recipients`, `notification_preferences`, `user_devices`, `brands`, `brand_colors`, `brand_assets`, `campaigns` e `personas` — colunas, nullability, tamanhos, enums e índices — usando `render_as_batch`.
+**Descrição:** Alinhar `users`, `workspaces`, `workspace_invites` (incluindo `role` como enum `workspace_role` e validação do payload), `workspace_invite_usages`, `notifications`, `notification_recipients`, `notification_preferences`, `user_devices`, `brands`, `brand_colors`, `brand_assets`, `campaigns` e `personas` — colunas, nullability, tamanhos, enums e índices — usando `render_as_batch`.
 
 **Critérios de aceite:**
 - [ ] As 13 tabelas sem divergência de coluna, nullability ou tamanho no relatório.

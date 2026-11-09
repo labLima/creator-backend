@@ -83,6 +83,11 @@ Colunas exigidas pelo dump e ausentes por decisão de produto (por exemplo `user
 
 ### 3. Expand → backfill → contract, incluindo o rename
 
+Migrations are frozen history: they must not import live enums or model
+constants whose meaning changes later. Migration `0009` stores `role` as a plain
+varchar precisely so `0010` can map the vocabulary and rebuild the table with the
+final enum; importing the live enum there would have rewritten the past.
+
 Nem `workspace_memberships` é rename sem migração: além do nome, muda o vocabulário de `role`,
 entra `status`, sai `deleted_at`. As cinco mudanças seguem três etapas em PRs separados:
 
