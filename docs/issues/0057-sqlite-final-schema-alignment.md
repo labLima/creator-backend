@@ -130,9 +130,10 @@ cuida do vocabulário de papel), cada uma declarando o workspace
 | `SHC-8` | T7 — satélites de billing/créditos | done | revisão 0008 |
 | `SHC-9` | T8 — workspace_members | done | revisão 0009; rename, status, exclusão física |
 | `SHC-22` | T21 — vocabulário de workspace_role | done | revisão 0010; MANAGER e rebuild do CHECK |
+| `SHC-23` | T22 — chaves pai de campaigns/personas e brand_business_details | done | revisão 0011; FKs compostas de tenant |
 
-Orçamento de paridade: **700 divergências** (10 tabelas ausentes, 17 allowlisted,
-104 índices ausentes, 44 FKs ausentes). O orçamento só pode encolher.
+Orçamento de paridade: **690 divergências** (9 tabelas ausentes, 17 allowlisted,
+100 índices ausentes, 39 FKs ausentes). O orçamento só pode encolher.
 
 T8 foi dividida: o vocabulário de `role` e a autorização por papel ficam em T21
 (`SHC-22`).
