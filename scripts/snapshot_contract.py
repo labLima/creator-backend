@@ -54,10 +54,20 @@ def schema_ddl() -> str:
     configure_mappers()
     dialect = sa.dialects.sqlite.dialect()
     statements = [
-        str(CreateTable(table).compile(dialect=dialect)).strip()
+        _strip_trailing_whitespace(str(CreateTable(table).compile(dialect=dialect)).strip())
         for table in sorted(Base.metadata.tables.values(), key=lambda item: item.name)
     ]
     return "\n\n".join(statements) + "\n"
+
+
+def _strip_trailing_whitespace(statement: str) -> str:
+    """Keep the snapshot free of invisible trailing spaces.
+
+    The compiled DDL separates columns with `, `; writing that verbatim makes
+    every line end with a space, so ``make snapshot-contract`` produced a
+    whitespace-only diff against the committed file and was not idempotent.
+    """
+    return "\n".join(line.rstrip() for line in statement.splitlines())
 
 
 def registered_tables() -> list[str]:
