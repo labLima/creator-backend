@@ -38,7 +38,7 @@ OPENAPI_PATH = PROJECT_ROOT / "docs" / "openapi.yaml"
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 # 227 `/api/v1` operations plus the three System operations (/health,
 # /health/live, /metrics). The original 227 figure in issue 0051 predates Activity Events.
-EXPECTED_OPERATION_COUNT = 231
+EXPECTED_OPERATION_COUNT = 232
 
 NOTIFICATION_PREFERENCE_PATH = "/api/v1/notification-preferences/{id}"
 RESOURCE_ID_REF = {"$ref": "#/components/parameters/ResourceId"}

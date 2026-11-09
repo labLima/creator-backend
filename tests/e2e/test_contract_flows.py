@@ -443,7 +443,7 @@ async def test_independent_scene_review_resumes_same_scene(
         rejected_id = rejected_job.json()["data"]["id"]
         image_generation_worker.run_image_generation(rejected_id)
         rejected_scene_path = next(
-            path for path in state.e2e_storage.objects if f"/{rejected_id}." in path
+            path for path in state.e2e_storage.objects if f"/{rejected_id}-intermediate." in path
         )
         real_delete = state.e2e_storage.delete
         delete_failures_left = 1
@@ -1025,3 +1025,126 @@ async def test_independent_image_job_runs_artist_and_returns_reviewed_image(
     assert result["image"]["metadata"]["artist"]["provider"] == "fake-artist"
     assert result["image"]["metadata"]["review"]["decision"] == "APPROVED"
     assert result["image"]["metadata"]["review"]["feedback"] == ["Brand context is respected"]
+
+
+@pytest.mark.anyio
+async def test_image_transform_uses_exact_version_and_appends_after_review(
+    e2e: tuple[object, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    application, _ = e2e
+    state = application.state
+    _patch_worker_to_test_database(monkeypatch, application)
+
+    class Artist:
+        def execute(self, context: object) -> AgentExecutionResult:
+            return AgentExecutionResult(
+                output=ArtistOutput(visual_prompt="Preserve the original campaign concept"),
+                prompt="Artist prompt",
+                prompt_template_id="agent.artist.v3",
+                prompt_template_version="3.0",
+                input_hash="a" * 64,
+                output_hash="b" * 64,
+                schema_name="ArtistOutput",
+                schema_version="1.0",
+                provider="test-artist",
+                model="test-artist-model",
+            )
+
+    class Generator:
+        def generate(self, request: object) -> ImageGenerationResult:
+            requested = getattr(request, "size", None) or "640x480"
+            width, height = (int(part) for part in requested.split("x"))
+            output = BytesIO()
+            Image.new("RGB", (width, height), "#704060").save(output, format="PNG")
+            return ImageGenerationResult(
+                image_bytes=output.getvalue(),
+                mime_type="image/png",
+                width=width,
+                height=height,
+                model="test-image-model",
+                prompt="test prompt",
+                metadata={"provider": "test-image"},
+            )
+
+    state.e2e_image_generator = Generator()
+    monkeypatch.setattr(
+        image_generation_worker,
+        "create_specialist_executor",
+        lambda _settings: Artist(),
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        token, workspace_id = await _signup(client, "image-transform@example.com")
+        outsider, _ = await _signup(client, "image-transform-outsider@example.com")
+        brand_response = await client.post(
+            "/api/v1/brands",
+            headers=_auth(token),
+            json={"workspace_id": workspace_id, "name": "Transform Brand"},
+        )
+        brand_id = _assert_envelope(brand_response, success=True)["data"]["id"]
+        created = await client.post(
+            "/api/v1/generation-jobs",
+            headers={**_auth(token), "Idempotency-Key": "transform-source-create"},
+            json={
+                "brand_id": brand_id,
+                "artifact_type": "IMAGE",
+                "operation": "CREATE",
+                "briefing": "Create the source campaign visual",
+                "direction": "A centered product on a plum background",
+            },
+        )
+        assert created.status_code == 202, created.text
+        source_job = _assert_envelope(created, success=True)["data"]
+        image_generation_worker.run_image_generation(source_job["id"])
+        source_result = await client.get(
+            f"/api/v1/generation-jobs/{source_job['id']}", headers=_auth(token)
+        )
+        source_data = _assert_envelope(source_result, success=True)["data"]
+        source_image = source_data["image"]
+
+        transformed = await client.post(
+            "/api/v1/generation-jobs",
+            headers={**_auth(token), "Idempotency-Key": "transform-source-to-story"},
+            json={
+                "brand_id": brand_id,
+                "artifact_type": "IMAGE",
+                "operation": "TRANSFORM",
+                "briefing": "Adapt this campaign to stories",
+                "direction": "Preserve the product and perceived scale",
+                "source_content_id": source_data["content_id"],
+                "source_image_id": source_image["id"],
+                "destination_preset": "1080x1920",
+            },
+        )
+        assert transformed.status_code == 202, transformed.text
+        transform_job = _assert_envelope(transformed, success=True)["data"]
+        hidden = await client.get(
+            f"/api/v1/generation-jobs/{transform_job['id']}", headers=_auth(outsider)
+        )
+        image_generation_worker.run_image_generation(transform_job["id"])
+        pending = await client.get(
+            f"/api/v1/generation-jobs/{transform_job['id']}", headers=_auth(token)
+        )
+        pending_data = _assert_envelope(pending, success=True)["data"]
+        approved = await client.post(
+            f"/api/v1/generation-jobs/{transform_job['id']}/scene-decision",
+            headers=_auth(token),
+            json={"decision": "APPROVE"},
+        )
+        assert approved.status_code == 200, approved.text
+        image_generation_worker.run_image_generation(transform_job["id"])
+        completed = await client.get(
+            f"/api/v1/generation-jobs/{transform_job['id']}", headers=_auth(token)
+        )
+
+    assert hidden.status_code == 404
+    assert pending_data["status"] == "PROCESSING"
+    assert pending_data["scene_review"]["status"] == "PENDING"
+    result = _assert_envelope(completed, success=True)["data"]
+    assert result["status"] == "COMPLETED"
+    assert result["image"]["version_number"] == source_image["version_number"] + 1
+    assert result["image"]["metadata"]["source_image_id"] == source_image["id"]
+    assert result["image"]["metadata"]["source_version_number"] == source_image["version_number"]
+    assert result["image"]["width"] == 1080 and result["image"]["height"] == 1920

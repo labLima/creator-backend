@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from PIL import Image
 
 from creator.config import Settings
 from creator.domain.generation import GenerationJobStatus
@@ -36,6 +38,12 @@ JOB_BRAND_ID = UUID("31000000-0000-0000-0000-000000000001")
 OTHER_BRAND_ID = UUID("31000000-0000-0000-0000-000000000002")
 
 
+def png_bytes(width: int, height: int) -> bytes:
+    output = BytesIO()
+    Image.new("RGB", (width, height), "white").save(output, format="PNG")
+    return output.getvalue()
+
+
 class FakeImageGenerator:
     def __init__(self, *, error: Exception | None = None) -> None:
         self.error = error
@@ -45,11 +53,15 @@ class FakeImageGenerator:
         self.requests.append(request)
         if self.error is not None:
             raise self.error
+        try:
+            width, height = (int(part) for part in request.size.split("x"))
+        except (AttributeError, ValueError):
+            width, height = 2, 3
         return GeminiImageGenerationResult(
-            image_bytes=b"image-bytes",
+            image_bytes=png_bytes(width, height),
             mime_type="image/png",
-            width=2,
-            height=3,
+            width=width,
+            height=height,
             model=request.model or "gemini-image",
             prompt=request.prompt,
             metadata={"provider": "gemini"},
@@ -104,7 +116,9 @@ class FakeReviewer:
 
 
 class FakeStorage:
-    pass
+    def download(self, path: str, *, max_bytes: int) -> bytes:
+        assert path.startswith("users/")
+        return png_bytes(1, 1)
 
 
 class FakeImageGenerationRepository:
@@ -303,6 +317,49 @@ def test_run_image_generation_completes_successfully(monkeypatch: pytest.MonkeyP
     assert len(generator.requests) == 1
     assert persisted
     assert repository.failed == []
+
+
+def test_transform_holds_edited_variation_for_human_review(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_input = image_request_input(operation="TRANSFORM")
+    request_input["source_content_id"] = str(uuid4())
+    request_input["source_image_id"] = str(uuid4())
+    request_input["destination_preset"] = "1080x1350"
+    repository = FakeImageGenerationRepository(
+        work_item(
+            brand_id=JOB_BRAND_ID,
+            parameters={
+                "request_input": request_input,
+                "source_image": {
+                    "storage_path": "users/principal/contents/id/versions/1/image.png",
+                    "mime_type": "image/png",
+                    "width": 1,
+                    "height": 1,
+                },
+                "destination_preset": "1080x1350",
+            },
+        )
+    )
+    generator = FakeImageGenerator()
+    persisted: list[object] = []
+    held: list[ImageGenerationResult] = []
+    patch_worker(monkeypatch, repository=repository, generator=generator, persisted=persisted)
+    monkeypatch.setattr(image_generation, "_authorized_brand_context", lambda item: {})
+    monkeypatch.setattr(
+        image_generation,
+        "_hold_scene_for_review",
+        lambda item, result, settings: held.append(result),
+    )
+
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert len(generator.requests) == 1
+    assert generator.requests[0].source_image == png_bytes(1, 1)
+    assert generator.requests[0].size == "1080x1350"
+    assert len(held) == 1
+    assert held[0].width == 1080 and held[0].height == 1350
+    assert persisted == []
 
 
 def test_opt_in_composes_before_persistence_and_reviews_final_image(

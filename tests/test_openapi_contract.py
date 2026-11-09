@@ -39,6 +39,28 @@ def test_static_openapi_matches_application_routes() -> None:
         assert _operations(static["paths"][path]) == _operations(generated_item), path
 
 
+def test_image_import_contract_matches_application() -> None:
+    static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
+    generated = app.openapi()
+    path = "/api/v1/contents/import-image"
+    static_post = static["paths"][path]["post"]
+    generated_post = generated["paths"][path]["post"]
+    static_body = static_post["requestBody"]["content"]["multipart/form-data"]["schema"]
+    ref = generated_post["requestBody"]["content"]["multipart/form-data"]["schema"]["$ref"]
+    generated_body = generated["components"]["schemas"][ref.rsplit("/", 1)[-1]]
+    assert set(static_body["required"]) == set(generated_body["required"]) == {"brand_id", "file"}
+    for field, keys in (("brand_id", ("type", "format")), ("file", ("type", "contentMediaType"))):
+        for key in keys:
+            assert static_body["properties"][field][key] == generated_body["properties"][field][key]
+    assert (
+        static_body["properties"]["title"]["anyOf"]
+        == generated_body["properties"]["title"]["anyOf"]
+    )
+    assert (
+        static_post["responses"]["201"]["content"] == generated_post["responses"]["201"]["content"]
+    )
+
+
 def test_static_and_generated_openapi_declare_cookie_security() -> None:
     static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
     generated = app.openapi()
@@ -141,6 +163,13 @@ def test_generation_job_contract_documents_operation_rules_and_results() -> None
     static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
     request = static["components"]["schemas"]["IndependentGenerationRequest"]
     conditions = request["allOf"]
+    assert request["properties"]["destination_preset"]["enum"] == [
+        "1080x1080",
+        "1080x1350",
+        "1080x1920",
+        "1920x1080",
+    ]
+    assert request["properties"]["source_image_id"]["format"] == "uuid"
 
     planning = next(
         condition
@@ -195,6 +224,19 @@ def test_generation_job_contract_documents_operation_rules_and_results() -> None
         == {"properties": {"operation": {"enum": ["REGENERATE", "TRANSFORM"]}}}
     )
     assert reuse["then"] == {"required": ["source_content_id"]}
+
+    image_transform = next(
+        condition
+        for condition in conditions
+        if condition.get("if")
+        == {
+            "properties": {
+                "artifact_type": {"const": "IMAGE"},
+                "operation": {"const": "TRANSFORM"},
+            }
+        }
+    )
+    assert image_transform["then"] == {"required": ["source_image_id", "destination_preset"]}
 
     job = static["components"]["schemas"]["GenerationJob"]
     assert "content_id" in job["required"]

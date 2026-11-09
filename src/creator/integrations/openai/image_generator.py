@@ -34,6 +34,42 @@ MIME_TO_OUTPUT_FORMAT = {
 }
 SUPPORTED_IMAGE_MIME_TYPES = frozenset(MIME_TO_OUTPUT_FORMAT)
 TRANSIENT_STATUS_CODES = {408, 500, 502, 503, 504}
+_TARGET_IMAGE_SIZES = frozenset({"1080x1080", "1080x1350", "1080x1920", "1920x1080"})
+
+
+def _parse_size(value: str) -> tuple[int, int]:
+    width_text, height_text = value.split("x", maxsplit=1)
+    return int(width_text), int(height_text)
+
+
+def _provider_compatible_size(value: str) -> str:
+    if value not in _TARGET_IMAGE_SIZES:
+        raise ImageProviderInvalidResponseError("Unsupported image transformation destination")
+    width, height = _parse_size(value)
+    provider_width = max(16, round(width / 16) * 16)
+    provider_height = max(16, round(height / 16) * 16)
+    return f"{provider_width}x{provider_height}"
+
+
+def _resize_image(
+    image_bytes: bytes, *, mime_type: str, size: tuple[int, int]
+) -> tuple[bytes, int, int, str]:
+    try:
+        with PillowImage.open(BytesIO(image_bytes)) as image:
+            image.load()
+            resized = image.resize(size, PillowImage.Resampling.LANCZOS)
+            output = BytesIO()
+            image_format = {
+                "image/png": "PNG",
+                "image/jpeg": "JPEG",
+                "image/webp": "WEBP",
+            }[mime_type]
+            if image_format == "JPEG" and resized.mode not in {"RGB", "L"}:
+                resized = resized.convert("RGB")
+            resized.save(output, format=image_format, quality=95)
+    except (KeyError, OSError, UnidentifiedImageError) as error:
+        raise ImageProviderInvalidResponseError("OpenAI returned invalid image bytes") from error
+    return output.getvalue(), size[0], size[1], mime_type
 
 
 class OpenAIImageGenerator:
@@ -57,14 +93,34 @@ class OpenAIImageGenerator:
             )
             or "auto"
         )
+        final_size = size if request.source_image is not None else None
+        provider_size = _provider_compatible_size(final_size) if final_size else size
         try:
-            response = self._client.images.generate(
-                model=model,
-                prompt=request.prompt,
-                size=size,
-                quality="auto",
-                output_format=output_format,
-            )
+            if request.source_image is not None:
+                extension = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(
+                    request.source_image_mime_type or ""
+                )
+                if extension is None:
+                    raise ImageProviderInvalidResponseError("Unsupported source image MIME type")
+                edit_options: dict[str, Any] = {
+                    "model": model,
+                    "prompt": request.prompt,
+                    "image": (f"source.{extension}", request.source_image),
+                    "size": provider_size,
+                    "quality": "auto",
+                    "output_format": output_format,
+                }
+                if not model.lower().startswith("gpt-image-2"):
+                    edit_options["input_fidelity"] = "high"
+                response = self._client.images.edit(**edit_options)
+            else:
+                response = self._client.images.generate(
+                    model=model,
+                    prompt=request.prompt,
+                    size=size,
+                    quality="auto",
+                    output_format=output_format,
+                )
         except Exception as error:
             raise self._classify_error(error) from error
 
@@ -93,13 +149,30 @@ class OpenAIImageGenerator:
                 "OpenAI returned invalid image bytes"
             ) from error
 
+        if final_size and (width, height) != _parse_size(provider_size):
+            raise ImageProviderInvalidResponseError(
+                "OpenAI returned dimensions different from the requested render size"
+            )
+
         metadata = {
             "provider": "openai",
             "source_model": model,
             "output_format": output_format,
-            "requested_size": size,
+            "requested_size": final_size or size,
+            "provider_render_size": provider_size,
             **request.metadata,
         }
+        if final_size and (width, height) != _parse_size(final_size):
+            image_bytes, width, height, mime_type = _resize_image(
+                image_bytes,
+                mime_type=mime_type,
+                size=_parse_size(final_size),
+            )
+            metadata["dimensions_normalized_without_crop"] = True
+            if len(image_bytes) > max_bytes:
+                raise ImageProviderInvalidResponseError(
+                    "Normalized image exceeds the configured storage limit"
+                )
         logger.info(
             "openai_image_generation_success",
             extra={

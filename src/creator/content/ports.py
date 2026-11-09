@@ -64,6 +64,9 @@ class ContentFilters:
 
 
 class ContentRepository(Protocol):
+    def add_imported_image(
+        self, *, workspace_id: UUID, content_id: UUID, image: ImportedImageMetadata
+    ) -> ImageRecord: ...
     def add(
         self,
         *,
@@ -149,15 +152,15 @@ class ImageRecord:
     id: UUID
     workspace_id: UUID
     content_id: UUID
-    generation_id: UUID
+    generation_id: UUID | None
     version_number: int
     storage_path: str
     public_url: str
     mime_type: str
     width: int
     height: int
-    model: str
-    prompt: str
+    model: str | None
+    prompt: str | None
     metadata: JsonObject
     created_at: datetime
     updated_at: datetime
@@ -174,4 +177,14 @@ class ImageMetadata:
     model: str
     prompt: str
     version_number: int | None = None
+    metadata: JsonObject = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class ImportedImageMetadata:
+    storage_path: str
+    public_url: str
+    mime_type: str
+    width: int
+    height: int
     metadata: JsonObject = field(default_factory=dict)

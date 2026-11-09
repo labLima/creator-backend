@@ -53,6 +53,8 @@ class ImageGenerationRequest:
     size: str | None = None
     aspect_ratio: str | None = None
     resolution: str | None = None
+    source_image: bytes | None = None
+    source_image_mime_type: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +70,52 @@ class ImageGenerationResult:
 
 class ImageGenerator(Protocol):
     def generate(self, request: ImageGenerationRequest) -> ImageGenerationResult: ...
+
+
+@dataclass(frozen=True, slots=True)
+class ImageEditRequest:
+    """Provider-neutral edit of an authorized, immutable source image."""
+
+    source_image: bytes
+    source_mime_type: str
+    destination_size: str
+    direction: str
+    brand_context: dict[str, str] = field(default_factory=dict)
+    output_mime_type: str = "image/png"
+    model: str | None = None
+    metadata: dict[str, object] = field(default_factory=dict)
+
+
+class ImageEditor(Protocol):
+    def edit(self, request: ImageEditRequest) -> ImageGenerationResult: ...
+
+
+class ImageGenerationEditor:
+    """Bridge image transformation into existing provider image adapters."""
+
+    def __init__(self, generator: ImageGenerator) -> None:
+        self._generator = generator
+
+    def edit(self, request: ImageEditRequest) -> ImageGenerationResult:
+        prompt = (
+            f"{request.direction}\n\nAdapt the supplied source image to exactly "
+            f"{request.destination_size} pixels. Preserve subject scale and visual intent. "
+            "Expand or reorganize the composition generatively; do not remove important "
+            "content. Exact text and logos must be handled by deterministic composition "
+            "and human review.\n\nBrand context: "
+            + "; ".join(f"{key}: {value}" for key, value in request.brand_context.items())
+        )
+        return self._generator.generate(
+            ImageGenerationRequest(
+                prompt=prompt,
+                model=request.model,
+                output_mime_type=request.output_mime_type,
+                metadata=request.metadata,
+                size=request.destination_size,
+                source_image=request.source_image,
+                source_image_mime_type=request.source_mime_type,
+            )
+        )
 
 
 def create_image_generator(settings: Settings) -> ImageGenerator:

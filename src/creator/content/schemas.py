@@ -12,6 +12,34 @@ from pydantic import Field, model_validator
 
 from creator.core.schemas import CreatorDTO
 
+IMPORT_IMAGE_RESPONSE_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "required": ["success", "data", "meta"],
+    "properties": {
+        "success": {"const": True},
+        "data": {
+            "type": "object",
+            "required": ["id", "images"],
+            "properties": {
+                "id": {"type": "string", "format": "uuid"},
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["id"],
+                        "properties": {"id": {"type": "string", "format": "uuid"}},
+                    },
+                },
+            },
+        },
+        "meta": {
+            "type": "object",
+            "required": ["request_id"],
+            "properties": {"request_id": {"type": "string", "format": "uuid"}},
+        },
+    },
+}
+
 
 class ContentCreateRequest(CreatorDTO):
     workspace_id: UUID

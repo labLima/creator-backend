@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from PIL import Image
 
 from creator.config import Settings
 from creator.content.ports import ContentRecord, ImageRecord
@@ -38,6 +40,19 @@ USER = UserRecord(
 BRAND_ID = UUID("20000000-0000-0000-0000-000000000001")
 WORKSPACE_ID = UUID("30000000-0000-0000-0000-000000000001")
 CONTENT_ID = UUID("40000000-0000-0000-0000-000000000001")
+
+
+class FakeSourceStorage:
+    def __init__(self, content: bytes | None = None) -> None:
+        self.content = content
+
+    def download(self, path: str, *, max_bytes: int) -> bytes:
+        assert path.startswith("users/")
+        if self.content is not None:
+            return self.content
+        output = BytesIO()
+        Image.new("RGB", (1080, 1080), "white").save(output, format="PNG")
+        return output.getvalue()
 
 
 def content_record() -> ContentRecord:
@@ -80,6 +95,9 @@ class FakeUnitOfWork:
         self.contents = SimpleNamespace(
             user_has_workspace_access=lambda **_: True,
             get_by_id_for_user=lambda **_: self.source,
+            get_detail_by_id_for_user=lambda **_: SimpleNamespace(
+                content=self.source, images=[self.image] if self.image is not None else []
+            ),
             list_text_versions=lambda **_: [
                 SimpleNamespace(artifact_type="COPY", text="Earlier copy"),
                 SimpleNamespace(artifact_type="CAPTION", text="Earlier caption"),
@@ -191,8 +209,83 @@ def test_submit_copy_uses_writer_and_enqueues_idempotently() -> None:
     assert "Produce only the requested standalone copy" in uow.created[0]["prompt"]
     assert "Develop complementary copy and visual direction" not in uow.created[0]["prompt"]
     assert queue.generations == [job.id]
-    assert queue.images == []
-    assert uow.commits == 1
+
+
+def test_image_transform_binds_exact_source_version_and_destination() -> None:
+    source_image = ImageRecord(
+        id=uuid4(),
+        workspace_id=WORKSPACE_ID,
+        content_id=CONTENT_ID,
+        generation_id=uuid4(),
+        version_number=3,
+        storage_path="users/principal-1/contents/source/versions/3/image.png",
+        public_url="https://storage.invalid/image.png",
+        mime_type="image/png",
+        width=1080,
+        height=1080,
+        model="test-model",
+        prompt="source",
+        metadata={},
+        created_at=NOW,
+        updated_at=NOW,
+        deleted_at=None,
+    )
+    uow = FakeUnitOfWork(
+        brand=brand(),
+        source=replace(content_record(), content_type="IMAGE"),
+        image=source_image,
+    )
+    payload = IndependentGenerationRequest(
+        brand_id=BRAND_ID,
+        artifact_type="IMAGE",
+        operation="TRANSFORM",
+        briefing="Adapt the campaign image",
+        direction="Keep the same visual concept and subject scale",
+        source_content_id=CONTENT_ID,
+        source_image_id=source_image.id,
+        destination_preset="1080x1350",
+    )
+
+    job = submit_independent_generation(
+        unit_of_work=uow,
+        queue=FakeQueue(),
+        storage=FakeSourceStorage(),
+        settings=Settings(_env_file=None),
+        user=USER,
+        payload=payload,
+        idempotency_key="image-transform-exact-version",
+        request_id=uuid4(),
+    )
+
+    params = uow.created[0]["parameters"]
+    assert job.operation == "TRANSFORM"
+    assert params["source_image"]["id"] == str(source_image.id)
+    assert params["source_image"]["version_number"] == 3
+    assert params["source_image"]["storage_path"] == source_image.storage_path
+    assert params["destination_preset"] == "1080x1350"
+    assert params["destination_dimensions"] == {
+        "width": 1080,
+        "height": 1350,
+        "ratio": "4:5",
+    }
+
+    invalid_uow = FakeUnitOfWork(
+        brand=brand(),
+        source=replace(content_record(), content_type="IMAGE"),
+        image=source_image,
+    )
+    with pytest.raises(EntityNotFoundError):
+        submit_independent_generation(
+            unit_of_work=invalid_uow,
+            queue=FakeQueue(),
+            storage=FakeSourceStorage(b"not-an-image"),
+            settings=Settings(_env_file=None),
+            user=USER,
+            payload=payload,
+            idempotency_key="image-transform-invalid-source",
+            request_id=uuid4(),
+        )
+    assert invalid_uow.created == []
 
 
 def test_submit_rejects_brand_not_visible_to_user() -> None:

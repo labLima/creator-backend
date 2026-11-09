@@ -36,6 +36,8 @@ class IndependentGenerationRequest(CreatorDTO):
     planning_id: UUID | None = None
     post_structure_id: UUID | None = None
     source_content_id: UUID | None = None
+    source_image_id: UUID | None = None
+    destination_preset: Literal["1080x1080", "1080x1350", "1080x1920", "1920x1080"] | None = None
     direction: str | None = Field(default=None, min_length=1, max_length=20_000)
     restrictions: list[str] = Field(default_factory=list, max_length=30)
     review_image: bool = False
@@ -61,10 +63,19 @@ class IndependentGenerationRequest(CreatorDTO):
             raise ValueError("brand_id and briefing are required without Planning input")
         if self.operation == "CREATE" and self.source_content_id is not None:
             raise ValueError("CREATE must not reference source Content")
+        if self.operation == "CREATE" and self.source_image_id is not None:
+            raise ValueError("CREATE must not reference a source image")
         if self.operation != "CREATE" and self.source_content_id is None:
             raise ValueError("REGENERATE and TRANSFORM require source Content")
         if self.artifact_type == "IMAGE" and not from_planning and self.direction is None:
             raise ValueError("IMAGE Generation requires a visual direction")
+        if self.artifact_type == "IMAGE" and self.operation == "TRANSFORM":
+            if self.source_image_id is None or self.destination_preset is None:
+                raise ValueError("IMAGE TRANSFORM requires source_image_id and destination_preset")
+        elif self.source_image_id is not None or self.destination_preset is not None:
+            raise ValueError(
+                "Source image and destination preset are only valid for IMAGE TRANSFORM"
+            )
         if self.artifact_type != "IMAGE" and self.review_image:
             raise ValueError("review_image is only valid for IMAGE")
         has_text = any((self.headline, self.supporting_text, self.call_to_action))
