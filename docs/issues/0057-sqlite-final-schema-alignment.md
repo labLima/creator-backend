@@ -120,6 +120,40 @@ cuida do vocabulário de papel), cada uma declarando o workspace
 | T24 | `SHC-25` | [T24] Lote A1: identidade, convites e notificações |
 | T25 | `SHC-26` | [T25] Lote A2: brand, campanha e persona + backfill do brand_id |
 
+## Handoff (2026-11-09)
+
+Estado: **54/54 tabelas do modelo final presentes**; 728 divergências de
+colunas/índices/FKs/CHECKs; `make check` 764 testes, `make security` e
+`make e2e` verdes. Legado `planning`, `post_structure`, `design_structure` e
+`generated_image` ainda ativo por causa dos consumidores.
+
+Ordem de execução para a próxima sessão:
+
+1. **T24** (`SHC-25`) — escopo medido na issue (86 divergências em 8 tabelas).
+   Começar por `user_devices`/`notification_preferences`, depois
+   `notifications`/`notification_recipients`, por último
+   `users`/`workspaces`/`workspace_invites` (auth, `token`→`token_hash`, OpenAPI).
+2. **T25** (`SHC-26`) — brand/campanha/persona e `campaigns.brand_id` NOT NULL.
+3. **T23** (`SHC-24`) — migrar os 17 arquivos de consumidores legados;
+   **T13** (`SHC-14`) só então dropa as tabelas antigas.
+4. **T15**, **T16**, **T20**, **T17**, **T18**.
+
+Comandos de verificação (ambiente local):
+
+```sh
+XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python
+XDG_DATA_HOME=$PWD/.local/xdg make security PYTHON=.venv/bin/python
+XDG_DATA_HOME=$PWD/.local/xdg make e2e PYTHON=.venv/bin/python
+python scripts/schema_parity_report.py          # regenera o relatório
+python scripts/backfill_redesigns.py --dry-run  # backfill dos redesenhos
+```
+
+Notas de execução: `migrations/env.py` desliga `foreign_keys` na conexão DBAPI do
+Alembic (rebuilds não podem cascatear); migrations antigas são história imutável
+e não importam enums vivos; o review automático por subagente estourou o tempo
+em várias rodadas e foi substituído por verificação dirigida (execução em banco
+migrado, `PRAGMA foreign_key_check`, idempotência).
+
 ## Critérios de aceite
 
 - [ ] ADR registrada para a estratégia de migração (reconstruir do baseline vs
