@@ -5,48 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9631a45c-4840-4408-b85a-c1ec2abe4dfd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/ADR-ISSUE-TRACKER.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/ADR-ISSUE-TRACKER.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/adr/0014-agent-image-generation-workflow.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/adr/0014-agent-image-generation-workflow.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/adr/0027-generative-image-adaptation.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/adr/0027-generative-image-adaptation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/issues/0056-generative-image-adaptation.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/issues/0056-generative-image-adaptation.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/openapi.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docs/openapi.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/content/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/content/service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/generation/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/ports.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/generation/repository.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/repository.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/generation/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/router.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/generation/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/schemas.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/generation/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/generation/storage_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/generation/storage_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/infrastructure/runtime/storage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/infrastructure/runtime/storage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/integrations/openai/client.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/integrations/openai/client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/integrations/openai/image_reviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/integrations/openai/image_reviewer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/prompts/agents.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/prompts/agents.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/contracts.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/crewai_adapter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/crewai_adapter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/agents/runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/agents/runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/ai/openai.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/ai/openai.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/services/storage/provider.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/storage/provider.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/agent_workflow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workers/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/cli.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/integrations/openai/image_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/integrations/openai/image_generator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/creator/services/ai/image_provider.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/services/ai/image_provider.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/creator/workers/image_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workers/image_generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workflow/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workflow/ports.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workflow/repository.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workflow/repository.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workflow/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workflow/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workflow/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workflow/schemas.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/creator/workflow/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/creator/workflow/service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/contracts/route_table.json" beforeDir="false" afterPath="$PROJECT_DIR$/tests/contracts/route_table.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/contracts/schema_ddl.sql" beforeDir="false" afterPath="$PROJECT_DIR$/tests/contracts/schema_ddl.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/e2e/test_contract_flows.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/e2e/test_contract_flows.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agent_kickoff.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_kickoff.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agent_workflow.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agent_workflow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_app_structure.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_app_structure.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_gemini_image_reviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_gemini_image_reviewer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/test_image_generation_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_image_generation_worker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_independent_generation_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_independent_generation_service.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/test_openai_adapters.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openai_adapters.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_openapi_operation_id_parity.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openapi_operation_id_parity.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_providers.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_providers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_specialist_executor.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_specialist_executor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_specialist_specs.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_specialist_specs.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_storage.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_storage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_openapi_contract.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_openapi_contract.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -146,24 +116,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;codex/fix-image-generation-flow&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Kelve/PycharmProjects/creator-backend-python&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "feat/split-generation",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/Kelve/PycharmProjects/creator-backend-python",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\Kelve\PycharmProjects\creator-backend-python\src\creator" />

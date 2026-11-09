@@ -141,6 +141,13 @@ def test_generation_job_contract_documents_operation_rules_and_results() -> None
     static = yaml.safe_load((PROJECT_ROOT / "docs/openapi.yaml").read_text(encoding="utf-8"))
     request = static["components"]["schemas"]["IndependentGenerationRequest"]
     conditions = request["allOf"]
+    assert request["properties"]["destination_preset"]["enum"] == [
+        "1080x1080",
+        "1080x1350",
+        "1080x1920",
+        "1920x1080",
+    ]
+    assert request["properties"]["source_image_id"]["format"] == "uuid"
 
     planning = next(
         condition
@@ -195,6 +202,19 @@ def test_generation_job_contract_documents_operation_rules_and_results() -> None
         == {"properties": {"operation": {"enum": ["REGENERATE", "TRANSFORM"]}}}
     )
     assert reuse["then"] == {"required": ["source_content_id"]}
+
+    image_transform = next(
+        condition
+        for condition in conditions
+        if condition.get("if")
+        == {
+            "properties": {
+                "artifact_type": {"const": "IMAGE"},
+                "operation": {"const": "TRANSFORM"},
+            }
+        }
+    )
+    assert image_transform["then"] == {"required": ["source_image_id", "destination_preset"]}
 
     job = static["components"]["schemas"]["GenerationJob"]
     assert "content_id" in job["required"]

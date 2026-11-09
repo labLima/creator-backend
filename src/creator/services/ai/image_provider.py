@@ -53,6 +53,8 @@ class ImageGenerationRequest:
     size: str | None = None
     aspect_ratio: str | None = None
     resolution: str | None = None
+    source_image: bytes | None = None
+    source_image_mime_type: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

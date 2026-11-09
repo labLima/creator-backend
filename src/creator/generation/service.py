@@ -322,6 +322,23 @@ def submit_independent_generation(
             or source.brand_id != brand.id
         ):
             raise EntityNotFoundError("Source Content not found")
+    source_image = None
+    if payload.source_image_id is not None and source is not None:
+        if source.content_type != "IMAGE":
+            raise EntityNotFoundError("Source Content Version not found")
+        source_detail = unit_of_work.contents.get_detail_by_id_for_user(
+            user_id=user.id, content_id=source.id
+        )
+        source_image = next(
+            (
+                image
+                for image in (source_detail.images if source_detail is not None else [])
+                if image.id == payload.source_image_id
+            ),
+            None,
+        )
+        if source_image is None or source_image.workspace_id != brand.workspace_id:
+            raise EntityNotFoundError("Source Content Version not found")
     if not unit_of_work.contents.user_has_workspace_access(
         user_id=user.id, workspace_id=brand.workspace_id
     ):
@@ -394,6 +411,19 @@ def submit_independent_generation(
             "request_input": payload.model_dump(mode="json"),
             "resolved_input": {"briefing": briefing, "direction": direction},
             "source_content": source.payload if source else None,
+            "source_image": (
+                {
+                    "id": str(source_image.id),
+                    "storage_path": source_image.storage_path,
+                    "mime_type": source_image.mime_type,
+                    "width": source_image.width,
+                    "height": source_image.height,
+                    "version_number": source_image.version_number,
+                }
+                if source_image is not None
+                else None
+            ),
+            "destination_preset": payload.destination_preset,
             "source_text": source_text,
             "review_image": payload.review_image,
             "idempotency_fingerprint": fingerprint,

@@ -7164,6 +7164,14 @@ components:
         source_content_id:
           type: string
           format: uuid
+        source_image_id:
+          type: string
+          format: uuid
+          description: Exact IMAGE Content Version used by IMAGE TRANSFORM.
+        destination_preset:
+          type: string
+          enum: [1080x1080, 1080x1350, 1080x1920, 1920x1080]
+          description: Required target dimensions for IMAGE TRANSFORM.
         direction:
           type: string
           minLength: 1
@@ -7241,6 +7249,14 @@ components:
               enum: [REGENERATE, TRANSFORM]
         then:
           required: [source_content_id]
+      - if:
+          properties:
+            artifact_type:
+              const: IMAGE
+            operation:
+              const: TRANSFORM
+        then:
+          required: [source_image_id, destination_preset]
     SceneReviewDecisionRequest:
       type: object
       required: [decision]

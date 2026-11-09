@@ -195,16 +195,57 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                 {"scene_review_source_path": path},
             )
         else:
+            source_image_bytes = None
+            source_image_mime_type = None
+            source_image = work_item.parameters.get("source_image")
+            destination_preset = work_item.parameters.get("destination_preset")
+            if isinstance(request_input, dict) and request_input.get("operation") == "TRANSFORM":
+                if not isinstance(source_image, dict):
+                    raise ImageProviderInvalidResponseError("Source image version is unavailable")
+                source_path = source_image.get("storage_path")
+                source_image_mime_type = source_image.get("mime_type")
+                if (
+                    not isinstance(source_path, str)
+                    or not source_path.startswith("users/")
+                    or source_image_mime_type not in {"image/png", "image/jpeg", "image/webp"}
+                    or destination_preset
+                    not in {"1080x1080", "1080x1350", "1080x1920", "1920x1080"}
+                ):
+                    raise ImageProviderInvalidResponseError("Source image version is invalid")
+                source_image_bytes = create_storage_provider(settings).download(
+                    source_path, max_bytes=settings.storage_max_object_bytes
+                )
+                prompt = (
+                    f"{prompt}\n\nAdapt the source image to exactly {destination_preset} pixels. "
+                    "Preserve the subject and perceived scale. Expand or reorganize the "
+                    "composition generatively; do not crop away important content. "
+                    "Keep exact text and logos for "
+                    "deterministic composition and human review."
+                )
             result = create_image_generator(settings).generate(
                 ImageGenerationRequest(
                     prompt=prompt,
                     model=model,
                     metadata=_image_request_metadata(work_item),
-                    size=_image_request_size(work_item),
+                    size=(
+                        destination_preset
+                        if source_image_bytes is not None and isinstance(destination_preset, str)
+                        else _image_request_size(work_item)
+                    ),
                     aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
                     resolution=_image_request_option(work_item, "resolution"),
+                    source_image=source_image_bytes,
+                    source_image_mime_type=source_image_mime_type,
                 )
             )
+            if source_image_bytes is not None and isinstance(destination_preset, str):
+                expected_width, expected_height = (
+                    int(part) for part in destination_preset.split("x")
+                )
+                if (result.width, result.height) != (expected_width, expected_height):
+                    raise ImageProviderInvalidResponseError(
+                        "Provider returned invalid destination dimensions"
+                    )
         if composition_requested:
             if work_item.brand_id is None:
                 raise CompositionError("COMPOSITION_BRAND_UNAVAILABLE")
@@ -237,8 +278,27 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     attempt=work_item.job.attempt_count,
                 )
                 return
+        if (
+            isinstance(request_input, dict)
+            and request_input.get("operation") == "TRANSFORM"
+            and approved_scene is None
+        ):
+            _hold_scene_for_review(work_item, result, settings)
+            _log(
+                "image_variation_waiting_for_human_review",
+                request_id=parsed_request_id,
+                job_id=parsed_job_id,
+                attempt=work_item.job.attempt_count,
+            )
+            return
         image_metadata = dict(result.metadata)
         image_metadata.update(artist_metadata)
+        if isinstance(request_input, dict) and request_input.get("operation") == "TRANSFORM":
+            source_image = work_item.parameters.get("source_image")
+            if isinstance(source_image, dict):
+                image_metadata["source_image_id"] = source_image.get("id")
+                image_metadata["source_version_number"] = source_image.get("version_number")
+            image_metadata["destination_preset"] = work_item.parameters.get("destination_preset")
         if composition_requested or (
             isinstance(request_input, dict) and request_input.get("review_image") is True
         ):

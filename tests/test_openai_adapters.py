@@ -88,6 +88,13 @@ class FakeImagesAPI:
             raise outcome
         return outcome
 
+    def edit(self, **kwargs: Any) -> Any:
+        self.calls.append({"operation": "edit", **kwargs})
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
 
 class FakeResponsesAPI:
     def __init__(self, outcomes: list[Any]) -> None:
@@ -142,6 +149,44 @@ def test_generate_image_returns_decoded_png_with_dimensions_and_metadata() -> No
     assert client.images.calls[0]["prompt"] == "A red rectangle"
     assert client.images.calls[0]["size"] == "1024x1024"
     assert client.images.calls[0]["output_format"] == "png"
+
+
+@pytest.mark.parametrize(
+    ("destination", "provider_size"),
+    [
+        ("1080x1080", "1088x1088"),
+        ("1080x1350", "1088x1344"),
+        ("1080x1920", "1088x1920"),
+        ("1920x1080", "1920x1088"),
+    ],
+)
+def test_transform_edits_source_and_normalizes_each_supported_destination(
+    destination: str, provider_size: str
+) -> None:
+    original = png_bytes((4, 5))
+    output = png_bytes((8, 10))
+    client = FakeOpenAIClient(images=[image_response(output)])
+    generator = OpenAIImageGenerator(image_settings(), client=client)
+
+    result = generator.generate(
+        ImageGenerationRequest(
+            prompt="Expand composition",
+            size=destination,
+            source_image=original,
+            source_image_mime_type="image/png",
+        )
+    )
+
+    call = client.images.calls[0]
+    assert call["operation"] == "edit"
+    assert call["image"] == ("source.png", original)
+    assert call["input_fidelity"] == "high"
+    assert call["size"] == provider_size
+    assert result.metadata["requested_size"] == destination
+    assert result.metadata["provider_render_size"] == provider_size
+    expected_width, expected_height = (int(part) for part in destination.split("x"))
+    assert (result.width, result.height) == (expected_width, expected_height)
+    assert result.metadata["dimensions_normalized_without_crop"] is True
 
 
 def test_generate_image_uses_settings_default_model_when_request_omits_model() -> None:
