@@ -98,6 +98,10 @@ class AgentWorkflowRepository(Protocol):
 
     def get_internal(self, run_id: UUID) -> AgentWorkflowRunRecord | None: ...
 
+    def statuses_for_content(
+        self, *, user_id: UUID, content_ids: list[UUID]
+    ) -> dict[UUID, AgentWorkflowStatus]: ...
+
     def list_steps_for_user(
         self, *, user_id: UUID, run_id: UUID
     ) -> list[AgentWorkflowStepRecord] | None: ...

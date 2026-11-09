@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from uuid import UUID
 
 import pytest
@@ -75,6 +76,36 @@ def test_kickoff_returns_typed_output_and_audit_metadata() -> None:
     assert result.metadata["runtime"] == "crewai"
     assert result.prompt == provider.calls[0]
     assert "Summarize the brand" in result.prompt
+    assert "brand_summary" in result.prompt
+    assert "knowledge_sources" in result.prompt
+    assert "additionalProperties" in result.prompt
+
+
+def test_specialist_output_instructions_include_nested_json_contract() -> None:
+    from creator.prompts.agents import json_output_instructions
+
+    instructions = json_output_instructions(WriterOutput)
+    schema = instructions["json_schema"]
+    assert isinstance(schema, dict)
+    assert schema["additionalProperties"] is False
+    direction = schema["properties"]["direction"]
+    assert direction["additionalProperties"] is False
+    assert {"briefing", "copy", "visual_prompt"}.issubset(direction["required"])
+    assert "$ref" not in str(schema)
+
+
+def test_writer_output_round_trips_after_workflow_step_persistence() -> None:
+    original = WriterOutput.model_validate(
+        {
+            "caption": "Hello",
+            "direction": {"briefing": "Bright", "copy": "Hello", "visual_prompt": "Bright"},
+        }
+    )
+
+    restored = WriterOutput.model_validate(original.model_dump(mode="json"))
+
+    assert restored == original
+    assert restored.direction.copy_text == "Hello"
 
 
 @pytest.mark.parametrize(
@@ -143,6 +174,16 @@ def test_kickoff_rejects_untrusted_provider_output(
         CrewAIMultiAgentOrchestrator(provider).kickoff(request())
 
     assert raised.value.code == code
+
+
+def test_kickoff_schema_failure_does_not_leak_provider_output_in_traceback() -> None:
+    provider = FakeProvider(VALID_BUSINESS[:-1] + ',"unexpected":"private-value"}')
+
+    with pytest.raises(AgentKickoffError) as raised:
+        CrewAIMultiAgentOrchestrator(provider).kickoff(request())
+
+    assert raised.value.code == AgentKickoffErrorCode.OUTPUT_SCHEMA_INVALID
+    assert "private-value" not in "".join(traceback.format_exception(raised.value))
 
 
 def test_provider_json_containing_crewai_marker_is_not_truncated() -> None:

@@ -6,6 +6,7 @@ module is the single service entry point for the capability.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import cast
 from uuid import UUID
 
@@ -129,14 +130,18 @@ class ContentApplication:
         )
 
     def get_detail(self, *, user_id: UUID, content_id: UUID) -> ContentDetailRecord | None:
-        return self._unit_of_work.contents.get_detail_by_id_for_user(
+        detail = self._unit_of_work.contents.get_detail_by_id_for_user(
             user_id=user_id, content_id=content_id
         )
+        if detail is None:
+            return None
+        return replace(detail, content=self._resolve_workflow_status(user_id, [detail.content])[0])
 
     def get_content(self, *, user_id: UUID, content_id: UUID) -> ContentRecord | None:
-        return self._unit_of_work.contents.get_by_id_for_user(
+        content = self._unit_of_work.contents.get_by_id_for_user(
             user_id=user_id, content_id=content_id
         )
+        return self._resolve_workflow_status(user_id, [content])[0] if content else None
 
     def update_post_structure(
         self,
@@ -200,7 +205,7 @@ class ContentApplication:
             payload=payload,
         )
         self._unit_of_work.commit()
-        return updated
+        return self._resolve_workflow_status(user.id, [updated])[0]
 
     def delete_post_structure(self, *, user: UserRecord, item_id: UUID) -> None:
         record = self.get_post_structure(user_id=user.id, item_id=item_id)
@@ -234,9 +239,26 @@ class ContentApplication:
     def list_content(
         self, *, user_id: UUID, filters: ContentFilters, page: PageRequest
     ) -> Page[ContentRecord]:
-        return self._unit_of_work.contents.list_for_user(
+        results = self._unit_of_work.contents.list_for_user(
             user_id=user_id, filters=filters, page=page
         )
+        return replace(results, items=self._resolve_workflow_status(user_id, results.items))
+
+    def _resolve_workflow_status(
+        self, user_id: UUID, items: list[ContentRecord]
+    ) -> list[ContentRecord]:
+        candidates = [item.id for item in items if "workflow_status" in item.payload]
+        if not candidates:
+            return items
+        statuses = self._unit_of_work.agent_workflow.workflows.statuses_for_content(
+            user_id=user_id, content_ids=candidates
+        )
+        return [
+            replace(item, payload={**item.payload, "workflow_status": statuses[item.id].value})
+            if item.id in statuses
+            else item
+            for item in items
+        ]
 
 
 __all__ = [

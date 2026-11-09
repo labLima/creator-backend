@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from creator.brand.ports import BrandRecord
 from creator.config import Settings, get_settings
 from creator.core.types import JsonObject
 from creator.domain.agent_workflow import AgentWorkflowStepRole
@@ -14,6 +14,11 @@ from creator.domain.exceptions import InvalidStateTransitionError
 from creator.generation.ports import ImageGenerationWorkItem
 from creator.generation.storage_service import GeneratedImage, persist_generated_image
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime.image_composition import (
+    SCENE_SUFFIX,
+    CompositionError,
+    compose_generated_image,
+)
 from creator.infrastructure.runtime.observability import correlation_context
 from creator.infrastructure.runtime.storage import create_storage_provider
 from creator.integrations.gemini.exceptions import (
@@ -26,6 +31,7 @@ from creator.integrations.gemini.exceptions import (
     GeminiTransientError,
 )
 from creator.services.agents.contracts import (
+    INDEPENDENT_AGENT_CONTRACTS,
     AgentExecutionContext,
     ArtistOutput,
     WorkspaceAuthorizationContext,
@@ -35,6 +41,7 @@ from creator.services.agents.factory import create_specialist_executor
 from creator.services.ai.factory import create_image_reviewer
 from creator.services.ai.image_provider import (
     ImageGenerationRequest,
+    ImageGenerationResult,
     ImageProviderAuthenticationError,
     ImageProviderBlockedError,
     ImageProviderError,
@@ -47,7 +54,12 @@ from creator.services.ai.image_provider import (
 )
 from creator.services.ai.provider import ProviderNotConfiguredError
 from creator.services.ai.reviewer import ImageReviewRequest
-from creator.services.storage.provider import StorageError
+from creator.services.storage.provider import (
+    StorageError,
+    StorageObjectNotFoundError,
+    UploadObjectRequest,
+    image_extension_for_mime_type,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +94,8 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
         prompt = work_item.prompt
         briefing: str | None = None
         if isinstance(request_input, dict) and request_input.get("artifact_type") == "IMAGE":
-            brand = _authorized_brand(work_item)
-            if brand is None:
+            brand_context = _authorized_brand_context(work_item)
+            if brand_context is None:
                 _settle_failure(
                     parsed_job_id,
                     "BRAND_CONTEXT_UNAVAILABLE",
@@ -106,10 +118,11 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
             operation = request_input.get("operation")
             if not isinstance(operation, str):
                 operation = "CREATE"
+            artist_contract = INDEPENDENT_AGENT_CONTRACTS["IMAGE"]
             artist_result = create_specialist_executor(settings).execute(
                 AgentExecutionContext(
                     workspace_id=work_item.job.workspace_id,
-                    brand_id=brand.id,
+                    brand_id=work_item.brand_id,
                     authorization=WorkspaceAuthorizationContext(
                         principal=Principal(subject=work_item.requested_by_user.external_id),
                         workspace_id=work_item.job.workspace_id,
@@ -122,16 +135,12 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                         "operation": operation,
                         "source_content": work_item.parameters.get("source_content"),
                         "preserve_source_concept": operation != "CREATE",
-                        "brand_context": {
-                            "name": brand.name,
-                            "description": brand.description or "",
-                            "brand_voice": brand.brand_voice or "",
-                        },
+                        "brand_context": brand_context,
                         "restrictions": request_input.get("restrictions", []),
                     },
-                    prompt_template_id="agent.artist.v3",
-                    prompt_template_version="3.0",
-                    schema_version="1.0",
+                    prompt_template_id=artist_contract.prompt_template_id,
+                    prompt_template_version=artist_contract.prompt_template_version,
+                    schema_version=artist_contract.schema_version,
                     output_contract="IMAGE",
                 )
             )
@@ -159,19 +168,80 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     "generation_job_id": str(work_item.job.id),
                 },
             )
-        result = create_image_generator(settings).generate(
-            ImageGenerationRequest(
-                prompt=prompt,
-                model=model,
-                metadata=_image_request_metadata(work_item),
-                size=_image_request_size(work_item),
-                aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
-                resolution=_image_request_option(work_item, "resolution"),
-            )
+        composition_requested = (
+            isinstance(request_input, dict) and request_input.get("compose_text") is True
         )
+        if composition_requested:
+            prompt += SCENE_SUFFIX
+        scene_review = work_item.parameters.get("scene_review")
+        approved_scene = (
+            scene_review
+            if isinstance(scene_review, dict) and scene_review.get("status") == "APPROVED"
+            else None
+        )
+        if approved_scene is not None:
+            path = approved_scene.get("storage_path")
+            if not isinstance(path, str) or not path.startswith("scene-reviews/"):
+                raise CompositionError("COMPOSITION_SCENE_UNAVAILABLE")
+            storage = create_storage_provider(settings)
+            scene_bytes = storage.download(path, max_bytes=settings.storage_max_object_bytes)
+            result = ImageGenerationResult(
+                scene_bytes,
+                str(approved_scene.get("mime_type")),
+                int(approved_scene.get("width", 0)),
+                int(approved_scene.get("height", 0)),
+                model,
+                prompt,
+                {"scene_review_source_path": path},
+            )
+        else:
+            result = create_image_generator(settings).generate(
+                ImageGenerationRequest(
+                    prompt=prompt,
+                    model=model,
+                    metadata=_image_request_metadata(work_item),
+                    size=_image_request_size(work_item),
+                    aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
+                    resolution=_image_request_option(work_item, "resolution"),
+                )
+            )
+        if composition_requested:
+            if work_item.brand_id is None:
+                raise CompositionError("COMPOSITION_BRAND_UNAVAILABLE")
+            assert isinstance(request_input, dict)
+            try:
+                result = compose_generated_image(
+                    result=result,
+                    approved={
+                        key: request_input.get(key)
+                        for key in ("headline", "supporting_text", "call_to_action")
+                        if request_input.get(key)
+                    },
+                    workspace_id=work_item.job.workspace_id,
+                    brand_id=work_item.brand_id,
+                    user_id=work_item.requested_by_user.id,
+                    settings=settings,
+                    scene_review_approved=approved_scene is not None,
+                )
+            except CompositionError as error:
+                if (
+                    error.code != "COMPOSITION_TEXT_CHECK_INCONCLUSIVE"
+                    or approved_scene is not None
+                ):
+                    raise
+                _hold_scene_for_review(work_item, result, settings)
+                _log(
+                    "image_generation_waiting_for_scene_review",
+                    request_id=parsed_request_id,
+                    job_id=parsed_job_id,
+                    attempt=work_item.job.attempt_count,
+                )
+                return
         image_metadata = dict(result.metadata)
         image_metadata.update(artist_metadata)
-        if isinstance(request_input, dict) and request_input.get("review_image") is True:
+        if composition_requested or (
+            isinstance(request_input, dict) and request_input.get("review_image") is True
+        ):
             image_metadata["review"] = _review_generated_image(
                 settings=settings,
                 work_item=work_item,
@@ -219,6 +289,15 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
             attempt=work_item.job.attempt_count,
             duration_ms=duration_ms,
             failure_code="STORAGE_UPLOAD_FAILED",
+        )
+        return
+    except CompositionError as error:
+        _settle_failure(
+            parsed_job_id,
+            error.code,
+            request_id=parsed_request_id,
+            attempt=work_item.job.attempt_count,
+            started_at=started_at,
         )
         return
     except ProviderNotConfiguredError:
@@ -317,6 +396,72 @@ def recover_stale_processing_jobs() -> int:
         return recovered
 
 
+def cleanup_rejected_scene_objects(*, limit: int = 100) -> int:
+    """Retry deletion of rejected candidate images left by transient storage failures."""
+    with SqlAlchemyUnitOfWork() as unit_of_work:
+        pending = unit_of_work.generation.image_jobs.list_pending_scene_review_cleanup(limit=limit)
+    if not pending:
+        return 0
+
+    storage = create_storage_provider(get_settings())
+    cleaned = 0
+    for job_id, path in pending:
+        try:
+            try:
+                storage.stat(path)
+            except StorageObjectNotFoundError:
+                pass
+            else:
+                storage.delete(path)
+            with SqlAlchemyUnitOfWork() as unit_of_work:
+                unit_of_work.generation.image_jobs.complete_scene_review_cleanup(job_id)
+                unit_of_work.commit()
+            cleaned += 1
+        except Exception:
+            logger.exception(
+                "rejected_scene_cleanup_retry_failed",
+                extra={"generation_job_id": str(job_id)},
+            )
+    if cleaned:
+        logger.info("rejected_scene_cleanup_completed", extra={"cleaned_count": cleaned})
+    return cleaned
+
+
+def _hold_scene_for_review(
+    work_item: ImageGenerationWorkItem, result: ImageGenerationResult, settings: Settings
+) -> None:
+    extension = image_extension_for_mime_type(result.mime_type)
+    path = f"scene-reviews/{work_item.job.workspace_id}/{work_item.job.id}.{extension}"
+    checksum = hashlib.sha256(result.image_bytes).hexdigest()
+    storage = create_storage_provider(settings)
+    try:
+        storage.upload(
+            UploadObjectRequest(
+                path=path,
+                content=result.image_bytes,
+                mime_type=result.mime_type,
+                checksum_sha256=checksum,
+                metadata={
+                    "workspace_id": str(work_item.job.workspace_id),
+                    "generation_job_id": str(work_item.job.id),
+                },
+            )
+        )
+    except StorageError:
+        existing = storage.stat(path)
+        if existing.checksum_sha256 != checksum or existing.mime_type != result.mime_type:
+            raise
+    with SqlAlchemyUnitOfWork() as unit_of_work:
+        unit_of_work.generation.image_jobs.mark_scene_review_pending(
+            work_item.job.id,
+            storage_path=path,
+            mime_type=result.mime_type,
+            width=result.width,
+            height=result.height,
+        )
+        unit_of_work.commit()
+
+
 def _review_generated_image(
     *,
     settings: Settings,
@@ -329,8 +474,8 @@ def _review_generated_image(
 ) -> dict[str, object]:
     if briefing is None:
         return _review_failure("PROMPT_CONTEXT_UNAVAILABLE", work_item, request_id)
-    brand = _authorized_brand(work_item)
-    if brand is None:
+    brand_context = _authorized_brand_context(work_item)
+    if brand_context is None:
         return _review_failure("BRAND_CONTEXT_UNAVAILABLE", work_item, request_id)
     try:
         review = create_image_reviewer(settings).review(
@@ -339,12 +484,7 @@ def _review_generated_image(
                 mime_type=mime_type,
                 prompt=prompt,
                 briefing=briefing,
-                brand_context={
-                    "brand_id": str(brand.id),
-                    "name": brand.name,
-                    "description": brand.description or "",
-                    "brand_voice": brand.brand_voice or "",
-                },
+                brand_context=brand_context,
             )
         )
     except (ImageProviderError, GeminiProviderError, ProviderNotConfiguredError) as error:
@@ -404,7 +544,7 @@ def _text_input(source: object, key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _authorized_brand(work_item: ImageGenerationWorkItem) -> BrandRecord | None:
+def _authorized_brand_context(work_item: ImageGenerationWorkItem) -> dict[str, object] | None:
     if work_item.brand_id is None:
         return None
     with SqlAlchemyUnitOfWork() as unit_of_work:
@@ -412,9 +552,35 @@ def _authorized_brand(work_item: ImageGenerationWorkItem) -> BrandRecord | None:
             user_id=work_item.requested_by_user.id,
             brand_id=work_item.brand_id,
         )
-    if brand is None or brand.workspace_id != work_item.job.workspace_id:
-        return None
-    return brand
+        if brand is None or brand.workspace_id != work_item.job.workspace_id:
+            return None
+        settings = unit_of_work.brand.settings.get_for_user(
+            user_id=work_item.requested_by_user.id,
+            brand_id=brand.id,
+        )
+        colors = unit_of_work.brand.colors.list_for_user(
+            user_id=work_item.requested_by_user.id,
+            brand_id=brand.id,
+        )
+    context: dict[str, object] = {
+        "brand_id": str(brand.id),
+        "name": brand.name,
+        "description": brand.description or "",
+        "brand_voice": brand.brand_voice or "",
+    }
+    if (
+        settings is not None
+        and settings.brand_id == brand.id
+        and settings.workspace_id == work_item.job.workspace_id
+    ):
+        context["voice_settings"] = settings.voice_settings
+        context["visual_settings"] = settings.visual_settings
+    context["colors"] = [
+        {"name": color.color_name, "hex": color.hex_code}
+        for color in sorted(colors, key=lambda item: (item.order, str(item.id)))
+        if color.brand_id == brand.id and color.workspace_id == work_item.job.workspace_id
+    ][:30]
+    return context
 
 
 def _settle_failure(

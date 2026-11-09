@@ -23,6 +23,11 @@ from creator.domain.pipeline_events import (
 )
 from creator.generation.storage_service import GeneratedImage, persist_generated_image
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime.image_composition import (
+    SCENE_SUFFIX,
+    CompositionError,
+    compose_generated_image,
+)
 from creator.infrastructure.runtime.observability import correlation_context, current_context
 from creator.infrastructure.runtime.storage import create_storage_provider
 from creator.services.agents.contracts import (
@@ -163,6 +168,7 @@ def run_pipeline_stage(
                 role=AgentWorkflowStepRole.BUSINESS,
                 inputs={
                     "workflow": run.input,
+                    "editorial_context": run.input.get("editorial_context", {}),
                     "brand": brand,
                     "brand_settings": brand_settings,
                     "knowledge": _knowledge(run),
@@ -200,6 +206,7 @@ def run_pipeline_stage(
                 role=AgentWorkflowStepRole.PLANNER,
                 inputs={
                     "workflow": run.input,
+                    "editorial_context": run.input.get("editorial_context", {}),
                     "predecessor": {
                         "schema": "business.output.v1",
                         "payload": business_envelope.payload,
@@ -249,6 +256,7 @@ def run_pipeline_stage(
                     role=AgentWorkflowStepRole.WRITER,
                     inputs={
                         "business_context": business.model_dump(mode="json"),
+                        "editorial_context": run.input.get("editorial_context", {}),
                         "predecessor": {
                             "schema": "planner.output.v1",
                             "payload": planner_envelope.payload,
@@ -334,6 +342,8 @@ def _claim_run(
         allowed_statuses = {AgentWorkflowStatus.PENDING, AgentWorkflowStatus.REFINING}
         if stage in {"PLANNER", "WRITER", "ARTIST", "REVIEWER"}:
             allowed_statuses.add(AgentWorkflowStatus.RUNNING)
+        if stage == "BUSINESS" and run.current_step == "BUSINESS":
+            allowed_statuses.add(AgentWorkflowStatus.RUNNING)
         if run.status not in allowed_statuses:
             return None, None
         user = (
@@ -416,6 +426,13 @@ def _run_artist_stage(
             emit_event=index == len(writer_steps),
             event_item_count=len(writer_steps),
         )
+        with SqlAlchemyUnitOfWork() as unit_of_work:
+            current = unit_of_work.agent_workflow.workflows.get_internal(run.id)
+            if (
+                current is not None
+                and current.status == AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW
+            ):
+                return
     with SqlAlchemyUnitOfWork() as unit_of_work:
         artist_steps = [
             step
@@ -986,6 +1003,12 @@ def _generate_workflow_image(
         "agent_role": "ARTIST",
     }
     external_id = f"agent-workflow:{run.id}:{index}:{refinement_count}"
+    approved_scenes = run.input.get("approved_scenes")
+    approved_scene_id = (
+        approved_scenes.get(str(index)) if isinstance(approved_scenes, dict) else None
+    )
+    if isinstance(approved_scene_id, str):
+        external_id += ":scene-approved"
     with SqlAlchemyUnitOfWork() as unit_of_work:
         existing = unit_of_work.generation.image_jobs.get_status_by_external_id_for_user(
             user_id=user.id, external_id=external_id
@@ -1009,6 +1032,17 @@ def _generate_workflow_image(
             unit_of_work.commit()
     if existing is not None and existing.image is not None:
         image_record = existing.image
+        if image_record.metadata.get("scene_review_pending") is True:
+            _wait_for_scene_review(run, index, image_record.id, source_event_id)
+            return image_record, ImageGenerationResult(
+                image_bytes=b"",
+                mime_type=image_record.mime_type,
+                width=image_record.width,
+                height=image_record.height,
+                model=image_record.model,
+                prompt=image_record.prompt,
+                metadata=image_record.metadata,
+            )
         _persist_artist_step(
             run,
             index,
@@ -1037,13 +1071,81 @@ def _generate_workflow_image(
         unit_of_work.commit()
     if work_item is None:
         raise RuntimeError("Image Generation Job could not be claimed")
-    generated = create_image_generator(typed_settings).generate(
-        ImageGenerationRequest(
-            prompt=writer.direction.visual_prompt,
-            model=typed_settings.openai_image_model,
-            metadata={"agent_workflow_run_id": str(run.id), "item": index},
+    composition = run.input.get("composition")
+    compose_text = isinstance(composition, dict) and composition.get("enabled") is True
+    image_prompt = writer.direction.visual_prompt + (SCENE_SUFFIX if compose_text else "")
+    if isinstance(approved_scene_id, str):
+        with SqlAlchemyUnitOfWork() as unit_of_work:
+            scene = unit_of_work.generation.image_jobs.get_image_for_user(
+                user_id=user.id, image_id=UUID(approved_scene_id)
+            )
+        if (
+            scene is None
+            or scene.workspace_id != run.workspace_id
+            or scene.content_id != run.content_id
+        ):
+            raise RuntimeError("Approved scene is outside the workflow Content")
+        scene_bytes = create_storage_provider(typed_settings).download(
+            scene.storage_path, max_bytes=typed_settings.storage_max_object_bytes
         )
-    )
+        generated = ImageGenerationResult(
+            image_bytes=scene_bytes,
+            mime_type=scene.mime_type,
+            width=scene.width,
+            height=scene.height,
+            model=scene.model,
+            prompt=scene.prompt,
+            metadata={"scene_review_source_image_id": approved_scene_id},
+        )
+    else:
+        generated = create_image_generator(typed_settings).generate(
+            ImageGenerationRequest(
+                prompt=image_prompt,
+                model=typed_settings.openai_image_model,
+                metadata={"agent_workflow_run_id": str(run.id), "item": index},
+            )
+        )
+    if compose_text and isinstance(composition, dict):
+        try:
+            generated = compose_generated_image(
+                result=generated,
+                approved={
+                    key: composition[key]
+                    for key in ("headline", "supporting_text", "call_to_action")
+                    if composition.get(key)
+                },
+                workspace_id=run.workspace_id,
+                brand_id=run.brand_id,
+                user_id=user.id,
+                settings=typed_settings,
+                scene_review_approved=isinstance(approved_scene_id, str),
+            )
+        except CompositionError as error:
+            if error.code == "COMPOSITION_TEXT_CHECK_INCONCLUSIVE" and approved_scene_id is None:
+                with SqlAlchemyUnitOfWork() as unit_of_work:
+                    scene_image = persist_generated_image(
+                        unit_of_work=unit_of_work,
+                        storage=create_storage_provider(typed_settings),
+                        job=work_item.job,
+                        user=user,
+                        image=GeneratedImage(
+                            content=generated.image_bytes,
+                            mime_type=generated.mime_type,
+                            width=generated.width,
+                            height=generated.height,
+                            model=generated.model,
+                            prompt=generated.prompt,
+                            metadata={**generated.metadata, "scene_review_pending": True},
+                        ),
+                    )
+                _wait_for_scene_review(run, index, scene_image.id, source_event_id)
+                return scene_image, generated
+            with SqlAlchemyUnitOfWork() as unit_of_work:
+                unit_of_work.generation.image_jobs.fail_job(
+                    job.id, failure_code=error.code, failure_message="Image composition failed"
+                )
+                unit_of_work.commit()
+            raise
     with SqlAlchemyUnitOfWork() as unit_of_work:
         image_record = persist_generated_image(
             unit_of_work=unit_of_work,
@@ -1071,6 +1173,30 @@ def _generate_workflow_image(
         event_item_count=event_item_count,
     )
     return image_record, generated
+
+
+def _wait_for_scene_review(
+    run: AgentWorkflowRunRecord, index: int, image_id: UUID, source_event_id: UUID | None
+) -> None:
+    with SqlAlchemyUnitOfWork() as unit_of_work:
+        latest = unit_of_work.agent_workflow.workflows.get_internal(run.id)
+        if latest is None or latest.status == AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW:
+            return
+        updated_input = dict(latest.input)
+        prior_pending = updated_input.get("pending_scenes")
+        pending = dict(prior_pending) if isinstance(prior_pending, dict) else {}
+        pending[str(index)] = str(image_id)
+        updated_input["pending_scenes"] = pending
+        updated_input["scene_review_reason"] = "COMPOSITION_TEXT_CHECK_INCONCLUSIVE"
+        unit_of_work.agent_workflow.workflows.update_input(run.id, updated_input)
+        unit_of_work.agent_workflow.workflows.transition(
+            run.id,
+            AgentWorkflowStatus.WAITING_FOR_HUMAN_REVIEW,
+            current_step="SCENE_REVIEW",
+        )
+        if source_event_id is not None:
+            unit_of_work.outbox.mark_consumed(source_event_id)
+        unit_of_work.commit()
 
 
 def _persist_artist_step(

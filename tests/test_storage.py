@@ -245,6 +245,17 @@ def test_immutable_image_path_rejects_unsafe_user_segment() -> None:
         )
 
 
+def test_local_principal_image_path_is_portable_on_windows() -> None:
+    path = immutable_image_path(
+        user_external_id="local:principal-123",
+        content_id=uuid4(),
+        version_number=1,
+        mime_type="image/png",
+    )
+    assert path.startswith("users/id-")
+    assert ":" not in path
+
+
 def test_supabase_storage_uploads_and_returns_signed_url_without_real_network() -> None:
     opener = FakeStorageOpener(
         [
@@ -256,7 +267,10 @@ def test_supabase_storage_uploads_and_returns_signed_url_without_real_network() 
 
     stored = provider.upload(
         UploadObjectRequest(
-            path="users/u/contents/c/versions/1/image.png", content=b"abc", mime_type="image/png"
+            path="users/u/contents/c/versions/1/image.png",
+            content=b"abc",
+            mime_type="image/png",
+            metadata={"provider": "openai"},
         )
     )
 
@@ -305,6 +319,7 @@ def test_local_storage_persists_objects_across_provider_instances(tmp_path: Path
     second_provider = LocalStorageProvider(settings)
 
     assert stored.url == second_provider.get_url(stored.path)
+    assert stored.metadata["provider"] == "local"
 
 
 def test_local_storage_delete_is_idempotent_for_retention_purge(tmp_path: Path) -> None:

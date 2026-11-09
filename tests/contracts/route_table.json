@@ -696,6 +696,14 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/api/v1/generation-jobs/{id}/scene-decision",
+    "operation_id": "decideIndependentGenerationScene",
+    "tags": [
+      "Generations"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/api/v1/generations",
     "operation_id": "listGenerations",

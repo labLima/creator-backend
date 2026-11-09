@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from creator.config import Settings
-from creator.integrations.openai.client import create_openai_client
+from creator.integrations.openai.client import create_openai_client, sampling_options
 from creator.integrations.openai.image_generator import OpenAIImageGenerator
 from creator.prompts.agents import build_reviewer_prompt
 from creator.services.ai.image_provider import ImageProviderInvalidResponseError
@@ -43,7 +43,7 @@ class OpenAIMultimodalImageReviewer:
                         ],
                     }
                 ],
-                temperature=0,
+                **sampling_options(self._settings.openai_reviewer_model, 0),
             )
         except Exception as error:
             raise OpenAIImageGenerator._classify_error(error) from error

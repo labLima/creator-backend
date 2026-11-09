@@ -21,7 +21,10 @@ from creator.services.agents.contracts import (
     AgentExecutionResult,
     ArtistOutput,
 )
-from creator.services.ai.image_provider import ImageProviderInvalidResponseError
+from creator.services.ai.image_provider import (
+    ImageGenerationResult,
+    ImageProviderInvalidResponseError,
+)
 from creator.services.ai.provider import ProviderNotConfiguredError
 from creator.services.ai.reviewer import ImageReviewRequest, ImageReviewResult
 from creator.services.storage.provider import StorageValidationError
@@ -65,8 +68,8 @@ class FakeSpecialistExecutor:
         return AgentExecutionResult(
             output=ArtistOutput(visual_prompt="Artist composed visual prompt"),
             prompt="Artist specialist prompt",
-            prompt_template_id="agent.artist.v3",
-            prompt_template_version="3.0",
+            prompt_template_id=context.prompt_template_id,
+            prompt_template_version=context.prompt_template_version,
             input_hash="a" * 64,
             output_hash="b" * 64,
             schema_name="ArtistOutput",
@@ -111,6 +114,8 @@ class FakeImageGenerationRepository:
         self.stale_calls: list[dict[str, object]] = []
         self.brand_requests: list[UUID] = []
         self.brand_results: list[object | None] = []
+        self.brand_settings: object | None = None
+        self.brand_colors: list[object] = []
 
     def claim_pending_by_id(self, job_id: UUID) -> ImageGenerationWorkItem | None:
         return self.work_item
@@ -154,7 +159,11 @@ class FakeUnitOfWork:
         self.repository = repository
         self.image_generations = repository
         self.generation = SimpleNamespace(image_jobs=repository)
-        self.brand = SimpleNamespace(brands=self)
+        self.brand = SimpleNamespace(
+            brands=self,
+            settings=SimpleNamespace(get_for_user=self.get_brand_settings),
+            colors=SimpleNamespace(list_for_user=self.list_brand_colors),
+        )
         self.commits = 0
 
     def __enter__(self) -> FakeUnitOfWork:
@@ -175,6 +184,12 @@ class FakeUnitOfWork:
             return self.repository.brand_results.pop(0)
         assert self.repository.work_item is not None
         return brand(brand_id=brand_id, workspace_id=self.repository.work_item.job.workspace_id)
+
+    def get_brand_settings(self, *, user_id: UUID, brand_id: UUID) -> object | None:
+        return self.repository.brand_settings
+
+    def list_brand_colors(self, *, user_id: UUID, brand_id: UUID) -> list[object]:
+        return self.repository.brand_colors
 
 
 def brand(*, brand_id: UUID, workspace_id: UUID) -> SimpleNamespace:
@@ -288,6 +303,51 @@ def test_run_image_generation_completes_successfully(monkeypatch: pytest.MonkeyP
     assert len(generator.requests) == 1
     assert persisted
     assert repository.failed == []
+
+
+def test_opt_in_composes_before_persistence_and_reviews_final_image(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_input = image_request_input()
+    request_input.update({"compose_text": True, "headline": "Pão quentinho"})
+    repository = FakeImageGenerationRepository(
+        work_item(brand_id=JOB_BRAND_ID, parameters={"request_input": request_input})
+    )
+    generator = FakeImageGenerator()
+    reviewer = FakeReviewer()
+    persisted: list[object] = []
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=generator,
+        reviewer=reviewer,
+        persisted=persisted,
+    )
+    monkeypatch.setattr(image_generation, "_authorized_brand_context", lambda item: {})
+    composed: list[dict[str, object]] = []
+
+    def fake_compose(**kwargs: object) -> ImageGenerationResult:
+        composed.append(kwargs)
+        result = kwargs["result"]
+        return ImageGenerationResult(
+            image_bytes=b"composed",
+            mime_type="image/png",
+            width=result.width,
+            height=result.height,
+            model=result.model,
+            prompt=result.prompt,
+            metadata={"composition": {"approved_text": kwargs["approved"]}},
+        )
+
+    monkeypatch.setattr(image_generation, "compose_generated_image", fake_compose)
+    image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
+
+    assert generator.requests[0].prompt.endswith(image_generation.SCENE_SUFFIX)
+    assert composed[0]["brand_id"] == JOB_BRAND_ID
+    assert reviewer.requests[0].image_bytes == b"composed"
+    assert persisted_metadata(persisted)["composition"]["approved_text"] == {
+        "headline": "Pão quentinho"
+    }
 
 
 def test_run_image_generation_raises_retryable_failure_before_last_attempt(
@@ -429,10 +489,97 @@ def test_run_image_generation_uses_job_brand_and_specialist_executor(
     assert repository.brand_requests == [JOB_BRAND_ID]
     assert len(specialist.contexts) == 1
     assert specialist.contexts[0].brand_id == JOB_BRAND_ID
+    assert specialist.contexts[0].prompt_template_id == "agent.artist.v7"
+    assert specialist.contexts[0].prompt_template_version == "7.0"
     assert specialist.contexts[0].inputs["briefing"] == "Create a launch visual"
     assert specialist.contexts[0].inputs["visual_direction"] == "Minimal studio composition"
     assert generator.requests[0].prompt == "Artist composed visual prompt"
     assert repository.failed == []
+
+
+def test_artist_and_reviewer_receive_only_authorized_brand_settings_and_colors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    item = work_item(
+        brand_id=JOB_BRAND_ID,
+        parameters={"request_input": image_request_input(review_image=True)},
+    )
+    repository = FakeImageGenerationRepository(item)
+    repository.brand_settings = SimpleNamespace(
+        brand_id=JOB_BRAND_ID,
+        workspace_id=item.job.workspace_id,
+        voice_settings={"tone": "warm"},
+        visual_settings={"typography": "bold sans", "style": "editorial"},
+    )
+    repository.brand_colors = [
+        SimpleNamespace(
+            id=uuid4(),
+            brand_id=JOB_BRAND_ID,
+            workspace_id=uuid4(),
+            order=0,
+            color_name="Other Workspace",
+            hex_code="#000000",
+        ),
+        SimpleNamespace(
+            id=uuid4(),
+            brand_id=JOB_BRAND_ID,
+            workspace_id=item.job.workspace_id,
+            order=2,
+            color_name="Orange",
+            hex_code="#ff6600",
+        ),
+        SimpleNamespace(
+            id=uuid4(),
+            brand_id=JOB_BRAND_ID,
+            workspace_id=item.job.workspace_id,
+            order=1,
+            color_name="Plum",
+            hex_code="#770044",
+        ),
+    ]
+    specialist = FakeSpecialistExecutor()
+    reviewer = FakeReviewer()
+    patch_worker(
+        monkeypatch,
+        repository=repository,
+        generator=FakeImageGenerator(),
+        specialist=specialist,
+        reviewer=reviewer,
+    )
+
+    image_generation.run_image_generation(str(item.job.id))
+
+    context = specialist.contexts[0].inputs["brand_context"]
+    assert isinstance(context, dict)
+    assert context["visual_settings"] == {"typography": "bold sans", "style": "editorial"}
+    assert context["voice_settings"] == {"tone": "warm"}
+    assert context["colors"] == [
+        {"name": "Plum", "hex": "#770044"},
+        {"name": "Orange", "hex": "#ff6600"},
+    ]
+    assert reviewer.requests[0].brand_context == context
+
+
+def test_brand_context_ignores_settings_from_another_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    item = work_item(brand_id=JOB_BRAND_ID)
+    repository = FakeImageGenerationRepository(item)
+    repository.brand_settings = SimpleNamespace(
+        brand_id=JOB_BRAND_ID,
+        workspace_id=uuid4(),
+        voice_settings={"tone": "secret"},
+        visual_settings={"style": "secret"},
+    )
+    monkeypatch.setattr(
+        image_generation, "SqlAlchemyUnitOfWork", lambda: FakeUnitOfWork(repository)
+    )
+
+    context = image_generation._authorized_brand_context(item)
+
+    assert context is not None
+    assert "voice_settings" not in context
+    assert "visual_settings" not in context
 
 
 def test_run_image_generation_fails_without_job_brand_for_image_job(

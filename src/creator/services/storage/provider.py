@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -109,4 +110,6 @@ def _safe_path_segment(value: str) -> str:
     normalized = value.strip()
     if not normalized or "/" in normalized or "\\" in normalized or normalized in {".", ".."}:
         raise StorageValidationError("Invalid storage path segment")
+    if any(character in normalized for character in ':*?"<>|'):
+        return "id-" + hashlib.sha256(normalized.encode("utf-8")).hexdigest()
     return normalized

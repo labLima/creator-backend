@@ -22,6 +22,10 @@ class RegenerateImageRequest(CreatorDTO):
     style: Literal["photographic", "illustration", "product_render"] | None = None
 
 
+class SceneReviewDecisionRequest(CreatorDTO):
+    decision: Literal["APPROVE", "REJECT"]
+
+
 class IndependentGenerationRequest(CreatorDTO):
     """Input for one specialist-backed Content component Generation."""
 
@@ -35,6 +39,10 @@ class IndependentGenerationRequest(CreatorDTO):
     direction: str | None = Field(default=None, min_length=1, max_length=20_000)
     restrictions: list[str] = Field(default_factory=list, max_length=30)
     review_image: bool = False
+    compose_text: bool = False
+    headline: str | None = Field(default=None, max_length=500)
+    supporting_text: str | None = Field(default=None, max_length=2_000)
+    call_to_action: str | None = Field(default=None, max_length=300)
     title: str | None = Field(default=None, max_length=255)
 
     @model_validator(mode="after")
@@ -59,6 +67,13 @@ class IndependentGenerationRequest(CreatorDTO):
             raise ValueError("IMAGE Generation requires a visual direction")
         if self.artifact_type != "IMAGE" and self.review_image:
             raise ValueError("review_image is only valid for IMAGE")
+        has_text = any((self.headline, self.supporting_text, self.call_to_action))
+        if self.artifact_type != "IMAGE" and (self.compose_text or has_text):
+            raise ValueError("text composition is only valid for IMAGE")
+        if self.compose_text and not has_text:
+            raise ValueError("text composition requires at least one approved text field")
+        if not self.compose_text and has_text:
+            raise ValueError("approved text fields require compose_text")
         return self
 
 

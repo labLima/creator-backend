@@ -6,7 +6,7 @@ from typing import Any
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 
 from creator.config import Settings
-from creator.integrations.openai.client import create_openai_client
+from creator.integrations.openai.client import create_openai_client, sampling_options
 from creator.services.ai.provider import (
     LLMAuthenticationError,
     LLMBlockedContentError,
@@ -36,7 +36,7 @@ class OpenAILLMProvider:
             response = self._client.responses.create(
                 model=self.model,
                 input=prompt,
-                temperature=temperature,
+                **sampling_options(self.model, temperature),
             )
         except Exception as error:
             provider_error = self._classify_error(error)

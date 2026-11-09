@@ -335,6 +335,24 @@ class SqlAlchemyAgentWorkflowRepository:
         ).one_or_none()
         return _agent_workflow_run_record(row) if row else None
 
+    def statuses_for_content(
+        self, *, user_id: UUID, content_ids: list[UUID]
+    ) -> dict[UUID, AgentWorkflowStatus]:
+        if not content_ids:
+            return {}
+        statement = (
+            self._scoped_select(user_id)
+            .where(workflow_tables.AgentWorkflowRun.content_id.in_(content_ids))
+            .order_by(
+                workflow_tables.AgentWorkflowRun.created_at.desc(),
+                workflow_tables.AgentWorkflowRun.id.desc(),
+            )
+        )
+        statuses: dict[UUID, AgentWorkflowStatus] = {}
+        for row in self._session.scalars(statement):
+            statuses.setdefault(row.content_id, row.status)
+        return statuses
+
     def list_steps_for_user(
         self, *, user_id: UUID, run_id: UUID
     ) -> list[AgentWorkflowStepRecord] | None:
