@@ -45,7 +45,7 @@ Gate de baseline na branch: `make check` verde (lint, format, mypy, pytest,
 
 ## Escopo
 
-- Criar as 18 tabelas ausentes e renomear as 5 divergentes.
+- Criar as 18 tabelas ausentes, renomear 1 e substituir 4 tabelas redesenhadas.
 - Alinhar colunas, nullability, tamanhos, enums, constraints e índices das 31
   tabelas em comum.
 - Preservar as 4 extensões de ADR: `auth_sessions`, `outbox_events`,
@@ -73,9 +73,15 @@ final, agrupadas por domínio:
 | Geração/Mídia | `generated_images`, `image_resizes` |
 | Conformidade/Auditoria | `audit_logs`, `user_consents` |
 
-Renomeações: `workspace_memberships`→`workspace_members`,
-`planning`→`content_plans`, `post_structure`→`posts`,
-`design_structure`→`post_designs`, `generated_image`→`generated_images`.
+Nome divergente — apenas 1 é rename simples, 4 são redesenhos de modelo:
+
+| Atual | Final | Veredito |
+| --- | --- | --- |
+| `workspace_memberships` | `workspace_members` | rename + alinhar (7→8 colunas) |
+| `planning` | `content_plans` | redesenho (24→11); persona e quantidades vão para `content_plan_items`/`content_plan_special_dates` |
+| `post_structure` | `posts` | redesenho (18→17); arte vai para `post_designs`/`design_slides`, texto para `captions` |
+| `design_structure` | `post_designs` | redesenho (5→6) + `design_slides` |
+| `generated_image` | `generated_images` | redesenho (11→23); storage, geração e aprovação reestruturados |
 
 ## Critérios de aceite
 

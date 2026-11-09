@@ -324,6 +324,13 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
     ]
     unnamed = [i for i in final["indexes"] if not i["name"]]
 
+    def is_simple_rename(old: str, new: str) -> bool:
+        removed = set(models[old]["columns"]) - set(ft[new]["columns"])
+        added = set(ft[new]["columns"]) - set(models[old]["columns"])
+        return len(removed) <= 1 and len(added) <= 2
+
+    simple_renames = sum(1 for old, new in RENAMES.items() if is_simple_rename(old, new))
+
     lines: list[str] = [
         "# Alinhamento ao Creator_DB_final.sql",
         "",
@@ -344,20 +351,33 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
         f"{len(unnamed)} sem nome explícito; "
         f"{sum(1 for i in final['indexes'] if i['unique'])} UNIQUE)",
         f"- Tabelas novas a criar: **{len(new_tables)}**",
-        f"- Tabelas a renomear: **{len(RENAMES)}**",
+        f"- Nome divergente: **{len(RENAMES)}** "
+        f"({simple_renames} rename simples, "
+        f"{len(RENAMES) - simple_renames} redesenhos)",
         f"- Extensões de ADR preservadas: **{len(preserved)}**",
         f"- Tabelas legadas a decidir: **{len(legacy)}**",
         f"- Tabelas sem alvo no modelo final: **{len(dropped)}**",
         "",
-        "## 1. Tabelas a renomear",
+        "## 1. Tabelas com nome divergente",
         "",
-        "| Atual | Final | Colunas atual → final |",
-        "| --- | --- | --- |",
+        "O nome muda, mas isso **não** implica `ALTER TABLE ... RENAME`: a maioria dos casos é",
+        "redesenho de modelo, com colunas redistribuídas para as tabelas satélite novas.",
+        "A coluna Veredito separa rename simples de substituição com migração de consumidores.",
+        "",
+        "| Atual | Final | Colunas | Veredito |",
+        "| --- | --- | --- | --- |",
     ]
     for old, new in RENAMES.items():
-        lines.append(
-            f"| `{old}` | `{new}` | {len(models[old]['columns'])} → {len(ft[new]['columns'])} |"
+        removed = len(set(models[old]["columns"]) - set(ft[new]["columns"]))
+        added = len(set(ft[new]["columns"]) - set(models[old]["columns"]))
+        verdict = (
+            "renomear + alinhar"
+            if is_simple_rename(old, new)
+            else f"substituir: {added} colunas novas, {removed} removidas"
         )
+        n_old = len(models[old]["columns"])
+        n_new = len(ft[new]["columns"])
+        lines.append(f"| `{old}` | `{new}` | {n_old} → {n_new} | {verdict} |")
 
     lines += ["", "## 2. Tabelas do modelo final ausentes no ORM", ""]
     for t in new_tables:

@@ -14,20 +14,24 @@
 - Tipos ENUM no modelo final: **52**
 - Índices no modelo final: **173** (52 tabelas; 123 sem nome explícito; 54 UNIQUE)
 - Tabelas novas a criar: **18**
-- Tabelas a renomear: **5**
+- Nome divergente: **5** (1 rename simples, 4 redesenhos)
 - Extensões de ADR preservadas: **4**
 - Tabelas legadas a decidir: **11**
 - Tabelas sem alvo no modelo final: **2**
 
-## 1. Tabelas a renomear
+## 1. Tabelas com nome divergente
 
-| Atual | Final | Colunas atual → final |
-| --- | --- | --- |
-| `workspace_memberships` | `workspace_members` | 7 → 8 |
-| `planning` | `content_plans` | 24 → 11 |
-| `post_structure` | `posts` | 18 → 17 |
-| `design_structure` | `post_designs` | 5 → 6 |
-| `generated_image` | `generated_images` | 11 → 23 |
+O nome muda, mas isso **não** implica `ALTER TABLE ... RENAME`: a maioria dos casos é
+redesenho de modelo, com colunas redistribuídas para as tabelas satélite novas.
+A coluna Veredito separa rename simples de substituição com migração de consumidores.
+
+| Atual | Final | Colunas | Veredito |
+| --- | --- | --- | --- |
+| `workspace_memberships` | `workspace_members` | 7 → 8 | renomear + alinhar |
+| `planning` | `content_plans` | 24 → 11 | substituir: 3 colunas novas, 16 removidas |
+| `post_structure` | `posts` | 18 → 17 | substituir: 12 colunas novas, 13 removidas |
+| `design_structure` | `post_designs` | 5 → 6 | substituir: 3 colunas novas, 2 removidas |
+| `generated_image` | `generated_images` | 11 → 23 | substituir: 19 colunas novas, 7 removidas |
 
 ## 2. Tabelas do modelo final ausentes no ORM
 
