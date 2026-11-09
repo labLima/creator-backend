@@ -94,59 +94,31 @@ cuida do vocabulário de papel), cada uma declarando o workspace
 
 | Tarefa | Issue | Título |
 | --- | --- | --- |
-| T1 | `SHC-2` | ADR-028, épico e tracker |
-| T2 | `SHC-3` | Comparador único e teste de paridade com orçamento |
-| T3 | `SHC-4` | Helpers portáveis de enum e nome de índice |
-| T4 | `SHC-5` | Portabilidade das CHECK constraints e defaults |
-| T5 | `SHC-6` | Conformidade, consentimento e interesses |
-| T6 | `SHC-7` | Satélites de Brand e Campanha |
-| T7 | `SHC-8` | Satélites de Billing e Créditos |
-| T8 | `SHC-9` | workspace_members: rename, status, invited_by e exclusão física |
-| T9 | `SHC-10` | planning para content_plans e satélites |
-| T10 | `SHC-11` | post_structure e design_structure para posts, captions, post_designs e design_slides |
-| T11 | `SHC-12` | generated_image para generated_images e image_resizes |
-| T12 | `SHC-13` | Backfill dos 4 redesenhos |
-| T13 | `SHC-14` | Contract: remover as tabelas antigas |
-| T14 | `SHC-15` | Lote A: identidade, notificações, brand, campanha e persona |
-| T15 | `SHC-16` | Lote B: billing, créditos e cupons |
-| T16 | `SHC-17` | ADR-029, 11 legadas e 2 tabelas sem alvo |
-| T17 | `SHC-18` | Consolidar a baseline |
-| T18 | `SHC-19` | Fechamento do épico |
-| T19 | `SHC-20` | Snapshot como gate, índices no fixture e teste de upgrade anterior |
-| T20 | `SHC-21` | Triggers, funções e view do dump |
-| T21 | `SHC-22` | Vocabulário de workspace_role e autorização |
-
-## Progresso
-
-| Issue | Tarefa | Estado | Evidência |
-| --- | --- | --- | --- |
-| `SHC-2` | T1 — ADR-028, épico e tracker | done | `docs/adr/0028-sqlite-final-schema-alignment.md` |
-| `SHC-3` | T2 — comparador único e orçamento | done | `final_schema.py`; `schema_parity_budget.json` |
-| `SHC-20` | T19 — snapshot gate e upgrade anterior | done | `snapshot_contract.py --check`; `schema_prev_ddl.sql` |
-| `SHC-4` | T3 — enums e nomes de índice | done | `portable_enums.py`; `naming.py` |
-| `SHC-5` | T4 — CHECKs portáveis | done | `constraints.py` |
-| `SHC-6` | T5 — audit, consent, persona interests | done | revisão 0006 |
-| `SHC-7` | T6 — satélites de brand/campanha | done | revisão 0007 |
-| `SHC-8` | T7 — satélites de billing/créditos | done | revisão 0008 |
-| `SHC-9` | T8 — workspace_members | done | revisão 0009; rename, status, exclusão física |
-| `SHC-22` | T21 — vocabulário de workspace_role | done | revisão 0010; MANAGER e rebuild do CHECK |
-| `SHC-23` | T22 — chaves pai de campaigns/personas e brand_business_details | done | revisão 0011; FKs compostas de tenant |
-| `SHC-10` | T9 — content_plans e satélites | done | revisão 0012; expand do planejamento |
-| `SHC-11` | T10 — posts, captions, post_designs, design_slides | done | revisão 0013; expand editorial |
-| `SHC-12` | T11 — generated_images e image_resizes | done | revisão 0014; **0 tabelas ausentes** |
-| `SHC-13` | T12 — backfill dos 4 redesenhos | done | `backfill_redesigns.py` idempotente; doc de mapeamento |
-
-Orçamento de paridade: **728 divergências**, com **0 tabelas ausentes**. O restante é
-alinhamento de colunas/índices/FKs/CHECKs nas tabelas existentes (T14/T15) e as
-legacy substituídas no contract (T13).
-
-T8 foi dividida: o vocabulário de `role` e a autorização por papel ficam em T21
-(`SHC-22`).
-
-## Objetos de armazenamento
-
-O dump declara 69 funções/triggers e a view `charges_with_last_transaction`,
-decididos objeto a objeto em T20 (`SHC-21`).
+| T1 | `SHC-2` | [T1] ADR-028, épico e tracker |
+| T2 | `SHC-3` | [T2] Teste de paridade contra o DDL final |
+| T3 | `SHC-4` | [T3] Helpers portáveis de coluna, enum e índice |
+| T4 | `SHC-5` | [T4] Portabilidade das CHECK constraints e defaults |
+| T5 | `SHC-6` | [T5] Conformidade, consentimento e interesses |
+| T6 | `SHC-7` | [T6] Satélites de Brand e Campanha |
+| T7 | `SHC-8` | [T7] Satélites de Billing e Créditos |
+| T8 | `SHC-9` | [T8] Renomear workspace_memberships para workspace_members |
+| T9 | `SHC-10` | [T9] planning para content_plans e satélites |
+| T10 | `SHC-11` | [T10] post_structure e design_structure para posts, captions, post_designs e design_slides |
+| T11 | `SHC-12` | [T11] generated_image para generated_images e image_resizes |
+| T12 | `SHC-13` | [T12] Backfill dos 4 redesenhos |
+| T13 | `SHC-14` | [T13] Contract: remover as tabelas antigas |
+| T14 | `SHC-15` | [T14] Lote A: identidade, notificações, brand, campanha e persona |
+| T15 | `SHC-16` | [T15] Lote B: billing, créditos e cupons |
+| T16 | `SHC-17` | [T16] ADR-029, 11 legadas e 2 tabelas sem alvo |
+| T17 | `SHC-18` | [T17] Consolidar a baseline |
+| T18 | `SHC-19` | [T18] Fechamento do épico |
+| T19 | `SHC-20` | [T19] Snapshot como gate, índices no fixture e teste de upgrade anterior |
+| T20 | `SHC-21` | [T20] Triggers, funções e view do dump |
+| T21 | `SHC-22` | [T21] Vocabulário de workspace_role e autorização |
+| T22 | `SHC-23` | [T22] Chaves pai de campanhas/personas e brand_business_details |
+| T23 | `SHC-24` | [T23] Migrar consumidores legados para os modelos finais |
+| T24 | `SHC-25` | [T24] Lote A1: identidade, convites e notificações |
+| T25 | `SHC-26` | [T25] Lote A2: brand, campanha e persona + backfill do brand_id |
 
 ## Critérios de aceite
 

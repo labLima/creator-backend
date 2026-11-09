@@ -105,6 +105,12 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ## Dependências descobertas na execução (2026-11-09)
 
+- **T14 foi dividida em T24 e T25.** O lote A original cobria 13 tabelas de seis
+  domínios e um backfill de `campaigns.brand_id`; uma rodada só não fecha isso com
+  qualidade. T24 cobre identidade/notificações (incluindo o enum de `role` em
+  `workspace_invites`) e T25 cobre brand/campanha/persona com o backfill de
+  `campaigns.brand_id`.
+
 - **T13 depende da migração de consumidores.** 17 arquivos de aplicação (routers,
   services, repositórios e UoW de Planning, PostStructure, Generation e Content)
   ainda usam as tabelas legadas. Dropar `planning`/`post_structure`/
@@ -469,6 +475,42 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `make e2e` verde após a remoção.
 
 ## Fase 4 — Alinhar as 31 tabelas comuns
+
+### T24 — Lote A1: identidade, convites e notificações
+
+**Descrição:** Alinhar `users`, `workspaces`, `workspace_invites` (com `role` como enum `workspace_role` e validação do payload), `workspace_invite_usages`, `notifications`, `notification_recipients`, `notification_preferences` e `user_devices` ao modelo final, incluindo OpenAPI e testes de contrato.
+
+**Critérios de aceite:**
+- [ ] As 8 tabelas sem divergência de coluna/nullability/tamanho no relatório (ou dívida justificada).
+- [ ] `workspace_invites.role` vira enum com validação; `docs/openapi.yaml` atualizado.
+- [ ] Enums dessas tabelas com vocabulário do dump.
+- [ ] Fixtures de snapshot regenerados; testes de API atualizados.
+
+**Verificação:**
+- [ ] `pytest tests/test_schema_inventory.py tests/test_api.py -q`.
+- [ ] `make check` e `make e2e` verdes.
+
+**Dependências:** T12
+**Arquivos prováveis:** `src/creator/user/models.py`, `src/creator/workspace/models.py`, `src/creator/notification/models.py`, `src/creator/workspace/schemas.py`, `docs/openapi.yaml`, `migrations/versions/0015_*.py`
+**Tamanho:** M
+
+### T25 — Lote A2: brand, campanha e persona + backfill do brand_id
+
+**Descrição:** Alinhar `brands`, `brand_colors`, `brand_assets`, `campaigns` e `personas` ao modelo final e tornar `campaigns.brand_id` obrigatório após o backfill (preenchido por `planning` em T12), com OpenAPI e testes.
+
+**Critérios de aceite:**
+- [ ] As 5 tabelas sem divergência de coluna/nullability/tamanho no relatório.
+- [ ] `campaigns.brand_id` NOT NULL com backfill e downgrade seguros.
+- [ ] Enums (`brand_asset_type`, `campaign_voice`, `persona_gender`, `age_range`) com vocabulário do dump.
+- [ ] `docs/openapi.yaml` atualizado para payloads de brand/campaign/persona.
+
+**Verificação:**
+- [ ] `pytest tests/test_schema_inventory.py tests/test_api.py -q`.
+- [ ] `make check` e `make e2e` verdes.
+
+**Dependências:** T22, T24
+**Arquivos prováveis:** `src/creator/brand/models.py`, `src/creator/campaign/models.py`, `src/creator/persona/models.py`, `docs/openapi.yaml`, `migrations/versions/0016_*.py`
+**Tamanho:** M
 
 ### T14 — Lote A: identidade, notificações, brand, campanha, persona (13 tabelas)
 
@@ -1002,8 +1044,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
   },
   {
     "id": "T14",
-    "title": "Lote A: identidade, notificações, brand, campanha e persona",
-    "description": "Alinhar 13 tabelas (users, workspaces, invites, usages, notifications, recipients, preferences, devices, brands, brand_colors, brand_assets, campaigns, personas) com batch, enums do dump e OpenAPI atualizado.",
+    "title": "Lote A (guarda-chuva): identidade, brand e campanha",
+    "description": "Guarda-chuva da T14, dividida em T24 (identidade/convites/notificações) e T25 (brand/campanha/persona + backfill de campaigns.brand_id). Fecha quando ambas fecharem.",
     "priority": "medium",
     "depends_on": [
       "T13"
@@ -1174,6 +1216,44 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
       "docs/openapi.yaml"
     ],
     "size": "L"
+  },
+  {
+    "id": "T24",
+    "title": "Lote A1: identidade, convites e notificações",
+    "description": "Alinhar users, workspaces, workspace_invites (role enum + validação), invite_usages, notifications, recipients, preferences e user_devices; OpenAPI e testes.",
+    "priority": "high",
+    "depends_on": [
+      "T12"
+    ],
+    "phase": "Fase 4 — Alinhar tabelas comuns",
+    "files": [
+      "src/creator/user/models.py",
+      "src/creator/workspace/models.py",
+      "src/creator/notification/models.py",
+      "src/creator/workspace/schemas.py",
+      "docs/openapi.yaml",
+      "migrations/versions/0015_*.py"
+    ],
+    "size": "M"
+  },
+  {
+    "id": "T25",
+    "title": "Lote A2: brand, campanha e persona + backfill do brand_id",
+    "description": "Alinhar brands, brand_colors, brand_assets, campaigns e personas e tornar campaigns.brand_id NOT NULL após backfill, com OpenAPI e testes.",
+    "priority": "high",
+    "depends_on": [
+      "T22",
+      "T24"
+    ],
+    "phase": "Fase 4 — Alinhar tabelas comuns",
+    "files": [
+      "src/creator/brand/models.py",
+      "src/creator/campaign/models.py",
+      "src/creator/persona/models.py",
+      "docs/openapi.yaml",
+      "migrations/versions/0016_*.py"
+    ],
+    "size": "M"
   }
 ]
 ```
