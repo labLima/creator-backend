@@ -490,6 +490,8 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `pytest tests/test_schema_inventory.py tests/test_api.py -q`.
 - [ ] `make check` e `make e2e` verdes.
 
+**Escopo medido:** 86 divergências (19 colunas excedentes, 3 ausentes, 10 enums, 23 FKs, 21 índices, 5 uniques, 2 nullability, 2 larguras). Ordem sugerida: `user_devices`/`notification_preferences` → `notifications`/`notification_recipients` → `users`/`workspaces`/`workspace_invites` (auth e convites, com migração de `token`→`token_hash`).
+
 **Dependências:** T12
 **Arquivos prováveis:** `src/creator/user/models.py`, `src/creator/workspace/models.py`, `src/creator/notification/models.py`, `src/creator/workspace/schemas.py`, `docs/openapi.yaml`, `migrations/versions/0015_*.py`
 **Tamanho:** M
