@@ -74,10 +74,12 @@ def create_independent_generation_job(
     settings: Annotated[Settings, Depends(get_settings)],
     application: Annotated[GenerationApplication, Depends(get_generation_application)],
     queue: Annotated[GenerationQueue, Depends(get_generation_queue)],
+    storage: Annotated[StorageProvider, Depends(get_storage_provider)],
 ) -> JSONResponse:
     try:
         job = application.submit_independent_generation(
             queue=queue,
+            storage=storage,
             settings=settings,
             user=current_user,
             payload=payload,

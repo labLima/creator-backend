@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from PIL import Image
 
 from creator.config import Settings
 from creator.content.ports import ContentRecord, ImageRecord
@@ -38,6 +40,19 @@ USER = UserRecord(
 BRAND_ID = UUID("20000000-0000-0000-0000-000000000001")
 WORKSPACE_ID = UUID("30000000-0000-0000-0000-000000000001")
 CONTENT_ID = UUID("40000000-0000-0000-0000-000000000001")
+
+
+class FakeSourceStorage:
+    def __init__(self, content: bytes | None = None) -> None:
+        self.content = content
+
+    def download(self, path: str, *, max_bytes: int) -> bytes:
+        assert path.startswith("users/")
+        if self.content is not None:
+            return self.content
+        output = BytesIO()
+        Image.new("RGB", (1080, 1080), "white").save(output, format="PNG")
+        return output.getvalue()
 
 
 def content_record() -> ContentRecord:
@@ -234,6 +249,7 @@ def test_image_transform_binds_exact_source_version_and_destination() -> None:
     job = submit_independent_generation(
         unit_of_work=uow,
         queue=FakeQueue(),
+        storage=FakeSourceStorage(),
         settings=Settings(_env_file=None),
         user=USER,
         payload=payload,
@@ -247,6 +263,29 @@ def test_image_transform_binds_exact_source_version_and_destination() -> None:
     assert params["source_image"]["version_number"] == 3
     assert params["source_image"]["storage_path"] == source_image.storage_path
     assert params["destination_preset"] == "1080x1350"
+    assert params["destination_dimensions"] == {
+        "width": 1080,
+        "height": 1350,
+        "ratio": "4:5",
+    }
+
+    invalid_uow = FakeUnitOfWork(
+        brand=brand(),
+        source=replace(content_record(), content_type="IMAGE"),
+        image=source_image,
+    )
+    with pytest.raises(EntityNotFoundError):
+        submit_independent_generation(
+            unit_of_work=invalid_uow,
+            queue=FakeQueue(),
+            storage=FakeSourceStorage(b"not-an-image"),
+            settings=Settings(_env_file=None),
+            user=USER,
+            payload=payload,
+            idempotency_key="image-transform-invalid-source",
+            request_id=uuid4(),
+        )
+    assert invalid_uow.created == []
 
 
 def test_submit_rejects_brand_not_visible_to_user() -> None:

@@ -7171,7 +7171,7 @@ components:
         destination_preset:
           type: string
           enum: [1080x1080, 1080x1350, 1080x1920, 1920x1080]
-          description: Required target dimensions for IMAGE TRANSFORM.
+          description: Required target dimensions for IMAGE TRANSFORM; resolved width, height and ratio are recorded on the Generation.
         direction:
           type: string
           minLength: 1

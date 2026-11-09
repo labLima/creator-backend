@@ -3,8 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from io import BytesIO
+from math import gcd
 from typing import cast
 from uuid import UUID
+
+from PIL import Image as PillowImage
+from PIL import UnidentifiedImageError
 
 from creator.application.errors import require_workspace_write
 from creator.config import Settings
@@ -32,7 +37,11 @@ from creator.prompts import (
 )
 from creator.prompts.agents import build_agent_prompt
 from creator.services.ai.image_provider import normalize_image_model
-from creator.services.storage.provider import StorageObjectNotFoundError, StorageProvider
+from creator.services.storage.provider import (
+    StorageError,
+    StorageObjectNotFoundError,
+    StorageProvider,
+)
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -264,6 +273,7 @@ def submit_independent_generation(
     payload: IndependentGenerationRequest,
     idempotency_key: str,
     request_id: UUID,
+    storage: StorageProvider | None = None,
 ) -> GenerationJobRecord:
     """Authorize and enqueue one independent Content component Generation."""
     planning = None
@@ -324,6 +334,8 @@ def submit_independent_generation(
             raise EntityNotFoundError("Source Content not found")
     source_image = None
     if payload.source_image_id is not None and source is not None:
+        if storage is None:
+            raise EntityNotFoundError("Source Content Version not found")
         if source.content_type != "IMAGE":
             raise EntityNotFoundError("Source Content Version not found")
         source_detail = unit_of_work.contents.get_detail_by_id_for_user(
@@ -339,6 +351,34 @@ def submit_independent_generation(
         )
         if source_image is None or source_image.workspace_id != brand.workspace_id:
             raise EntityNotFoundError("Source Content Version not found")
+        try:
+            source_bytes = storage.download(
+                source_image.storage_path, max_bytes=settings.storage_max_object_bytes
+            )
+            if len(source_bytes) > settings.storage_max_object_bytes:
+                raise EntityNotFoundError("Source Content Version not found")
+            with PillowImage.open(BytesIO(source_bytes)) as decoded:
+                decoded.verify()
+            with PillowImage.open(BytesIO(source_bytes)) as decoded:
+                expected_format = {
+                    "image/png": "PNG",
+                    "image/jpeg": "JPEG",
+                    "image/webp": "WEBP",
+                }.get(source_image.mime_type)
+                if (
+                    expected_format is None
+                    or decoded.format != expected_format
+                    or decoded.size != (source_image.width, source_image.height)
+                ):
+                    raise EntityNotFoundError("Source Content Version not found")
+            source_checksum = hashlib.sha256(source_bytes).hexdigest()
+            recorded_checksum = source_image.metadata.get("storage_checksum_sha256")
+            if recorded_checksum and recorded_checksum != source_checksum:
+                raise EntityNotFoundError("Source Content Version not found")
+        except (StorageError, UnidentifiedImageError, OSError, ValueError) as error:
+            raise EntityNotFoundError("Source Content Version not found") from error
+    else:
+        source_checksum = None
     if not unit_of_work.contents.user_has_workspace_access(
         user_id=user.id, workspace_id=brand.workspace_id
     ):
@@ -419,11 +459,21 @@ def submit_independent_generation(
                     "width": source_image.width,
                     "height": source_image.height,
                     "version_number": source_image.version_number,
+                    "checksum_sha256": source_checksum,
                 }
                 if source_image is not None
                 else None
             ),
             "destination_preset": payload.destination_preset,
+            "destination_dimensions": (
+                {
+                    "width": int(payload.destination_preset.split("x")[0]),
+                    "height": int(payload.destination_preset.split("x")[1]),
+                    "ratio": _destination_ratio(payload.destination_preset),
+                }
+                if payload.destination_preset is not None
+                else None
+            ),
             "source_text": source_text,
             "review_image": payload.review_image,
             "idempotency_fingerprint": fingerprint,
@@ -530,6 +580,12 @@ def _generation_input_from_planning(
 def _independent_generation_fingerprint(payload: IndependentGenerationRequest) -> str:
     normalized = json.dumps(payload.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _destination_ratio(preset: str) -> str:
+    width, height = (int(value) for value in preset.split("x"))
+    divisor = gcd(width, height)
+    return f"{width // divisor}:{height // divisor}"
 
 
 def submit_image_generation(

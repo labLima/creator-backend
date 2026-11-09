@@ -4,7 +4,11 @@ import hashlib
 import logging
 import time
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from uuid import UUID
+
+from PIL import Image as PillowImage
+from PIL import UnidentifiedImageError
 
 from creator.config import Settings, get_settings
 from creator.core.types import JsonObject
@@ -215,6 +219,37 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                 source_image_bytes = create_storage_provider(settings).download(
                     source_path, max_bytes=settings.storage_max_object_bytes
                 )
+                expected_hash = source_image.get("checksum_sha256")
+                if (
+                    expected_hash
+                    and hashlib.sha256(source_image_bytes).hexdigest() != expected_hash
+                ):
+                    raise ImageProviderInvalidResponseError(
+                        "Source image version checksum is invalid"
+                    )
+                if len(source_image_bytes) > settings.storage_max_object_bytes:
+                    raise ImageProviderInvalidResponseError(
+                        "Source image version exceeds size limit"
+                    )
+                try:
+                    with PillowImage.open(BytesIO(source_image_bytes)) as decoded_source:
+                        decoded_source.verify()
+                    with PillowImage.open(BytesIO(source_image_bytes)) as decoded_source:
+                        if decoded_source.format not in {
+                            "PNG",
+                            "JPEG",
+                            "WEBP",
+                        } or decoded_source.size != (
+                            int(source_image.get("width", 0)),
+                            int(source_image.get("height", 0)),
+                        ):
+                            raise ImageProviderInvalidResponseError(
+                                "Source image version metadata is invalid"
+                            )
+                except (UnidentifiedImageError, OSError, ValueError) as error:
+                    raise ImageProviderInvalidResponseError(
+                        "Source image version is invalid"
+                    ) from error
                 prompt = (
                     f"{prompt}\n\nAdapt the source image to exactly {destination_preset} pixels. "
                     "Preserve the subject and perceived scale. Expand or reorganize the "
@@ -246,6 +281,28 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     raise ImageProviderInvalidResponseError(
                         "Provider returned invalid destination dimensions"
                     )
+                try:
+                    with PillowImage.open(BytesIO(result.image_bytes)) as output:
+                        output.verify()
+                    with PillowImage.open(BytesIO(result.image_bytes)) as output:
+                        expected_mime_type = {
+                            "PNG": "image/png",
+                            "JPEG": "image/jpeg",
+                            "WEBP": "image/webp",
+                        }.get(output.format or "")
+                        if (
+                            output.format not in {"PNG", "JPEG", "WEBP"}
+                            or result.mime_type != expected_mime_type
+                            or output.size != (expected_width, expected_height)
+                            or len(result.image_bytes) > settings.storage_max_object_bytes
+                        ):
+                            raise ImageProviderInvalidResponseError(
+                                "Provider returned invalid destination image"
+                            )
+                except (UnidentifiedImageError, OSError, ValueError) as error:
+                    raise ImageProviderInvalidResponseError(
+                        "Provider returned invalid destination image"
+                    ) from error
         if composition_requested:
             if work_item.brand_id is None:
                 raise CompositionError("COMPOSITION_BRAND_UNAVAILABLE")

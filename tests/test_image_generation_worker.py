@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from PIL import Image
 
 from creator.config import Settings
 from creator.domain.generation import GenerationJobStatus
@@ -36,6 +38,12 @@ JOB_BRAND_ID = UUID("31000000-0000-0000-0000-000000000001")
 OTHER_BRAND_ID = UUID("31000000-0000-0000-0000-000000000002")
 
 
+def png_bytes(width: int, height: int) -> bytes:
+    output = BytesIO()
+    Image.new("RGB", (width, height), "white").save(output, format="PNG")
+    return output.getvalue()
+
+
 class FakeImageGenerator:
     def __init__(self, *, error: Exception | None = None) -> None:
         self.error = error
@@ -50,7 +58,7 @@ class FakeImageGenerator:
         except (AttributeError, ValueError):
             width, height = 2, 3
         return GeminiImageGenerationResult(
-            image_bytes=b"image-bytes",
+            image_bytes=png_bytes(width, height),
             mime_type="image/png",
             width=width,
             height=height,
@@ -110,7 +118,7 @@ class FakeReviewer:
 class FakeStorage:
     def download(self, path: str, *, max_bytes: int) -> bytes:
         assert path.startswith("users/")
-        return b"selected-source-bytes"
+        return png_bytes(1, 1)
 
 
 class FakeImageGenerationRepository:
@@ -325,6 +333,8 @@ def test_transform_holds_edited_variation_for_human_review(
                 "source_image": {
                     "storage_path": "users/principal/contents/id/versions/1/image.png",
                     "mime_type": "image/png",
+                    "width": 1,
+                    "height": 1,
                 },
                 "destination_preset": "1080x1350",
             },
@@ -344,7 +354,7 @@ def test_transform_holds_edited_variation_for_human_review(
     image_generation.run_image_generation("50000000-0000-0000-0000-000000000001")
 
     assert len(generator.requests) == 1
-    assert generator.requests[0].source_image == b"selected-source-bytes"
+    assert generator.requests[0].source_image == png_bytes(1, 1)
     assert generator.requests[0].size == "1080x1350"
     assert len(held) == 1
     assert held[0].width == 1080 and held[0].height == 1350
