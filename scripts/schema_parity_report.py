@@ -157,6 +157,7 @@ def parse_final(sql: str) -> dict[str, Any]:
     tables: dict[str, Any] = {}
     indexes: list[dict[str, Any]] = []
     enums: list[str] = []
+    fks: list[dict[str, Any]] = []
     for stmt in statements(sql):
         em = re.match(r'CREATE TYPE "([^"]+)"', stmt)
         if em:
@@ -207,6 +208,27 @@ def parse_final(sql: str) -> dict[str, Any]:
             tables[name] = {"columns": cols, "constraints": cons}
             continue
 
+        fk = re.match(
+            r'ALTER TABLE "([^"]+)" ADD (?:CONSTRAINT "[^"]+" )?FOREIGN KEY\s*\(([^)]+)\)\s*'
+            r'REFERENCES\s+"([^"]+)"\s*\(([^)]+)\)(?:\s+ON DELETE ([A-Z ]+?))?(?:\s+DEFERRABLE|$)',
+            stmt,
+            re.S,
+        )
+        if fk:
+            columns = [c.strip().strip('"') for c in fk.group(2).split(",")]
+            ref_columns = [c.strip().strip('"') for c in fk.group(4).split(",")]
+            fks.append(
+                {
+                    "table": fk.group(1),
+                    "columns": columns,
+                    "ref_table": fk.group(3),
+                    "ref_columns": ref_columns,
+                    "ondelete": (fk.group(5) or "NO ACTION").strip(),
+                    "composite": len(columns) > 1,
+                }
+            )
+            continue
+
         im = re.match(
             r'CREATE (UNIQUE )?INDEX(?:\s+"([^"]+)")?\s+ON\s+"([^"]+)"',
             stmt,
@@ -221,7 +243,7 @@ def parse_final(sql: str) -> dict[str, Any]:
                     "definition": re.sub(r"\s+", " ", stmt),
                 }
             )
-    return {"tables": tables, "indexes": indexes, "enums": enums}
+    return {"tables": tables, "indexes": indexes, "enums": enums, "fks": fks}
 
 
 def parse_models() -> dict[str, Any]:
@@ -241,12 +263,26 @@ def parse_models() -> dict[str, Any]:
                 "default": None if col.default is None else str(col.default.arg)[:80],
                 "fk": sorted(str(fk.target_fullname) for fk in col.foreign_keys),
             }
+        fks = []
+        for constraint in table.foreign_key_constraints:
+            local = [c.name for c in constraint.columns]
+            element = next(iter(constraint.elements))
+            fks.append(
+                {
+                    "columns": local,
+                    "ref_table": element.column.table.name,
+                    "ref_columns": [element.column.name],
+                    "ondelete": (constraint.ondelete or "NO ACTION").strip(),
+                    "composite": len(local) > 1,
+                }
+            )
         out[name] = {
             "columns": cols,
             "constraints": sorted(
                 {type(c).__name__ + ":" + (c.name or "") for c in table.constraints}
             ),
             "indexes": sorted({i.name for i in table.indexes if i.name}),
+            "fks": fks,
         }
     return out
 
@@ -309,6 +345,28 @@ def compare(final: dict[str, Any], models: dict[str, Any]) -> dict[str, Any]:
                 or (fcols[c]["type"] == "bigint" and model_category(mcols[c]["type"]) == "int")
             ],
         }
+    final_fks = {(f["table"], tuple(f["columns"])): f for f in final["fks"]}
+    model_fks = {
+        (table, tuple(fk["columns"])): fk for table, info in models.items() for fk in info["fks"]
+    }
+    gap["fk_only_in_final"] = sorted(
+        f"{t}({','.join(cols)})->{fk['ref_table']}[{fk['ondelete']}]"
+        for (t, cols), fk in final_fks.items()
+        if (t, cols) not in model_fks
+    )
+    gap["fk_only_in_model"] = sorted(
+        f"{t}({','.join(cols)})->{fk['ref_table']}[{fk['ondelete']}]"
+        for (t, cols), fk in model_fks.items()
+        if (t, cols) not in final_fks
+    )
+    gap["fk_ondelete_mismatch"] = sorted(
+        f"{t}({','.join(cols)}): final {fk['ondelete']} vs ORM {model_fks[(t, cols)]['ondelete']}"
+        for (t, cols), fk in final_fks.items()
+        if (t, cols) in model_fks
+        and fk["ondelete"].upper() != model_fks[(t, cols)]["ondelete"].upper()
+    )
+    gap["final_fk_count"] = len(final_fks)
+    gap["composite_fk_count"] = sum(1 for fk in final_fks.values() if fk["composite"])
     return gap
 
 
@@ -357,6 +415,11 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
         f"- Extensões de ADR preservadas: **{len(preserved)}**",
         f"- Tabelas legadas a decidir: **{len(legacy)}**",
         f"- Tabelas sem alvo no modelo final: **{len(dropped)}**",
+        f"- Foreign keys no modelo final: **{gap['final_fk_count']}** "
+        f"({gap['composite_fk_count']} compostas com `workspace_id`)",
+        f"- FKs ausentes no ORM: **{len(gap['fk_only_in_final'])}**; "
+        f"ON DELETE divergente: **{len(gap['fk_ondelete_mismatch'])}**; "
+        f"FKs só no ORM: **{len(gap['fk_only_in_model'])}**",
         "",
         "## 1. Tabelas com nome divergente",
         "",
@@ -423,7 +486,36 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
         lines.append("")
 
     lines += [
-        "## 4. Índices por tabela",
+        "## 4. Foreign keys",
+        "",
+        f"O modelo final declara {gap['final_fk_count']} FKs em `ALTER TABLE` no fim do dump",
+        f"({gap['composite_fk_count']} são compostas e incluem `workspace_id`, exigindo UNIQUE",
+        "composta no alvo). SQLite não aceita `ALTER TABLE ... ADD CONSTRAINT`: essas FKs",
+        "precisam existir nas models para valerem no baseline criado por `create_all()`.",
+        "",
+        "> FKs das tabelas com nome divergente (seção 1) contam como ausentes porque a",
+        "> comparação é por nome de tabela; o mapeamento está naquela seção.",
+        "",
+        f"- FKs exigidas e ausentes no ORM: **{len(gap['fk_only_in_final'])}**",
+        f"- FKs com `ON DELETE` divergente: **{len(gap['fk_ondelete_mismatch'])}**",
+        f"- FKs só no ORM: **{len(gap['fk_only_in_model'])}**",
+        "",
+    ]
+    if gap["fk_only_in_final"]:
+        lines.append("### FKs ausentes no ORM")
+        lines += [f"- `{item}`" for item in gap["fk_only_in_final"]]
+        lines.append("")
+    if gap["fk_ondelete_mismatch"]:
+        lines.append("### ON DELETE divergente")
+        lines += [f"- `{item}`" for item in gap["fk_ondelete_mismatch"]]
+        lines.append("")
+    if gap["fk_only_in_model"]:
+        lines.append("### FKs só no ORM")
+        lines += [f"- `{item}`" for item in gap["fk_only_in_model"]]
+        lines.append("")
+
+    lines += [
+        "## 5. Índices por tabela",
         "",
         f"O modelo final declara {len(final['indexes'])} índices. `SQLite` aceita nomes",
         "automáticos, mas a paridade precisa ser decidida tabela a tabela:",
@@ -439,7 +531,7 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
             lines.append(f"- `{idx['definition']}`")
         lines.append("")
 
-    lines += ["## 5. Constraints CHECK/UNIQUE/REFERENCES", ""]
+    lines += ["## 6. Constraints CHECK/UNIQUE", ""]
     for table in sorted(ft):
         if ft[table]["constraints"]:
             lines.append(f"**`{table}`**")
@@ -448,7 +540,7 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
             lines.append("")
 
     lines += [
-        "## 6. Tabelas fora do modelo final",
+        "## 7. Tabelas fora do modelo final",
         "",
         "| Tabela | Categoria | Ação |",
         "| --- | --- | --- |",

@@ -5,6 +5,7 @@
 - Issue tracker: [#159](https://github.com/labLima/creator-backend/issues/159)
 - Relacionadas: [#106](https://github.com/labLima/creator-backend/issues/106), [#97](https://github.com/labLima/creator-backend/issues/97)–[#102](https://github.com/labLima/creator-backend/issues/102)
 - Plano: [tasks/plan-sqlite-final-schema.md](../../tasks/plan-sqlite-final-schema.md)
+- Checklist: [tasks/todo-sqlite-final-schema.md](../../tasks/todo-sqlite-final-schema.md)
 - Board local: projeto `SHC` do Shared Context (`SHC-1` e filhas)
 - Branch: `feat/sqlite-final-schema-alignment`
 
@@ -39,6 +40,8 @@ Relatório reproduzível por `python scripts/schema_parity_report.py`:
 | Tabelas só no modelo final | 18 (+5 renomeações) | — |
 | Tabelas só no ORM | — | 4 extensões, 11 legadas, 2 sem alvo |
 | Tabelas comuns com divergência | 31 de 31 | — |
+| Foreign keys | 101 (10 compostas) | 36 equivalentes, 65 a criar |
+| CHECK constraints | 80 (15 com regex, 3 com `num_nonnulls`) | portabilidade pendente |
 
 Gate de baseline na branch: `make check` verde (lint, format, mypy, pytest,
 `alembic check` sem operações pendentes).
@@ -82,6 +85,32 @@ Nome divergente — apenas 1 é rename simples, 4 são redesenhos de modelo:
 | `post_structure` | `posts` | redesenho (18→17); arte vai para `post_designs`/`design_slides`, texto para `captions` |
 | `design_structure` | `post_designs` | redesenho (5→6) + `design_slides` |
 | `generated_image` | `generated_images` | redesenho (11→23); storage, geração e aprovação reestruturados |
+
+## Issues de implementação (board `SHC`)
+
+Uma issue por tarefa do plano, cada uma declarando o workspace
+`/home/emanueljtrodrigues/Documents/LeFil/creator-backend`.
+
+| Tarefa | Issue | Título |
+| --- | --- | --- |
+| T1 | `SHC-2` | [T1] ADR-028, épico e tracker |
+| T2 | `SHC-3` | [T2] Teste de paridade contra o DDL final |
+| T3 | `SHC-4` | [T3] Helpers portáveis de coluna, enum e índice |
+| T4 | `SHC-5` | [T4] Portabilidade das CHECK constraints e defaults |
+| T5 | `SHC-6` | [T5] Conformidade, consentimento e interesses |
+| T6 | `SHC-7` | [T6] Satélites de Brand e Campanha |
+| T7 | `SHC-8` | [T7] Satélites de Billing e Créditos |
+| T8 | `SHC-9` | [T8] Renomear workspace_memberships para workspace_members |
+| T9 | `SHC-10` | [T9] planning para content_plans e satélites |
+| T10 | `SHC-11` | [T10] post_structure e design_structure para posts, captions, post_designs e design_slides |
+| T11 | `SHC-12` | [T11] generated_image para generated_images e image_resizes |
+| T12 | `SHC-13` | [T12] Backfill dos 4 redesenhos |
+| T13 | `SHC-14` | [T13] Contract: remover as tabelas antigas |
+| T14 | `SHC-15` | [T14] Lote A: identidade, notificações, brand, campanha e persona |
+| T15 | `SHC-16` | [T15] Lote B: billing, créditos e cupons |
+| T16 | `SHC-17` | [T16] ADR-029, 11 legadas e 2 tabelas sem alvo |
+| T17 | `SHC-18` | [T17] Consolidar a baseline |
+| T18 | `SHC-19` | [T18] Fechamento do épico |
 
 ## Critérios de aceite
 

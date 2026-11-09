@@ -18,6 +18,8 @@
 - Extensões de ADR preservadas: **4**
 - Tabelas legadas a decidir: **11**
 - Tabelas sem alvo no modelo final: **2**
+- Foreign keys no modelo final: **101** (10 compostas com `workspace_id`)
+- FKs ausentes no ORM: **65**; ON DELETE divergente: **35**; FKs só no ORM: **65**
 
 ## 1. Tabelas com nome divergente
 
@@ -219,7 +221,192 @@ são conversões portáveis esperadas (ADR-021) e não aparecem como divergênci
 - tamanho/tipo: `email` final `varchar(254)` vs ORM `varchar(255)`
 - enums: `role`, `status`, `type`
 
-## 4. Índices por tabela
+## 4. Foreign keys
+
+O modelo final declara 101 FKs em `ALTER TABLE` no fim do dump
+(10 são compostas e incluem `workspace_id`, exigindo UNIQUE
+composta no alvo). SQLite não aceita `ALTER TABLE ... ADD CONSTRAINT`: essas FKs
+precisam existir nas models para valerem no baseline criado por `create_all()`.
+
+> FKs das tabelas com nome divergente (seção 1) contam como ausentes porque a
+> comparação é por nome de tabela; o mapeamento está naquela seção.
+
+- FKs exigidas e ausentes no ORM: **65**
+- FKs com `ON DELETE` divergente: **35**
+- FKs só no ORM: **65**
+
+### FKs ausentes no ORM
+- `audit_logs(actor_id)->users[SET NULL]`
+- `audit_logs(workspace_id)->workspaces[SET NULL]`
+- `billing_payment_methods(billing_address_id)->billing_addresses[SET NULL]`
+- `brand_assets(created_by)->users[SET NULL]`
+- `brand_business_details(brand_id)->brands[CASCADE]`
+- `brand_business_details(campaign_id,brand_id)->campaigns[CASCADE]`
+- `brand_business_details(created_by)->users[SET NULL]`
+- `brand_business_details(persona_id,brand_id)->personas[CASCADE]`
+- `brand_hashtags(brand_id)->brands[CASCADE]`
+- `brand_values(brand_id)->brands[CASCADE]`
+- `brands(created_by)->users[SET NULL]`
+- `campaign_hashtags(campaign_id)->campaigns[CASCADE]`
+- `campaign_voices(campaign_id)->campaigns[CASCADE]`
+- `campaigns(brand_id)->brands[CASCADE]`
+- `captions(created_by)->users[SET NULL]`
+- `captions(post_id)->posts[CASCADE]`
+- `charge_transactions(charge_id)->charges[CASCADE]`
+- `charges(order_id)->orders[SET NULL]`
+- `charges(payment_method_id)->billing_payment_methods[SET NULL]`
+- `content_plan_items(content_plan_id)->content_plans[CASCADE]`
+- `content_plan_special_dates(content_plan_id)->content_plans[CASCADE]`
+- `content_plans(brand_id)->brands[CASCADE]`
+- `content_plans(campaign_id,brand_id)->campaigns[CASCADE]`
+- `content_plans(created_by)->users[SET NULL]`
+- `content_plans(persona_id,brand_id)->personas[CASCADE]`
+- `coupon_redemptions(credit_transaction_id)->workspace_credit_transactions[SET NULL]`
+- `coupon_redemptions(invoice_id)->invoices[SET NULL]`
+- `coupon_redemptions(order_id,workspace_id)->orders[RESTRICT]`
+- `coupon_redemptions(subscription_id,workspace_id)->subscriptions[RESTRICT]`
+- `coupon_redemptions(user_id)->users[RESTRICT]`
+- `design_slides(post_design_id)->post_designs[CASCADE]`
+- `fiscal_invoices(billing_account_id)->billing_accounts[RESTRICT]`
+- `fiscal_invoices(invoice_id)->invoices[RESTRICT]`
+- `fiscal_invoices(order_id)->orders[RESTRICT]`
+- `fiscal_invoices(subscription_id)->subscriptions[RESTRICT]`
+- `generated_images(approved_by)->users[SET NULL]`
+- `generated_images(created_by)->users[SET NULL]`
+- `generated_images(design_slide_id)->design_slides[CASCADE]`
+- `image_resizes(created_by)->users[SET NULL]`
+- `image_resizes(source_image_id)->generated_images[CASCADE]`
+- `persona_interests(persona_id)->personas[CASCADE]`
+- `plan_payment_methods(plan_id)->plans[CASCADE]`
+- `post_designs(post_id)->posts[CASCADE]`
+- `posts(approved_by)->users[SET NULL]`
+- `posts(content_plan_id)->content_plans[CASCADE]`
+- `posts(created_by)->users[SET NULL]`
+- `refunds(charge_id)->charges[RESTRICT]`
+- `refunds(requested_by)->users[SET NULL]`
+- `subscription_history(changed_by)->users[SET NULL]`
+- `subscription_history(new_plan_id)->plans[SET NULL]`
+- `subscription_history(old_plan_id)->plans[SET NULL]`
+- `subscriptions(payment_method_id)->billing_payment_methods[SET NULL]`
+- `user_consents(user_id)->users[RESTRICT]`
+- `workspace_credit_lot_consumptions(lot_id,workspace_id)->workspace_credit_lots[RESTRICT]`
+- `workspace_credit_lot_consumptions(transaction_id,workspace_id)->workspace_credit_transactions[RESTRICT]`
+- `workspace_credit_lots(grant_transaction_id,workspace_id)->workspace_credit_transactions[RESTRICT]`
+- `workspace_credit_lots(workspace_id)->workspaces[RESTRICT]`
+- `workspace_credit_transactions(created_by)->users[SET NULL]`
+- `workspace_credit_transactions(generated_image_id)->generated_images[RESTRICT]`
+- `workspace_credit_transactions(image_resize_id)->image_resizes[RESTRICT]`
+- `workspace_credit_transactions(invoice_id)->invoices[RESTRICT]`
+- `workspace_credit_transactions(order_id,workspace_id)->orders[RESTRICT]`
+- `workspace_members(invited_by)->users[SET NULL]`
+- `workspace_members(user_id)->users[CASCADE]`
+- `workspace_members(workspace_id)->workspaces[CASCADE]`
+
+### ON DELETE divergente
+- `billing_accounts(user_id): final RESTRICT vs ORM CASCADE`
+- `billing_addresses(billing_account_id): final CASCADE vs ORM NO ACTION`
+- `billing_payment_methods(billing_account_id): final CASCADE vs ORM NO ACTION`
+- `brand_assets(brand_id): final CASCADE vs ORM NO ACTION`
+- `brand_colors(brand_id): final CASCADE vs ORM NO ACTION`
+- `brands(workspace_id): final CASCADE vs ORM RESTRICT`
+- `campaigns(created_by): final SET NULL vs ORM NO ACTION`
+- `charges(billing_account_id): final RESTRICT vs ORM NO ACTION`
+- `charges(invoice_id): final SET NULL vs ORM NO ACTION`
+- `coupon_redemptions(coupon_id): final RESTRICT vs ORM NO ACTION`
+- `coupons(created_by): final SET NULL vs ORM NO ACTION`
+- `invoices(billing_account_id): final RESTRICT vs ORM NO ACTION`
+- `invoices(subscription_id): final RESTRICT vs ORM NO ACTION`
+- `notification_preferences(user_id): final CASCADE vs ORM NO ACTION`
+- `notification_recipients(notification_id): final CASCADE vs ORM NO ACTION`
+- `notification_recipients(user_id): final CASCADE vs ORM NO ACTION`
+- `notifications(created_by): final SET NULL vs ORM NO ACTION`
+- `notifications(workspace_id): final CASCADE vs ORM NO ACTION`
+- `orders(billing_account_id): final RESTRICT vs ORM NO ACTION`
+- `orders(credit_package_id): final SET NULL vs ORM NO ACTION`
+- `orders(workspace_id): final RESTRICT vs ORM NO ACTION`
+- `personas(brand_id): final CASCADE vs ORM NO ACTION`
+- `personas(created_by): final SET NULL vs ORM NO ACTION`
+- `provider_disputes(billing_account_id): final RESTRICT vs ORM NO ACTION`
+- `provider_disputes(charge_id): final RESTRICT vs ORM NO ACTION`
+- `subscription_history(subscription_id): final CASCADE vs ORM NO ACTION`
+- `subscriptions(billing_account_id): final RESTRICT vs ORM NO ACTION`
+- `subscriptions(plan_id): final RESTRICT vs ORM NO ACTION`
+- `subscriptions(workspace_id): final RESTRICT vs ORM NO ACTION`
+- `user_devices(user_id): final CASCADE vs ORM NO ACTION`
+- `workspace_credit_transactions(workspace_id): final RESTRICT vs ORM NO ACTION`
+- `workspace_invite_usages(invite_id): final CASCADE vs ORM NO ACTION`
+- `workspace_invite_usages(member_id): final CASCADE vs ORM NO ACTION`
+- `workspace_invites(created_by): final RESTRICT vs ORM NO ACTION`
+- `workspace_invites(workspace_id): final CASCADE vs ORM NO ACTION`
+
+### FKs só no ORM
+- `activity_events(brand_id)->brands[RESTRICT]`
+- `activity_events(user_id)->users[RESTRICT]`
+- `activity_events(workspace_id)->workspaces[RESTRICT]`
+- `agent_workflow_runs(brand_id,workspace_id)->brands[RESTRICT]`
+- `agent_workflow_runs(content_id,workspace_id)->contents[RESTRICT]`
+- `agent_workflow_runs(requested_by_user_id)->users[SET NULL]`
+- `agent_workflow_runs(workspace_id)->workspaces[RESTRICT]`
+- `agent_workflow_steps(run_id,workspace_id)->agent_workflow_runs[CASCADE]`
+- `assets(brand_id,workspace_id)->brands[RESTRICT]`
+- `assets(content_id,workspace_id)->contents[RESTRICT]`
+- `assets(project_id,workspace_id)->projects[RESTRICT]`
+- `assets(uploaded_by_user_id)->users[SET NULL]`
+- `assets(workspace_id)->workspaces[RESTRICT]`
+- `auth_sessions(user_id)->users[CASCADE]`
+- `brand_colors(created_by)->users[NO ACTION]`
+- `brand_colors(workspace_id)->workspaces[NO ACTION]`
+- `brand_settings(brand_id,workspace_id)->brands[CASCADE]`
+- `brand_settings(workspace_id)->workspaces[RESTRICT]`
+- `brands(created_by_user_id)->users[SET NULL]`
+- `campaigns(workspace_id)->workspaces[NO ACTION]`
+- `content_text_versions(content_id,workspace_id)->contents[RESTRICT]`
+- `content_text_versions(generation_id)->generations[RESTRICT]`
+- `contents(brand_id,workspace_id)->brands[RESTRICT]`
+- `contents(created_by_user_id)->users[SET NULL]`
+- `contents(project_id,workspace_id)->projects[RESTRICT]`
+- `contents(workspace_id)->workspaces[RESTRICT]`
+- `coupon_redemptions(billing_account_id)->billing_accounts[NO ACTION]`
+- `coupon_redemptions(order_id)->orders[NO ACTION]`
+- `coupon_redemptions(subscription_id)->subscriptions[NO ACTION]`
+- `design_structure(post_structure_id)->post_structure[NO ACTION]`
+- `generated_image(design_structure_id)->design_structure[NO ACTION]`
+- `generated_image(workspace_id)->workspaces[NO ACTION]`
+- `generation_job_status_events(generation_job_id)->generation_jobs[CASCADE]`
+- `generation_jobs(generation_id,workspace_id)->generations[CASCADE]`
+- `generations(brand_id,workspace_id)->brands[RESTRICT]`
+- `generations(content_id,workspace_id)->contents[RESTRICT]`
+- `generations(project_id,workspace_id)->projects[RESTRICT]`
+- `generations(requested_by_user_id)->users[SET NULL]`
+- `generations(workspace_id)->workspaces[RESTRICT]`
+- `images(content_id,workspace_id)->contents[RESTRICT]`
+- `images(generation_id,workspace_id,content_id)->generations[RESTRICT]`
+- `images(workspace_id)->workspaces[RESTRICT]`
+- `notification_recipients(workspace_member_id)->workspace_memberships[NO ACTION]`
+- `outbox_events(workspace_id)->workspaces[CASCADE]`
+- `planning(brand_id)->brands[NO ACTION]`
+- `planning(campaign_id)->campaigns[NO ACTION]`
+- `planning(created_by)->users[NO ACTION]`
+- `planning(persona_id)->personas[NO ACTION]`
+- `post_structure(created_by)->users[NO ACTION]`
+- `post_structure(planning_id)->planning[NO ACTION]`
+- `post_structure(workspace_id)->workspaces[NO ACTION]`
+- `projects(brand_id,workspace_id)->brands[RESTRICT]`
+- `projects(created_by_user_id)->users[SET NULL]`
+- `projects(workspace_id)->workspaces[RESTRICT]`
+- `provider_customers(billing_account_id)->billing_accounts[NO ACTION]`
+- `provider_subscriptions(subscription_id)->subscriptions[NO ACTION]`
+- `refunds(billing_account_id)->billing_accounts[NO ACTION]`
+- `refunds(invoice_id)->invoices[NO ACTION]`
+- `settings(user_id)->users[CASCADE]`
+- `subscription_history(plan_id)->plans[NO ACTION]`
+- `subscription_history(previous_plan_id)->plans[NO ACTION]`
+- `workspace_invite_usages(user_id)->users[NO ACTION]`
+- `workspace_invite_usages(workspace_id)->workspaces[NO ACTION]`
+- `workspace_memberships(user_id)->users[CASCADE]`
+- `workspace_memberships(workspace_id)->workspaces[CASCADE]`
+
+## 5. Índices por tabela
 
 O modelo final declara 173 índices. `SQLite` aceita nomes
 automáticos, mas a paridade precisa ser decidida tabela a tabela:
@@ -502,7 +689,7 @@ nome, colunas, UNIQUE e predicado parcial.
 - `CREATE INDEX ON "workspace_members" ("workspace_id", "role")`
 - `CREATE INDEX ON "workspace_members" ("invited_by")`
 
-## 5. Constraints CHECK/UNIQUE/REFERENCES
+## 6. Constraints CHECK/UNIQUE
 
 **`billing_accounts`**
 - `CONSTRAINT "chk_billing_accounts_company_name" CHECK ((payer_type = 'COMPANY') = (company_name IS NOT NULL))`
@@ -631,7 +818,7 @@ nome, colunas, UNIQUE e predicado parcial.
 - `CONSTRAINT "chk_workspace_invites_max_uses_by_type" CHECK ((type = 'LINK') = (max_uses IS NOT NULL))`
 - `CONSTRAINT "chk_workspace_invites_max_uses_positive" CHECK (max_uses IS NULL OR max_uses >= 1)`
 
-## 6. Tabelas fora do modelo final
+## 7. Tabelas fora do modelo final
 
 | Tabela | Categoria | Ação |
 | --- | --- | --- |

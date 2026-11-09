@@ -1,0 +1,91 @@
+# TODO — Alinhamento do schema SQLite ao Creator_DB_final.sql
+
+> Checklist de execução de [`plan-sqlite-final-schema.md`](plan-sqlite-final-schema.md).
+> Issues filhas no board `SHC` (Shared Context): `SHC-2` em diante, filhas de `SHC-1`.
+> Issue global: [#159](https://github.com/labLima/creator-backend/issues/159).
+> Rastreabilidade local: [docs/issues/0057](../docs/issues/0057-sqlite-final-schema-alignment.md).
+>
+> Gates por tarefa: `XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python`,
+> `... make security ...`, `... make e2e ...`. PRs contra `dev`.
+
+## Fase 0 — Contrato, paridade e portabilidade
+
+- [ ] **T1** (SHC-2, S) ADR-028, épico e tracker — depende de —
+- [ ] **T2** (SHC-3, M) Teste de paridade contra o DDL final — depende de T1
+- [ ] **T3** (SHC-4, S) Helpers portáveis de coluna, enum e índice — depende de T1
+- [ ] **T4** (SHC-5, M) Portabilidade das CHECK constraints e defaults — depende de T3
+
+### Checkpoint — Fase 0 — Contrato, paridade e portabilidade
+
+- [ ] Tarefas da fase concluídas e issues filhas em `review`.
+- [ ] `make check`, `make security` e `make e2e` verdes.
+- [ ] `python scripts/schema_parity_report.py` sem divergência não justificada.
+
+## Fase 1 — Criar tabelas
+
+- [ ] **T5** (SHC-6, S) Conformidade, consentimento e interesses — depende de T4
+- [ ] **T6** (SHC-7, M) Satélites de Brand e Campanha — depende de T4
+- [ ] **T7** (SHC-8, M) Satélites de Billing e Créditos — depende de T4
+
+### Checkpoint — Fase 1 — Criar tabelas
+
+- [ ] Tarefas da fase concluídas e issues filhas em `review`.
+- [ ] `make check`, `make security` e `make e2e` verdes.
+- [ ] `python scripts/schema_parity_report.py` sem divergência não justificada.
+
+## Fase 2 — Renomear e redesenhar (expand)
+
+- [ ] **T8** (SHC-9, S) Renomear workspace_memberships para workspace_members — depende de T4
+- [ ] **T9** (SHC-10, M) planning para content_plans e satélites — depende de T4
+- [ ] **T10** (SHC-11, M) post_structure e design_structure para posts, captions, post_designs e design_slides — depende de T4
+- [ ] **T11** (SHC-12, M) generated_image para generated_images e image_resizes — depende de T4
+
+### Checkpoint — Fase 2 — Renomear e redesenhar (expand)
+
+- [ ] Tarefas da fase concluídas e issues filhas em `review`.
+- [ ] `make check`, `make security` e `make e2e` verdes.
+- [ ] `python scripts/schema_parity_report.py` sem divergência não justificada.
+
+## Fase 3 — Backfill e contract
+
+- [ ] **T12** (SHC-13, M) Backfill dos 4 redesenhos — depende de T8, T9, T10, T11
+- [ ] **T13** (SHC-14, S) Contract: remover as tabelas antigas — depende de T12
+
+### Checkpoint — Fase 3 — Backfill e contract
+
+- [ ] Tarefas da fase concluídas e issues filhas em `review`.
+- [ ] `make check`, `make security` e `make e2e` verdes.
+- [ ] `python scripts/schema_parity_report.py` sem divergência não justificada.
+
+## Fase 4 — Alinhar tabelas comuns
+
+- [ ] **T14** (SHC-15, M) Lote A: identidade, notificações, brand, campanha e persona — depende de T13
+- [ ] **T15** (SHC-16, M) Lote B: billing, créditos e cupons — depende de T14
+
+### Checkpoint — Fase 4 — Alinhar tabelas comuns
+
+- [ ] Tarefas da fase concluídas e issues filhas em `review`.
+- [ ] `make check`, `make security` e `make e2e` verdes.
+- [ ] `python scripts/schema_parity_report.py` sem divergência não justificada.
+
+## Fase 5 — Aposentadoria do legado
+
+- [ ] **T16** (SHC-17, M) ADR-029, 11 legadas e 2 tabelas sem alvo — depende de T15
+
+### Checkpoint — Fase 5 — Aposentadoria do legado
+
+- [ ] Tarefas da fase concluídas e issues filhas em `review`.
+- [ ] `make check`, `make security` e `make e2e` verdes.
+- [ ] `python scripts/schema_parity_report.py` sem divergência não justificada.
+
+## Fase 6 — Consolidação e fechamento
+
+- [ ] **T17** (SHC-18, M) Consolidar a baseline — depende de T13, T15, T16
+- [ ] **T18** (SHC-19, S) Fechamento do épico — depende de T17
+
+### Checkpoint — Fase 6 — Consolidação e fechamento
+
+- [ ] Tarefas da fase concluídas e issues filhas em `review`.
+- [ ] `make check`, `make security` e `make e2e` verdes.
+- [ ] `python scripts/schema_parity_report.py` sem divergência não justificada.
+
