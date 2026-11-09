@@ -1,660 +1,162 @@
 #!/usr/bin/env python3
-"""Compare ``docs/migration/Creator_DB_final.sql`` with the live ORM metadata.
+"""Render the Creator_DB_final.sql parity report.
 
-The final modeling is a PostgreSQL-flavoured dump. This script parses it without
-a PostgreSQL server and reports, table by table, what the SQLAlchemy metadata
-still lacks: missing tables, columns, nullability, sizes, enums, constraints and
-indexes.
+The parsing and comparison live in
+``creator.infrastructure.database.final_schema`` so the parity tests use the
+exact same logic. This script only loads the metadata, runs the comparison and
+renders the markdown report.
 
 Usage:
     python scripts/schema_parity_report.py            # write the markdown report
     python scripts/schema_parity_report.py --check    # exit 1 when drift exists
-    python scripts/schema_parity_report.py --json out.json
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
-from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+
+from creator.infrastructure.database import metadata as _models  # noqa: E402, F401
+from creator.infrastructure.database.db import Base  # noqa: E402
+from creator.infrastructure.database.final_schema import (  # noqa: E402
+    ADR_EXTENSIONS,
+    LEGACY_RETENTION,
+    NO_TARGET,
+    RENAME_MAP,
+    FinalSchema,
+    Gap,
+    compare,
+    gap_counts,
+    gap_digest,
+    parse_final,
+    parse_models,
+    sha256_file,
+)
+
 FINAL_SQL = ROOT / "docs" / "migration" / "Creator_DB_final.sql"
 REPORT = ROOT / "docs" / "migration" / "schema-final-alignment.md"
 
-# Same entity, different name in the final modeling.
-RENAMES = {
-    "workspace_memberships": "workspace_members",
-    "planning": "content_plans",
-    "post_structure": "posts",
-    "design_structure": "post_designs",
-    "generated_image": "generated_images",
-}
 
-# Deliberate extensions that the final modeling does not contain.
-EXTENSIONS = ("activity_events", "auth_sessions", "content_text_versions", "outbox_events")
-
-# Tables still required by live consumers but absent from the final modeling.
-LEGACY = (
-    "agent_workflow_runs",
-    "agent_workflow_steps",
-    "assets",
-    "brand_settings",
-    "contents",
-    "generation_job_status_events",
-    "generation_jobs",
-    "generations",
-    "images",
-    "projects",
-    "settings",
-)
-
-COL_KEYWORDS = {
-    "NOT",
-    "NULL",
-    "DEFAULT",
-    "CHECK",
-    "UNIQUE",
-    "PRIMARY",
-    "REFERENCES",
-    "CONSTRAINT",
-    "GENERATED",
-    "COLLATE",
-}
-
-
-def split_top_level(text: str) -> list[str]:
-    parts: list[str] = []
-    depth = 0
-    cur: list[str] = []
-    in_quote = False
-    for ch in text:
-        if ch == '"':
-            in_quote = not in_quote
-            cur.append(ch)
-        elif in_quote:
-            cur.append(ch)
-        elif ch == "(":
-            depth += 1
-            cur.append(ch)
-        elif ch == ")":
-            depth -= 1
-            cur.append(ch)
-        elif ch == "," and depth == 0:
-            parts.append("".join(cur))
-            cur = []
-        else:
-            cur.append(ch)
-    if "".join(cur).strip():
-        parts.append("".join(cur))
-    return [p.strip() for p in parts if p.strip()]
-
-
-def statements(sql: str) -> list[str]:
-    """Split a PostgreSQL dump into statements, respecting quotes and comments.
-
-    A naive ``sql.split(";")`` breaks on semicolons inside string literals, inside
-    ``$$``-quoted function bodies and inside comments. This scanner tracks single
-    quotes, identifiers, dollar-quoted blocks and line comments so every statement
-    keeps its body intact.
-    """
-    out: list[str] = []
-    cur: list[str] = []
-    depth = 0
-    i = 0
-    length = len(sql)
-
-    while i < length:
-        ch = sql[i]
-
-        if ch == "-" and sql.startswith("--", i):
-            newline = sql.find("\n", i)
-            if newline == -1:
-                break
-            i = newline + 1
-            cur.append("\n")
-            continue
-
-        if ch == "'":
-            end = i + 1
-            while end < length:
-                if sql[end] == "'":
-                    if end + 1 < length and sql[end + 1] == "'":
-                        end += 2
-                        continue
-                    break
-                end += 1
-            cur.append(sql[i : end + 1])
-            i = end + 1
-            continue
-
-        if ch == '"':
-            end = sql.find('"', i + 1)
-            if end == -1:
-                end = length - 1
-            cur.append(sql[i : end + 1])
-            i = end + 1
-            continue
-
-        if ch == "$":
-            match = re.match(r"\$[A-Za-z_0-9]*\$", sql[i:])
-            if match:
-                tag = match.group(0)
-                end = sql.find(tag, i + len(tag))
-                if end == -1:
-                    cur.append(sql[i:])
-                    i = length
-                    continue
-                cur.append(sql[i : end + len(tag)])
-                i = end + len(tag)
-                continue
-
-        if ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth -= 1
-
-        if ch == ";" and depth == 0:
-            text = "".join(cur).strip()
-            if text:
-                out.append(text)
-            cur = []
-        else:
-            cur.append(ch)
-        i += 1
-
-    tail = "".join(cur).strip()
-    if tail:
-        out.append(tail)
-
-    cleaned: list[str] = []
-    for stmt in out:
-        while stmt.startswith("--"):
-            newline = stmt.find("\n")
-            if newline == -1:
-                break
-            stmt = stmt[newline + 1 :].lstrip()
-        if stmt:
-            cleaned.append(stmt)
-    return cleaned
-
-
-def norm_type(raw: str) -> str:
-    t = raw.strip().lower()
-    if t == "uuid":
-        return "uuid"
-    if t.startswith("varchar") or t.startswith("char"):
-        m = re.search(r"\((\d+)\)", t)
-        return f"varchar({m.group(1)})" if m else "varchar"
-    if t == "text":
-        return "text"
-    if t in {"jsonb", "json"}:
-        return "json"
-    if t in {"timestamptz", "timestamp", "timestamp with time zone", "timestamp without time zone"}:
-        return "timestamp"
-    if t in {"boolean", "bool"}:
-        return "bool"
-    if t in {"int", "integer", "int4"}:
-        return "int"
-    if t in {"bigint", "int8"}:
-        return "bigint"
-    if t in {"numeric", "decimal"} or t.startswith("numeric"):
-        return "numeric"
-    if t == "bytea":
-        return "bytes"
-    return "enum" if re.fullmatch(r"[a-z_]+", t) else t
-
-
-def parse_final(sql: str) -> dict[str, Any]:
-    tables: dict[str, Any] = {}
-    indexes: list[dict[str, Any]] = []
-    enums: list[str] = []
-    fks: list[dict[str, Any]] = []
-    storage_objects: list[dict[str, str]] = []
-    for stmt in statements(sql):
-        em = re.match(r'CREATE TYPE "([^"]+)"', stmt)
-        if em:
-            enums.append(em.group(1))
-            continue
-
-        m = re.match(r'CREATE TABLE "([^"]+)"\s*\(', stmt, re.S)
-        if m:
-            name = m.group(1)
-            body = stmt[m.end() : stmt.rindex(")")]
-            cols: dict[str, Any] = {}
-            cons: list[str] = []
-            for part in split_top_level(body):
-                if re.match(r"^(CONSTRAINT|PRIMARY KEY|UNIQUE|CHECK|FOREIGN KEY)\b", part):
-                    cons.append(re.sub(r"\s+", " ", part))
-                    continue
-                cm = re.match(r'"([^"]+)"\s+(.*)$', part, re.S)
-                if not cm:
-                    cons.append(re.sub(r"\s+", " ", part))
-                    continue
-                cname, rest = cm.group(1), cm.group(2)
-                tokens = rest.split()
-                ttype: list[str] = []
-                i = 0
-                while i < len(tokens) and tokens[i].upper() not in COL_KEYWORDS:
-                    ttype.append(tokens[i])
-                    i += 1
-                tail = " ".join(tokens[i:])
-                cols[cname] = {
-                    "type": norm_type(" ".join(ttype)),
-                    "raw_type": " ".join(ttype),
-                    "not_null": "NOT NULL" in tail.upper(),
-                    "pk": bool(re.search(r"PRIMARY KEY", tail, re.I)),
-                    "unique": bool(re.search(r"\bUNIQUE\b", tail, re.I)),
-                    "default": None,
-                    "check": None,
-                }
-                dm = re.search(
-                    r"\bDEFAULT\s+(\(?[^)]*?\)?)(?=\s+(?:CHECK|UNIQUE|PRIMARY|REFERENCES|CONSTRAINT|NOT)\b|$)",
-                    tail,
-                    re.I,
-                )
-                if dm:
-                    cols[cname]["default"] = dm.group(1).strip()
-                ckm = re.search(r"\bCHECK\s*\((.*)$", tail, re.I)
-                if ckm:
-                    cols[cname]["check"] = ckm.group(1).strip()
-            tables[name] = {"columns": cols, "constraints": cons}
-            continue
-
-        obj = re.match(
-            r"CREATE (?:OR REPLACE )?(FUNCTION|TRIGGER|VIEW)\s+\"?([^\"\s(]+)",
-            stmt,
-        )
-        if obj:
-            storage_objects.append({"kind": obj.group(1), "name": obj.group(2)})
-            continue
-
-        fk = re.match(
-            r'ALTER TABLE "([^"]+)" ADD (?:CONSTRAINT "[^"]+" )?FOREIGN KEY\s*\(([^)]+)\)\s*'
-            r'REFERENCES\s+"([^"]+)"\s*\(([^)]+)\)(?:\s+ON DELETE ([A-Z ]+?))?(?:\s+DEFERRABLE|$)',
-            stmt,
-            re.S,
-        )
-        if fk:
-            columns = [c.strip().strip('"') for c in fk.group(2).split(",")]
-            ref_columns = [c.strip().strip('"') for c in fk.group(4).split(",")]
-            fks.append(
-                {
-                    "table": fk.group(1),
-                    "columns": columns,
-                    "ref_table": fk.group(3),
-                    "ref_columns": ref_columns,
-                    "ondelete": (fk.group(5) or "NO ACTION").strip(),
-                    "composite": len(columns) > 1,
-                }
-            )
-            continue
-
-        im = re.match(
-            r'CREATE (UNIQUE )?INDEX(?:\s+"([^"]+)")?\s+ON\s+"([^"]+)"',
-            stmt,
-            re.S,
-        )
-        if im:
-            indexes.append(
-                {
-                    "unique": bool(im.group(1)),
-                    "name": im.group(2),
-                    "table": im.group(3),
-                    "definition": re.sub(r"\s+", " ", stmt),
-                }
-            )
-    return {
-        "tables": tables,
-        "indexes": indexes,
-        "enums": enums,
-        "fks": fks,
-        "storage_objects": storage_objects,
-    }
-
-
-def parse_models() -> dict[str, Any]:
-    sys.path.insert(0, str(ROOT / "src"))
-    from creator.infrastructure.database import metadata  # noqa: F401
-    from creator.infrastructure.database.db import Base
-
-    out: dict[str, Any] = {}
-    for name, table in Base.metadata.tables.items():
-        cols: dict[str, Any] = {}
-        for col in table.columns:
-            cols[col.name] = {
-                "type": str(col.type),
-                "nullable": bool(col.nullable),
-                "pk": bool(col.primary_key),
-                "unique": bool(col.unique),
-                "default": None if col.default is None else str(col.default.arg)[:80],
-                "fk": sorted(str(fk.target_fullname) for fk in col.foreign_keys),
-            }
-        fks = []
-        for constraint in table.foreign_key_constraints:
-            local = [c.name for c in constraint.columns]
-            element = next(iter(constraint.elements))
-            fks.append(
-                {
-                    "columns": local,
-                    "ref_table": element.column.table.name,
-                    "ref_columns": [element.column.name],
-                    "ondelete": (constraint.ondelete or "NO ACTION").strip(),
-                    "composite": len(local) > 1,
-                }
-            )
-        out[name] = {
-            "columns": cols,
-            "constraints": sorted(
-                {type(c).__name__ + ":" + (c.name or "") for c in table.constraints}
-            ),
-            "indexes": sorted({i.name for i in table.indexes if i.name}),
-            "fks": fks,
-        }
-    return out
-
-
-def model_category(t: str) -> str:
-    t = t.upper()
-    if "CHAR(32)" in t or "UUID" in t:
-        return "uuid"
-    if "DATETIME" in t:
-        return "timestamp"
-    if "BOOLEAN" in t:
-        return "bool"
-    if "BIGINT" in t:
-        return "bigint"
-    if "INTEGER" in t or "SMALLINT" in t:
-        return "int"
-    if "NUMERIC" in t:
-        return "numeric"
-    if "TEXT" in t:
-        return "text"
-    if "JSON" in t:
-        return "json"
-    if m := re.search(r"VARCHAR\((\d+)\)", t):
-        return f"varchar({m.group(1)})"
-    if "VARCHAR" in t:
-        return "varchar"
-    if "BLOB" in t or "LARGEBINARY" in t:
-        return "bytes"
-    return "other"
-
-
-def compare(final: dict[str, Any], models: dict[str, Any]) -> dict[str, Any]:
-    ft = final["tables"]
-    gap: dict[str, Any] = {
-        "only_in_final": sorted(set(ft) - set(models)),
-        "only_in_models": sorted(set(models) - set(ft)),
-        "common": {},
-    }
-    for name in sorted(set(ft) & set(models)):
-        fcols, mcols = ft[name]["columns"], models[name]["columns"]
-        gap["common"][name] = {
-            "columns_only_in_final": sorted(set(fcols) - set(mcols)),
-            "columns_only_in_model": sorted(set(mcols) - set(fcols)),
-            "nullability_diff": [
-                {"column": c, "final": "NOT NULL", "model": "nullable"}
-                for c in sorted(set(fcols) & set(mcols))
-                if fcols[c]["not_null"] and mcols[c]["nullable"]
-            ],
-            "enum_columns": [
-                c for c in sorted(set(fcols) & set(mcols)) if fcols[c]["type"] == "enum"
-            ],
-            "length_diff": [
-                (c, fcols[c]["type"], model_category(mcols[c]["type"]))
-                for c in sorted(set(fcols) & set(mcols))
-                if (
-                    fcols[c]["type"].startswith("varchar(")
-                    and model_category(mcols[c]["type"]).startswith("varchar(")
-                    and fcols[c]["type"] != model_category(mcols[c]["type"])
-                )
-                or (fcols[c]["type"] == "bigint" and model_category(mcols[c]["type"]) == "int")
-            ],
-        }
-    final_fks = {(f["table"], tuple(f["columns"])): f for f in final["fks"]}
-    model_fks = {
-        (table, tuple(fk["columns"])): fk for table, info in models.items() for fk in info["fks"]
-    }
-    gap["fk_only_in_final"] = sorted(
-        f"{t}({','.join(cols)})->{fk['ref_table']}[{fk['ondelete']}]"
-        for (t, cols), fk in final_fks.items()
-        if (t, cols) not in model_fks
-    )
-    gap["fk_only_in_model"] = sorted(
-        f"{t}({','.join(cols)})->{fk['ref_table']}[{fk['ondelete']}]"
-        for (t, cols), fk in model_fks.items()
-        if (t, cols) not in final_fks
-    )
-    gap["fk_ondelete_mismatch"] = sorted(
-        f"{t}({','.join(cols)}): final {fk['ondelete']} vs ORM {model_fks[(t, cols)]['ondelete']}"
-        for (t, cols), fk in final_fks.items()
-        if (t, cols) in model_fks
-        and fk["ondelete"].upper() != model_fks[(t, cols)]["ondelete"].upper()
-    )
-    gap["final_fk_count"] = len(final_fks)
-    composites = [fk for fk in final_fks.values() if fk["composite"]]
-    gap["composite_fk_count"] = len(composites)
-    gap["composite_fk_workspace"] = sum(1 for fk in composites if "workspace_id" in fk["columns"])
-    gap["composite_fk_brand"] = sum(1 for fk in composites if "brand_id" in fk["columns"])
-    return gap
-
-
-def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -> str:
-    ft = final["tables"]
-    new_tables = [t for t in gap["only_in_final"] if t not in RENAMES.values()]
-    preserved = [t for t in EXTENSIONS if t in models]
-    legacy = [t for t in LEGACY if t in models]
-    dropped = [
-        t
-        for t in gap["only_in_models"]
-        if t not in preserved and t not in legacy and t not in RENAMES
-    ]
-    unnamed = [i for i in final["indexes"] if not i["name"]]
-
-    def is_simple_rename(old: str, new: str) -> bool:
-        removed = set(models[old]["columns"]) - set(ft[new]["columns"])
-        added = set(ft[new]["columns"]) - set(models[old]["columns"])
-        return len(removed) <= 1 and len(added) <= 2
-
-    simple_renames = sum(1 for old, new in RENAMES.items() if is_simple_rename(old, new))
-
+def render(final: FinalSchema, gap: Gap, dump_hash: str, model_count: int) -> str:
+    counts = gap_counts(gap)
+    new_tables = sorted(gap.details.get("table_missing", []))
     lines: list[str] = [
         "# Alinhamento ao Creator_DB_final.sql",
         "",
-        "> Documento gerado por análise read-only de `docs/migration/Creator_DB_final.sql`",
-        "> contra `Base.metadata`. Reproduza com:",
-        ">",
-        "> ```sh",
-        "> python scripts/schema_parity_report.py",
-        "> ```",
+        "> Gerado por `scripts/schema_parity_report.py` a partir de",
+        "> `docs/migration/Creator_DB_final.sql` contra `Base.metadata`.",
+        "> Não edite à mão: regenere o arquivo.",
         "",
         "## Resumo",
         "",
-        f"- Tabelas no modelo final: **{len(ft)}**",
-        f"- Tabelas no metadata atual: **{len(models)}**",
-        f"- Tipos ENUM no modelo final: **{len(final['enums'])}**",
-        f"- Índices no modelo final: **{len(final['indexes'])}** "
-        f"({len({i['table'] for i in final['indexes']})} tabelas; "
-        f"{len(unnamed)} sem nome explícito; "
-        f"{sum(1 for i in final['indexes'] if i['unique'])} UNIQUE)",
-        f"- Tabelas novas a criar: **{len(new_tables)}**",
-        f"- Nome divergente: **{len(RENAMES)}** "
-        f"({simple_renames} rename com migração de valores, "
-        f"{len(RENAMES) - simple_renames} redesenhos)",
-        f"- Extensões de ADR preservadas: **{len(preserved)}**",
-        f"- Tabelas legadas a decidir: **{len(legacy)}**",
-        f"- Tabelas sem alvo no modelo final: **{len(dropped)}**",
-        f"- Funções/triggers/views no modelo final: **{len(final['storage_objects'])}** "
-        f"({sum(1 for o in final['storage_objects'] if o['kind'] == 'FUNCTION')} funções, "
-        f"{sum(1 for o in final['storage_objects'] if o['kind'] == 'TRIGGER')} triggers, "
-        f"{sum(1 for o in final['storage_objects'] if o['kind'] == 'VIEW')} view)",
-        f"- Foreign keys no modelo final: **{gap['final_fk_count']}** "
-        f"({gap['composite_fk_count']} compostas: {gap['composite_fk_workspace']} com "
-        f"`workspace_id` e {gap['composite_fk_brand']} com `brand_id`)",
-        f"- FKs ausentes no ORM: **{len(gap['fk_only_in_final'])}**; "
-        f"ON DELETE divergente: **{len(gap['fk_ondelete_mismatch'])}**; "
-        f"FKs só no ORM: **{len(gap['fk_only_in_model'])}**",
+        f"- Dump: `sha256 {dump_hash}`",
+        f"- Tabelas no modelo final: **{len(final.tables)}**",
+        f"- Tabelas no metadata atual: **{model_count}**",
+        f"- Tipos ENUM: **{len(final.enums)}**",
+        f"- Índices: **{len(final.indexes)}** "
+        f"({sum(1 for index in final.indexes if index.name)} nomeados, "
+        f"{sum(1 for index in final.indexes if not index.name)} anônimos)",
+        f"- Foreign keys: **{len(final.foreign_keys)}** "
+        f"({sum(1 for fk in final.foreign_keys if len(fk.columns) > 1)} compostas)",
+        f"- Funções/triggers/views: **{len(final.storage_objects)}**",
+        f"- Divergências: **{gap.total()}**",
+        "",
+        "## Divergências por categoria",
+        "",
+        "| Categoria | Ocorrências |",
+        "| --- | --- |",
+    ]
+    for category, count in counts.items():
+        lines.append(f"| `{category}` | {count} |")
+
+    lines += [
         "",
         "## 1. Tabelas com nome divergente",
         "",
-        "O nome muda, mas isso **não** implica `ALTER TABLE ... RENAME`: a maioria dos casos é",
-        "redesenho de modelo, com colunas redistribuídas para as tabelas satélite novas.",
-        "A coluna Veredito separa rename de substituição com migração de consumidores.",
+        "O mapa é aplicado uma vez na comparação, então a tabela renomeada não conta",
+        "como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:",
+        "`role` muda de vocabulário, entra `status` e sai `deleted_at`.",
         "",
-        "O único rename (`workspace_memberships` → `workspace_members`) também exige migração de",
-        "dados: o vocabulário de `role` muda (`owner/admin/editor/viewer` →",
-        "`OWNER/MANAGER/EDITOR/VIEWER`), entra `status` e sai `deleted_at`, que hoje é filtrado",
-        "pelas consultas. Não é `ALTER TABLE ... RENAME` puro.",
-        "",
-        "| Atual | Final | Colunas | Veredito |",
-        "| --- | --- | --- | --- |",
+        "| Final | Metadata |",
+        "| --- | --- |",
     ]
-    for old, new in RENAMES.items():
-        removed = len(set(models[old]["columns"]) - set(ft[new]["columns"]))
-        added = len(set(ft[new]["columns"]) - set(models[old]["columns"]))
-        verdict = (
-            "renomear + alinhar"
-            if is_simple_rename(old, new)
-            else f"substituir: {added} colunas novas, {removed} removidas"
-        )
-        n_old = len(models[old]["columns"])
-        n_new = len(ft[new]["columns"])
-        lines.append(f"| `{old}` | `{new}` | {n_old} → {n_new} | {verdict} |")
+    for final_name, model_name in sorted(RENAME_MAP.items()):
+        lines.append(f"| `{final_name}` | `{model_name}` |")
 
     lines += ["", "## 2. Tabelas do modelo final ausentes no ORM", ""]
-    for t in new_tables:
-        cols = ", ".join(f"`{c}`" for c in ft[t]["columns"])
-        n_cols = len(ft[t]["columns"])
-        n_cons = len(ft[t]["constraints"])
-        lines.append(f"- **`{t}`** ({n_cols} colunas, {n_cons} constraints): {cols}")
-
-    lines += [
-        "",
-        "## 3. Divergências nas tabelas comuns",
-        "",
-        "Legenda: `+` exigida pelo modelo final e ausente no ORM; `-` presente no ORM e ausente",
-        "no modelo final; `!` nullability divergente. `uuid`→`CHAR(32)` e `timestamptz`→`DATETIME`",
-        "são conversões portáveis esperadas (ADR-021) e não aparecem como divergência.",
-        "",
-    ]
-    for name in sorted(gap["common"]):
-        info = gap["common"][name]
-        if not (
-            info["columns_only_in_final"]
-            or info["columns_only_in_model"]
-            or info["nullability_diff"]
-            or info["enum_columns"]
-            or info["length_diff"]
-        ):
-            continue
-        lines.append(f"### `{name}`")
-        if info["columns_only_in_final"]:
-            lines.append(f"- `+` {', '.join('`' + c + '`' for c in info['columns_only_in_final'])}")
-        if info["columns_only_in_model"]:
-            lines.append(f"- `-` {', '.join('`' + c + '`' for c in info['columns_only_in_model'])}")
-        if info["nullability_diff"]:
-            cols = ", ".join(f"`{n['column']}`" for n in info["nullability_diff"])
-            lines.append(f"- `!` NOT NULL no modelo final: {cols}")
-        if info["length_diff"]:
+    if new_tables:
+        for name in new_tables:
+            table = final.tables[name]
+            columns = ", ".join(f"`{column}`" for column in table.columns)
             lines.append(
-                "- tamanho/tipo: "
-                + ", ".join(f"`{c}` final `{f}` vs ORM `{m}`" for c, f, m in info["length_diff"])
+                f"- **`{name}`** ({len(table.columns)} colunas, "
+                f"{len(table.checks)} CHECKs): {columns}"
             )
-        if info["enum_columns"]:
-            lines.append(f"- enums: {', '.join('`' + c + '`' for c in info['enum_columns'])}")
-        lines.append("")
+    else:
+        lines.append("Nenhuma.")
+    lines.append("")
 
-    lines += [
-        "## 4. Foreign keys",
-        "",
-        f"O modelo final declara {gap['final_fk_count']} FKs em `ALTER TABLE` no fim do dump.",
-        f"São {gap['composite_fk_count']} compostas — {gap['composite_fk_workspace']} com "
-        f"`workspace_id` e {gap['composite_fk_brand']} com `brand_id` — e cada uma exige UNIQUE",
-        "composta no alvo com a mesma chave. SQLite não aceita",
-        "`ALTER TABLE ... ADD CONSTRAINT`: essas FKs",
-        "precisam existir nas models para valerem no baseline criado por `create_all()`.",
-        "",
-        "> FKs das tabelas com nome divergente (seção 1) contam como ausentes porque a",
-        "> comparação é por nome de tabela; o mapeamento está naquela seção.",
-        "",
-        f"- FKs exigidas e ausentes no ORM: **{len(gap['fk_only_in_final'])}**",
-        f"- FKs com `ON DELETE` divergente: **{len(gap['fk_ondelete_mismatch'])}**",
-        f"- FKs só no ORM: **{len(gap['fk_only_in_model'])}**",
-        "",
+    sections = [
+        (
+            "3. Colunas, tipos e nullability",
+            (
+                "column_missing",
+                "column_extra",
+                "pk_mismatch",
+                "nullability",
+                "width",
+                "default_missing",
+            ),
+        ),
+        ("4. Enums", ("enum",)),
+        ("5. Índices", ("index_missing", "index_extra", "index_name")),
+        ("6. Foreign keys", ("fk_missing", "fk_extra", "fk_ondelete")),
+        ("7. CHECK constraints", ("check_missing", "check_extra")),
     ]
-    if gap["fk_only_in_final"]:
-        lines.append("### FKs ausentes no ORM")
-        lines += [f"- `{item}`" for item in gap["fk_only_in_final"]]
-        lines.append("")
-    if gap["fk_ondelete_mismatch"]:
-        lines.append("### ON DELETE divergente")
-        lines += [f"- `{item}`" for item in gap["fk_ondelete_mismatch"]]
-        lines.append("")
-    if gap["fk_only_in_model"]:
-        lines.append("### FKs só no ORM")
-        lines += [f"- `{item}`" for item in gap["fk_only_in_model"]]
-        lines.append("")
-
-    lines += [
-        "## 5. Índices por tabela",
-        "",
-        f"O modelo final declara {len(final['indexes'])} índices: "
-        f"{sum(1 for i in final['indexes'] if i['name'])} com nome explícito e "
-        f"{len(unnamed)} anônimos.",
-        "SQLite **exige** nome em `CREATE INDEX` (não existe `CREATE INDEX ON tabela`), então os",
-        "anônimos recebem nome na metadata. Os nomes explícitos do dump (`idx_m8_*`, `uq_*`) são",
-        "preservados para manter a paridade com a fonte.",
-        "",
-    ]
-    by_table: dict[str, list[dict[str, Any]]] = {}
-    for idx in final["indexes"]:
-        by_table.setdefault(idx["table"], []).append(idx)
-    for table in sorted(by_table):
-        lines.append(f"### `{table}`")
-        for idx in by_table[table]:
-            lines.append(f"- `{idx['definition']}`")
-        lines.append("")
-
-    lines += ["## 6. Constraints CHECK/UNIQUE", ""]
-    for table in sorted(ft):
-        if ft[table]["constraints"]:
-            lines.append(f"**`{table}`**")
-            for con in ft[table]["constraints"]:
-                lines.append(f"- `{con}`")
+    for title, categories in sections:
+        total = sum(counts.get(category, 0) for category in categories)
+        lines += [f"## {title}", "", f"Total: **{total}**.", ""]
+        if not total:
+            lines += ["Sem divergência.", ""]
+            continue
+        for category in categories:
+            items = gap.details.get(category, [])
+            if not items:
+                continue
+            lines += [f"### `{category}` ({len(items)})", ""]
+            lines += [f"- `{item}`" for item in items]
             lines.append("")
 
     lines += [
-        "## 7. Funções, triggers e views",
+        "## 8. Funções, triggers e views",
         "",
-        "Estes objetos carregam regra de negócio no banco (imutabilidade do ledger, validação de",
-        "lote, `updated_at`, snapshot de cupom, histórico append-only). Eles não são expressos por",
-        "models e não entram na paridade tabela-coluna, mas precisam de decisão explícita objeto a",
-        "objeto: portar como trigger SQLite, mover para a aplicação com teste equivalente, ou",
-        "declarar fora de escopo com justificativa. Nenhum fica sem classificação.",
+        "Objetos com regra de negócio no banco. A decisão é objeto a objeto na tarefa",
+        "T20 (`SHC-21`), que classifica cada um em trigger SQLite, guarda de aplicação",
+        "com teste, ou fora de escopo justificado.",
         "",
         "| Tipo | Nome |",
         "| --- | --- |",
     ]
-    for obj in final["storage_objects"]:
-        lines.append(f"| {obj['kind']} | `{obj['name']}` |")
+    for kind, name in final.storage_objects:
+        lines.append(f"| {kind} | `{name}` |")
     lines.append("")
 
     lines += [
-        "## 8. Tabelas fora do modelo final",
+        "## 9. Tabelas fora do modelo final",
         "",
-        "| Tabela | Categoria | Ação |",
-        "| --- | --- | --- |",
+        "| Tabela | Categoria |",
+        "| --- | --- |",
     ]
-    for t in preserved:
-        lines.append(f"| `{t}` | extensão de ADR | manter |")
-    for t in legacy:
-        lines.append(f"| `{t}` | legado com consumidores | decidir em issue própria |")
-    for t in dropped:
-        lines.append(f"| `{t}` | sem alvo no modelo final | remover após migrar consumidores |")
+    for name in ADR_EXTENSIONS:
+        lines.append(f"| `{name}` | extensão de ADR (preservada) |")
+    for name in LEGACY_RETENTION:
+        lines.append(f"| `{name}` | legado com consumidores (ADR-029 decide) |")
+    for name in NO_TARGET:
+        lines.append(f"| `{name}` | sem alvo no modelo final (ADR-029 decide) |")
     lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -662,27 +164,26 @@ def render(final: dict[str, Any], models: dict[str, Any], gap: dict[str, Any]) -
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="exit 1 when drift exists")
-    parser.add_argument("--json", type=Path, help="also write the raw comparison here")
+    parser.add_argument("--json", type=Path, help="also write the raw gap here")
     parser.add_argument("--sql", type=Path, default=FINAL_SQL, help="final modeling dump")
     args = parser.parse_args()
 
-    final = parse_final(args.sql.read_text())
-    models = parse_models()
+    final = parse_final(args.sql.read_text(encoding="utf-8"))
+    models = parse_models(Base.metadata)
     gap = compare(final, models)
-    REPORT.write_text(render(final, models, gap))
-    print(f"wrote {REPORT.relative_to(ROOT)}")
+    dump_hash = sha256_file(args.sql)
+    REPORT.write_text(render(final, gap, dump_hash, len(models)), encoding="utf-8")
+    print(f"wrote {REPORT.relative_to(ROOT)} — {gap.total()} divergences")
     if args.json:
-        args.json.write_text(json.dumps(gap, indent=2, ensure_ascii=False))
+        payload = {
+            "counts": gap_counts(gap),
+            "digest": gap_digest(gap),
+            "details": gap.details,
+        }
+        args.json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"wrote {args.json}")
 
-    drift = bool(gap["only_in_final"] or gap["only_in_models"]) or any(
-        info["columns_only_in_final"]
-        or info["columns_only_in_model"]
-        or info["nullability_diff"]
-        or info["length_diff"]
-        for info in gap["common"].values()
-    )
-    if args.check and drift:
+    if args.check and gap.total():
         print("schema drift detected", file=sys.stderr)
         return 1
     return 0

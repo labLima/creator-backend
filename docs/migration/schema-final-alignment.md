@@ -1,838 +1,818 @@
 # Alinhamento ao Creator_DB_final.sql
 
-> Documento gerado por análise read-only de `docs/migration/Creator_DB_final.sql`
-> contra `Base.metadata`. Reproduza com:
->
-> ```sh
-> python scripts/schema_parity_report.py
-> ```
+> Gerado por `scripts/schema_parity_report.py` a partir de
+> `docs/migration/Creator_DB_final.sql` contra `Base.metadata`.
+> Não edite à mão: regenere o arquivo.
 
 ## Resumo
 
+- Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
 - Tabelas no metadata atual: **53**
-- Tipos ENUM no modelo final: **52**
-- Índices no modelo final: **173** (52 tabelas; 123 sem nome explícito; 54 UNIQUE)
-- Tabelas novas a criar: **18**
-- Nome divergente: **5** (1 rename com migração de valores, 4 redesenhos)
-- Extensões de ADR preservadas: **4**
-- Tabelas legadas a decidir: **11**
-- Tabelas sem alvo no modelo final: **2**
-- Funções/triggers/views no modelo final: **70** (11 funções, 58 triggers, 1 view)
-- Foreign keys no modelo final: **101** (10 compostas: 6 com `workspace_id` e 4 com `brand_id`)
-- FKs ausentes no ORM: **65**; ON DELETE divergente: **35**; FKs só no ORM: **65**
+- Tipos ENUM: **52**
+- Índices: **173** (50 nomeados, 123 anônimos)
+- Foreign keys: **101** (10 compostas)
+- Funções/triggers/views: **70**
+- Divergências: **700**
+
+## Divergências por categoria
+
+| Categoria | Ocorrências |
+| --- | --- |
+| `table_missing` | 22 |
+| `table_extra` | 4 |
+| `pk_mismatch` | 0 |
+| `column_missing` | 132 |
+| `column_extra` | 116 |
+| `nullability` | 10 |
+| `width` | 27 |
+| `enum` | 35 |
+| `index_missing` | 108 |
+| `index_extra` | 11 |
+| `index_name` | 29 |
+| `fk_missing` | 63 |
+| `fk_extra` | 49 |
+| `fk_ondelete` | 35 |
+| `check_missing` | 49 |
+| `check_extra` | 4 |
+| `default_missing` | 6 |
 
 ## 1. Tabelas com nome divergente
 
-O nome muda, mas isso **não** implica `ALTER TABLE ... RENAME`: a maioria dos casos é
-redesenho de modelo, com colunas redistribuídas para as tabelas satélite novas.
-A coluna Veredito separa rename de substituição com migração de consumidores.
+O mapa é aplicado uma vez na comparação, então a tabela renomeada não conta
+como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
+`role` muda de vocabulário, entra `status` e sai `deleted_at`.
 
-O único rename (`workspace_memberships` → `workspace_members`) também exige migração de
-dados: o vocabulário de `role` muda (`owner/admin/editor/viewer` →
-`OWNER/MANAGER/EDITOR/VIEWER`), entra `status` e sai `deleted_at`, que hoje é filtrado
-pelas consultas. Não é `ALTER TABLE ... RENAME` puro.
-
-| Atual | Final | Colunas | Veredito |
-| --- | --- | --- | --- |
-| `workspace_memberships` | `workspace_members` | 7 → 8 | renomear + alinhar |
-| `planning` | `content_plans` | 24 → 11 | substituir: 3 colunas novas, 16 removidas |
-| `post_structure` | `posts` | 18 → 17 | substituir: 12 colunas novas, 13 removidas |
-| `design_structure` | `post_designs` | 5 → 6 | substituir: 3 colunas novas, 2 removidas |
-| `generated_image` | `generated_images` | 11 → 23 | substituir: 19 colunas novas, 7 removidas |
+| Final | Metadata |
+| --- | --- |
+| `workspace_members` | `workspace_memberships` |
 
 ## 2. Tabelas do modelo final ausentes no ORM
 
-- **`audit_logs`** (11 colunas, 0 constraints): `id`, `actor_id`, `workspace_id`, `action`, `entity_type`, `entity_id`, `before`, `after`, `ip_address`, `user_agent`, `created_at`
-- **`brand_business_details`** (10 colunas, 0 constraints): `id`, `brand_id`, `campaign_id`, `persona_id`, `output`, `model`, `spec_version`, `created_by`, `created_at`, `updated_at`
-- **`brand_hashtags`** (5 colunas, 0 constraints): `id`, `brand_id`, `hashtag`, `created_at`, `updated_at`
-- **`brand_values`** (5 colunas, 0 constraints): `id`, `brand_id`, `value`, `created_at`, `updated_at`
-- **`campaign_hashtags`** (5 colunas, 0 constraints): `id`, `campaign_id`, `hashtag`, `created_at`, `updated_at`
-- **`campaign_voices`** (6 colunas, 0 constraints): `id`, `campaign_id`, `voice`, `created_by`, `created_at`, `updated_at`
-- **`captions`** (8 colunas, 0 constraints): `id`, `post_id`, `created_by`, `body`, `version`, `is_current`, `created_at`, `updated_at`
-- **`charge_transactions`** (10 colunas, 1 constraints): `id`, `charge_id`, `provider`, `external_id`, `status`, `amount_cents`, `gateway_response`, `antifraud_response`, `created_at`, `updated_at`
-- **`content_plan_items`** (6 colunas, 0 constraints): `id`, `content_plan_id`, `format`, `quantity`, `created_at`, `updated_at`
-- **`content_plan_special_dates`** (6 colunas, 0 constraints): `id`, `content_plan_id`, `special_date`, `label`, `created_at`, `updated_at`
-- **`design_slides`** (9 colunas, 0 constraints): `id`, `post_design_id`, `position`, `headline`, `subtitle`, `cta`, `art_direction`, `created_at`, `updated_at`
-- **`fiscal_invoices`** (21 colunas, 3 constraints): `id`, `billing_account_id`, `order_id`, `invoice_id`, `subscription_id`, `number`, `series`, `access_key`, `service_code`, `amount_cents`, `currency`, `status`, `pdf_storage_bucket`, `pdf_storage_key`, `xml_storage_bucket`, `xml_storage_key`, `error_message`, `issued_at`, `canceled_at`, `created_at`, `updated_at`
-- **`image_resizes`** (14 colunas, 5 constraints): `id`, `source_image_id`, `ratio`, `status`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `error_message`, `created_by`, `created_at`, `updated_at`
-- **`persona_interests`** (5 colunas, 0 constraints): `id`, `persona_id`, `interest`, `created_at`, `updated_at`
-- **`plan_payment_methods`** (6 colunas, 0 constraints): `id`, `plan_id`, `method`, `max_installments`, `created_at`, `updated_at`
-- **`user_consents`** (10 colunas, 0 constraints): `id`, `user_id`, `type`, `document_version`, `granted`, `granted_at`, `revoked_at`, `ip_address`, `user_agent`, `created_at`
-- **`workspace_credit_lot_consumptions`** (6 colunas, 0 constraints): `id`, `workspace_id`, `lot_id`, `transaction_id`, `amount`, `created_at`
-- **`workspace_credit_lots`** (8 colunas, 1 constraints): `id`, `workspace_id`, `grant_transaction_id`, `original_amount`, `remaining_amount`, `expires_at`, `created_at`, `updated_at`
-
-## 3. Divergências nas tabelas comuns
-
-Legenda: `+` exigida pelo modelo final e ausente no ORM; `-` presente no ORM e ausente
-no modelo final; `!` nullability divergente. `uuid`→`CHAR(32)` e `timestamptz`→`DATETIME`
-são conversões portáveis esperadas (ADR-021) e não aparecem como divergência.
-
-### `billing_accounts`
-- `+` `document_hash`, `external_code`, `external_id`
-- `-` `deleted_at`, `document_type`, `provider_customer_code`, `provider_customer_id`
-- `!` NOT NULL no modelo final: `provider`
-- tamanho/tipo: `email` final `varchar(254)` vs ORM `varchar(64)`
-- enums: `payer_type`, `provider`
-
-### `billing_addresses`
-- `+` `country`, `district`, `external_id`, `is_default`, `line_1`, `line_2`, `metadata`, `status`
-- `-` `complement`, `deleted_at`, `neighborhood`, `street`
-- `!` NOT NULL no modelo final: `city`, `number`, `state`, `zip_code`
-- tamanho/tipo: `number` final `varchar(20)` vs ORM `varchar(16)`, `state` final `varchar(2)` vs ORM `varchar(16)`, `zip_code` final `varchar(8)` vs ORM `varchar(16)`
-
-### `billing_payment_methods`
-- `+` `billing_address_id`, `brand`, `external_id`, `external_network_token_id`, `first_six_digits`, `metadata`, `status`, `type`
-- `-` `card_brand`, `card_status`, `card_type`, `deleted_at`, `provider_card_id`
-
-### `brand_assets`
-- `+` `created_by`, `storage_bucket`, `storage_key`
-- `-` `deleted_at`, `file_url`
-- enums: `type`
-
-### `brand_colors`
-- `+` `hex`, `name`, `position`
-- `-` `brand_goals`, `brand_indicators`, `brand_inspirations`, `brand_main_hashtags`, `brand_name`, `brand_promise`, `brand_restrictions`, `brand_segment`, `brand_values`, `color_name`, `created_by`, `deleted_at`, `hex_code`, `order`, `workspace_id`
-
-### `brands`
-- `+` `created_by`, `goals`, `indicators`, `inspirations`, `promise`, `restrictions`, `segment`
-- `-` `brand_voice`, `created_by_user_id`, `description`, `metadata`
-- tamanho/tipo: `name` final `varchar(100)` vs ORM `varchar(255)`
-
-### `campaigns`
-- `+` `brand_id`, `expected_action`
-- `-` `end_at`, `start_at`, `voice`, `workspace_id`
-- tamanho/tipo: `name` final `varchar(100)` vs ORM `varchar(30)`
-
-### `charges`
-- `+` `canceled_amount_cents`, `canceled_at`, `code`, `due_at`, `external_id`, `funding_source`, `gateway_id`, `installments`, `order_id`, `paid_amount_cents`, `paid_at`, `payment_method`, `payment_method_id`, `provider`, `provider_payload`
-- `-` `deleted_at`, `provider_card_id`, `provider_charge_id`
-- tamanho/tipo: `amount_cents` final `bigint` vs ORM `int`
-
-### `coupon_redemptions`
-- `+` `canceled_at`, `credit_transaction_id`, `currency`, `external_id`, `invoice_id`, `once_per_workspace`, `provider`, `redeemed_at`, `user_id`, `workspace_id`
-- `-` `billing_account_id`, `deleted_at`, `provider_discount_id`
-- tamanho/tipo: `discount_amount_cents` final `bigint` vs ORM `int`
-- enums: `status`
-
-### `coupons`
-- `+` `credits`, `credits_validity_days`, `currency`
-- `-` `credits_amount`, `redemptions_count`
-- tamanho/tipo: `min_purchase_cents` final `bigint` vs ORM `int`
-- enums: `applies_to`, `type`
-
-### `credit_packages`
-- `+` `credits`, `credits_validity_days`
-- `-` `code`, `credits_amount`, `deleted_at`
-- tamanho/tipo: `price_cents` final `bigint` vs ORM `int`
-
-### `invoices`
-- `+` `external_id`, `provider`
-- `-` `deleted_at`, `provider_charge_id`, `provider_invoice_id`
-- `!` NOT NULL no modelo final: `subscription_id`
-- tamanho/tipo: `amount_cents` final `bigint` vs ORM `int`, `total_discount_cents` final `bigint` vs ORM `int`, `total_increment_cents` final `bigint` vs ORM `int`
-- enums: `payment_method`, `status`
-
-### `notification_preferences`
-- `-` `deleted_at`
-- enums: `channel`, `type`
-
-### `notification_recipients`
-- `+` `external_message_id`
-- `-` `deleted_at`, `provider_message_id`, `workspace_member_id`
-- enums: `channel`, `status`
-
-### `notifications`
-- `-` `deleted_at`
-- enums: `resource_type`, `type`
-
-### `orders`
-- `+` `code`, `external_id`, `provider`
-- `-` `closed`, `deleted_at`, `provider_order_id`
-- tamanho/tipo: `amount_cents` final `bigint` vs ORM `int`, `discount_cents` final `bigint` vs ORM `int`, `subtotal_cents` final `bigint` vs ORM `int`
-- enums: `status`
-
-### `personas`
-- `+` `age_range`, `trigger_event`
-- `-` `age`, `interest`, `trigger`
-- tamanho/tipo: `name` final `varchar(100)` vs ORM `varchar(30)`
-- enums: `gender`
-
-### `plan_items`
-- `+` `currency`, `external_id`, `provider`
-- `-` `deleted_at`, `gateway_id`, `provider_plan_item_id`
-- `!` NOT NULL no modelo final: `status`
-- tamanho/tipo: `price_cents` final `bigint` vs ORM `int`
-- enums: `pricing_scheme_type`, `status`
-
-### `plans`
-- `+` `billing_interval`, `billing_type`, `credits_per_month`, `credits_validity_days`, `currency`, `external_id`, `interval_count`, `minimum_price_cents`, `price_cents`, `provider`, `statement_descriptor`, `status`, `trial_period_days`
-- `-` `code`, `description`, `is_active`
-- enums: `type`
-
-### `provider_disputes`
-- `+` `amount_cents`, `currency`, `external_id`, `provider`, `resolved_at`, `result`
-- `-` `code`, `deleted_at`, `provider_dispute_id`
-- enums: `status`
-
-### `provider_idempotency_keys`
-- `+` `expires_at`
-- `-` `deleted_at`
-- enums: `provider`, `status`
-
-### `provider_webhook_events`
-- `+` `external_id`
-- `-` `created_at`, `deleted_at`, `provider_event_id`
-- enums: `provider`, `status`
-
-### `refunds`
-- `+` `charge_id`, `external_id`, `metadata`, `processed_at`, `provider`, `reason_code`, `requested_by`
-- `-` `billing_account_id`, `deleted_at`, `invoice_id`, `provider_charge_id`, `provider_refund_id`, `reason`
-- tamanho/tipo: `amount_cents` final `bigint` vs ORM `int`
-- enums: `status`
-
-### `subscription_history`
-- `+` `changed_by`, `new_plan_id`, `new_provider_status`, `new_status`, `old_plan_id`, `old_provider_status`, `old_status`, `reason_code`, `reason_text`
-- `-` `deleted_at`, `plan_id`, `previous_plan_id`, `previous_status`, `reason`, `status`, `updated_at`
-- enums: `change_type`
-
-### `subscriptions`
-- `+` `billing_interval`, `contracted_price_cents`, `currency`, `current_cycle_id`, `external_code`, `external_id`, `payment_method_id`, `provider`, `status_reason`
-- `-` `billing_day`, `deleted_at`, `interval`, `provider_card_id`, `provider_code`, `provider_subscription_id`, `start_at`
-- `!` NOT NULL no modelo final: `installments`
-- tamanho/tipo: `minimum_price_cents` final `bigint` vs ORM `int`
-- enums: `billing_type`, `payment_method`, `provider_status`, `status`
-
-### `user_devices`
-- `-` `deleted_at`
-- enums: `platform`
-
-### `users`
-- `+` `auth_provider_id`
-- `-` `cnpj`, `cpf`, `external_id`, `global_role`, `password_hash`
-- `!` NOT NULL no modelo final: `display_name`
-- tamanho/tipo: `email` final `varchar(254)` vs ORM `varchar(320)`
-
-### `workspace_credit_transactions`
-- `+` `balance_after`, `created_by`, `generated_image_id`, `image_resize_id`, `invoice_id`, `order_id`, `type`
-- `-` `deleted_at`, `reference_id`, `reference_type`, `transaction_type`, `updated_at`
-
-### `workspace_invite_usages`
-- `-` `created_at`, `deleted_at`, `user_id`, `workspace_id`
-- `!` NOT NULL no modelo final: `member_id`
-
-### `workspace_invites`
-- `+` `token_hash`
-- `-` `deleted_at`, `is_active`, `token`, `uses_count`
-- tamanho/tipo: `email` final `varchar(254)` vs ORM `varchar(255)`
-- enums: `role`, `status`, `type`
-
-## 4. Foreign keys
-
-O modelo final declara 101 FKs em `ALTER TABLE` no fim do dump.
-São 10 compostas — 6 com `workspace_id` e 4 com `brand_id` — e cada uma exige UNIQUE
-composta no alvo com a mesma chave. SQLite não aceita
-`ALTER TABLE ... ADD CONSTRAINT`: essas FKs
-precisam existir nas models para valerem no baseline criado por `create_all()`.
-
-> FKs das tabelas com nome divergente (seção 1) contam como ausentes porque a
-> comparação é por nome de tabela; o mapeamento está naquela seção.
-
-- FKs exigidas e ausentes no ORM: **65**
-- FKs com `ON DELETE` divergente: **35**
-- FKs só no ORM: **65**
-
-### FKs ausentes no ORM
-- `audit_logs(actor_id)->users[SET NULL]`
-- `audit_logs(workspace_id)->workspaces[SET NULL]`
-- `billing_payment_methods(billing_address_id)->billing_addresses[SET NULL]`
-- `brand_assets(created_by)->users[SET NULL]`
-- `brand_business_details(brand_id)->brands[CASCADE]`
-- `brand_business_details(campaign_id,brand_id)->campaigns[CASCADE]`
-- `brand_business_details(created_by)->users[SET NULL]`
-- `brand_business_details(persona_id,brand_id)->personas[CASCADE]`
-- `brand_hashtags(brand_id)->brands[CASCADE]`
-- `brand_values(brand_id)->brands[CASCADE]`
-- `brands(created_by)->users[SET NULL]`
-- `campaign_hashtags(campaign_id)->campaigns[CASCADE]`
-- `campaign_voices(campaign_id)->campaigns[CASCADE]`
-- `campaigns(brand_id)->brands[CASCADE]`
-- `captions(created_by)->users[SET NULL]`
-- `captions(post_id)->posts[CASCADE]`
-- `charge_transactions(charge_id)->charges[CASCADE]`
-- `charges(order_id)->orders[SET NULL]`
-- `charges(payment_method_id)->billing_payment_methods[SET NULL]`
-- `content_plan_items(content_plan_id)->content_plans[CASCADE]`
-- `content_plan_special_dates(content_plan_id)->content_plans[CASCADE]`
-- `content_plans(brand_id)->brands[CASCADE]`
-- `content_plans(campaign_id,brand_id)->campaigns[CASCADE]`
-- `content_plans(created_by)->users[SET NULL]`
-- `content_plans(persona_id,brand_id)->personas[CASCADE]`
-- `coupon_redemptions(credit_transaction_id)->workspace_credit_transactions[SET NULL]`
-- `coupon_redemptions(invoice_id)->invoices[SET NULL]`
-- `coupon_redemptions(order_id,workspace_id)->orders[RESTRICT]`
-- `coupon_redemptions(subscription_id,workspace_id)->subscriptions[RESTRICT]`
-- `coupon_redemptions(user_id)->users[RESTRICT]`
-- `design_slides(post_design_id)->post_designs[CASCADE]`
-- `fiscal_invoices(billing_account_id)->billing_accounts[RESTRICT]`
-- `fiscal_invoices(invoice_id)->invoices[RESTRICT]`
-- `fiscal_invoices(order_id)->orders[RESTRICT]`
-- `fiscal_invoices(subscription_id)->subscriptions[RESTRICT]`
-- `generated_images(approved_by)->users[SET NULL]`
-- `generated_images(created_by)->users[SET NULL]`
-- `generated_images(design_slide_id)->design_slides[CASCADE]`
-- `image_resizes(created_by)->users[SET NULL]`
-- `image_resizes(source_image_id)->generated_images[CASCADE]`
-- `persona_interests(persona_id)->personas[CASCADE]`
-- `plan_payment_methods(plan_id)->plans[CASCADE]`
-- `post_designs(post_id)->posts[CASCADE]`
-- `posts(approved_by)->users[SET NULL]`
-- `posts(content_plan_id)->content_plans[CASCADE]`
-- `posts(created_by)->users[SET NULL]`
-- `refunds(charge_id)->charges[RESTRICT]`
-- `refunds(requested_by)->users[SET NULL]`
-- `subscription_history(changed_by)->users[SET NULL]`
-- `subscription_history(new_plan_id)->plans[SET NULL]`
-- `subscription_history(old_plan_id)->plans[SET NULL]`
-- `subscriptions(payment_method_id)->billing_payment_methods[SET NULL]`
-- `user_consents(user_id)->users[RESTRICT]`
-- `workspace_credit_lot_consumptions(lot_id,workspace_id)->workspace_credit_lots[RESTRICT]`
-- `workspace_credit_lot_consumptions(transaction_id,workspace_id)->workspace_credit_transactions[RESTRICT]`
-- `workspace_credit_lots(grant_transaction_id,workspace_id)->workspace_credit_transactions[RESTRICT]`
-- `workspace_credit_lots(workspace_id)->workspaces[RESTRICT]`
-- `workspace_credit_transactions(created_by)->users[SET NULL]`
-- `workspace_credit_transactions(generated_image_id)->generated_images[RESTRICT]`
-- `workspace_credit_transactions(image_resize_id)->image_resizes[RESTRICT]`
-- `workspace_credit_transactions(invoice_id)->invoices[RESTRICT]`
-- `workspace_credit_transactions(order_id,workspace_id)->orders[RESTRICT]`
-- `workspace_members(invited_by)->users[SET NULL]`
-- `workspace_members(user_id)->users[CASCADE]`
-- `workspace_members(workspace_id)->workspaces[CASCADE]`
-
-### ON DELETE divergente
-- `billing_accounts(user_id): final RESTRICT vs ORM CASCADE`
-- `billing_addresses(billing_account_id): final CASCADE vs ORM NO ACTION`
-- `billing_payment_methods(billing_account_id): final CASCADE vs ORM NO ACTION`
-- `brand_assets(brand_id): final CASCADE vs ORM NO ACTION`
-- `brand_colors(brand_id): final CASCADE vs ORM NO ACTION`
-- `brands(workspace_id): final CASCADE vs ORM RESTRICT`
-- `campaigns(created_by): final SET NULL vs ORM NO ACTION`
-- `charges(billing_account_id): final RESTRICT vs ORM NO ACTION`
-- `charges(invoice_id): final SET NULL vs ORM NO ACTION`
-- `coupon_redemptions(coupon_id): final RESTRICT vs ORM NO ACTION`
-- `coupons(created_by): final SET NULL vs ORM NO ACTION`
-- `invoices(billing_account_id): final RESTRICT vs ORM NO ACTION`
-- `invoices(subscription_id): final RESTRICT vs ORM NO ACTION`
-- `notification_preferences(user_id): final CASCADE vs ORM NO ACTION`
-- `notification_recipients(notification_id): final CASCADE vs ORM NO ACTION`
-- `notification_recipients(user_id): final CASCADE vs ORM NO ACTION`
-- `notifications(created_by): final SET NULL vs ORM NO ACTION`
-- `notifications(workspace_id): final CASCADE vs ORM NO ACTION`
-- `orders(billing_account_id): final RESTRICT vs ORM NO ACTION`
-- `orders(credit_package_id): final SET NULL vs ORM NO ACTION`
-- `orders(workspace_id): final RESTRICT vs ORM NO ACTION`
-- `personas(brand_id): final CASCADE vs ORM NO ACTION`
-- `personas(created_by): final SET NULL vs ORM NO ACTION`
-- `provider_disputes(billing_account_id): final RESTRICT vs ORM NO ACTION`
-- `provider_disputes(charge_id): final RESTRICT vs ORM NO ACTION`
-- `subscription_history(subscription_id): final CASCADE vs ORM NO ACTION`
-- `subscriptions(billing_account_id): final RESTRICT vs ORM NO ACTION`
-- `subscriptions(plan_id): final RESTRICT vs ORM NO ACTION`
-- `subscriptions(workspace_id): final RESTRICT vs ORM NO ACTION`
-- `user_devices(user_id): final CASCADE vs ORM NO ACTION`
-- `workspace_credit_transactions(workspace_id): final RESTRICT vs ORM NO ACTION`
-- `workspace_invite_usages(invite_id): final CASCADE vs ORM NO ACTION`
-- `workspace_invite_usages(member_id): final CASCADE vs ORM NO ACTION`
-- `workspace_invites(created_by): final RESTRICT vs ORM NO ACTION`
-- `workspace_invites(workspace_id): final CASCADE vs ORM NO ACTION`
-
-### FKs só no ORM
-- `activity_events(brand_id)->brands[RESTRICT]`
-- `activity_events(user_id)->users[RESTRICT]`
-- `activity_events(workspace_id)->workspaces[RESTRICT]`
-- `agent_workflow_runs(brand_id,workspace_id)->brands[RESTRICT]`
-- `agent_workflow_runs(content_id,workspace_id)->contents[RESTRICT]`
-- `agent_workflow_runs(requested_by_user_id)->users[SET NULL]`
-- `agent_workflow_runs(workspace_id)->workspaces[RESTRICT]`
-- `agent_workflow_steps(run_id,workspace_id)->agent_workflow_runs[CASCADE]`
-- `assets(brand_id,workspace_id)->brands[RESTRICT]`
-- `assets(content_id,workspace_id)->contents[RESTRICT]`
-- `assets(project_id,workspace_id)->projects[RESTRICT]`
-- `assets(uploaded_by_user_id)->users[SET NULL]`
-- `assets(workspace_id)->workspaces[RESTRICT]`
-- `auth_sessions(user_id)->users[CASCADE]`
-- `brand_colors(created_by)->users[NO ACTION]`
-- `brand_colors(workspace_id)->workspaces[NO ACTION]`
-- `brand_settings(brand_id,workspace_id)->brands[CASCADE]`
-- `brand_settings(workspace_id)->workspaces[RESTRICT]`
-- `brands(created_by_user_id)->users[SET NULL]`
-- `campaigns(workspace_id)->workspaces[NO ACTION]`
-- `content_text_versions(content_id,workspace_id)->contents[RESTRICT]`
-- `content_text_versions(generation_id)->generations[RESTRICT]`
-- `contents(brand_id,workspace_id)->brands[RESTRICT]`
-- `contents(created_by_user_id)->users[SET NULL]`
-- `contents(project_id,workspace_id)->projects[RESTRICT]`
-- `contents(workspace_id)->workspaces[RESTRICT]`
-- `coupon_redemptions(billing_account_id)->billing_accounts[NO ACTION]`
-- `coupon_redemptions(order_id)->orders[NO ACTION]`
-- `coupon_redemptions(subscription_id)->subscriptions[NO ACTION]`
-- `design_structure(post_structure_id)->post_structure[NO ACTION]`
-- `generated_image(design_structure_id)->design_structure[NO ACTION]`
-- `generated_image(workspace_id)->workspaces[NO ACTION]`
-- `generation_job_status_events(generation_job_id)->generation_jobs[CASCADE]`
-- `generation_jobs(generation_id,workspace_id)->generations[CASCADE]`
-- `generations(brand_id,workspace_id)->brands[RESTRICT]`
-- `generations(content_id,workspace_id)->contents[RESTRICT]`
-- `generations(project_id,workspace_id)->projects[RESTRICT]`
-- `generations(requested_by_user_id)->users[SET NULL]`
-- `generations(workspace_id)->workspaces[RESTRICT]`
-- `images(content_id,workspace_id)->contents[RESTRICT]`
-- `images(generation_id,workspace_id,content_id)->generations[RESTRICT]`
-- `images(workspace_id)->workspaces[RESTRICT]`
-- `notification_recipients(workspace_member_id)->workspace_memberships[NO ACTION]`
-- `outbox_events(workspace_id)->workspaces[CASCADE]`
-- `planning(brand_id)->brands[NO ACTION]`
-- `planning(campaign_id)->campaigns[NO ACTION]`
-- `planning(created_by)->users[NO ACTION]`
-- `planning(persona_id)->personas[NO ACTION]`
-- `post_structure(created_by)->users[NO ACTION]`
-- `post_structure(planning_id)->planning[NO ACTION]`
-- `post_structure(workspace_id)->workspaces[NO ACTION]`
-- `projects(brand_id,workspace_id)->brands[RESTRICT]`
-- `projects(created_by_user_id)->users[SET NULL]`
-- `projects(workspace_id)->workspaces[RESTRICT]`
-- `provider_customers(billing_account_id)->billing_accounts[NO ACTION]`
-- `provider_subscriptions(subscription_id)->subscriptions[NO ACTION]`
-- `refunds(billing_account_id)->billing_accounts[NO ACTION]`
-- `refunds(invoice_id)->invoices[NO ACTION]`
-- `settings(user_id)->users[CASCADE]`
-- `subscription_history(plan_id)->plans[NO ACTION]`
-- `subscription_history(previous_plan_id)->plans[NO ACTION]`
-- `workspace_invite_usages(user_id)->users[NO ACTION]`
-- `workspace_invite_usages(workspace_id)->workspaces[NO ACTION]`
-- `workspace_memberships(user_id)->users[CASCADE]`
-- `workspace_memberships(workspace_id)->workspaces[CASCADE]`
-
-## 5. Índices por tabela
-
-O modelo final declara 173 índices: 50 com nome explícito e 123 anônimos.
-SQLite **exige** nome em `CREATE INDEX` (não existe `CREATE INDEX ON tabela`), então os
-anônimos recebem nome na metadata. Os nomes explícitos do dump (`idx_m8_*`, `uq_*`) são
-preservados para manter a paridade com a fonte.
-
-### `audit_logs`
-- `CREATE INDEX ON "audit_logs" ("entity_type", "entity_id", "created_at")`
-- `CREATE INDEX ON "audit_logs" ("actor_id", "created_at")`
-- `CREATE INDEX ON "audit_logs" ("workspace_id", "created_at")`
-- `CREATE INDEX ON "audit_logs" ("action", "created_at")`
-
-### `billing_accounts`
-- `CREATE INDEX ON "billing_accounts" ("user_id")`
-- `CREATE INDEX ON "billing_accounts" ("document_hash")`
-- `CREATE UNIQUE INDEX ON "billing_accounts" ("provider", "external_id")`
-
-### `billing_addresses`
-- `CREATE INDEX ON "billing_addresses" ("billing_account_id")`
-- `CREATE UNIQUE INDEX "uq_billing_addresses_default" ON "billing_addresses" ("billing_account_id") WHERE "is_default" AND "status" = 'ACTIVE'`
-
-### `billing_payment_methods`
-- `CREATE UNIQUE INDEX ON "billing_payment_methods" ("billing_account_id", "external_id")`
-- `CREATE INDEX ON "billing_payment_methods" ("billing_account_id", "is_default")`
-- `CREATE UNIQUE INDEX "uq_billing_payment_methods_default" ON "billing_payment_methods" ("billing_account_id") WHERE "is_default" AND "status" = 'ACTIVE'`
-- `CREATE INDEX "idx_m8_billing_payment_methods_billing_address_id" ON "billing_payment_methods" ("billing_address_id") WHERE "billing_address_id" IS NOT NULL`
-
-### `brand_assets`
-- `CREATE INDEX ON "brand_assets" ("brand_id")`
-- `CREATE INDEX ON "brand_assets" ("created_by")`
-- `CREATE UNIQUE INDEX ON "brand_assets" ("storage_bucket", "storage_key")`
-
-### `brand_business_details`
-- `CREATE INDEX ON "brand_business_details" ("brand_id", "campaign_id", "persona_id")`
-- `CREATE INDEX ON "brand_business_details" ("created_at")`
-- `CREATE INDEX "idx_m8_brand_business_details_campaign_id_brand_id" ON "brand_business_details" ("campaign_id", "brand_id")`
-- `CREATE INDEX "idx_m8_brand_business_details_persona_id_brand_id" ON "brand_business_details" ("persona_id", "brand_id")`
-- `CREATE INDEX "idx_m8_brand_business_details_created_by" ON "brand_business_details" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `brand_colors`
-- `CREATE INDEX ON "brand_colors" ("brand_id")`
-
-### `brand_hashtags`
-- `CREATE UNIQUE INDEX ON "brand_hashtags" ("brand_id", "hashtag")`
-
-### `brand_values`
-- `CREATE UNIQUE INDEX ON "brand_values" ("brand_id", "value")`
-
-### `brands`
-- `CREATE INDEX ON "brands" ("workspace_id")`
-- `CREATE INDEX "idx_m8_brands_created_by" ON "brands" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `campaign_hashtags`
-- `CREATE UNIQUE INDEX ON "campaign_hashtags" ("campaign_id", "hashtag")`
-
-### `campaign_voices`
-- `CREATE UNIQUE INDEX ON "campaign_voices" ("campaign_id", "voice")`
-
-### `campaigns`
-- `CREATE UNIQUE INDEX ON "campaigns" ("id", "brand_id")`
-- `CREATE INDEX ON "campaigns" ("brand_id")`
-- `CREATE INDEX "idx_m8_campaigns_created_by" ON "campaigns" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `captions`
-- `CREATE UNIQUE INDEX ON "captions" ("post_id", "version")`
-- `CREATE UNIQUE INDEX "uq_captions_current" ON "captions" ("post_id") WHERE "is_current" AND "deleted_at" IS NULL`
-- `CREATE INDEX "idx_m8_captions_created_by" ON "captions" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `charge_transactions`
-- `CREATE INDEX ON "charge_transactions" ("status")`
-- `CREATE INDEX ON "charge_transactions" ("created_at")`
-- `CREATE UNIQUE INDEX ON "charge_transactions" ("charge_id", "provider", "external_id")`
-- `CREATE INDEX "idx_charge_transactions_latest" ON "charge_transactions" ("charge_id", "created_at" DESC NULLS LAST, "id" DESC)`
-
-### `charges`
-- `CREATE UNIQUE INDEX ON "charges" ("provider", "external_id")`
-- `CREATE INDEX ON "charges" ("billing_account_id", "status")`
-- `CREATE INDEX ON "charges" ("invoice_id")`
-- `CREATE INDEX ON "charges" ("order_id")`
-- `CREATE INDEX ON "charges" ("status")`
-- `CREATE INDEX ON "charges" ("code")`
-- `CREATE INDEX ON "charges" ("paid_at")`
-- `CREATE INDEX "idx_m8_charges_payment_method_id" ON "charges" ("payment_method_id") WHERE "payment_method_id" IS NOT NULL`
-
-### `content_plan_items`
-- `CREATE UNIQUE INDEX ON "content_plan_items" ("content_plan_id", "format")`
-
-### `content_plan_special_dates`
-- `CREATE UNIQUE INDEX ON "content_plan_special_dates" ("content_plan_id", "special_date", "label")`
-
-### `content_plans`
-- `CREATE INDEX ON "content_plans" ("brand_id")`
-- `CREATE INDEX ON "content_plans" ("campaign_id")`
-- `CREATE INDEX ON "content_plans" ("persona_id")`
-- `CREATE INDEX "idx_m8_content_plans_campaign_id_brand_id" ON "content_plans" ("campaign_id", "brand_id")`
-- `CREATE INDEX "idx_m8_content_plans_persona_id_brand_id" ON "content_plans" ("persona_id", "brand_id")`
-- `CREATE INDEX "idx_m8_content_plans_created_by" ON "content_plans" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `coupon_redemptions`
-- `CREATE INDEX ON "coupon_redemptions" ("coupon_id", "workspace_id")`
-- `CREATE INDEX ON "coupon_redemptions" ("user_id")`
-- `CREATE INDEX ON "coupon_redemptions" ("workspace_id")`
-- `CREATE INDEX ON "coupon_redemptions" ("order_id", "workspace_id")`
-- `CREATE INDEX ON "coupon_redemptions" ("subscription_id", "workspace_id")`
-- `CREATE UNIQUE INDEX ON "coupon_redemptions" ("provider", "external_id")`
-- `CREATE UNIQUE INDEX "uq_coupon_redemptions_once_per_workspace" ON "coupon_redemptions" ("coupon_id", "workspace_id") WHERE "once_per_workspace" AND "status" = 'APPLIED'`
-- `CREATE INDEX "idx_m8_coupon_redemptions_invoice_id" ON "coupon_redemptions" ("invoice_id") WHERE "invoice_id" IS NOT NULL`
-- `CREATE INDEX "idx_m8_coupon_redemptions_credit_transaction_id" ON "coupon_redemptions" ("credit_transaction_id") WHERE "credit_transaction_id" IS NOT NULL`
-
-### `coupons`
-- `CREATE UNIQUE INDEX "uq_coupons_code_active" ON "coupons" ("code") WHERE "deleted_at" IS NULL`
-- `CREATE INDEX ON "coupons" ("type")`
-- `CREATE INDEX ON "coupons" ("is_active")`
-- `CREATE INDEX "idx_m8_coupons_created_by" ON "coupons" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `design_slides`
-- `CREATE UNIQUE INDEX ON "design_slides" ("post_design_id", "position")`
-
-### `fiscal_invoices`
-- `CREATE UNIQUE INDEX "uq_fiscal_invoices_access_key" ON "fiscal_invoices" ("access_key") WHERE "access_key" IS NOT NULL`
-- `CREATE UNIQUE INDEX "uq_fiscal_invoices_number_series_account" ON "fiscal_invoices" ("billing_account_id", "series", "number") WHERE "series" IS NOT NULL AND "number" IS NOT NULL`
-- `CREATE INDEX ON "fiscal_invoices" ("billing_account_id")`
-- `CREATE INDEX ON "fiscal_invoices" ("status")`
-- `CREATE INDEX ON "fiscal_invoices" ("order_id")`
-- `CREATE INDEX ON "fiscal_invoices" ("invoice_id")`
-- `CREATE INDEX ON "fiscal_invoices" ("subscription_id")`
-
-### `generated_images`
-- `CREATE UNIQUE INDEX "uq_generated_images_current_per_slide" ON "generated_images" ("design_slide_id") WHERE "is_current" AND "deleted_at" IS NULL`
-- `CREATE INDEX ON "generated_images" ("design_slide_id")`
-- `CREATE INDEX ON "generated_images" ("generation_status")`
-- `CREATE INDEX ON "generated_images" ("approval_status")`
-- `CREATE INDEX ON "generated_images" ("approved_by")`
-- `CREATE UNIQUE INDEX ON "generated_images" ("storage_bucket", "storage_key")`
-- `CREATE INDEX "idx_m8_generated_images_created_by" ON "generated_images" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `image_resizes`
-- `CREATE INDEX "idx_image_resizes_source_image" ON "image_resizes" ("source_image_id")`
-- `CREATE UNIQUE INDEX "uq_image_resizes_storage" ON "image_resizes" ("storage_bucket", "storage_key")`
-- `CREATE INDEX "idx_image_resizes_created_by" ON "image_resizes" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `invoices`
-- `CREATE UNIQUE INDEX ON "invoices" ("provider", "external_id")`
-- `CREATE INDEX ON "invoices" ("billing_account_id")`
-- `CREATE INDEX ON "invoices" ("subscription_id", "due_at")`
-- `CREATE INDEX ON "invoices" ("status", "due_at")`
-
-### `notification_preferences`
-- `CREATE UNIQUE INDEX ON "notification_preferences" ("user_id", "type", "channel")`
-
-### `notification_recipients`
-- `CREATE INDEX ON "notification_recipients" ("user_id", "channel")`
-- `CREATE INDEX ON "notification_recipients" ("user_id", "read_at")`
-- `CREATE INDEX ON "notification_recipients" ("user_id", "created_at")`
-- `CREATE UNIQUE INDEX ON "notification_recipients" ("notification_id", "user_id", "channel")`
-
-### `notifications`
-- `CREATE UNIQUE INDEX ON "notifications" ("workspace_id", "dedupe_key")`
-- `CREATE INDEX ON "notifications" ("type")`
-- `CREATE INDEX ON "notifications" ("created_at")`
-- `CREATE INDEX "idx_m8_notifications_created_by" ON "notifications" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `orders`
-- `CREATE UNIQUE INDEX ON "orders" ("provider", "external_id")`
-- `CREATE UNIQUE INDEX ON "orders" ("id", "workspace_id")`
-- `CREATE INDEX ON "orders" ("billing_account_id")`
-- `CREATE INDEX ON "orders" ("workspace_id")`
-- `CREATE INDEX ON "orders" ("status")`
-- `CREATE INDEX "idx_m8_orders_credit_package_id" ON "orders" ("credit_package_id") WHERE "credit_package_id" IS NOT NULL`
-
-### `persona_interests`
-- `CREATE UNIQUE INDEX ON "persona_interests" ("persona_id", "interest")`
-
-### `personas`
-- `CREATE UNIQUE INDEX ON "personas" ("id", "brand_id")`
-- `CREATE INDEX ON "personas" ("brand_id")`
-- `CREATE INDEX "idx_m8_personas_created_by" ON "personas" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `plan_items`
-- `CREATE UNIQUE INDEX ON "plan_items" ("provider", "external_id")`
-- `CREATE INDEX "idx_m8_plan_items_plan_id" ON "plan_items" ("plan_id")`
-
-### `plan_payment_methods`
-- `CREATE UNIQUE INDEX ON "plan_payment_methods" ("plan_id", "method")`
-
-### `plans`
-- `CREATE UNIQUE INDEX ON "plans" ("provider", "external_id")`
-
-### `post_designs`
-- `CREATE INDEX ON "post_designs" ("post_id")`
-
-### `posts`
-- `CREATE INDEX ON "posts" ("content_plan_id", "publication_status")`
-- `CREATE INDEX ON "posts" ("content_plan_id", "created_at")`
-- `CREATE INDEX ON "posts" ("publication_status")`
-- `CREATE INDEX ON "posts" ("approval_status")`
-- `CREATE INDEX ON "posts" ("scheduled_at")`
-- `CREATE INDEX ON "posts" ("approved_by")`
-- `CREATE INDEX "idx_m8_posts_created_by" ON "posts" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `provider_disputes`
-- `CREATE UNIQUE INDEX ON "provider_disputes" ("provider", "external_id")`
-- `CREATE INDEX ON "provider_disputes" ("charge_id")`
-- `CREATE INDEX ON "provider_disputes" ("status", "resolved_at")`
-- `CREATE INDEX "idx_m8_provider_disputes_billing_account_id" ON "provider_disputes" ("billing_account_id") WHERE "billing_account_id" IS NOT NULL`
-
-### `provider_idempotency_keys`
-- `CREATE UNIQUE INDEX ON "provider_idempotency_keys" ("provider", "idempotency_key")`
-- `CREATE INDEX ON "provider_idempotency_keys" ("expires_at")`
-
-### `provider_webhook_events`
-- `CREATE INDEX ON "provider_webhook_events" ("event_type")`
-- `CREATE INDEX ON "provider_webhook_events" ("resource_id")`
-- `CREATE INDEX ON "provider_webhook_events" ("status", "received_at")`
-- `CREATE UNIQUE INDEX ON "provider_webhook_events" ("provider", "external_id")`
-
-### `refunds`
-- `CREATE INDEX ON "refunds" ("charge_id")`
-- `CREATE INDEX ON "refunds" ("status")`
-- `CREATE UNIQUE INDEX ON "refunds" ("provider", "external_id")`
-- `CREATE INDEX "idx_m8_refunds_requested_by" ON "refunds" ("requested_by") WHERE "requested_by" IS NOT NULL`
-
-### `subscription_history`
-- `CREATE INDEX ON "subscription_history" ("subscription_id", "created_at")`
-- `CREATE INDEX "idx_m8_subscription_history_old_plan_id" ON "subscription_history" ("old_plan_id") WHERE "old_plan_id" IS NOT NULL`
-- `CREATE INDEX "idx_m8_subscription_history_new_plan_id" ON "subscription_history" ("new_plan_id") WHERE "new_plan_id" IS NOT NULL`
-- `CREATE INDEX "idx_m8_subscription_history_changed_by" ON "subscription_history" ("changed_by") WHERE "changed_by" IS NOT NULL`
-
-### `subscriptions`
-- `CREATE UNIQUE INDEX ON "subscriptions" ("provider", "external_id")`
-- `CREATE UNIQUE INDEX ON "subscriptions" ("id", "workspace_id")`
-- `CREATE INDEX ON "subscriptions" ("billing_account_id")`
-- `CREATE INDEX ON "subscriptions" ("next_billing_at")`
-- `CREATE INDEX ON "subscriptions" ("workspace_id")`
-- `CREATE UNIQUE INDEX "uq_subscriptions_workspace_current" ON "subscriptions" ("workspace_id") WHERE "status" IN ('ACTIVE', 'TRIALING', 'PAST_DUE')`
-- `CREATE INDEX "idx_m8_subscriptions_plan_id" ON "subscriptions" ("plan_id")`
-- `CREATE INDEX "idx_m8_subscriptions_payment_method_id" ON "subscriptions" ("payment_method_id") WHERE "payment_method_id" IS NOT NULL`
-
-### `user_consents`
-- `CREATE UNIQUE INDEX ON "user_consents" ("user_id", "type", "document_version")`
-
-### `user_devices`
-- `CREATE INDEX ON "user_devices" ("user_id")`
-
-### `users`
-- `CREATE UNIQUE INDEX "uq_users_email_active" ON "users" ("email") WHERE "deleted_at" IS NULL`
-
-### `workspace_credit_lot_consumptions`
-- `CREATE INDEX ON "workspace_credit_lot_consumptions" ("transaction_id")`
-- `CREATE UNIQUE INDEX ON "workspace_credit_lot_consumptions" ("lot_id", "transaction_id")`
-- `CREATE INDEX "idx_m8_workspace_credit_lot_consumptions_lot_id_workspace_id" ON "workspace_credit_lot_consumptions" ("lot_id", "workspace_id")`
-- `CREATE INDEX "idx_m8_lot_consumptions_transaction_workspace" ON "workspace_credit_lot_consumptions" ("transaction_id", "workspace_id")`
-
-### `workspace_credit_lots`
-- `CREATE INDEX ON "workspace_credit_lots" ("workspace_id", "expires_at")`
-- `CREATE UNIQUE INDEX "uq_credit_lots_id_workspace" ON "workspace_credit_lots" ("id", "workspace_id")`
-- `CREATE INDEX "idx_m8_workspace_credit_lots_grant_transaction_id_workspace_id" ON "workspace_credit_lots" ("grant_transaction_id", "workspace_id")`
-
-### `workspace_credit_transactions`
-- `CREATE INDEX ON "workspace_credit_transactions" ("workspace_id", "created_at")`
-- `CREATE UNIQUE INDEX ON "workspace_credit_transactions" ("order_id", "type")`
-- `CREATE UNIQUE INDEX ON "workspace_credit_transactions" ("invoice_id", "type")`
-- `CREATE UNIQUE INDEX ON "workspace_credit_transactions" ("generated_image_id", "type")`
-- `CREATE UNIQUE INDEX "uq_credit_tx_id_workspace" ON "workspace_credit_transactions" ("id", "workspace_id")`
-- `CREATE UNIQUE INDEX "uq_credit_tx_image_resize" ON "workspace_credit_transactions" ("image_resize_id", "type")`
-- `CREATE INDEX "idx_m8_workspace_credit_transactions_created_by" ON "workspace_credit_transactions" ("created_by") WHERE "created_by" IS NOT NULL`
-
-### `workspace_invite_usages`
-- `CREATE INDEX ON "workspace_invite_usages" ("member_id")`
-- `CREATE UNIQUE INDEX ON "workspace_invite_usages" ("invite_id", "member_id")`
-
-### `workspace_invites`
-- `CREATE INDEX ON "workspace_invites" ("workspace_id")`
-- `CREATE INDEX ON "workspace_invites" ("email")`
-- `CREATE INDEX ON "workspace_invites" ("status")`
-- `CREATE INDEX "idx_m8_workspace_invites_created_by" ON "workspace_invites" ("created_by")`
-
-### `workspace_members`
-- `CREATE UNIQUE INDEX "uq_workspace_members_workspace_user" ON "workspace_members" ("workspace_id", "user_id")`
-- `CREATE INDEX ON "workspace_members" ("user_id")`
-- `CREATE INDEX ON "workspace_members" ("workspace_id", "role")`
-- `CREATE INDEX ON "workspace_members" ("invited_by")`
-
-## 6. Constraints CHECK/UNIQUE
-
-**`billing_accounts`**
-- `CONSTRAINT "chk_billing_accounts_company_name" CHECK ((payer_type = 'COMPANY') = (company_name IS NOT NULL))`
-- `CONSTRAINT "chk_billing_accounts_document_pair" CHECK ((document IS NULL) = (document_hash IS NULL))`
-
-**`billing_addresses`**
-- `CONSTRAINT "chk_billing_addresses_zip_code" CHECK (country <> 'BR' OR zip_code ~ '^[0-9]{8}$')`
-- `CONSTRAINT "chk_billing_addresses_state_uf" CHECK (country <> 'BR' OR state ~ '^[A-Z]{2}$')`
-
-**`billing_payment_methods`**
-- `CONSTRAINT "chk_billing_payment_methods_exp_month" CHECK (exp_month IS NULL OR exp_month BETWEEN 1 AND 12)`
-- `CONSTRAINT "chk_billing_payment_methods_exp_year" CHECK (exp_year IS NULL OR exp_year BETWEEN 2000 AND 2100)`
-
-**`brand_colors`**
-- `CONSTRAINT "chk_brand_colors_hex" CHECK (hex ~ '^#[0-9A-Fa-f]{6}$')`
-
-**`charge_transactions`**
-- `CONSTRAINT "chk_charge_transactions_amount_nonnegative" CHECK (amount_cents >= 0)`
-
-**`charges`**
-- `CONSTRAINT "chk_charges_cents_nonnegative" CHECK (amount_cents >= 0 AND (paid_amount_cents IS NULL OR paid_amount_cents >= 0) AND (canceled_amount_cents IS NULL OR canceled_amount_cents >= 0))`
-- `CONSTRAINT "chk_charges_installments" CHECK (installments IS NULL OR installments >= 1)`
-- `CONSTRAINT "chk_charges_currency_format" CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$')`
-
-**`content_plans`**
-- `CONSTRAINT "chk_content_plans_period_order" CHECK (start_date IS NULL OR end_date IS NULL OR end_date >= start_date)`
-
-**`coupon_redemptions`**
-- `CONSTRAINT "chk_coupon_redemptions_single_target" CHECK (num_nonnulls(order_id, subscription_id) = 1)`
-- `CONSTRAINT "chk_coupon_redemptions_discount_percent" CHECK (discount_percent_applied IS NULL OR (discount_percent_applied > 0 AND discount_percent_applied <= 100))`
-- `CONSTRAINT "chk_coupon_redemptions_amount_nonnegative" CHECK (discount_amount_cents IS NULL OR discount_amount_cents >= 0)`
-- `CONSTRAINT "chk_coupon_redemptions_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-
-**`coupons`**
-- `CONSTRAINT "chk_coupons_type_exclusive_fields" CHECK ((type = 'DISCOUNT' AND discount_percent IS NOT NULL AND credits IS NULL) OR (type = 'CREDIT' AND credits IS NOT NULL AND discount_percent IS NULL))`
-- `CONSTRAINT "chk_coupons_discount_percent" CHECK (discount_percent IS NULL OR (discount_percent > 0 AND discount_percent <= 100))`
-- `CONSTRAINT "chk_coupons_min_purchase_nonnegative" CHECK (min_purchase_cents IS NULL OR min_purchase_cents >= 0)`
-- `CONSTRAINT "chk_coupons_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-- `CONSTRAINT "chk_coupons_code_upper" CHECK (code = upper(code))`
-
-**`credit_packages`**
-- `CONSTRAINT "chk_credit_packages_price_nonnegative" CHECK (price_cents >= 0)`
-- `CONSTRAINT "chk_credit_packages_currency_format" CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$')`
-
-**`fiscal_invoices`**
-- `CONSTRAINT "chk_fiscal_invoices_one_origin" CHECK (num_nonnulls(order_id, invoice_id, subscription_id) = 1)`
-- `CONSTRAINT "chk_fiscal_invoices_amount_nonnegative" CHECK (amount_cents >= 0)`
-- `CONSTRAINT "chk_fiscal_invoices_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-
-**`generated_images`**
-- `CONSTRAINT "chk_generated_images_current_complete" CHECK (NOT is_current OR (generation_status = 'SUCCEEDED' AND deleted_at IS NULL))`
-- `CONSTRAINT "chk_generated_images_size_bytes" CHECK (size_bytes >= 0)`
-- `CONSTRAINT "chk_generated_images_dimensions" CHECK (width > 0 AND height > 0)`
-- `CONSTRAINT "chk_generated_images_approval_pair" CHECK ((approved_at IS NULL) = (approved_by IS NULL))`
-- `CONSTRAINT "chk_generated_images_rejected_reason" CHECK (approval_status <> 'REJECTED' OR rejection_reason IS NOT NULL)`
-- `CONSTRAINT "chk_generated_images_approved_metadata" CHECK (approval_status <> 'APPROVED' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL))`
-- `CONSTRAINT "chk_generated_images_approval_after_generation" CHECK (approval_status = 'PENDING' OR generation_status = 'SUCCEEDED')`
-- `CONSTRAINT "chk_generated_images_file_by_status" CHECK ( generation_status <> 'SUCCEEDED' OR (storage_bucket IS NOT NULL AND storage_key IS NOT NULL AND size_bytes IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL) )`
-- `CONSTRAINT "chk_generated_images_failed_message" CHECK ( generation_status <> 'FAILED' OR error_message IS NOT NULL )`
-
-**`image_resizes`**
-- `CONSTRAINT "uq_image_resizes_source_ratio" UNIQUE (source_image_id, ratio)`
-- `CONSTRAINT "chk_image_resizes_file" CHECK ( status <> 'SUCCEEDED' OR (storage_bucket IS NOT NULL AND storage_key IS NOT NULL AND size_bytes IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL) )`
-- `CONSTRAINT "chk_image_resizes_failed" CHECK (status <> 'FAILED' OR error_message IS NOT NULL)`
-- `CONSTRAINT "chk_image_resizes_size" CHECK (size_bytes IS NULL OR size_bytes > 0)`
-- `CONSTRAINT "chk_image_resizes_dimensions" CHECK ((width IS NULL OR width > 0) AND (height IS NULL OR height > 0))`
-
-**`invoices`**
-- `CONSTRAINT "chk_invoices_cents_nonnegative" CHECK (amount_cents >= 0 AND (total_discount_cents IS NULL OR total_discount_cents >= 0) AND (total_increment_cents IS NULL OR total_increment_cents >= 0))`
-- `CONSTRAINT "chk_invoices_installments" CHECK (installments IS NULL OR installments >= 1)`
-- `CONSTRAINT "chk_invoices_currency_format" CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$')`
-
-**`notifications`**
-- `CONSTRAINT "chk_notifications_resource_pair" CHECK ((resource_type IS NULL) = (resource_id IS NULL))`
-
-**`orders`**
-- `CONSTRAINT "chk_orders_amount_consistency" CHECK (amount_cents = subtotal_cents - discount_cents)`
-- `CONSTRAINT "chk_orders_cents_nonnegative" CHECK (subtotal_cents >= 0 AND amount_cents >= 0 AND (discount_cents IS NULL OR discount_cents >= 0))`
-- `CONSTRAINT "chk_orders_currency_format" CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$')`
-
-**`plan_items`**
-- `CONSTRAINT "chk_plan_items_price_nonnegative" CHECK (price_cents IS NULL OR price_cents >= 0)`
-- `CONSTRAINT "chk_plan_items_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-
-**`plans`**
-- `CONSTRAINT "chk_plans_cents_nonnegative" CHECK (price_cents >= 0 AND (minimum_price_cents IS NULL OR minimum_price_cents >= 0))`
-- `CONSTRAINT "chk_plans_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-
-**`post_designs`**
-- `CONSTRAINT "chk_post_designs_stories_ratio" CHECK (format <> 'STORIES' OR ratio = 'RATIO_9_16')`
-
-**`posts`**
-- `CONSTRAINT "chk_posts_approval_pair" CHECK ((approved_at IS NULL) = (approved_by IS NULL))`
-- `CONSTRAINT "chk_posts_rejected_reason" CHECK (approval_status <> 'REJECTED' OR rejection_reason IS NOT NULL)`
-- `CONSTRAINT "chk_posts_approved_metadata" CHECK (approval_status <> 'APPROVED' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL))`
-- `CONSTRAINT "chk_posts_scheduled_at" CHECK (publication_status <> 'SCHEDULED' OR scheduled_at IS NOT NULL)`
-- `CONSTRAINT "chk_posts_published_at" CHECK (publication_status <> 'PUBLISHED' OR published_at IS NOT NULL)`
-- `CONSTRAINT "chk_posts_publish_requires_approval" CHECK (publication_status = 'DRAFT' OR approval_status = 'APPROVED')`
-
-**`provider_disputes`**
-- `CONSTRAINT "chk_provider_disputes_amount_nonnegative" CHECK (amount_cents IS NULL OR amount_cents >= 0)`
-- `CONSTRAINT "chk_provider_disputes_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-- `CONSTRAINT "chk_provider_disputes_result" CHECK ((status = 'RESOLVED') = (result IS NOT NULL))`
-- `CONSTRAINT "chk_provider_disputes_resolved_at" CHECK ((status = 'RESOLVED') = (resolved_at IS NOT NULL))`
-
-**`refunds`**
-- `CONSTRAINT "chk_refunds_amount_nonnegative" CHECK (amount_cents >= 0)`
-- `CONSTRAINT "chk_refunds_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-- `CONSTRAINT "chk_refunds_processed_by_status" CHECK ((status = 'PENDING') = (processed_at IS NULL))`
-
-**`subscriptions`**
-- `CONSTRAINT "chk_subscriptions_installments" CHECK (installments IS NULL OR installments >= 1)`
-- `CONSTRAINT "chk_subscriptions_cents_nonnegative" CHECK (contracted_price_cents >= 0 AND (minimum_price_cents IS NULL OR minimum_price_cents >= 0))`
-- `CONSTRAINT "chk_subscriptions_currency_format" CHECK (currency ~ '^[A-Z]{3}$')`
-
-**`workspace_credit_lots`**
-- `CONSTRAINT "chk_credit_lots_amounts" CHECK (original_amount > 0 AND remaining_amount >= 0 AND remaining_amount <= original_amount)`
-
-**`workspace_credit_transactions`**
-- `CONSTRAINT "chk_credit_tx_single_reference" CHECK (num_nonnulls(order_id, invoice_id, generated_image_id, image_resize_id) <= 1)`
-- `CONSTRAINT "chk_credit_tx_balance_nonnegative" CHECK (balance_after >= 0)`
-- `CONSTRAINT "chk_credit_tx_amount_by_type" CHECK ( (type IN ('SUBSCRIPTION_CREDIT', 'TOP_UP', 'COUPON_CREDIT', 'REFUND') AND amount > 0) OR (type IN ('GENERATION', 'EXPIRATION') AND amount < 0) OR type = 'ADJUSTMENT' )`
-
-**`workspace_invites`**
-- `CONSTRAINT "chk_workspace_invites_email_by_type" CHECK ((type = 'EMAIL') = (email IS NOT NULL))`
-- `CONSTRAINT "chk_workspace_invites_max_uses_by_type" CHECK ((type = 'LINK') = (max_uses IS NOT NULL))`
-- `CONSTRAINT "chk_workspace_invites_max_uses_positive" CHECK (max_uses IS NULL OR max_uses >= 1)`
-
-## 7. Funções, triggers e views
-
-Estes objetos carregam regra de negócio no banco (imutabilidade do ledger, validação de
-lote, `updated_at`, snapshot de cupom, histórico append-only). Eles não são expressos por
-models e não entram na paridade tabela-coluna, mas precisam de decisão explícita objeto a
-objeto: portar como trigger SQLite, mover para a aplicação com teste equivalente, ou
-declarar fora de escopo com justificativa. Nenhum fica sem classificação.
+- **`audit_logs`** (11 colunas, 0 CHECKs): `id`, `actor_id`, `workspace_id`, `action`, `entity_type`, `entity_id`, `before`, `after`, `ip_address`, `user_agent`, `created_at`
+- **`brand_business_details`** (10 colunas, 0 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `output`, `model`, `spec_version`, `created_by`, `created_at`, `updated_at`
+- **`brand_hashtags`** (5 colunas, 0 CHECKs): `id`, `brand_id`, `hashtag`, `created_at`, `updated_at`
+- **`brand_values`** (5 colunas, 0 CHECKs): `id`, `brand_id`, `value`, `created_at`, `updated_at`
+- **`campaign_hashtags`** (5 colunas, 0 CHECKs): `id`, `campaign_id`, `hashtag`, `created_at`, `updated_at`
+- **`campaign_voices`** (6 colunas, 0 CHECKs): `id`, `campaign_id`, `voice`, `created_by`, `created_at`, `updated_at`
+- **`captions`** (8 colunas, 1 CHECKs): `id`, `post_id`, `created_by`, `body`, `version`, `is_current`, `created_at`, `updated_at`
+- **`charge_transactions`** (10 colunas, 1 CHECKs): `id`, `charge_id`, `provider`, `external_id`, `status`, `amount_cents`, `gateway_response`, `antifraud_response`, `created_at`, `updated_at`
+- **`content_plan_items`** (6 colunas, 1 CHECKs): `id`, `content_plan_id`, `format`, `quantity`, `created_at`, `updated_at`
+- **`content_plan_special_dates`** (6 colunas, 0 CHECKs): `id`, `content_plan_id`, `special_date`, `label`, `created_at`, `updated_at`
+- **`content_plans`** (11 colunas, 1 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `created_by`, `briefing`, `start_date`, `end_date`, `created_at`, `updated_at`, `deleted_at`
+- **`design_slides`** (9 colunas, 1 CHECKs): `id`, `post_design_id`, `position`, `headline`, `subtitle`, `cta`, `art_direction`, `created_at`, `updated_at`
+- **`fiscal_invoices`** (21 colunas, 3 CHECKs): `id`, `billing_account_id`, `order_id`, `invoice_id`, `subscription_id`, `number`, `series`, `access_key`, `service_code`, `amount_cents`, `currency`, `status`, `pdf_storage_bucket`, `pdf_storage_key`, `xml_storage_bucket`, `xml_storage_key`, `error_message`, `issued_at`, `canceled_at`, `created_at`, `updated_at`
+- **`generated_images`** (23 colunas, 9 CHECKs): `id`, `design_slide_id`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `model`, `prompt`, `created_by`, `error_message`, `generation_status`, `is_current`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `feedback_type`, `feedback_text`, `created_at`, `updated_at`, `deleted_at`
+- **`image_resizes`** (14 colunas, 4 CHECKs): `id`, `source_image_id`, `ratio`, `status`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `error_message`, `created_by`, `created_at`, `updated_at`
+- **`persona_interests`** (5 colunas, 0 CHECKs): `id`, `persona_id`, `interest`, `created_at`, `updated_at`
+- **`plan_payment_methods`** (6 colunas, 1 CHECKs): `id`, `plan_id`, `method`, `max_installments`, `created_at`, `updated_at`
+- **`post_designs`** (6 colunas, 1 CHECKs): `id`, `post_id`, `format`, `ratio`, `created_at`, `updated_at`
+- **`posts`** (17 colunas, 6 CHECKs): `id`, `content_plan_id`, `created_by`, `title`, `objective`, `big_idea`, `main_message`, `publication_status`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `scheduled_at`, `published_at`, `created_at`, `updated_at`, `deleted_at`
+- **`user_consents`** (10 colunas, 0 CHECKs): `id`, `user_id`, `type`, `document_version`, `granted`, `granted_at`, `revoked_at`, `ip_address`, `user_agent`, `created_at`
+- **`workspace_credit_lot_consumptions`** (6 colunas, 1 CHECKs): `id`, `workspace_id`, `lot_id`, `transaction_id`, `amount`, `created_at`
+- **`workspace_credit_lots`** (8 colunas, 1 CHECKs): `id`, `workspace_id`, `grant_transaction_id`, `original_amount`, `remaining_amount`, `expires_at`, `created_at`, `updated_at`
+
+## 3. Colunas, tipos e nullability
+
+Total: **291**.
+
+### `column_missing` (132)
+
+- `billing_accounts.document_hash`
+- `billing_accounts.external_code`
+- `billing_accounts.external_id`
+- `billing_addresses.country`
+- `billing_addresses.district`
+- `billing_addresses.external_id`
+- `billing_addresses.is_default`
+- `billing_addresses.line_1`
+- `billing_addresses.line_2`
+- `billing_addresses.metadata`
+- `billing_addresses.status`
+- `billing_payment_methods.billing_address_id`
+- `billing_payment_methods.brand`
+- `billing_payment_methods.external_id`
+- `billing_payment_methods.external_network_token_id`
+- `billing_payment_methods.first_six_digits`
+- `billing_payment_methods.metadata`
+- `billing_payment_methods.status`
+- `billing_payment_methods.type`
+- `brand_assets.created_by`
+- `brand_assets.storage_bucket`
+- `brand_assets.storage_key`
+- `brand_colors.hex`
+- `brand_colors.name`
+- `brand_colors.position`
+- `brands.created_by`
+- `brands.goals`
+- `brands.indicators`
+- `brands.inspirations`
+- `brands.promise`
+- `brands.restrictions`
+- `brands.segment`
+- `campaigns.brand_id`
+- `campaigns.expected_action`
+- `charges.canceled_amount_cents`
+- `charges.canceled_at`
+- `charges.code`
+- `charges.due_at`
+- `charges.external_id`
+- `charges.funding_source`
+- `charges.gateway_id`
+- `charges.installments`
+- `charges.order_id`
+- `charges.paid_amount_cents`
+- `charges.paid_at`
+- `charges.payment_method`
+- `charges.payment_method_id`
+- `charges.provider`
+- `charges.provider_payload`
+- `coupon_redemptions.canceled_at`
+- `coupon_redemptions.credit_transaction_id`
+- `coupon_redemptions.currency`
+- `coupon_redemptions.external_id`
+- `coupon_redemptions.invoice_id`
+- `coupon_redemptions.once_per_workspace`
+- `coupon_redemptions.provider`
+- `coupon_redemptions.redeemed_at`
+- `coupon_redemptions.user_id`
+- `coupon_redemptions.workspace_id`
+- `coupons.credits`
+- `coupons.credits_validity_days`
+- `coupons.currency`
+- `credit_packages.credits`
+- `credit_packages.credits_validity_days`
+- `invoices.external_id`
+- `invoices.provider`
+- `notification_recipients.external_message_id`
+- `orders.code`
+- `orders.external_id`
+- `orders.provider`
+- `personas.age_range`
+- `personas.trigger_event`
+- `plan_items.currency`
+- `plan_items.external_id`
+- `plan_items.provider`
+- `plans.billing_interval`
+- `plans.billing_type`
+- `plans.credits_per_month`
+- `plans.credits_validity_days`
+- `plans.currency`
+- `plans.external_id`
+- `plans.interval_count`
+- `plans.minimum_price_cents`
+- `plans.price_cents`
+- `plans.provider`
+- `plans.statement_descriptor`
+- `plans.status`
+- `plans.trial_period_days`
+- `provider_disputes.amount_cents`
+- `provider_disputes.currency`
+- `provider_disputes.external_id`
+- `provider_disputes.provider`
+- `provider_disputes.resolved_at`
+- `provider_disputes.result`
+- `provider_idempotency_keys.expires_at`
+- `provider_webhook_events.external_id`
+- `refunds.charge_id`
+- `refunds.external_id`
+- `refunds.metadata`
+- `refunds.processed_at`
+- `refunds.provider`
+- `refunds.reason_code`
+- `refunds.requested_by`
+- `subscription_history.changed_by`
+- `subscription_history.new_plan_id`
+- `subscription_history.new_provider_status`
+- `subscription_history.new_status`
+- `subscription_history.old_plan_id`
+- `subscription_history.old_provider_status`
+- `subscription_history.old_status`
+- `subscription_history.reason_code`
+- `subscription_history.reason_text`
+- `subscriptions.billing_interval`
+- `subscriptions.contracted_price_cents`
+- `subscriptions.currency`
+- `subscriptions.current_cycle_id`
+- `subscriptions.external_code`
+- `subscriptions.external_id`
+- `subscriptions.payment_method_id`
+- `subscriptions.provider`
+- `subscriptions.status_reason`
+- `users.auth_provider_id`
+- `workspace_credit_transactions.balance_after`
+- `workspace_credit_transactions.created_by`
+- `workspace_credit_transactions.generated_image_id`
+- `workspace_credit_transactions.image_resize_id`
+- `workspace_credit_transactions.invoice_id`
+- `workspace_credit_transactions.order_id`
+- `workspace_credit_transactions.type`
+- `workspace_invites.token_hash`
+- `workspace_members.invited_by`
+- `workspace_members.status`
+
+### `column_extra` (116)
+
+- `billing_accounts.deleted_at`
+- `billing_accounts.document_type`
+- `billing_accounts.provider_customer_code`
+- `billing_accounts.provider_customer_id`
+- `billing_addresses.complement`
+- `billing_addresses.deleted_at`
+- `billing_addresses.neighborhood`
+- `billing_addresses.street`
+- `billing_payment_methods.card_brand`
+- `billing_payment_methods.card_status`
+- `billing_payment_methods.card_type`
+- `billing_payment_methods.deleted_at`
+- `billing_payment_methods.provider_card_id`
+- `brand_assets.deleted_at`
+- `brand_assets.file_url`
+- `brand_colors.brand_goals`
+- `brand_colors.brand_indicators`
+- `brand_colors.brand_inspirations`
+- `brand_colors.brand_main_hashtags`
+- `brand_colors.brand_name`
+- `brand_colors.brand_promise`
+- `brand_colors.brand_restrictions`
+- `brand_colors.brand_segment`
+- `brand_colors.brand_values`
+- `brand_colors.color_name`
+- `brand_colors.created_by`
+- `brand_colors.deleted_at`
+- `brand_colors.hex_code`
+- `brand_colors.order`
+- `brand_colors.workspace_id`
+- `brands.brand_voice`
+- `brands.created_by_user_id`
+- `brands.description`
+- `brands.metadata`
+- `campaigns.end_at`
+- `campaigns.start_at`
+- `campaigns.voice`
+- `campaigns.workspace_id`
+- `charges.deleted_at`
+- `charges.provider_card_id`
+- `charges.provider_charge_id`
+- `coupon_redemptions.billing_account_id`
+- `coupon_redemptions.deleted_at`
+- `coupon_redemptions.provider_discount_id`
+- `coupons.credits_amount`
+- `coupons.redemptions_count`
+- `credit_packages.code`
+- `credit_packages.credits_amount`
+- `credit_packages.deleted_at`
+- `invoices.deleted_at`
+- `invoices.provider_charge_id`
+- `invoices.provider_invoice_id`
+- `notification_preferences.deleted_at`
+- `notification_recipients.deleted_at`
+- `notification_recipients.provider_message_id`
+- `notification_recipients.workspace_member_id`
+- `notifications.deleted_at`
+- `orders.closed`
+- `orders.deleted_at`
+- `orders.provider_order_id`
+- `personas.age`
+- `personas.interest`
+- `personas.trigger`
+- `plan_items.deleted_at`
+- `plan_items.gateway_id`
+- `plan_items.provider_plan_item_id`
+- `plans.code`
+- `plans.description`
+- `plans.is_active`
+- `provider_disputes.code`
+- `provider_disputes.deleted_at`
+- `provider_disputes.provider_dispute_id`
+- `provider_idempotency_keys.deleted_at`
+- `provider_webhook_events.created_at`
+- `provider_webhook_events.deleted_at`
+- `provider_webhook_events.provider_event_id`
+- `refunds.billing_account_id`
+- `refunds.deleted_at`
+- `refunds.invoice_id`
+- `refunds.provider_charge_id`
+- `refunds.provider_refund_id`
+- `refunds.reason`
+- `subscription_history.deleted_at`
+- `subscription_history.plan_id`
+- `subscription_history.previous_plan_id`
+- `subscription_history.previous_status`
+- `subscription_history.reason`
+- `subscription_history.status`
+- `subscription_history.updated_at`
+- `subscriptions.billing_day`
+- `subscriptions.deleted_at`
+- `subscriptions.interval`
+- `subscriptions.provider_card_id`
+- `subscriptions.provider_code`
+- `subscriptions.provider_subscription_id`
+- `subscriptions.start_at`
+- `user_devices.deleted_at`
+- `users.cnpj`
+- `users.cpf`
+- `users.external_id`
+- `users.global_role`
+- `users.password_hash`
+- `workspace_credit_transactions.deleted_at`
+- `workspace_credit_transactions.reference_id`
+- `workspace_credit_transactions.reference_type`
+- `workspace_credit_transactions.transaction_type`
+- `workspace_credit_transactions.updated_at`
+- `workspace_invite_usages.created_at`
+- `workspace_invite_usages.deleted_at`
+- `workspace_invite_usages.user_id`
+- `workspace_invite_usages.workspace_id`
+- `workspace_invites.deleted_at`
+- `workspace_invites.is_active`
+- `workspace_invites.token`
+- `workspace_invites.uses_count`
+- `workspace_members.deleted_at`
+
+### `nullability` (10)
+
+- `billing_accounts.provider: final NOT NULL, model nullable`
+- `billing_addresses.city: final NOT NULL, model nullable`
+- `billing_addresses.number: final NOT NULL, model nullable`
+- `billing_addresses.state: final NOT NULL, model nullable`
+- `billing_addresses.zip_code: final NOT NULL, model nullable`
+- `invoices.subscription_id: final NOT NULL, model nullable`
+- `plan_items.status: final NOT NULL, model nullable`
+- `subscriptions.installments: final NOT NULL, model nullable`
+- `users.display_name: final NOT NULL, model nullable`
+- `workspace_invite_usages.member_id: final NOT NULL, model nullable`
+
+### `width` (27)
+
+- `billing_accounts.email: final varchar(254), model varchar(64)`
+- `billing_addresses.number: final varchar(20), model varchar(16)`
+- `billing_addresses.state: final varchar(2), model varchar(16)`
+- `billing_addresses.zip_code: final varchar(8), model varchar(16)`
+- `brand_assets.description: final unbounded varchar, model varchar(500)`
+- `brand_assets.file_name: final unbounded varchar, model varchar(255)`
+- `brands.name: final varchar(100), model varchar(255)`
+- `campaigns.name: final varchar(100), model varchar(30)`
+- `charges.amount_cents: final bigint, model integer`
+- `charges.status: final unbounded varchar, model varchar(20)`
+- `coupon_redemptions.discount_amount_cents: final bigint, model integer`
+- `coupons.min_purchase_cents: final bigint, model integer`
+- `credit_packages.name: final unbounded varchar, model varchar(64)`
+- `credit_packages.price_cents: final bigint, model integer`
+- `invoices.amount_cents: final bigint, model integer`
+- `invoices.total_discount_cents: final bigint, model integer`
+- `invoices.total_increment_cents: final bigint, model integer`
+- `invoices.url: final unbounded varchar, model varchar(2048)`
+- `orders.amount_cents: final bigint, model integer`
+- `orders.discount_cents: final bigint, model integer`
+- `orders.subtotal_cents: final bigint, model integer`
+- `personas.name: final varchar(100), model varchar(30)`
+- `plan_items.price_cents: final bigint, model integer`
+- `refunds.amount_cents: final bigint, model integer`
+- `subscriptions.minimum_price_cents: final bigint, model integer`
+- `users.email: final varchar(254), model varchar(320)`
+- `workspace_invites.email: final varchar(254), model varchar(255)`
+
+### `default_missing` (6)
+
+- `charges.currency: final default 'BRL'`
+- `credit_packages.currency: final default 'BRL'`
+- `invoices.currency: final default 'BRL'`
+- `orders.currency: final default 'BRL'`
+- `refunds.currency: final default 'BRL'`
+- `subscriptions.installments: final default 1`
+
+## 4. Enums
+
+Total: **35**.
+
+### `enum` (35)
+
+- `billing_accounts.payer_type: model has no vocabulary (expected ['INDIVIDUAL', 'COMPANY'])`
+- `billing_accounts.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
+- `brand_assets.type: model has no vocabulary (expected ['LOGO', 'IMAGE', 'FONT', 'ICON', 'DOCUMENT', 'OTHER'])`
+- `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
+- `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
+- `coupons.type: model has no vocabulary (expected ['DISCOUNT', 'CREDIT'])`
+- `invoices.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
+- `invoices.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'SCHEDULED', 'FAILED'])`
+- `notification_preferences.channel: model has no vocabulary (expected ['EMAIL', 'IN_APP', 'PUSH'])`
+- `notification_preferences.type: model has no vocabulary (expected ['CONTENT_GENERATION', 'CONTENT_APPROVAL', 'INVITE', 'BILLING', 'CREDITS', 'COUPON', 'SYSTEM'])`
+- `notification_recipients.channel: model has no vocabulary (expected ['EMAIL', 'IN_APP', 'PUSH'])`
+- `notification_recipients.status: model has no vocabulary (expected ['PENDING', 'SENT', 'FAILED'])`
+- `notifications.resource_type: model has no vocabulary (expected ['WORKSPACE_INVITE', 'WORKSPACE_MEMBER', 'POST', 'GENERATED_IMAGE', 'SUBSCRIPTION', 'ORDER', 'INVOICE', 'CHARGE', 'COUPON'])`
+- `notifications.type: model has no vocabulary (expected ['CONTENT_GENERATION', 'CONTENT_APPROVAL', 'INVITE', 'BILLING', 'CREDITS', 'COUPON', 'SYSTEM'])`
+- `orders.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'FAILED'])`
+- `personas.gender: model has no vocabulary (expected ['MALE', 'FEMALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'])`
+- `plan_items.pricing_scheme_type: model has no vocabulary (expected ['FLAT', 'TIERED', 'VOLUME', 'STAIRSTEP'])`
+- `plan_items.status: model has no vocabulary (expected ['ACTIVE', 'INACTIVE', 'ARCHIVED'])`
+- `plans.type: model has no vocabulary (expected ['FREE', 'STARTER', 'PRO', 'STUDIO', 'ENTERPRISE'])`
+- `provider_disputes.status: model has no vocabulary (expected ['OPEN', 'UNDER_REVIEW', 'RESOLVED'])`
+- `provider_idempotency_keys.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
+- `provider_idempotency_keys.status: model has no vocabulary (expected ['STARTED', 'COMPLETED', 'FAILED'])`
+- `provider_webhook_events.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
+- `provider_webhook_events.status: model has no vocabulary (expected ['RECEIVED', 'PROCESSING', 'PROCESSED', 'FAILED', 'IGNORED'])`
+- `refunds.status: model has no vocabulary (expected ['PENDING', 'SUCCEEDED', 'FAILED'])`
+- `subscription_history.change_type: model has no vocabulary (expected ['CREATE', 'UPGRADE', 'DOWNGRADE', 'CANCEL', 'RENEW'])`
+- `subscriptions.billing_type: model has no vocabulary (expected ['PREPAID', 'POSTPAID'])`
+- `subscriptions.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
+- `subscriptions.provider_status: model has no vocabulary (expected ['ACTIVE', 'CANCELED', 'FUTURE'])`
+- `subscriptions.status: model has no vocabulary (expected ['ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED', 'EXPIRED'])`
+- `user_devices.platform: model has no vocabulary (expected ['IOS', 'ANDROID', 'WEB'])`
+- `workspace_invites.role: model has no vocabulary (expected ['OWNER', 'MANAGER', 'EDITOR', 'VIEWER'])`
+- `workspace_invites.status: model has no vocabulary (expected ['PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED'])`
+- `workspace_invites.type: model has no vocabulary (expected ['EMAIL', 'LINK'])`
+- `workspace_members.role: missing=['EDITOR', 'MANAGER', 'OWNER', 'VIEWER'] extra=['admin', 'editor', 'owner', 'viewer']`
+
+## 5. Índices
+
+Total: **148**.
+
+### `index_missing` (108)
+
+- `billing_accounts: (document_hash)`
+- `billing_accounts: (user_id)`
+- `billing_accounts: UNIQUE (provider, external_id)`
+- `billing_addresses: (billing_account_id)`
+- `billing_addresses: UNIQUE (billing_account_id) WHERE is_default and status = 'active'`
+- `billing_payment_methods: (billing_account_id, is_default)`
+- `billing_payment_methods: (billing_address_id) WHERE billing_address_id is not null`
+- `billing_payment_methods: UNIQUE (billing_account_id) WHERE is_default and status = 'active'`
+- `billing_payment_methods: UNIQUE (billing_account_id, external_id)`
+- `brand_assets: (brand_id)`
+- `brand_assets: (created_by)`
+- `brand_assets: UNIQUE (storage_bucket, storage_key)`
+- `brand_colors: (brand_id)`
+- `brands: (created_by) WHERE created_by is not null`
+- `brands: (workspace_id)`
+- `campaigns: (brand_id)`
+- `campaigns: (created_by) WHERE created_by is not null`
+- `campaigns: UNIQUE (id, brand_id)`
+- `charges: (billing_account_id, status)`
+- `charges: (code)`
+- `charges: (invoice_id)`
+- `charges: (order_id)`
+- `charges: (paid_at)`
+- `charges: (payment_method_id) WHERE payment_method_id is not null`
+- `charges: (status)`
+- `charges: UNIQUE (provider, external_id)`
+- `coupon_redemptions: (coupon_id, workspace_id)`
+- `coupon_redemptions: (credit_transaction_id) WHERE credit_transaction_id is not null`
+- `coupon_redemptions: (invoice_id) WHERE invoice_id is not null`
+- `coupon_redemptions: (order_id, workspace_id)`
+- `coupon_redemptions: (subscription_id, workspace_id)`
+- `coupon_redemptions: (user_id)`
+- `coupon_redemptions: (workspace_id)`
+- `coupon_redemptions: UNIQUE (coupon_id, workspace_id) WHERE once_per_workspace and status = 'applied'`
+- `coupon_redemptions: UNIQUE (provider, external_id)`
+- `coupons: (created_by) WHERE created_by is not null`
+- `coupons: (is_active)`
+- `coupons: (type)`
+- `coupons: UNIQUE (code) WHERE deleted_at is null`
+- `invoices: (billing_account_id)`
+- `invoices: (status, due_at)`
+- `invoices: (subscription_id, due_at)`
+- `invoices: UNIQUE (provider, external_id)`
+- `notification_preferences: UNIQUE (user_id, type, channel)`
+- `notification_recipients: (user_id, channel)`
+- `notification_recipients: (user_id, created_at)`
+- `notification_recipients: (user_id, read_at)`
+- `notification_recipients: UNIQUE (notification_id, user_id, channel)`
+- `notifications: (created_at)`
+- `notifications: (created_by) WHERE created_by is not null`
+- `notifications: (type)`
+- `notifications: UNIQUE (workspace_id, dedupe_key)`
+- `orders: (billing_account_id)`
+- `orders: (credit_package_id) WHERE credit_package_id is not null`
+- `orders: (status)`
+- `orders: (workspace_id)`
+- `orders: UNIQUE (id, workspace_id)`
+- `orders: UNIQUE (provider, external_id)`
+- `personas: (brand_id)`
+- `personas: (created_by) WHERE created_by is not null`
+- `personas: UNIQUE (id, brand_id)`
+- `plan_items: (plan_id)`
+- `plan_items: UNIQUE (provider, external_id)`
+- `plans: UNIQUE (provider, external_id)`
+- `provider_disputes: (billing_account_id) WHERE billing_account_id is not null`
+- `provider_disputes: (charge_id)`
+- `provider_disputes: (status, resolved_at)`
+- `provider_disputes: UNIQUE (provider, external_id)`
+- `provider_idempotency_keys: (expires_at)`
+- `provider_idempotency_keys: UNIQUE (provider, idempotency_key)`
+- `provider_webhook_events: (event_type)`
+- `provider_webhook_events: (resource_id)`
+- `provider_webhook_events: (status, received_at)`
+- `provider_webhook_events: UNIQUE (provider, external_id)`
+- `refunds: (charge_id)`
+- `refunds: (requested_by) WHERE requested_by is not null`
+- `refunds: (status)`
+- `refunds: UNIQUE (provider, external_id)`
+- `subscription_history: (changed_by) WHERE changed_by is not null`
+- `subscription_history: (new_plan_id) WHERE new_plan_id is not null`
+- `subscription_history: (old_plan_id) WHERE old_plan_id is not null`
+- `subscription_history: (subscription_id, created_at)`
+- `subscriptions: (billing_account_id)`
+- `subscriptions: (next_billing_at)`
+- `subscriptions: (payment_method_id) WHERE payment_method_id is not null`
+- `subscriptions: (plan_id)`
+- `subscriptions: (workspace_id)`
+- `subscriptions: UNIQUE (id, workspace_id)`
+- `subscriptions: UNIQUE (provider, external_id)`
+- `subscriptions: UNIQUE (workspace_id) WHERE status in ('active', 'trialing', 'past_due')`
+- `user_devices: (user_id)`
+- `users: UNIQUE (email) WHERE deleted_at is null`
+- `workspace_credit_transactions: (created_by) WHERE created_by is not null`
+- `workspace_credit_transactions: (workspace_id, created_at)`
+- `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
+- `workspace_credit_transactions: UNIQUE (id, workspace_id)`
+- `workspace_credit_transactions: UNIQUE (image_resize_id, type)`
+- `workspace_credit_transactions: UNIQUE (invoice_id, type)`
+- `workspace_credit_transactions: UNIQUE (order_id, type)`
+- `workspace_invite_usages: (member_id)`
+- `workspace_invite_usages: UNIQUE (invite_id, member_id)`
+- `workspace_invites: (created_by)`
+- `workspace_invites: (email)`
+- `workspace_invites: (status)`
+- `workspace_invites: (workspace_id)`
+- `workspace_memberships: (invited_by)`
+- `workspace_memberships: (workspace_id, role)`
+- `workspace_memberships: UNIQUE (workspace_id, user_id)`
+
+### `index_extra` (11)
+
+- `brands: (created_by_user_id)`
+- `brands: (workspace_id, deleted_at, created_at)`
+- `brands: UNIQUE (id, workspace_id)`
+- `coupons: UNIQUE (code)`
+- `plans: UNIQUE (code)`
+- `users: (deleted_at)`
+- `users: UNIQUE (email)`
+- `users: UNIQUE (external_id)`
+- `workspace_invites: UNIQUE (token)`
+- `workspace_memberships: (workspace_id)`
+- `workspace_memberships: UNIQUE (user_id, workspace_id) WHERE deleted_at is null`
+
+### `index_name` (29)
+
+- `billing_addresses: missing index name uq_billing_addresses_default`
+- `billing_payment_methods: missing index name idx_m8_billing_payment_methods_billing_address_id`
+- `billing_payment_methods: missing index name uq_billing_payment_methods_default`
+- `brands: missing index name idx_m8_brands_created_by`
+- `campaigns: missing index name idx_m8_campaigns_created_by`
+- `charges: missing index name idx_m8_charges_payment_method_id`
+- `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
+- `coupon_redemptions: missing index name idx_m8_coupon_redemptions_invoice_id`
+- `coupon_redemptions: missing index name uq_coupon_redemptions_once_per_workspace`
+- `coupons: missing index name idx_m8_coupons_created_by`
+- `coupons: missing index name uq_coupons_code_active`
+- `notifications: missing index name idx_m8_notifications_created_by`
+- `orders: missing index name idx_m8_orders_credit_package_id`
+- `personas: missing index name idx_m8_personas_created_by`
+- `plan_items: missing index name idx_m8_plan_items_plan_id`
+- `provider_disputes: missing index name idx_m8_provider_disputes_billing_account_id`
+- `refunds: missing index name idx_m8_refunds_requested_by`
+- `subscription_history: missing index name idx_m8_subscription_history_changed_by`
+- `subscription_history: missing index name idx_m8_subscription_history_new_plan_id`
+- `subscription_history: missing index name idx_m8_subscription_history_old_plan_id`
+- `subscriptions: missing index name idx_m8_subscriptions_payment_method_id`
+- `subscriptions: missing index name idx_m8_subscriptions_plan_id`
+- `subscriptions: missing index name uq_subscriptions_workspace_current`
+- `users: missing index name uq_users_email_active`
+- `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
+- `workspace_credit_transactions: missing index name uq_credit_tx_id_workspace`
+- `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
+- `workspace_invites: missing index name idx_m8_workspace_invites_created_by`
+- `workspace_memberships: missing index name uq_workspace_members_workspace_user`
+
+## 6. Foreign keys
+
+Total: **147**.
+
+### `fk_missing` (63)
+
+- `audit_logs['actor_id']->users['id'] [SET NULL]`
+- `audit_logs['workspace_id']->workspaces['id'] [SET NULL]`
+- `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
+- `brand_assets['created_by']->users['id'] [SET NULL]`
+- `brand_business_details['brand_id']->brands['id'] [CASCADE]`
+- `brand_business_details['campaign_id', 'brand_id']->campaigns['id', 'brand_id'] [CASCADE]`
+- `brand_business_details['created_by']->users['id'] [SET NULL]`
+- `brand_business_details['persona_id', 'brand_id']->personas['id', 'brand_id'] [CASCADE]`
+- `brand_hashtags['brand_id']->brands['id'] [CASCADE]`
+- `brand_values['brand_id']->brands['id'] [CASCADE]`
+- `brands['created_by']->users['id'] [SET NULL]`
+- `campaign_hashtags['campaign_id']->campaigns['id'] [CASCADE]`
+- `campaign_voices['campaign_id']->campaigns['id'] [CASCADE]`
+- `campaigns['brand_id']->brands['id'] [CASCADE]`
+- `captions['created_by']->users['id'] [SET NULL]`
+- `captions['post_id']->posts['id'] [CASCADE]`
+- `charge_transactions['charge_id']->charges['id'] [CASCADE]`
+- `charges['order_id']->orders['id'] [SET NULL]`
+- `charges['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
+- `content_plan_items['content_plan_id']->content_plans['id'] [CASCADE]`
+- `content_plan_special_dates['content_plan_id']->content_plans['id'] [CASCADE]`
+- `content_plans['brand_id']->brands['id'] [CASCADE]`
+- `content_plans['campaign_id', 'brand_id']->campaigns['id', 'brand_id'] [CASCADE]`
+- `content_plans['created_by']->users['id'] [SET NULL]`
+- `content_plans['persona_id', 'brand_id']->personas['id', 'brand_id'] [CASCADE]`
+- `coupon_redemptions['credit_transaction_id']->workspace_credit_transactions['id'] [SET NULL]`
+- `coupon_redemptions['invoice_id']->invoices['id'] [SET NULL]`
+- `coupon_redemptions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
+- `coupon_redemptions['subscription_id', 'workspace_id']->subscriptions['id', 'workspace_id'] [RESTRICT]`
+- `coupon_redemptions['user_id']->users['id'] [RESTRICT]`
+- `design_slides['post_design_id']->post_designs['id'] [CASCADE]`
+- `fiscal_invoices['billing_account_id']->billing_accounts['id'] [RESTRICT]`
+- `fiscal_invoices['invoice_id']->invoices['id'] [RESTRICT]`
+- `fiscal_invoices['order_id']->orders['id'] [RESTRICT]`
+- `fiscal_invoices['subscription_id']->subscriptions['id'] [RESTRICT]`
+- `generated_images['approved_by']->users['id'] [SET NULL]`
+- `generated_images['created_by']->users['id'] [SET NULL]`
+- `generated_images['design_slide_id']->design_slides['id'] [CASCADE]`
+- `image_resizes['created_by']->users['id'] [SET NULL]`
+- `image_resizes['source_image_id']->generated_images['id'] [CASCADE]`
+- `persona_interests['persona_id']->personas['id'] [CASCADE]`
+- `plan_payment_methods['plan_id']->plans['id'] [CASCADE]`
+- `post_designs['post_id']->posts['id'] [CASCADE]`
+- `posts['approved_by']->users['id'] [SET NULL]`
+- `posts['content_plan_id']->content_plans['id'] [CASCADE]`
+- `posts['created_by']->users['id'] [SET NULL]`
+- `refunds['charge_id']->charges['id'] [RESTRICT]`
+- `refunds['requested_by']->users['id'] [SET NULL]`
+- `subscription_history['changed_by']->users['id'] [SET NULL]`
+- `subscription_history['new_plan_id']->plans['id'] [SET NULL]`
+- `subscription_history['old_plan_id']->plans['id'] [SET NULL]`
+- `subscriptions['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
+- `user_consents['user_id']->users['id'] [RESTRICT]`
+- `workspace_credit_lot_consumptions['lot_id', 'workspace_id']->workspace_credit_lots['id', 'workspace_id'] [RESTRICT]`
+- `workspace_credit_lot_consumptions['transaction_id', 'workspace_id']->workspace_credit_transactions['id', 'workspace_id'] [RESTRICT]`
+- `workspace_credit_lots['grant_transaction_id', 'workspace_id']->workspace_credit_transactions['id', 'workspace_id'] [RESTRICT]`
+- `workspace_credit_lots['workspace_id']->workspaces['id'] [RESTRICT]`
+- `workspace_credit_transactions['created_by']->users['id'] [SET NULL]`
+- `workspace_credit_transactions['generated_image_id']->generated_images['id'] [RESTRICT]`
+- `workspace_credit_transactions['image_resize_id']->image_resizes['id'] [RESTRICT]`
+- `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
+- `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
+- `workspace_memberships['invited_by']->users['id'] [SET NULL]`
+
+### `fk_extra` (49)
+
+- `billing_accounts['user_id']->users['id'] [CASCADE]`
+- `billing_addresses['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `billing_payment_methods['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `brand_assets['brand_id']->brands['id'] [NO ACTION]`
+- `brand_colors['brand_id']->brands['id'] [NO ACTION]`
+- `brand_colors['created_by']->users['id'] [NO ACTION]`
+- `brand_colors['workspace_id']->workspaces['id'] [NO ACTION]`
+- `brands['created_by_user_id']->users['id'] [SET NULL]`
+- `brands['workspace_id']->workspaces['id'] [RESTRICT]`
+- `campaigns['created_by']->users['id'] [NO ACTION]`
+- `campaigns['workspace_id']->workspaces['id'] [NO ACTION]`
+- `charges['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `charges['invoice_id']->invoices['id'] [NO ACTION]`
+- `coupon_redemptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `coupon_redemptions['coupon_id']->coupons['id'] [NO ACTION]`
+- `coupon_redemptions['order_id']->orders['id'] [NO ACTION]`
+- `coupon_redemptions['subscription_id']->subscriptions['id'] [NO ACTION]`
+- `coupons['created_by']->users['id'] [NO ACTION]`
+- `invoices['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `invoices['subscription_id']->subscriptions['id'] [NO ACTION]`
+- `notification_preferences['user_id']->users['id'] [NO ACTION]`
+- `notification_recipients['notification_id']->notifications['id'] [NO ACTION]`
+- `notification_recipients['user_id']->users['id'] [NO ACTION]`
+- `notification_recipients['workspace_member_id']->workspace_memberships['id'] [NO ACTION]`
+- `notifications['created_by']->users['id'] [NO ACTION]`
+- `notifications['workspace_id']->workspaces['id'] [NO ACTION]`
+- `orders['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `orders['credit_package_id']->credit_packages['id'] [NO ACTION]`
+- `orders['workspace_id']->workspaces['id'] [NO ACTION]`
+- `personas['brand_id']->brands['id'] [NO ACTION]`
+- `personas['created_by']->users['id'] [NO ACTION]`
+- `provider_disputes['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `provider_disputes['charge_id']->charges['id'] [NO ACTION]`
+- `refunds['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `refunds['invoice_id']->invoices['id'] [NO ACTION]`
+- `subscription_history['plan_id']->plans['id'] [NO ACTION]`
+- `subscription_history['previous_plan_id']->plans['id'] [NO ACTION]`
+- `subscription_history['subscription_id']->subscriptions['id'] [NO ACTION]`
+- `subscriptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
+- `subscriptions['plan_id']->plans['id'] [NO ACTION]`
+- `subscriptions['workspace_id']->workspaces['id'] [NO ACTION]`
+- `user_devices['user_id']->users['id'] [NO ACTION]`
+- `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
+- `workspace_invite_usages['invite_id']->workspace_invites['id'] [NO ACTION]`
+- `workspace_invite_usages['member_id']->workspace_memberships['id'] [NO ACTION]`
+- `workspace_invite_usages['user_id']->users['id'] [NO ACTION]`
+- `workspace_invite_usages['workspace_id']->workspaces['id'] [NO ACTION]`
+- `workspace_invites['created_by']->users['id'] [NO ACTION]`
+- `workspace_invites['workspace_id']->workspaces['id'] [NO ACTION]`
+
+### `fk_ondelete` (35)
+
+- `billing_accounts['user_id']->users['id']: final RESTRICT vs model CASCADE`
+- `billing_addresses['billing_account_id']->billing_accounts['id']: final CASCADE vs model NO ACTION`
+- `billing_payment_methods['billing_account_id']->billing_accounts['id']: final CASCADE vs model NO ACTION`
+- `brand_assets['brand_id']->brands['id']: final CASCADE vs model NO ACTION`
+- `brand_colors['brand_id']->brands['id']: final CASCADE vs model NO ACTION`
+- `brands['workspace_id']->workspaces['id']: final CASCADE vs model RESTRICT`
+- `campaigns['created_by']->users['id']: final SET NULL vs model NO ACTION`
+- `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
+- `charges['invoice_id']->invoices['id']: final SET NULL vs model NO ACTION`
+- `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model NO ACTION`
+- `coupons['created_by']->users['id']: final SET NULL vs model NO ACTION`
+- `invoices['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
+- `invoices['subscription_id']->subscriptions['id']: final RESTRICT vs model NO ACTION`
+- `notification_preferences['user_id']->users['id']: final CASCADE vs model NO ACTION`
+- `notification_recipients['notification_id']->notifications['id']: final CASCADE vs model NO ACTION`
+- `notification_recipients['user_id']->users['id']: final CASCADE vs model NO ACTION`
+- `notifications['created_by']->users['id']: final SET NULL vs model NO ACTION`
+- `notifications['workspace_id']->workspaces['id']: final CASCADE vs model NO ACTION`
+- `orders['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
+- `orders['credit_package_id']->credit_packages['id']: final SET NULL vs model NO ACTION`
+- `orders['workspace_id']->workspaces['id']: final RESTRICT vs model NO ACTION`
+- `personas['brand_id']->brands['id']: final CASCADE vs model NO ACTION`
+- `personas['created_by']->users['id']: final SET NULL vs model NO ACTION`
+- `provider_disputes['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
+- `provider_disputes['charge_id']->charges['id']: final RESTRICT vs model NO ACTION`
+- `subscription_history['subscription_id']->subscriptions['id']: final CASCADE vs model NO ACTION`
+- `subscriptions['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
+- `subscriptions['plan_id']->plans['id']: final RESTRICT vs model NO ACTION`
+- `subscriptions['workspace_id']->workspaces['id']: final RESTRICT vs model NO ACTION`
+- `user_devices['user_id']->users['id']: final CASCADE vs model NO ACTION`
+- `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model NO ACTION`
+- `workspace_invite_usages['invite_id']->workspace_invites['id']: final CASCADE vs model NO ACTION`
+- `workspace_invite_usages['member_id']->workspace_memberships['id']: final CASCADE vs model NO ACTION`
+- `workspace_invites['created_by']->users['id']: final RESTRICT vs model NO ACTION`
+- `workspace_invites['workspace_id']->workspaces['id']: final CASCADE vs model NO ACTION`
+
+## 7. CHECK constraints
+
+Total: **53**.
+
+### `check_missing` (49)
+
+- `unmapped:billing_accounts.chk_billing_accounts_company_name`
+- `unmapped:billing_accounts.chk_billing_accounts_document_pair`
+- `unmapped:billing_addresses.chk_billing_addresses_state_uf`
+- `unmapped:billing_addresses.chk_billing_addresses_zip_code`
+- `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_month`
+- `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_year`
+- `unmapped:brand_colors.chk_brand_colors_hex`
+- `unmapped:charges.chk_charges_cents_nonnegative`
+- `unmapped:charges.chk_charges_currency_format`
+- `unmapped:charges.chk_charges_installments`
+- `unmapped:coupon_redemptions.chk_coupon_redemptions_amount_nonnegative`
+- `unmapped:coupon_redemptions.chk_coupon_redemptions_currency_format`
+- `unmapped:coupon_redemptions.chk_coupon_redemptions_discount_percent`
+- `unmapped:coupon_redemptions.chk_coupon_redemptions_single_target`
+- `unmapped:coupons.chk_coupons_code_upper`
+- `unmapped:coupons.chk_coupons_currency_format`
+- `unmapped:coupons.chk_coupons_discount_percent`
+- `unmapped:coupons.chk_coupons_min_purchase_nonnegative`
+- `unmapped:coupons.chk_coupons_type_exclusive_fields`
+- `unmapped:credit_packages.chk_credit_packages_currency_format`
+- `unmapped:credit_packages.chk_credit_packages_price_nonnegative`
+- `unmapped:invoices.chk_invoices_cents_nonnegative`
+- `unmapped:invoices.chk_invoices_currency_format`
+- `unmapped:invoices.chk_invoices_installments`
+- `unmapped:notifications.chk_notifications_resource_pair`
+- `unmapped:orders.chk_orders_amount_consistency`
+- `unmapped:orders.chk_orders_cents_nonnegative`
+- `unmapped:orders.chk_orders_currency_format`
+- `unmapped:plan_items.chk_plan_items_currency_format`
+- `unmapped:plan_items.chk_plan_items_price_nonnegative`
+- `unmapped:plans.chk_plans_cents_nonnegative`
+- `unmapped:plans.chk_plans_currency_format`
+- `unmapped:provider_disputes.chk_provider_disputes_amount_nonnegative`
+- `unmapped:provider_disputes.chk_provider_disputes_currency_format`
+- `unmapped:provider_disputes.chk_provider_disputes_resolved_at`
+- `unmapped:provider_disputes.chk_provider_disputes_result`
+- `unmapped:refunds.chk_refunds_amount_nonnegative`
+- `unmapped:refunds.chk_refunds_currency_format`
+- `unmapped:refunds.chk_refunds_processed_by_status`
+- `unmapped:subscriptions.chk_subscriptions_cents_nonnegative`
+- `unmapped:subscriptions.chk_subscriptions_currency_format`
+- `unmapped:subscriptions.chk_subscriptions_installments`
+- `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
+- `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
+- `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`
+- `unmapped:workspace_credit_transactions.workspace_credit_transactions.amount`
+- `unmapped:workspace_invites.chk_workspace_invites_email_by_type`
+- `unmapped:workspace_invites.chk_workspace_invites_max_uses_by_type`
+- `unmapped:workspace_invites.chk_workspace_invites_max_uses_positive`
+
+### `check_extra` (4)
+
+- `brands.ck_brands_deleted_after_created`
+- `users.global_role`
+- `workspace_memberships.ck_memberships_deleted_after_created`
+- `workspace_memberships.workspace_role`
+
+## 8. Funções, triggers e views
+
+Objetos com regra de negócio no banco. A decisão é objeto a objeto na tarefa
+T20 (`SHC-21`), que classifica cada um em trigger SQLite, guarda de aplicação
+com teste, ou fora de escopo justificado.
 
 | Tipo | Nome |
 | --- | --- |
@@ -907,25 +887,25 @@ declarar fora de escopo com justificativa. Nenhum fica sem classificação.
 | TRIGGER | `trg_updated_at_fiscal_invoices` |
 | TRIGGER | `trg_updated_at_image_resizes` |
 
-## 8. Tabelas fora do modelo final
+## 9. Tabelas fora do modelo final
 
-| Tabela | Categoria | Ação |
-| --- | --- | --- |
-| `activity_events` | extensão de ADR | manter |
-| `auth_sessions` | extensão de ADR | manter |
-| `content_text_versions` | extensão de ADR | manter |
-| `outbox_events` | extensão de ADR | manter |
-| `agent_workflow_runs` | legado com consumidores | decidir em issue própria |
-| `agent_workflow_steps` | legado com consumidores | decidir em issue própria |
-| `assets` | legado com consumidores | decidir em issue própria |
-| `brand_settings` | legado com consumidores | decidir em issue própria |
-| `contents` | legado com consumidores | decidir em issue própria |
-| `generation_job_status_events` | legado com consumidores | decidir em issue própria |
-| `generation_jobs` | legado com consumidores | decidir em issue própria |
-| `generations` | legado com consumidores | decidir em issue própria |
-| `images` | legado com consumidores | decidir em issue própria |
-| `projects` | legado com consumidores | decidir em issue própria |
-| `settings` | legado com consumidores | decidir em issue própria |
-| `provider_customers` | sem alvo no modelo final | remover após migrar consumidores |
-| `provider_subscriptions` | sem alvo no modelo final | remover após migrar consumidores |
+| Tabela | Categoria |
+| --- | --- |
+| `auth_sessions` | extensão de ADR (preservada) |
+| `outbox_events` | extensão de ADR (preservada) |
+| `activity_events` | extensão de ADR (preservada) |
+| `content_text_versions` | extensão de ADR (preservada) |
+| `agent_workflow_runs` | legado com consumidores (ADR-029 decide) |
+| `agent_workflow_steps` | legado com consumidores (ADR-029 decide) |
+| `assets` | legado com consumidores (ADR-029 decide) |
+| `brand_settings` | legado com consumidores (ADR-029 decide) |
+| `contents` | legado com consumidores (ADR-029 decide) |
+| `generation_job_status_events` | legado com consumidores (ADR-029 decide) |
+| `generation_jobs` | legado com consumidores (ADR-029 decide) |
+| `generations` | legado com consumidores (ADR-029 decide) |
+| `images` | legado com consumidores (ADR-029 decide) |
+| `projects` | legado com consumidores (ADR-029 decide) |
+| `settings` | legado com consumidores (ADR-029 decide) |
+| `provider_customers` | sem alvo no modelo final (ADR-029 decide) |
+| `provider_subscriptions` | sem alvo no modelo final (ADR-029 decide) |
 
