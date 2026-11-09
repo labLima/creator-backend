@@ -117,6 +117,23 @@ CREATE TABLE assets (
 	FOREIGN KEY(uploaded_by_user_id) REFERENCES users (id) ON DELETE SET NULL
 )
 
+CREATE TABLE audit_logs (
+	id CHAR(32) NOT NULL,
+	actor_id CHAR(32),
+	workspace_id CHAR(32),
+	action VARCHAR(64) NOT NULL,
+	entity_type VARCHAR(60) NOT NULL,
+	entity_id CHAR(32) NOT NULL,
+	"before" JSON,
+	"after" JSON,
+	ip_address VARCHAR(45),
+	user_agent VARCHAR(255),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(actor_id) REFERENCES users (id) ON DELETE SET NULL,
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE SET NULL
+)
+
 CREATE TABLE auth_sessions (
 	id CHAR(32) NOT NULL,
 	user_id CHAR(32) NOT NULL,
@@ -677,6 +694,16 @@ CREATE TABLE outbox_events (
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE
 )
 
+CREATE TABLE persona_interests (
+	id CHAR(32) NOT NULL,
+	persona_id CHAR(32) NOT NULL,
+	interest VARCHAR(100) NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(persona_id) REFERENCES personas (id) ON DELETE CASCADE
+)
+
 CREATE TABLE personas (
 	brand_id CHAR(32) NOT NULL,
 	created_by CHAR(32) NOT NULL,
@@ -980,6 +1007,22 @@ CREATE TABLE subscriptions (
 	FOREIGN KEY(plan_id) REFERENCES plans (id)
 )
 
+CREATE TABLE user_consents (
+	id CHAR(32) NOT NULL,
+	user_id CHAR(32) NOT NULL,
+	type VARCHAR(24) NOT NULL,
+	document_version VARCHAR(20) NOT NULL,
+	granted BOOLEAN DEFAULT true NOT NULL,
+	granted_at DATETIME,
+	revoked_at DATETIME,
+	ip_address VARCHAR(45),
+	user_agent VARCHAR(255),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT,
+	CONSTRAINT consent_type CHECK (type IN ('TERMS_OF_USE', 'PRIVACY_POLICY', 'MARKETING_COMMUNICATIONS'))
+)
+
 CREATE TABLE user_devices (
 	user_id CHAR(32) NOT NULL,
 	platform VARCHAR(10) NOT NULL,
@@ -1117,6 +1160,14 @@ CREATE INDEX ix_assets_project_id ON assets (project_id)
 
 CREATE INDEX ix_assets_workspace_filter ON assets (workspace_id, deleted_at, created_at)
 
+CREATE INDEX ix_audit_logs_action_created_at ON audit_logs (action, created_at)
+
+CREATE INDEX ix_audit_logs_actor_id_created_at ON audit_logs (actor_id, created_at)
+
+CREATE INDEX ix_audit_logs_entity_type_entity_id_created_at ON audit_logs (entity_type, entity_id, created_at)
+
+CREATE INDEX ix_audit_logs_workspace_id_created_at ON audit_logs (workspace_id, created_at)
+
 CREATE INDEX ix_auth_sessions_absolute_expires_at ON auth_sessions (absolute_expires_at)
 
 CREATE INDEX ix_auth_sessions_expires_at ON auth_sessions (expires_at)
@@ -1165,6 +1216,8 @@ CREATE INDEX ix_outbox_events_dispatch ON outbox_events (published_at, available
 
 CREATE INDEX ix_outbox_events_workspace ON outbox_events (workspace_id, created_at)
 
+CREATE UNIQUE INDEX uq_persona_interests_persona_id_interest ON persona_interests (persona_id, interest)
+
 CREATE INDEX ix_projects_brand_id ON projects (brand_id)
 
 CREATE INDEX ix_projects_created_by_user_id ON projects (created_by_user_id)
@@ -1172,6 +1225,8 @@ CREATE INDEX ix_projects_created_by_user_id ON projects (created_by_user_id)
 CREATE INDEX ix_projects_workspace_filter ON projects (workspace_id, deleted_at, created_at)
 
 CREATE INDEX ix_settings_user_id ON settings (user_id)
+
+CREATE UNIQUE INDEX uq_user_consents_user_id_type_document_version ON user_consents (user_id, type, document_version)
 
 CREATE INDEX ix_users_deleted_at ON users (deleted_at)
 

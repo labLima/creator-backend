@@ -8,18 +8,18 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **53**
+- Tabelas no metadata atual: **56**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **729**
+- Divergências: **723**
 
 ## Divergências por categoria
 
 | Categoria | Ocorrências |
 | --- | --- |
-| `table_missing` | 22 |
+| `table_missing` | 19 |
 | `table_extra` | 4 |
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
@@ -35,11 +35,11 @@
 | `index_missing` | 108 |
 | `index_extra` | 11 |
 | `index_name` | 29 |
-| `fk_missing` | 63 |
+| `fk_missing` | 59 |
 | `fk_extra` | 49 |
 | `fk_ondelete` | 35 |
 | `check_missing` | 49 |
-| `check_extra` | 4 |
+| `check_extra` | 5 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
 
@@ -55,7 +55,6 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 ## 2. Tabelas do modelo final ausentes no ORM
 
-- **`audit_logs`** (11 colunas, 0 CHECKs): `id`, `actor_id`, `workspace_id`, `action`, `entity_type`, `entity_id`, `before`, `after`, `ip_address`, `user_agent`, `created_at`
 - **`brand_business_details`** (10 colunas, 0 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `output`, `model`, `spec_version`, `created_by`, `created_at`, `updated_at`
 - **`brand_hashtags`** (5 colunas, 0 CHECKs): `id`, `brand_id`, `hashtag`, `created_at`, `updated_at`
 - **`brand_values`** (5 colunas, 0 CHECKs): `id`, `brand_id`, `value`, `created_at`, `updated_at`
@@ -70,11 +69,9 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 - **`fiscal_invoices`** (21 colunas, 3 CHECKs): `id`, `billing_account_id`, `order_id`, `invoice_id`, `subscription_id`, `number`, `series`, `access_key`, `service_code`, `amount_cents`, `currency`, `status`, `pdf_storage_bucket`, `pdf_storage_key`, `xml_storage_bucket`, `xml_storage_key`, `error_message`, `issued_at`, `canceled_at`, `created_at`, `updated_at`
 - **`generated_images`** (23 colunas, 9 CHECKs): `id`, `design_slide_id`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `model`, `prompt`, `created_by`, `error_message`, `generation_status`, `is_current`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `feedback_type`, `feedback_text`, `created_at`, `updated_at`, `deleted_at`
 - **`image_resizes`** (14 colunas, 4 CHECKs): `id`, `source_image_id`, `ratio`, `status`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `error_message`, `created_by`, `created_at`, `updated_at`
-- **`persona_interests`** (5 colunas, 0 CHECKs): `id`, `persona_id`, `interest`, `created_at`, `updated_at`
 - **`plan_payment_methods`** (6 colunas, 1 CHECKs): `id`, `plan_id`, `method`, `max_installments`, `created_at`, `updated_at`
 - **`post_designs`** (6 colunas, 1 CHECKs): `id`, `post_id`, `format`, `ratio`, `created_at`, `updated_at`
 - **`posts`** (17 colunas, 6 CHECKs): `id`, `content_plan_id`, `created_by`, `title`, `objective`, `big_idea`, `main_message`, `publication_status`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `scheduled_at`, `published_at`, `created_at`, `updated_at`, `deleted_at`
-- **`user_consents`** (10 colunas, 0 CHECKs): `id`, `user_id`, `type`, `document_version`, `granted`, `granted_at`, `revoked_at`, `ip_address`, `user_agent`, `created_at`
 - **`workspace_credit_lot_consumptions`** (6 colunas, 1 CHECKs): `id`, `workspace_id`, `lot_id`, `transaction_id`, `amount`, `created_at`
 - **`workspace_credit_lots`** (8 colunas, 1 CHECKs): `id`, `workspace_id`, `grant_transaction_id`, `original_amount`, `remaining_amount`, `expires_at`, `created_at`, `updated_at`
 
@@ -593,12 +590,10 @@ Total: **148**.
 
 ## 6. Foreign keys
 
-Total: **147**.
+Total: **143**.
 
-### `fk_missing` (63)
+### `fk_missing` (59)
 
-- `audit_logs['actor_id']->users['id'] [SET NULL]`
-- `audit_logs['workspace_id']->workspaces['id'] [SET NULL]`
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `brand_assets['created_by']->users['id'] [SET NULL]`
 - `brand_business_details['brand_id']->brands['id'] [CASCADE]`
@@ -637,7 +632,6 @@ Total: **147**.
 - `generated_images['design_slide_id']->design_slides['id'] [CASCADE]`
 - `image_resizes['created_by']->users['id'] [SET NULL]`
 - `image_resizes['source_image_id']->generated_images['id'] [CASCADE]`
-- `persona_interests['persona_id']->personas['id'] [CASCADE]`
 - `plan_payment_methods['plan_id']->plans['id'] [CASCADE]`
 - `post_designs['post_id']->posts['id'] [CASCADE]`
 - `posts['approved_by']->users['id'] [SET NULL]`
@@ -649,7 +643,6 @@ Total: **147**.
 - `subscription_history['new_plan_id']->plans['id'] [SET NULL]`
 - `subscription_history['old_plan_id']->plans['id'] [SET NULL]`
 - `subscriptions['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
-- `user_consents['user_id']->users['id'] [RESTRICT]`
 - `workspace_credit_lot_consumptions['lot_id', 'workspace_id']->workspace_credit_lots['id', 'workspace_id'] [RESTRICT]`
 - `workspace_credit_lot_consumptions['transaction_id', 'workspace_id']->workspace_credit_transactions['id', 'workspace_id'] [RESTRICT]`
 - `workspace_credit_lots['grant_transaction_id', 'workspace_id']->workspace_credit_transactions['id', 'workspace_id'] [RESTRICT]`
@@ -753,7 +746,7 @@ Total: **147**.
 
 ## 7. CHECK constraints
 
-Total: **53**.
+Total: **54**.
 
 ### `check_missing` (49)
 
@@ -807,9 +800,10 @@ Total: **53**.
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_by_type`
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_positive`
 
-### `check_extra` (4)
+### `check_extra` (5)
 
 - `brands.ck_brands_deleted_after_created`
+- `user_consents.consent_type`
 - `users.global_role`
 - `workspace_memberships.ck_memberships_deleted_after_created`
 - `workspace_memberships.workspace_role`

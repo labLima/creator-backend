@@ -434,11 +434,7 @@ def _parse_table(
         raw_type = " ".join(type_tokens)
         tail = " ".join(tokens[index:])
 
-        default = re.search(
-            r"\bDEFAULT\s+(\(?[^)]*?\)?)(?=\s+(?:CHECK|UNIQUE|PRIMARY|REFERENCES|CONSTRAINT|NOT)\b|$)",
-            tail,
-            re.I,
-        )
+        default_text = _extract_default(tail)
         inline_check = re.search(r"\bCHECK\s*(\(.*)$", tail, re.I)
 
         columns[column_name] = FinalColumn(
@@ -448,7 +444,7 @@ def _parse_table(
             not_null="NOT NULL" in tail.upper(),
             primary_key=bool(re.search(r"PRIMARY KEY", tail, re.I)),
             unique=bool(re.search(r"\bUNIQUE\b", tail, re.I)),
-            default=default.group(1).strip() if default else None,
+            default=default_text,
             inline_check=inline_check.group(1).strip() if inline_check else None,
         )
         if inline_check:
@@ -462,6 +458,35 @@ def _parse_table(
         primary_key=primary_key,
         foreign_keys=tuple(inline_foreign_keys),
     )
+
+
+def _extract_default(tail: str) -> str | None:
+    """Read a DEFAULT expression, balancing parentheses and quotes.
+
+    PostgreSQL wraps function defaults as ``DEFAULT (now())``; a flat regex stops
+    at the first ``)`` and silently drops the requirement.
+    """
+    match = re.search(r"\bDEFAULT\b", tail, re.I)
+    if match is None:
+        return None
+    rest = tail[match.end() :].lstrip()
+    if rest.startswith("("):
+        depth = 0
+        for index, char in enumerate(rest):
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    return rest[: index + 1].strip()
+        return rest.strip()
+    if rest.startswith("'"):
+        end = rest.find("'", 1)
+        while end != -1 and rest[end + 1 : end + 2] == "'":
+            end = rest.find("'", end + 2)
+        return rest[: end + 1].strip() if end != -1 else rest.strip()
+    token = re.match(r"[^\s,]+", rest)
+    return token.group(0) if token else None
 
 
 def _column_tuple(text: str) -> tuple[str, ...]:

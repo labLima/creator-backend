@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from creator.activity_event import models as _activity_event_tables  # noqa: F401
 from creator.asset import models as _asset_tables  # noqa: F401
+from creator.audit import models as _audit_tables  # noqa: F401
 from creator.auth import models as _auth_tables  # noqa: F401
 from creator.billing_account import models as _billing_account_tables  # noqa: F401
 from creator.billing_provider import models as _billing_provider_tables  # noqa: F401

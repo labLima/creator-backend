@@ -8,17 +8,20 @@ it byte for byte.
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
     ForeignKey,
+    Index,
     Integer,
     String,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import timestamp_tz
+from creator.infrastructure.database.types import timestamp_tz, uuid_default, uuid_pk
 
 timestamp = timestamp_tz
 
@@ -36,3 +39,27 @@ class Persona(SchemaRow, Base):
     routine: Mapped[str | None] = mapped_column(String(300))
     journey: Mapped[str | None] = mapped_column(String(250))
     trigger: Mapped[str | None] = mapped_column(String(200))
+
+
+class PersonaInterest(Base):
+    __tablename__ = "persona_interests"
+    __table_args__ = (
+        Index(
+            "uq_persona_interests_persona_id_interest",
+            "persona_id",
+            "interest",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    persona_id: Mapped[UUID] = mapped_column(
+        ForeignKey("personas.id", ondelete="CASCADE"), nullable=False
+    )
+    interest: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )

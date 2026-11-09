@@ -73,6 +73,17 @@ Estas tabelas já correspondem ao alvo do PDF e não têm migração de schema p
 - `workspace_memberships`
 - `workspaces`
 
+## Tabelas do modelo final adicionadas por ADR-028
+
+Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
+(ADR-028), antes de qualquer rota consumi-las.
+
+| Tabela | Fase | Situação | Consumidor |
+| --- | --- | --- | --- |
+| `audit_logs` | T5 (`0006`) | ativo, append-only | nenhum ainda; escrita prevista na camada de serviço |
+| `user_consents` | T5 (`0006`) | ativo | nenhum ainda; consentimento versionado por usuário |
+| `persona_interests` | T5 (`0006`) | ativo | nenhum ainda; vocabulário de interesses da persona |
+
 ## Regras
 
 - `generated_image` só pode substituir `images` quando a cadeia `post_structure -> design_structure -> generated_image` tiver dados, writer e teste de contrato; hoje `images` ainda é o destino real da geração.

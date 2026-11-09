@@ -8,9 +8,11 @@ it byte for byte.
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    Boolean,
     ForeignKey,
     Index,
     String,
@@ -26,7 +28,13 @@ from creator.infrastructure.database.enums import (
     GlobalRole,
     global_role_enum,
 )
-from creator.infrastructure.database.types import json_type, timestamp_tz, uuid_default, uuid_pk
+from creator.infrastructure.database.types import (
+    enum_column,
+    json_type,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
@@ -113,3 +121,31 @@ class User(Base):
         onupdate=func.now(),
     )
     deleted_at: Mapped[object | None] = mapped_column(timestamp_tz)
+
+
+class UserConsent(Base):
+    __tablename__ = "user_consents"
+    __table_args__ = (
+        Index(
+            "uq_user_consents_user_id_type_document_version",
+            "user_id",
+            "type",
+            "document_version",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    type: Mapped[str] = mapped_column(enum_column("consent_type"), nullable=False)
+    document_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    granted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    granted_at: Mapped[datetime | None] = mapped_column(timestamp)
+    revoked_at: Mapped[datetime | None] = mapped_column(timestamp)
+    ip_address: Mapped[str | None] = mapped_column(String(45))
+    user_agent: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )

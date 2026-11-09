@@ -23,6 +23,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import configure_mappers
 
+from creator.infrastructure.database import metadata as _models  # noqa: F401
 from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.final_schema import render_schema_ddl
 from creator.main import app
