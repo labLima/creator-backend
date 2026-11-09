@@ -253,6 +253,16 @@ CREATE TABLE brand_colors (
 	FOREIGN KEY(created_by) REFERENCES users (id)
 )
 
+CREATE TABLE brand_hashtags (
+	id CHAR(32) NOT NULL,
+	brand_id CHAR(32) NOT NULL,
+	hashtag VARCHAR(100) NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE
+)
+
 CREATE TABLE brand_settings (
 	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
@@ -271,6 +281,16 @@ CREATE TABLE brand_settings (
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT
 )
 
+CREATE TABLE brand_values (
+	id CHAR(32) NOT NULL,
+	brand_id CHAR(32) NOT NULL,
+	value VARCHAR(100) NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE
+)
+
 CREATE TABLE brands (
 	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
@@ -287,6 +307,28 @@ CREATE TABLE brands (
 	CONSTRAINT ck_brands_deleted_after_created CHECK (deleted_at IS NULL OR deleted_at >= created_at),
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
 	FOREIGN KEY(created_by_user_id) REFERENCES users (id) ON DELETE SET NULL
+)
+
+CREATE TABLE campaign_hashtags (
+	id CHAR(32) NOT NULL,
+	campaign_id CHAR(32) NOT NULL,
+	hashtag VARCHAR(60) NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(campaign_id) REFERENCES campaigns (id) ON DELETE CASCADE
+)
+
+CREATE TABLE campaign_voices (
+	id CHAR(32) NOT NULL,
+	campaign_id CHAR(32) NOT NULL,
+	voice VARCHAR(13) NOT NULL,
+	created_by CHAR(32),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(campaign_id) REFERENCES campaigns (id) ON DELETE CASCADE,
+	CONSTRAINT campaign_voice CHECK (voice IN ('INSPIRATIONAL', 'MOTIVATIONAL', 'PROFESSIONAL', 'CASUAL', 'ELEGANT', 'MODERN', 'TRADITIONAL', 'FUN', 'SERIOUS'))
 )
 
 CREATE TABLE campaigns (
@@ -1176,11 +1218,19 @@ CREATE INDEX ix_auth_sessions_family_id ON auth_sessions (family_id)
 
 CREATE INDEX ix_auth_sessions_user_id ON auth_sessions (user_id)
 
+CREATE UNIQUE INDEX uq_brand_hashtags_brand_id_hashtag ON brand_hashtags (brand_id, hashtag)
+
 CREATE INDEX ix_brand_settings_workspace_id ON brand_settings (workspace_id)
+
+CREATE UNIQUE INDEX uq_brand_values_brand_id_value ON brand_values (brand_id, value)
 
 CREATE INDEX ix_brands_created_by_user_id ON brands (created_by_user_id)
 
 CREATE INDEX ix_brands_workspace_filter ON brands (workspace_id, deleted_at, created_at)
+
+CREATE UNIQUE INDEX uq_campaign_hashtags_campaign_id_hashtag ON campaign_hashtags (campaign_id, hashtag)
+
+CREATE UNIQUE INDEX uq_campaign_voices_campaign_id_voice ON campaign_voices (campaign_id, voice)
 
 CREATE INDEX ix_content_text_versions_content_version ON content_text_versions (content_id, version_number)
 

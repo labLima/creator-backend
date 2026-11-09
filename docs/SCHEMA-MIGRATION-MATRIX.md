@@ -83,6 +83,10 @@ Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
 | `audit_logs` | T5 (`0006`) | ativo, append-only | nenhum ainda; escrita prevista na camada de serviço |
 | `user_consents` | T5 (`0006`) | ativo | nenhum ainda; consentimento versionado por usuário |
 | `persona_interests` | T5 (`0006`) | ativo | nenhum ainda; vocabulário de interesses da persona |
+| `brand_hashtags` | T6 (`0007`) | ativo | nenhum ainda; hashtags por marca |
+| `brand_values` | T6 (`0007`) | ativo | nenhum ainda; valores por marca |
+| `campaign_hashtags` | T6 (`0007`) | ativo | nenhum ainda; hashtags por campanha |
+| `campaign_voices` | T6 (`0007`) | ativo | nenhum ainda; vozes por campanha com vocabulário fechado |
 
 ## Regras
 

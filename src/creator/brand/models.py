@@ -8,6 +8,7 @@ it byte for byte.
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
@@ -160,3 +161,39 @@ class BrandSettings(Base):
         onupdate=func.now(),
     )
     deleted_at: Mapped[object | None] = mapped_column(timestamp_tz)
+
+
+class BrandHashtag(Base):
+    __tablename__ = "brand_hashtags"
+    __table_args__ = (
+        Index("uq_brand_hashtags_brand_id_hashtag", "brand_id", "hashtag", unique=True),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    brand_id: Mapped[UUID] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=False
+    )
+    hashtag: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class BrandValue(Base):
+    __tablename__ = "brand_values"
+    __table_args__ = (Index("uq_brand_values_brand_id_value", "brand_id", "value", unique=True),)
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    brand_id: Mapped[UUID] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=False
+    )
+    value: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )

@@ -13,12 +13,19 @@ from uuid import UUID
 
 from sqlalchemy import (
     ForeignKey,
+    Index,
     String,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import timestamp_tz
+from creator.infrastructure.database.types import (
+    enum_column,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
@@ -34,3 +41,42 @@ class Campaign(SchemaRow, Base):
     voice: Mapped[str | None] = mapped_column(String(20))
     start_at: Mapped[datetime | None] = mapped_column(timestamp)
     end_at: Mapped[datetime | None] = mapped_column(timestamp)
+
+
+class CampaignHashtag(Base):
+    __tablename__ = "campaign_hashtags"
+    __table_args__ = (
+        Index("uq_campaign_hashtags_campaign_id_hashtag", "campaign_id", "hashtag", unique=True),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    campaign_id: Mapped[UUID] = mapped_column(
+        ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
+    )
+    hashtag: Mapped[str] = mapped_column(String(60), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class CampaignVoice(Base):
+    __tablename__ = "campaign_voices"
+    __table_args__ = (
+        Index("uq_campaign_voices_campaign_id_voice", "campaign_id", "voice", unique=True),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    campaign_id: Mapped[UUID] = mapped_column(
+        ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
+    )
+    voice: Mapped[str] = mapped_column(enum_column("campaign_voice"), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(uuid_pk, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )

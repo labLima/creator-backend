@@ -8,18 +8,18 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **56**
+- Tabelas no metadata atual: **60**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **723**
+- Divergências: **716**
 
 ## Divergências por categoria
 
 | Categoria | Ocorrências |
 | --- | --- |
-| `table_missing` | 19 |
+| `table_missing` | 15 |
 | `table_extra` | 4 |
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
@@ -35,11 +35,11 @@
 | `index_missing` | 108 |
 | `index_extra` | 11 |
 | `index_name` | 29 |
-| `fk_missing` | 59 |
+| `fk_missing` | 55 |
 | `fk_extra` | 49 |
 | `fk_ondelete` | 35 |
 | `check_missing` | 49 |
-| `check_extra` | 5 |
+| `check_extra` | 6 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
 
@@ -56,10 +56,6 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 ## 2. Tabelas do modelo final ausentes no ORM
 
 - **`brand_business_details`** (10 colunas, 0 CHECKs): `id`, `brand_id`, `campaign_id`, `persona_id`, `output`, `model`, `spec_version`, `created_by`, `created_at`, `updated_at`
-- **`brand_hashtags`** (5 colunas, 0 CHECKs): `id`, `brand_id`, `hashtag`, `created_at`, `updated_at`
-- **`brand_values`** (5 colunas, 0 CHECKs): `id`, `brand_id`, `value`, `created_at`, `updated_at`
-- **`campaign_hashtags`** (5 colunas, 0 CHECKs): `id`, `campaign_id`, `hashtag`, `created_at`, `updated_at`
-- **`campaign_voices`** (6 colunas, 0 CHECKs): `id`, `campaign_id`, `voice`, `created_by`, `created_at`, `updated_at`
 - **`captions`** (8 colunas, 1 CHECKs): `id`, `post_id`, `created_by`, `body`, `version`, `is_current`, `created_at`, `updated_at`
 - **`charge_transactions`** (10 colunas, 1 CHECKs): `id`, `charge_id`, `provider`, `external_id`, `status`, `amount_cents`, `gateway_response`, `antifraud_response`, `created_at`, `updated_at`
 - **`content_plan_items`** (6 colunas, 1 CHECKs): `id`, `content_plan_id`, `format`, `quantity`, `created_at`, `updated_at`
@@ -590,9 +586,9 @@ Total: **148**.
 
 ## 6. Foreign keys
 
-Total: **143**.
+Total: **139**.
 
-### `fk_missing` (59)
+### `fk_missing` (55)
 
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `brand_assets['created_by']->users['id'] [SET NULL]`
@@ -600,11 +596,7 @@ Total: **143**.
 - `brand_business_details['campaign_id', 'brand_id']->campaigns['id', 'brand_id'] [CASCADE]`
 - `brand_business_details['created_by']->users['id'] [SET NULL]`
 - `brand_business_details['persona_id', 'brand_id']->personas['id', 'brand_id'] [CASCADE]`
-- `brand_hashtags['brand_id']->brands['id'] [CASCADE]`
-- `brand_values['brand_id']->brands['id'] [CASCADE]`
 - `brands['created_by']->users['id'] [SET NULL]`
-- `campaign_hashtags['campaign_id']->campaigns['id'] [CASCADE]`
-- `campaign_voices['campaign_id']->campaigns['id'] [CASCADE]`
 - `campaigns['brand_id']->brands['id'] [CASCADE]`
 - `captions['created_by']->users['id'] [SET NULL]`
 - `captions['post_id']->posts['id'] [CASCADE]`
@@ -746,7 +738,7 @@ Total: **143**.
 
 ## 7. CHECK constraints
 
-Total: **54**.
+Total: **55**.
 
 ### `check_missing` (49)
 
@@ -800,9 +792,10 @@ Total: **54**.
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_by_type`
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_positive`
 
-### `check_extra` (5)
+### `check_extra` (6)
 
 - `brands.ck_brands_deleted_after_created`
+- `campaign_voices.campaign_voice`
 - `user_consents.consent_type`
 - `users.global_role`
 - `workspace_memberships.ck_memberships_deleted_after_created`

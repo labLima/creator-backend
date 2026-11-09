@@ -233,7 +233,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ### T6 — Satélites de Brand e Campanha
 
-**Descrição:** Criar `brand_business_details`, `brand_hashtags`, `brand_values`, `campaign_hashtags` e `campaign_voices`, com unicidade de hashtag/valor por pai e FKs em cascata.
+**Descrição:** Criar `brand_hashtags`, `brand_values`, `campaign_hashtags` e `campaign_voices`, com unicidade de hashtag/valor/voz por pai e FKs em cascata. `brand_business_details` fica para T14: as FKs compostas exigem `campaigns.brand_id` e os UNIQUE `(id, brand_id)` de campaigns/personas, que chegam com o alinhamento das campanhas.
 
 **Critérios de aceite:**
 - [ ] Cinco tabelas com colunas e UNIQUE do dump.
@@ -593,7 +593,7 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 | `brand_hashtags` | criar | T6 |
 | `brand_colors` | alinhar: +3 col, −15 col | T14 |
 | `brand_assets` | alinhar: +3 col, −2 col, 1 enum | T14 |
-| `brand_business_details` | criar | T6 |
+| `brand_business_details` | criar | T14 |
 
 #### Campanha
 
