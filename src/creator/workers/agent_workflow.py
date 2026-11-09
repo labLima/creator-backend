@@ -728,7 +728,7 @@ def _execute_agent_step[OutputModel: BaseModel](
             or not unit_of_work.workspace.workspaces.user_has_workspace_role(
                 user_id=run.requested_by_user_id,
                 workspace_id=run.workspace_id,
-                minimum_role="editor",
+                minimum_role="EDITOR",
             )
         ):
             raise AgentKickoffError(

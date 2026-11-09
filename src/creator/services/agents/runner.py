@@ -127,7 +127,7 @@ def _validate_execution_context(context: AgentExecutionContext) -> None:
             AgentKickoffErrorCode.WORKSPACE_UNAUTHORIZED,
             "A Principal is required for agent execution",
         )
-    if role_value not in {"owner", "admin", "editor"}:
+    if role_value not in {"OWNER", "MANAGER", "EDITOR"}:
         raise AgentKickoffError(
             AgentKickoffErrorCode.WORKSPACE_UNAUTHORIZED,
             "Workspace Role is not authorized for agent execution",

@@ -154,3 +154,70 @@ def test_upgrade_keeps_active_members_and_drops_soft_deleted(tmp_path: Path) -> 
         assert recipient_member is None
         assert connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
     engine.dispose()
+
+
+def test_upgrade_maps_the_role_vocabulary(tmp_path: Path) -> None:
+    database = tmp_path / "roles.db"
+    _prepare(database)
+    engine = sa.create_engine(f"sqlite+pysqlite:///{database}")
+    workspace = uuid4()
+    roles = {
+        "owner": uuid4(),
+        "admin": uuid4(),
+        "editor": uuid4(),
+        "viewer": uuid4(),
+    }
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text("INSERT INTO workspaces (id, name) VALUES (:id, 'ws')"),
+            {"id": workspace.hex},
+        )
+        for role, user in roles.items():
+            connection.execute(
+                sa.text(
+                    "INSERT INTO users (id, external_id, global_role) "
+                    "VALUES (:id, :external, 'membro')"
+                ),
+                {"id": user.hex, "external": f"ext-{user}"},
+            )
+            connection.execute(
+                sa.text(
+                    "INSERT INTO workspace_memberships (id, workspace_id, user_id, role) "
+                    "VALUES (:id, :workspace, :user, :role)"
+                ),
+                {
+                    "id": uuid4().hex,
+                    "workspace": workspace.hex,
+                    "user": user.hex,
+                    "role": role,
+                },
+            )
+            connection.execute(
+                sa.text(
+                    "INSERT INTO workspace_invites "
+                    "(id, workspace_id, type, role, token, created_by, status) "
+                    "VALUES (:id, :workspace, 'LINK', :role, :token, :user, 'PENDING')"
+                ),
+                {
+                    "id": uuid4().hex,
+                    "workspace": workspace.hex,
+                    "role": role,
+                    "token": f"token-{user}",
+                    "user": user.hex,
+                },
+            )
+    engine.dispose()
+
+    _upgrade(database)
+
+    engine = sa.create_engine(f"sqlite+pysqlite:///{database}")
+    with engine.begin() as connection:
+        member_roles = {
+            row[0] for row in connection.execute(sa.text("SELECT role FROM workspace_members"))
+        }
+        invite_roles = {
+            row[0] for row in connection.execute(sa.text("SELECT role FROM workspace_invites"))
+        }
+    engine.dispose()
+    assert member_roles == {"OWNER", "MANAGER", "EDITOR", "VIEWER"}
+    assert invite_roles == {"OWNER", "MANAGER", "EDITOR", "VIEWER"}

@@ -44,7 +44,7 @@ def list_events(
     entity_id: UUID | None,
 ) -> dict[str, object]:
     if not uow.workspace.workspaces.user_has_workspace_role(
-        user_id=actor.id, workspace_id=workspace_id, minimum_role="admin"
+        user_id=actor.id, workspace_id=workspace_id, minimum_role="MANAGER"
     ):
         raise ApplicationError(
             403,

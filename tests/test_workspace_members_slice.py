@@ -30,7 +30,7 @@ def _member(connection: sa.Connection, *, workspace_id: str, user_id: str) -> No
     connection.execute(
         sa.text(
             "INSERT INTO workspace_members (id, workspace_id, user_id, role) "
-            "VALUES (:id, :workspace, :user, 'owner')"
+            "VALUES (:id, :workspace, :user, 'OWNER')"
         ),
         {"id": uuid4().hex, "workspace": workspace_id, "user": user_id},
     )
@@ -71,7 +71,7 @@ def test_membership_status_vocabulary_is_closed(engine: sa.Engine) -> None:
                 sa.text(
                     "INSERT INTO workspace_members "
                     "(id, workspace_id, user_id, role, status) "
-                    "VALUES (:id, :workspace, :user, 'owner', 'NOT_A_STATUS')"
+                    "VALUES (:id, :workspace, :user, 'OWNER', 'NOT_A_STATUS')"
                 ),
                 {
                     "id": uuid4().hex,
@@ -112,7 +112,7 @@ def test_invited_by_is_nulled_when_the_inviter_is_deleted(engine: sa.Engine) -> 
             connection.execute(
                 sa.text(
                     "INSERT INTO workspace_members (id, workspace_id, user_id, role, invited_by) "
-                    "VALUES (:id, :workspace, :user, 'editor', :inviter)"
+                    "VALUES (:id, :workspace, :user, 'EDITOR', :inviter)"
                 ),
                 {
                     "id": uuid4().hex,
@@ -146,14 +146,14 @@ def test_deleted_workspace_denies_access_and_invite_listing(engine: sa.Engine) -
         created = repository.create_for_user(user_id=user_id, name="ws")
         workspace_id = created.workspace.id
         assert repository.user_has_workspace_role(
-            user_id=user_id, workspace_id=workspace_id, minimum_role="viewer"
+            user_id=user_id, workspace_id=workspace_id, minimum_role="VIEWER"
         )
 
         repository.soft_delete_for_user(user_id=user_id, workspace_id=workspace_id)
         session.flush()
 
         assert not repository.user_has_workspace_role(
-            user_id=user_id, workspace_id=workspace_id, minimum_role="viewer"
+            user_id=user_id, workspace_id=workspace_id, minimum_role="VIEWER"
         )
         with pytest.raises(EntityNotFoundError):
             repository.update(user_id=user_id, workspace_id=workspace_id, name="renamed")
@@ -177,5 +177,43 @@ def test_removed_member_loses_access(engine: sa.Engine) -> None:
         )
         session.flush()
         assert not repository.user_has_workspace_role(
-            user_id=user_id, workspace_id=workspace_id, minimum_role="viewer"
+            user_id=user_id, workspace_id=workspace_id, minimum_role="VIEWER"
         )
+
+
+def test_role_rank_uses_the_final_vocabulary(engine: sa.Engine) -> None:
+    """MANAGER replaces ADMIN at the write threshold; EDITOR stays below it."""
+    from sqlalchemy.orm import Session
+
+    from creator.workspace.repository import SqlAlchemyWorkspaceRepository
+
+    owner_id, manager_id, editor_id = uuid4(), uuid4(), uuid4()
+    with Session(engine) as session:
+        repository = SqlAlchemyWorkspaceRepository(session)
+        created = repository.create_for_user(user_id=owner_id, name="ws")
+        workspace_id = created.workspace.id
+        for user, role in ((manager_id, "MANAGER"), (editor_id, "EDITOR")):
+            session.execute(
+                sa.text(
+                    "INSERT INTO workspace_members (id, workspace_id, user_id, role) "
+                    "VALUES (:id, :workspace, :user, :role)"
+                ),
+                {
+                    "id": uuid4().hex,
+                    "workspace": workspace_id.hex,
+                    "user": user.hex,
+                    "role": role,
+                },
+            )
+        session.flush()
+
+        def can_write(user: object) -> bool:
+            return repository.user_has_workspace_role(
+                user_id=user,  # type: ignore[arg-type]
+                workspace_id=workspace_id,
+                minimum_role="MANAGER",
+            )
+
+        assert can_write(owner_id)
+        assert can_write(manager_id)
+        assert not can_write(editor_id)

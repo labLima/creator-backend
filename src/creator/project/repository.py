@@ -44,7 +44,7 @@ def _user_has_workspace_role(
     *,
     user_id: UUID,
     workspace_id: UUID,
-    minimum_role: str = "viewer",
+    minimum_role: str = "VIEWER",
 ) -> bool:
     return user_has_workspace_role(
         session,
@@ -73,7 +73,7 @@ class SqlAlchemyProjectRepository:
             self._session,
             user_id=created_by_user_id,
             workspace_id=workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Workspace not found")
         row = project_tables.Project(
@@ -174,7 +174,7 @@ class SqlAlchemyProjectRepository:
             self._session,
             user_id=user_id,
             workspace_id=row.workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Project not found")
         return cast(project_tables.Project, row)

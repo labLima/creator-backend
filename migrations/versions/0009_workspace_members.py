@@ -10,7 +10,6 @@ migrates it.
 import sqlalchemy as sa
 from alembic import op
 
-from creator.infrastructure.database.enums import workspace_role_enum
 from creator.infrastructure.database.portable_enums import enum_column
 from creator.infrastructure.database.types import timestamp_tz, uuid_pk
 
@@ -70,7 +69,7 @@ def upgrade() -> None:
             sa.ForeignKey("users.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("role", workspace_role_enum, nullable=False),
+        sa.Column("role", sa.String(20), nullable=False),
         sa.Column(
             "status",
             enum_column("member_status"),
@@ -131,7 +130,7 @@ def downgrade() -> None:
             sa.ForeignKey("users.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("role", workspace_role_enum, nullable=False),
+        sa.Column("role", sa.String(20), nullable=False),
         sa.Column("created_at", timestamp_tz, nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", timestamp_tz, nullable=False, server_default=sa.func.now()),
         sa.Column("deleted_at", timestamp_tz),

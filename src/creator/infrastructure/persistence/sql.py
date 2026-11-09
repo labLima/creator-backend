@@ -113,7 +113,7 @@ def paginate(
     return list(rows), total
 
 
-ROLE_RANK = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
+ROLE_RANK = {"VIEWER": 1, "EDITOR": 2, "MANAGER": 3, "OWNER": 4}
 
 
 def user_has_workspace_role(
@@ -121,7 +121,7 @@ def user_has_workspace_role(
     *,
     user_id: UUID,
     workspace_id: UUID,
-    minimum_role: str = "viewer",
+    minimum_role: str = "VIEWER",
 ) -> bool:
     minimum_rank = ROLE_RANK[minimum_role]
     row = session.scalars(

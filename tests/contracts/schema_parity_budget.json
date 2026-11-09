@@ -12,7 +12,7 @@
     "nullability": 10,
     "width": 27,
     "kind": 1,
-    "enum": 35,
+    "enum": 34,
     "unique_missing": 4,
     "unique_extra": 7,
     "index_missing": 104,
@@ -26,5 +26,5 @@
     "default_missing": 6,
     "default_value": 0
   },
-  "gap_digest": "8deb8912ef494b3b7a0dfad966f7f4e78328831b42661f947fe85b138c48ba76"
+  "gap_digest": "833bc6646d013fb386843a13a09651b2c13e567ccc620213dacf8d0ea9fe2a83"
 }

@@ -40,7 +40,7 @@ def require_admin(user: UserRecord) -> None:
 
 def require_workspace_write(unit_of_work: UnitOfWork, *, user_id: UUID, workspace_id: UUID) -> None:
     if not unit_of_work.workspace.workspaces.user_has_workspace_role(
-        user_id=user_id, workspace_id=workspace_id, minimum_role="editor"
+        user_id=user_id, workspace_id=workspace_id, minimum_role="EDITOR"
     ):
         raise ApplicationError(
             403,

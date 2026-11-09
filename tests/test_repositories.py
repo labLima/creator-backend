@@ -416,7 +416,7 @@ def test_workspace_repository_crud_and_role_checks() -> None:
     assert repository.user_has_workspace_role(
         user_id=user.id,
         workspace_id=workspace.id,
-        minimum_role="editor",
+        minimum_role="EDITOR",
     )
 
 
@@ -582,7 +582,7 @@ def test_workspace_repository_creates_workspace_with_owner_membership() -> None:
     assert created.workspace.name == "Creator Workspace"
     assert created.membership.user_id == user_id
     assert created.membership.workspace_id == created.workspace.id
-    assert created.membership.role == "owner"
+    assert created.membership.role == "OWNER"
     assert any(isinstance(row, workspace_tables.Workspace) for row in session.added)
     assert any(isinstance(row, workspace_tables.WorkspaceMembership) for row in session.added)
 

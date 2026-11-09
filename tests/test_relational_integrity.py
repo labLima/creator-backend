@@ -92,7 +92,7 @@ def seed_user_workspace_content(connection: Any) -> dict[str, Any]:
         text(
             """
             INSERT INTO workspace_members (id, workspace_id, user_id, role)
-            VALUES (:id, :workspace_id, :user_id, 'owner')
+            VALUES (:id, :workspace_id, :user_id, 'OWNER')
             """
         ),
         {"id": uuid4().hex, "workspace_id": workspace_id.hex, "user_id": user_id.hex},

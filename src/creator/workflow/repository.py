@@ -292,7 +292,7 @@ class SqlAlchemyAgentWorkflowRepository:
         max_refinements: int,
     ) -> AgentWorkflowRunRecord:
         if not _user_has_workspace_role(
-            self._session, user_id=user_id, workspace_id=workspace_id, minimum_role="editor"
+            self._session, user_id=user_id, workspace_id=workspace_id, minimum_role="EDITOR"
         ):
             raise EntityNotFoundError("Workspace not found")
         row = workflow_tables.AgentWorkflowRun(

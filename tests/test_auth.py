@@ -98,7 +98,7 @@ def test_signup_creates_user_workspace_membership_and_session(
     assert result.user.password_hash is not None
     assert "correct-password" not in result.user.password_hash
     assert result.workspace.name == "Creator Workspace"
-    assert result.membership.role == "owner"
+    assert result.membership.role == "OWNER"
     assert result.result.session is not None
     assert result.result.session.provider == "local"
     assert result.result.session.principal.subject == str(result.user.id)

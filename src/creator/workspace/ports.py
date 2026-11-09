@@ -86,7 +86,7 @@ class WorkspaceRepository(Protocol):
         *,
         user_id: UUID,
         name: str,
-        role: str = "owner",
+        role: str = "OWNER",
     ) -> CreatedWorkspaceRecord: ...
 
     def soft_delete_for_user(self, *, user_id: UUID, workspace_id: UUID) -> WorkspaceRecord: ...
@@ -115,7 +115,7 @@ class WorkspaceRepository(Protocol):
         *,
         user_id: UUID,
         workspace_id: UUID,
-        minimum_role: str = "viewer",
+        minimum_role: str = "VIEWER",
     ) -> bool: ...
 
 

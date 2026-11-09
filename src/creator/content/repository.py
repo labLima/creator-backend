@@ -188,7 +188,7 @@ class SqlAlchemyContentRepository:
             self._session,
             user_id=user_id,
             workspace_id=content.workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Content not found")
         generation = self._session.scalars(
@@ -241,7 +241,7 @@ class SqlAlchemyContentRepository:
             self._session,
             user_id=user_id,
             workspace_id=content.workspace_id,
-            minimum_role="viewer",
+            minimum_role="VIEWER",
         ):
             raise EntityNotFoundError("Content not found")
         statement = select(content_tables.ContentTextVersion).where(

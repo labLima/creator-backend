@@ -365,7 +365,7 @@ class FakeWorkspaceRepository:
         self.deleted: list[dict[str, UUID]] = []
 
     def user_has_workspace_role(
-        self, *, user_id: UUID, workspace_id: UUID, minimum_role: str = "viewer"
+        self, *, user_id: UUID, workspace_id: UUID, minimum_role: str = "VIEWER"
     ) -> bool:
         return self.writable
 
@@ -379,7 +379,7 @@ class FakeWorkspaceRepository:
         *,
         user_id: UUID,
         name: str,
-        role: str = "owner",
+        role: str = "OWNER",
     ) -> CreatedWorkspaceRecord:
         self.created.append({"user_id": user_id, "name": name, "role": role})
         if self.create_error is not None:
@@ -1751,12 +1751,12 @@ async def test_create_workspace_returns_owner_membership() -> None:
     assert response.status_code == 201
     assert response.json()["success"] is True
     assert response.json()["data"]["workspace"]["name"] == "Second Workspace"
-    assert response.json()["data"]["membership"]["role"] == "owner"
+    assert response.json()["data"]["membership"]["role"] == "OWNER"
     assert unit_of_work.workspaces.created == [
         {
             "user_id": UUID("00000000-0000-0000-0000-000000000001"),
             "name": "Second Workspace",
-            "role": "owner",
+            "role": "OWNER",
         }
     ]
     assert unit_of_work.commits == 1

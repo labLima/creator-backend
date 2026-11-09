@@ -209,7 +209,7 @@ def test_brand_lifecycle_and_failed_audit_roll_back(db: Session) -> None:
     "role,allowed",
     [
         (WorkspaceRole.OWNER, True),
-        (WorkspaceRole.ADMIN, True),
+        (WorkspaceRole.MANAGER, True),
         (WorkspaceRole.EDITOR, False),
         (WorkspaceRole.VIEWER, False),
     ],

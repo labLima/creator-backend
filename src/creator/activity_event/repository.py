@@ -27,7 +27,7 @@ class SqlAlchemyActivityEventRepository:
         if event_type not in {"brand.created", "brand.updated", "brand.deleted"} or metadata:
             raise ValueError("Invalid Activity Event or metadata")
         if not user_has_workspace_role(
-            self._session, user_id=user_id, workspace_id=workspace_id, minimum_role="editor"
+            self._session, user_id=user_id, workspace_id=workspace_id, minimum_role="EDITOR"
         ):
             raise EntityNotFoundError("Workspace not found")
         brand = self._session.scalar(

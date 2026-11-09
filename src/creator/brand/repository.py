@@ -81,7 +81,7 @@ class SqlAlchemyBrandRepository:
             self._session,
             user_id=created_by_user_id,
             workspace_id=workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Workspace not found")
         row = brand_models.Brand(
@@ -173,7 +173,7 @@ class SqlAlchemyBrandRepository:
             self._session,
             user_id=user_id,
             workspace_id=row.workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Brand not found")
         return cast(brand_models.Brand, row)
@@ -301,7 +301,7 @@ class SqlAlchemyBrandSettingsRepository:
             self._session,
             user_id=user_id,
             workspace_id=workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Brand not found")
         row = self._session.scalars(
@@ -376,7 +376,7 @@ class SqlAlchemyBrandSettingsRepository:
             self._session,
             user_id=user_id,
             workspace_id=row.workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Brand settings not found")
         return cast(brand_tables.BrandSettings, row)

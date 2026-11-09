@@ -142,7 +142,7 @@ class SqlAlchemyGenerationRepository:
             self._session,
             user_id=requested_by_user_id,
             workspace_id=workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Workspace not found")
         content = self._session.scalars(
@@ -259,7 +259,7 @@ class SqlAlchemyGenerationRepository:
             self._session,
             user_id=user_id,
             workspace_id=row.workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Generation not found")
         return cast(generation_tables.Generation, row)
@@ -363,7 +363,7 @@ class SqlAlchemyImageGenerationRepository:
             self._session,
             user_id=requested_by_user_id,
             workspace_id=workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Content not found")
         content = self._session.scalars(

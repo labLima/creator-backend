@@ -71,7 +71,7 @@ class SqlAlchemyAssetRepository:
             self._session,
             user_id=uploaded_by_user_id,
             workspace_id=workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Workspace not found")
         row = asset_tables.Asset(
@@ -175,7 +175,7 @@ class SqlAlchemyAssetRepository:
             self._session,
             user_id=user_id,
             workspace_id=row.workspace_id,
-            minimum_role="editor",
+            minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Asset not found")
         return cast(asset_tables.Asset, row)

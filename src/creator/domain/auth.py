@@ -8,10 +8,10 @@ from uuid import UUID
 
 
 class WorkspaceRole(StrEnum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    EDITOR = "editor"
-    VIEWER = "viewer"
+    OWNER = "OWNER"
+    MANAGER = "MANAGER"
+    EDITOR = "EDITOR"
+    VIEWER = "VIEWER"
 
 
 @dataclass(frozen=True, slots=True)

@@ -174,7 +174,7 @@ def test_jwt_adapter_round_trips_pyjwt_two_string_contract() -> None:
     token = services.access.issue(
         user_id=user_id,
         session_id=session_id,
-        role="owner",
+        role="OWNER",
         settings=settings,
     )
 

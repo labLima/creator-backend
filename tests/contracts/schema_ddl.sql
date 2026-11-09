@@ -1251,7 +1251,7 @@ CREATE TABLE workspace_members (
 	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
 	user_id CHAR(32) NOT NULL,
-	role VARCHAR(6) NOT NULL,
+	role VARCHAR(7) NOT NULL,
 	status VARCHAR(9) DEFAULT 'ACTIVE' NOT NULL,
 	invited_by CHAR(32),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -1259,7 +1259,7 @@ CREATE TABLE workspace_members (
 	PRIMARY KEY (id),
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
 	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
-	CONSTRAINT workspace_role CHECK (role IN ('owner', 'admin', 'editor', 'viewer')),
+	CONSTRAINT workspace_role CHECK (role IN ('OWNER', 'MANAGER', 'EDITOR', 'VIEWER')),
 	CONSTRAINT member_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REMOVED')),
 	FOREIGN KEY(invited_by) REFERENCES users (id) ON DELETE SET NULL
 )

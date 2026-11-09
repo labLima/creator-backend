@@ -38,7 +38,7 @@ def require_workspace_write(
     if not unit_of_work.workspace.workspaces.user_has_workspace_role(
         user_id=user_id,
         workspace_id=workspace_id,
-        minimum_role="editor",
+        minimum_role="EDITOR",
     ):
         raise HTTPException(
             status_code=403,

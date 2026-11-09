@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **701**
+- Divergências: **700**
 
 ## Divergências por categoria
 
@@ -29,7 +29,7 @@
 | `nullability` | 10 |
 | `width` | 27 |
 | `kind` | 1 |
-| `enum` | 35 |
+| `enum` | 34 |
 | `unique_missing` | 4 |
 | `unique_extra` | 7 |
 | `index_missing` | 104 |
@@ -374,9 +374,9 @@ Total: **288**.
 
 ## 4. Enums
 
-Total: **35**.
+Total: **34**.
 
-### `enum` (35)
+### `enum` (34)
 
 - `billing_accounts.payer_type: model has no vocabulary (expected ['INDIVIDUAL', 'COMPANY'])`
 - `billing_accounts.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
@@ -412,7 +412,6 @@ Total: **35**.
 - `workspace_invites.role: model has no vocabulary (expected ['OWNER', 'MANAGER', 'EDITOR', 'VIEWER'])`
 - `workspace_invites.status: model has no vocabulary (expected ['PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED'])`
 - `workspace_invites.type: model has no vocabulary (expected ['EMAIL', 'LINK'])`
-- `workspace_members.role: missing=['EDITOR', 'MANAGER', 'OWNER', 'VIEWER'] extra=['admin', 'editor', 'owner', 'viewer']`
 
 ## 5. Índices
 

@@ -75,7 +75,7 @@ class SqlAlchemyWorkspaceRepository:
         *,
         user_id: UUID,
         name: str,
-        role: str = "owner",
+        role: str = "OWNER",
     ) -> CreatedWorkspaceRecord:
         workspace = workspace_models.Workspace(name=name)
         self._session.add(workspace)
@@ -188,7 +188,7 @@ class SqlAlchemyWorkspaceRepository:
         *,
         user_id: UUID,
         workspace_id: UUID,
-        minimum_role: str = "viewer",
+        minimum_role: str = "VIEWER",
     ) -> bool:
         return user_has_workspace_role(
             self._session,
@@ -203,7 +203,7 @@ class SqlAlchemyWorkspaceRepository:
         if not self.user_has_workspace_role(
             user_id=user_id,
             workspace_id=workspace_id,
-            minimum_role="admin",
+            minimum_role="MANAGER",
         ):
             raise EntityNotFoundError("Workspace not found")
         row = self._session.get(workspace_models.Workspace, workspace_id)
