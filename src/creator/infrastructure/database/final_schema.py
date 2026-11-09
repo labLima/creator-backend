@@ -518,9 +518,7 @@ def _parse_index(statement: str) -> IndexSignature | None:
     columns_match = re.search(r"\((.*?)\)", statement[match.end() :], re.S)
     if columns_match is None:
         return None
-    columns = tuple(
-        column.strip().strip('"') for column in _split_top_level(columns_match.group(1))
-    )
+    columns = tuple(_index_column(column) for column in _split_top_level(columns_match.group(1)))
     predicate_match = re.search(r"\bWHERE\b(.*)$", statement, re.S | re.I)
     return IndexSignature(
         table=match.group(3),
@@ -529,6 +527,15 @@ def _parse_index(statement: str) -> IndexSignature | None:
         predicate=_normalize_sql(predicate_match.group(1)) if predicate_match else None,
         name=match.group(2),
     )
+
+
+def _index_column(part: str) -> str:
+    """Extract the identifier from an index column, ignoring ordering and NULLS."""
+    quoted = re.match(r'"([^"]+)"', part.strip())
+    if quoted:
+        return quoted.group(1)
+    bare = re.match(r"([A-Za-z_][A-Za-z_0-9]*)", part.strip())
+    return bare.group(1) if bare else part.strip()
 
 
 def _parse_foreign_key(statement: str) -> ForeignKey | None:
