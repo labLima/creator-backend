@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import sqlalchemy as sa
 from alembic import command
 from alembic.autogenerate import compare_metadata
@@ -27,8 +28,11 @@ from sqlalchemy.orm import configure_mappers
 from creator.infrastructure.database import metadata as _models  # noqa: F401  (registers tables)
 from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.final_schema import (
+    ADR_EXTENSIONS,
     CHECK_MAP,
     GAP_CATEGORIES,
+    LEGACY_RETENTION,
+    NO_TARGET,
     RENAME_MAP,
     FinalSchema,
     Gap,
@@ -184,32 +188,27 @@ def test_parity_fixture_matches_versioned_dump() -> None:
     assert BUDGET["fixture_sha256"] == dump_hash, "budget fixture_sha256 is stale"
 
 
-def test_parity_tables() -> None:
-    _assert_budget(("table_missing", "table_extra"))
+PARITY_DIMENSIONS: dict[str, tuple[str, ...]] = {
+    "tables": ("table_missing", "table_extra", "allowlisted", "rename_collision"),
+    "columns": ("pk_mismatch", "column_missing", "column_extra"),
+    "types": ("nullability", "width", "kind", "default_missing", "default_value"),
+    "enums": ("enum",),
+    "uniques": ("unique_missing", "unique_extra"),
+    "indexes": ("index_missing", "index_extra", "index_name"),
+    "foreign_keys": ("fk_missing", "fk_extra", "fk_ondelete"),
+    "checks": ("check_missing", "check_extra"),
+}
 
 
-def test_parity_columns_and_primary_keys() -> None:
-    _assert_budget(("pk_mismatch", "column_missing", "column_extra"))
+@pytest.mark.parametrize("dimension", sorted(PARITY_DIMENSIONS))
+def test_parity_dimension(dimension: str) -> None:
+    _assert_budget(PARITY_DIMENSIONS[dimension])
 
 
-def test_parity_types_nullability_and_defaults() -> None:
-    _assert_budget(("nullability", "width", "default_missing"))
-
-
-def test_parity_enum_vocabulary() -> None:
-    _assert_budget(("enum",))
-
-
-def test_parity_indexes() -> None:
-    _assert_budget(("index_missing", "index_extra", "index_name"))
-
-
-def test_parity_foreign_keys() -> None:
-    _assert_budget(("fk_missing", "fk_extra", "fk_ondelete"))
-
-
-def test_parity_checks() -> None:
-    _assert_budget(("check_missing", "check_extra"))
+def test_parity_covers_every_category() -> None:
+    """A new category must be assigned to a dimension, not silently ignored."""
+    covered = {category for categories in PARITY_DIMENSIONS.values() for category in categories}
+    assert covered == set(GAP_CATEGORIES), sorted(set(GAP_CATEGORIES) - covered)
 
 
 def test_parity_budget_digest_matches() -> None:
@@ -223,7 +222,6 @@ def test_parity_budget_digest_matches() -> None:
 
 def test_parity_budget_covers_every_category() -> None:
     assert tuple(BUDGET["counts"]) == GAP_CATEGORIES
-    assert set(BUDGET["counts"].values()) >= {0}
 
 
 def test_ratchet_mechanism_detects_growth_and_stagnation() -> None:
@@ -259,7 +257,77 @@ def test_check_map_entries_are_well_formed() -> None:
     }
     for key, target in CHECK_MAP.items():
         assert key in known_checks, f"{key} is not a CHECK of the final modeling"
-        target_table, _, target_name = target.partition(".")
-        assert target_table in models, f"{target} points at an unknown table"
+        target_path, expected_sql = target
+        target_table, _, target_name = target_path.partition(".")
+        assert target_table in models, f"{target_path} points at an unknown table"
         names = {name for name, _sqltext in models[target_table].checks if name}
-        assert target_name in names, f"{target} points at an unknown model constraint"
+        assert target_name in names, f"{target_path} points at an unknown model constraint"
+        assert expected_sql.strip(), f"{key} is mapped without the expected portable SQL"
+
+
+# --- Comparator mechanism: each guard must actually detect drift -------------
+
+
+def _mini_final(columns_sql: str, table: str = "demo") -> FinalSchema:
+    return parse_final(f'CREATE TABLE "{table}" ({columns_sql})')
+
+
+def _mini_models(*columns: sa.Column[object], table: str = "demo") -> dict[str, object]:
+    metadata = sa.MetaData()
+    sa.Table(table, metadata, *columns)
+    return parse_models(metadata)
+
+
+def test_comparator_detects_kind_mismatch() -> None:
+    """uuid rendered as text must not pass as an equivalent column."""
+    final = _mini_final('"code" uuid')
+    models = _mini_models(sa.Column("code", sa.String(32)))
+    gap = compare(final, models)  # type: ignore[arg-type]
+    assert any("demo.code" in item for item in gap.details.get("kind", [])), gap.details
+
+
+def test_comparator_detects_lost_unique() -> None:
+    final = _mini_final('"code" varchar(32) UNIQUE')
+    models = _mini_models(sa.Column("code", sa.String(32)))
+    gap = compare(final, models)  # type: ignore[arg-type]
+    assert gap.details.get("unique_missing") == ["demo['code']"], gap.details
+
+
+def test_comparator_detects_default_value_mismatch() -> None:
+    final = _mini_final('"flag" boolean DEFAULT true')
+    models = _mini_models(sa.Column("flag", sa.Boolean, server_default=sa.text("0")))
+    gap = compare(final, models)  # type: ignore[arg-type]
+    assert gap.details.get("default_value"), gap.details
+
+
+def test_allowlisted_tables_are_counted() -> None:
+    """An allowlisted table must show up as counted debt, not vanish."""
+    final = parse_final("")
+    models = _mini_models(sa.Column("id", sa.Integer, primary_key=True), table="settings")
+    gap = compare(final, models)  # type: ignore[arg-type]
+    assert gap.details.get("allowlisted") == ["legacy:settings"], gap.details
+    assert not gap.details.get("table_extra"), gap.details
+
+
+def test_allowlists_are_documented() -> None:
+    """Adding a name to an allowlist must also touch its decision record."""
+    adr = (PROJECT_ROOT / "docs" / "adr" / "0028-sqlite-final-schema-alignment.md").read_text(
+        encoding="utf-8"
+    )
+    matrix = (PROJECT_ROOT / "docs" / "SCHEMA-MIGRATION-MATRIX.md").read_text(encoding="utf-8")
+    for name in ADR_EXTENSIONS:
+        assert name in adr, f"{name} is allowlisted but absent from ADR-028"
+    for name in LEGACY_RETENTION + NO_TARGET:
+        assert name in matrix, f"{name} is allowlisted but absent from the schema matrix"
+
+
+def test_dump_hash_matches_the_decision_record() -> None:
+    """Relaxing the vendored dump must also update ADR-028, never silently."""
+    adr = (PROJECT_ROOT / "docs" / "adr" / "0028-sqlite-final-schema-alignment.md").read_text(
+        encoding="utf-8"
+    )
+    dump_hash = sha256_file(FINAL_DUMP)
+    assert dump_hash in adr, (
+        f"{dump_hash} is not recorded in ADR-028; a change to the final modeling "
+        "needs an explicit decision update"
+    )

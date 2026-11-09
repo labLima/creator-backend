@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
@@ -55,19 +56,25 @@ LEGACY_RETENTION: Final[tuple[str, ...]] = (
 # Tables that exist only in the metadata and are not covered by an ADR yet.
 NO_TARGET: Final[tuple[str, ...]] = ("provider_customers", "provider_subscriptions")
 
-# Final (table, constraint) -> (metadata table, constraint name). Filled as CHECKs
-# are ported; an entry missing here counts as unmapped debt in the parity budget.
-CHECK_MAP: Final[dict[str, str]] = {}
+# Final (table, constraint) -> (metadata table.constraint, expected portable SQL).
+# Filled as CHECKs are ported; an entry missing here counts as unmapped debt, and a
+# mapped entry also asserts the portable expression, not just the constraint name.
+CHECK_MAP: Final[dict[str, tuple[str, str]]] = {}
 
 GAP_CATEGORIES: Final[tuple[str, ...]] = (
     "table_missing",
     "table_extra",
+    "allowlisted",
+    "rename_collision",
     "pk_mismatch",
     "column_missing",
     "column_extra",
     "nullability",
     "width",
+    "kind",
     "enum",
+    "unique_missing",
+    "unique_extra",
     "index_missing",
     "index_extra",
     "index_name",
@@ -77,6 +84,7 @@ GAP_CATEGORIES: Final[tuple[str, ...]] = (
     "check_missing",
     "check_extra",
     "default_missing",
+    "default_value",
 )
 
 COLUMN_KEYWORDS: Final[frozenset[str]] = frozenset(
@@ -112,6 +120,9 @@ class FinalTable:
     name: str
     columns: dict[str, FinalColumn]
     checks: tuple[tuple[str, str], ...]
+    uniques: tuple[tuple[str, ...], ...]
+    primary_key: tuple[str, ...]
+    foreign_keys: tuple[ForeignKey, ...]
 
 
 @dataclass(frozen=True)
@@ -154,6 +165,7 @@ class ModelColumn:
     enum_values: tuple[str, ...] | None
     unique: bool
     has_default: bool
+    default_text: str | None
 
 
 @dataclass(frozen=True)
@@ -163,6 +175,7 @@ class ModelTable:
     indexes: tuple[IndexSignature, ...]
     foreign_keys: tuple[ForeignKey, ...]
     checks: tuple[tuple[str | None, str], ...]
+    uniques: tuple[tuple[str, ...], ...]
 
 
 @dataclass(frozen=True)
@@ -345,9 +358,9 @@ def parse_final(sql: str) -> FinalSchema:
     for statement in statements:
         created = re.match(r'CREATE TABLE "([^"]+)"\s*\(', statement, re.S)
         if created:
-            tables[created.group(1)] = _parse_table(
-                created.group(1), statement, created.end(), enum_names
-            )
+            table = _parse_table(created.group(1), statement, created.end(), enum_names)
+            tables[table.name] = table
+            foreign_keys.extend(table.foreign_keys)
             continue
 
         object_match = re.match(
@@ -384,12 +397,27 @@ def _parse_table(
     body = statement[body_start : statement.rindex(")")]
     columns: dict[str, FinalColumn] = {}
     checks: list[tuple[str, str]] = []
+    uniques: set[tuple[str, ...]] = set()
+    primary_key: tuple[str, ...] = ()
+    inline_foreign_keys: list[ForeignKey] = []
 
     for part in _split_top_level(body):
         if re.match(r"^(CONSTRAINT|PRIMARY KEY|UNIQUE|CHECK|FOREIGN KEY)\b", part):
             named = re.match(r'CONSTRAINT "([^"]+)"\s+CHECK\s*(\(.*\))', part, re.S)
             if named:
                 checks.append((named.group(1), _normalize_sql(named.group(2))))
+                continue
+            unique = re.match(r"UNIQUE\s*\((.*)\)\s*$", part, re.S)
+            if unique:
+                uniques.add(_column_tuple(unique.group(1)))
+                continue
+            primary = re.match(r"PRIMARY KEY\s*\((.*)\)\s*$", part, re.S)
+            if primary:
+                primary_key = _column_tuple(primary.group(1))
+                continue
+            inline = _parse_inline_foreign_key(name, part)
+            if inline is not None:
+                inline_foreign_keys.append(inline)
             continue
 
         column_match = re.match(r'"([^"]+)"\s+(.*)$', part, re.S)
@@ -426,7 +454,36 @@ def _parse_table(
         if inline_check:
             checks.append((f"{name}.{column_name}", _normalize_sql(inline_check.group(1))))
 
-    return FinalTable(name=name, columns=columns, checks=tuple(checks))
+    return FinalTable(
+        name=name,
+        columns=columns,
+        checks=tuple(checks),
+        uniques=tuple(sorted(uniques)),
+        primary_key=primary_key,
+        foreign_keys=tuple(inline_foreign_keys),
+    )
+
+
+def _column_tuple(text: str) -> tuple[str, ...]:
+    return tuple(column.strip().strip('"') for column in _split_top_level(text))
+
+
+def _parse_inline_foreign_key(table: str, part: str) -> ForeignKey | None:
+    match = re.match(
+        r'(?:CONSTRAINT "[^"]+" )?FOREIGN KEY\s*\(([^)]+)\)\s*'
+        r'REFERENCES\s+"([^"]+)"\s*\(([^)]+)\)(?:\s+ON DELETE ([A-Z ]+?))?\s*$',
+        part,
+        re.S,
+    )
+    if match is None:
+        return None
+    return ForeignKey(
+        table=table,
+        columns=_column_tuple(match.group(1)),
+        ref_table=match.group(2),
+        ref_columns=_column_tuple(match.group(3)),
+        ondelete=(match.group(4) or "NO ACTION").strip().upper(),
+    )
 
 
 def _parse_index(statement: str) -> IndexSignature | None:
@@ -480,10 +537,21 @@ def _sqlite_where(index: sa.Index) -> str | None:
     return _normalize_sql(str(where)) if where is not None else None
 
 
+def _base_type(column_type: sa.types.TypeEngine[Any]) -> sa.types.TypeEngine[Any]:
+    """Unwrap ``TypeDecorator`` so wrappers compare by their implementation."""
+    current: Any = column_type
+    seen: set[int] = set()
+    while isinstance(current, sa.types.TypeDecorator) and id(current) not in seen:
+        seen.add(id(current))
+        current = current.impl
+    return current if isinstance(current, sa.types.TypeEngine) else column_type
+
+
 def model_kind(
     column_type: sa.types.TypeEngine[Any],
 ) -> tuple[str, int | None, tuple[str, ...] | None]:
     """Return ``(kind, string length, enum vocabulary)`` for a model column type."""
+    column_type = _base_type(column_type)
     if isinstance(column_type, sa.Enum):
         return "enum", column_type.length, tuple(str(value) for value in column_type.enums)
     if isinstance(column_type, sa.Uuid):
@@ -526,6 +594,7 @@ def parse_models(metadata: MetaData) -> dict[str, ModelTable]:
                 enum_values=enum_values,
                 unique=bool(column.unique),
                 has_default=column.default is not None or column.server_default is not None,
+                default_text=_model_default_text(column),
             )
 
         indexes: list[IndexSignature] = []
@@ -585,9 +654,45 @@ def parse_models(metadata: MetaData) -> dict[str, ModelTable]:
             indexes=tuple(indexes),
             foreign_keys=tuple(foreign_keys),
             checks=tuple(checks),
+            uniques=tuple(sorted(unique_columns)),
         )
 
     return result
+
+
+def _model_default_text(column: sa.Column[Any]) -> str | None:
+    if isinstance(column.default, sa.ColumnDefault):
+        argument: Any = column.default.arg
+        if callable(argument):
+            return str(getattr(argument, "__name__", repr(argument)))
+        return str(argument)
+    if column.server_default is not None:
+        return str(getattr(column.server_default, "arg", column.server_default))
+    return None
+
+
+def _default_signature(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = value.strip().lower()
+    text = re.sub(r"^\((.*)\)$", r"\1", text)
+    if text in {"gen_random_uuid()", "uuid_generate_v4()", "uuid4", "uuid"}:
+        return "uuid"
+    if text in {"now()", "current_timestamp", "current_timestamp()"}:
+        return "now"
+    if text in {"false", "0"}:
+        return "false"
+    if text in {"true", "1"}:
+        return "true"
+    return text
+
+
+def _kind_family(kind: str) -> str:
+    if kind == "text" or kind.startswith("varchar"):
+        return "string"
+    if kind in {"int", "bigint"}:
+        return "int"
+    return kind
 
 
 def _model_name(final_name: str) -> str:
@@ -605,7 +710,22 @@ def compare(final: FinalSchema, models: dict[str, ModelTable]) -> Gap:
     """Return every divergence between the dump and the live metadata."""
     details: dict[str, list[str]] = {category: [] for category in GAP_CATEGORIES}
 
-    expected_models = {_model_name(name): name for name in final.tables}
+    expected_models: dict[str, str] = {}
+    for final_name in final.tables:
+        model_name = _model_name(final_name)
+        if model_name in expected_models:
+            details["rename_collision"].append(
+                f"{expected_models[model_name]} and {final_name} both map to {model_name}"
+            )
+        expected_models[model_name] = final_name
+
+    for model_name in models:
+        if model_name in ADR_EXTENSIONS:
+            details["allowlisted"].append(f"adr_extension:{model_name}")
+        elif model_name in LEGACY_RETENTION:
+            details["allowlisted"].append(f"legacy:{model_name}")
+        elif model_name in NO_TARGET:
+            details["allowlisted"].append(f"no_target:{model_name}")
 
     for model_name, final_name in expected_models.items():
         if model_name not in models:
@@ -676,6 +796,12 @@ def _compare_table(
                 details["enum"].append(f"{final_name}.{name}: missing={missing} extra={extra}")
             continue
 
+        if _kind_family(expected.kind) != _kind_family(actual.kind):
+            details["kind"].append(
+                f"{final_name}.{name}: final {expected.kind}, model {actual.kind}"
+            )
+            continue
+
         if expected.kind == "bigint" and actual.kind == "int":
             details["width"].append(f"{final_name}.{name}: final bigint, model integer")
         elif expected.kind == "int" and actual.kind == "bigint":
@@ -695,10 +821,39 @@ def _compare_table(
                 f"{final_name}.{name}: final unbounded varchar, model varchar({actual.length})"
             )
 
-        if expected.default is not None and not actual.has_default:
-            details["default_missing"].append(
-                f"{final_name}.{name}: final default {expected.default}"
-            )
+        if expected.default is not None:
+            if not actual.has_default:
+                details["default_missing"].append(
+                    f"{final_name}.{name}: final default {expected.default}"
+                )
+            elif _default_signature(expected.default) != _default_signature(actual.default_text):
+                details["default_value"].append(
+                    f"{final_name}.{name}: final {expected.default!r}, "
+                    f"model {actual.default_text!r}"
+                )
+
+    final_uniques = {tuple(sorted(unique)) for unique in table.uniques} | {
+        (name,) for name, column in final_columns.items() if column.unique
+    }
+    model_uniques = {tuple(sorted(unique)) for unique in model.uniques} | {
+        (name,) for name, column in model_columns.items() if column.unique
+    }
+    final_primary_key = tuple(
+        sorted(name for name, column in final_columns.items() if column.primary_key)
+    )
+    if final_primary_key:
+        final_uniques.add(final_primary_key)
+    if table.primary_key:
+        final_uniques.add(tuple(sorted(table.primary_key)))
+    model_primary_key = tuple(
+        sorted(name for name, column in model_columns.items() if column.primary_key)
+    )
+    if model_primary_key:
+        model_uniques.add(model_primary_key)
+    for unique in sorted(final_uniques - model_uniques):
+        details["unique_missing"].append(f"{final_name}{list(unique)}")
+    for unique in sorted(model_uniques - final_uniques):
+        details["unique_extra"].append(f"{final_name}{list(unique)}")
 
 
 def _compare_indexes(
@@ -715,12 +870,22 @@ def _compare_indexes(
         model = models.get(model_name)
         if model is None:
             continue
-        actual_signatures = {_index_signature(index) for index in model.indexes}
-        expected_signatures = {_index_signature(index) for index in expected_indexes}
-        for signature in sorted(expected_signatures - actual_signatures, key=_signature_sort_key):
-            details["index_missing"].append(f"{model_name}: {_describe_signature(signature)}")
-        for signature in sorted(actual_signatures - expected_signatures, key=_signature_sort_key):
-            details["index_extra"].append(f"{model_name}: {_describe_signature(signature)}")
+        expected_counter = Counter(_index_signature(index) for index in expected_indexes)
+        actual_counter = Counter(_index_signature(index) for index in model.indexes)
+        for signature, count in sorted(
+            (expected_counter - actual_counter).items(),
+            key=lambda item: _signature_sort_key(item[0]),
+        ):
+            suffix = f" x{count}" if count > 1 else ""
+            details["index_missing"].append(
+                f"{model_name}: {_describe_signature(signature)}{suffix}"
+            )
+        for signature, count in sorted(
+            (actual_counter - expected_counter).items(),
+            key=lambda item: _signature_sort_key(item[0]),
+        ):
+            suffix = f" x{count}" if count > 1 else ""
+            details["index_extra"].append(f"{model_name}: {_describe_signature(signature)}{suffix}")
         actual_names = {index.name for index in model.indexes if index.name}
         for index in expected_indexes:
             if index.name and index.name not in actual_names:
@@ -750,9 +915,9 @@ def _compare_foreign_keys(
     expected_models: dict[str, str],
     details: dict[str, list[str]],
 ) -> None:
-    expected: set[tuple[str, tuple[str, ...], str, tuple[str, ...], str]] = set()
+    expected: Counter[tuple[str, tuple[str, ...], str, tuple[str, ...], str]] = Counter()
     for fk in final.foreign_keys:
-        expected.add(
+        expected[
             (
                 _model_name(fk.table),
                 fk.columns,
@@ -760,32 +925,39 @@ def _compare_foreign_keys(
                 fk.ref_columns,
                 fk.ondelete,
             )
-        )
+        ] += 1
 
-    actual: set[tuple[str, tuple[str, ...], str, tuple[str, ...], str]] = set()
+    actual: Counter[tuple[str, tuple[str, ...], str, tuple[str, ...], str]] = Counter()
     for model_name, model in models.items():
         if model_name not in expected_models:
             continue
         for fk in model.foreign_keys:
-            actual.add((fk.table, fk.columns, fk.ref_table, fk.ref_columns, fk.ondelete))
+            actual[(fk.table, fk.columns, fk.ref_table, fk.ref_columns, fk.ondelete)] += 1
 
-    for table, columns, ref_table, ref_columns, ondelete in sorted(expected - actual):
-        key = (table, columns, ref_table, ref_columns)
-        same_shape = [entry for entry in actual if entry[:4] == key]
-        if same_shape:
-            for entry in same_shape:
-                details["fk_ondelete"].append(
-                    f"{table}{list(columns)}->{ref_table}{list(ref_columns)}: "
-                    f"final {ondelete} vs model {entry[4]}"
-                )
+    actual_shapes = {key[:4] for key in actual}
+    for (table, columns, ref_table, ref_columns, ondelete), count in sorted(
+        (expected - actual).items()
+    ):
+        suffix = f" x{count}" if count > 1 else ""
+        if (table, columns, ref_table, ref_columns) in actual_shapes:
+            model_actions = sorted(
+                key[4] for key in actual if key[:4] == (table, columns, ref_table, ref_columns)
+            )
+            details["fk_ondelete"].append(
+                f"{table}{list(columns)}->{ref_table}{list(ref_columns)}: "
+                f"final {ondelete} vs model {model_actions}"
+            )
             continue
         details["fk_missing"].append(
-            f"{table}{list(columns)}->{ref_table}{list(ref_columns)} [{ondelete}]"
+            f"{table}{list(columns)}->{ref_table}{list(ref_columns)} [{ondelete}]{suffix}"
         )
 
-    for table, columns, ref_table, ref_columns, ondelete in sorted(actual - expected):
+    for (table, columns, ref_table, ref_columns, ondelete), count in sorted(
+        (actual - expected).items()
+    ):
+        suffix = f" x{count}" if count > 1 else ""
         details["fk_extra"].append(
-            f"{table}{list(columns)}->{ref_table}{list(ref_columns)} [{ondelete}]"
+            f"{table}{list(columns)}->{ref_table}{list(ref_columns)} [{ondelete}]{suffix}"
         )
 
 
@@ -800,20 +972,26 @@ def _compare_checks(
         model = models.get(model_name)
         if model is None:
             continue
-        model_check_names = {name for name, _ in model.checks if name}
+        model_checks = {name: sqltext for name, sqltext in model.checks if name}
         for check_name, _expression in table.checks:
             key = f"{final_name}.{check_name}"
-            target = CHECK_MAP.get(key)
-            if target is None:
+            mapped = CHECK_MAP.get(key)
+            if mapped is None:
                 details["check_missing"].append(f"unmapped:{key}")
                 continue
+            target, expected_sql = mapped
             target_table, _, target_name = target.partition(".")
-            if target_table != model_name or target_name not in model_check_names:
+            if target_table != model_name or target_name not in model_checks:
                 details["check_missing"].append(f"{key}->{target}")
+            elif _normalize_sql(expected_sql) != model_checks[target_name]:
+                details["check_extra"].append(
+                    f"{key}: expected {_normalize_sql(expected_sql)!r}, "
+                    f"model has {model_checks[target_name]!r}"
+                )
 
         mapped_names = {
             target.partition(".")[2]
-            for final_key, target in CHECK_MAP.items()
+            for final_key, (target, _sql) in CHECK_MAP.items()
             if final_key.startswith(f"{final_name}.")
         }
         for name, _sqltext in model.checks:
@@ -846,7 +1024,10 @@ def render_schema_ddl(metadata: MetaData, *, include_indexes: bool = True) -> st
 
     if include_indexes:
         for table in sorted(metadata.tables.values(), key=lambda item: item.name):
-            for index in sorted(table.indexes, key=lambda item: item.name or ""):
+            for index in sorted(
+                table.indexes,
+                key=lambda item: (item.name or "", tuple(c.name for c in item.columns)),
+            ):
                 statement = str(CreateIndex(index).compile(dialect=dialect)).strip()
                 statements.append(_strip_trailing_whitespace(statement))
 

@@ -74,8 +74,8 @@ def check() -> int:
     """Compare the snapshots with the live contract without writing."""
     failures: list[str] = []
     for path, expected in generate().items():
-        actual = path.read_text(encoding="utf-8") if path.exists() else ""
-        if actual != expected:
+        actual = path.read_bytes() if path.exists() else b""
+        if actual != expected.encode("utf-8"):
             failures.append(str(path.relative_to(PROJECT_ROOT)))
     if failures:
         for name in failures:
@@ -98,7 +98,7 @@ def main() -> int:
 
     CONTRACTS.mkdir(parents=True, exist_ok=True)
     for path, content in generate().items():
-        path.write_text(content, encoding="utf-8")
+        path.write_bytes(content.encode("utf-8"))
     print(f"route_table.json: {len(route_table())} operations")
     print(f"schema_tables.json: {len(registered_tables())} tables")
     print(f"schema_ddl.sql: {len(schema_ddl().splitlines())} lines")

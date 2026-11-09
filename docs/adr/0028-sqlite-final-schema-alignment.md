@@ -10,7 +10,8 @@
 
 A troca de PostgreSQL por SQLite foi concluída na ADR-021. O que falta é a paridade entre o
 schema vivo e a modelagem final. O dump `docs/migration/Creator_DB_final.sql` (sha256
-`619512b7…b583`) declara **54 tabelas, 52 tipos ENUM, 173 índices, 101 foreign keys, 80 CHECK
+`619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`) declara **54 tabelas,
+52 tipos ENUM, 173 índices, 101 foreign keys, 80 CHECK
 constraints, 69 funções/triggers e 1 view**; o metadata tem **53 tabelas** e diverge em **31
 tabelas comuns**, além de **18 tabelas ausentes**, **1 rename com migração de valores** e **4
 redesenhos de modelo**.

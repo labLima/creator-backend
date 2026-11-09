@@ -4,12 +4,17 @@
   "counts": {
     "table_missing": 22,
     "table_extra": 4,
+    "allowlisted": 17,
+    "rename_collision": 0,
     "pk_mismatch": 0,
     "column_missing": 132,
     "column_extra": 116,
     "nullability": 10,
     "width": 27,
+    "kind": 1,
     "enum": 35,
+    "unique_missing": 4,
+    "unique_extra": 7,
     "index_missing": 108,
     "index_extra": 11,
     "index_name": 29,
@@ -18,7 +23,8 @@
     "fk_ondelete": 35,
     "check_missing": 49,
     "check_extra": 4,
-    "default_missing": 6
+    "default_missing": 6,
+    "default_value": 0
   },
-  "gap_digest": "03202f94cc5ba2079be3e1a695931baff115911c3894873bb0048166fb5b1670"
+  "gap_digest": "25b8ecb8de87e5c5e6f350a73206f6010449b0dd093381d8ffe013b21f930ba2"
 }

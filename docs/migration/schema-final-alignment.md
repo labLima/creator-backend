@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **700**
+- Divergências: **729**
 
 ## Divergências por categoria
 
@@ -21,12 +21,17 @@
 | --- | --- |
 | `table_missing` | 22 |
 | `table_extra` | 4 |
+| `allowlisted` | 17 |
+| `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
 | `column_missing` | 132 |
 | `column_extra` | 116 |
 | `nullability` | 10 |
 | `width` | 27 |
+| `kind` | 1 |
 | `enum` | 35 |
+| `unique_missing` | 4 |
+| `unique_extra` | 7 |
 | `index_missing` | 108 |
 | `index_extra` | 11 |
 | `index_name` | 29 |
@@ -36,6 +41,7 @@
 | `check_missing` | 49 |
 | `check_extra` | 4 |
 | `default_missing` | 6 |
+| `default_value` | 0 |
 
 ## 1. Tabelas com nome divergente
 
@@ -709,41 +715,41 @@ Total: **147**.
 
 ### `fk_ondelete` (35)
 
-- `billing_accounts['user_id']->users['id']: final RESTRICT vs model CASCADE`
-- `billing_addresses['billing_account_id']->billing_accounts['id']: final CASCADE vs model NO ACTION`
-- `billing_payment_methods['billing_account_id']->billing_accounts['id']: final CASCADE vs model NO ACTION`
-- `brand_assets['brand_id']->brands['id']: final CASCADE vs model NO ACTION`
-- `brand_colors['brand_id']->brands['id']: final CASCADE vs model NO ACTION`
-- `brands['workspace_id']->workspaces['id']: final CASCADE vs model RESTRICT`
-- `campaigns['created_by']->users['id']: final SET NULL vs model NO ACTION`
-- `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
-- `charges['invoice_id']->invoices['id']: final SET NULL vs model NO ACTION`
-- `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model NO ACTION`
-- `coupons['created_by']->users['id']: final SET NULL vs model NO ACTION`
-- `invoices['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
-- `invoices['subscription_id']->subscriptions['id']: final RESTRICT vs model NO ACTION`
-- `notification_preferences['user_id']->users['id']: final CASCADE vs model NO ACTION`
-- `notification_recipients['notification_id']->notifications['id']: final CASCADE vs model NO ACTION`
-- `notification_recipients['user_id']->users['id']: final CASCADE vs model NO ACTION`
-- `notifications['created_by']->users['id']: final SET NULL vs model NO ACTION`
-- `notifications['workspace_id']->workspaces['id']: final CASCADE vs model NO ACTION`
-- `orders['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
-- `orders['credit_package_id']->credit_packages['id']: final SET NULL vs model NO ACTION`
-- `orders['workspace_id']->workspaces['id']: final RESTRICT vs model NO ACTION`
-- `personas['brand_id']->brands['id']: final CASCADE vs model NO ACTION`
-- `personas['created_by']->users['id']: final SET NULL vs model NO ACTION`
-- `provider_disputes['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
-- `provider_disputes['charge_id']->charges['id']: final RESTRICT vs model NO ACTION`
-- `subscription_history['subscription_id']->subscriptions['id']: final CASCADE vs model NO ACTION`
-- `subscriptions['billing_account_id']->billing_accounts['id']: final RESTRICT vs model NO ACTION`
-- `subscriptions['plan_id']->plans['id']: final RESTRICT vs model NO ACTION`
-- `subscriptions['workspace_id']->workspaces['id']: final RESTRICT vs model NO ACTION`
-- `user_devices['user_id']->users['id']: final CASCADE vs model NO ACTION`
-- `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model NO ACTION`
-- `workspace_invite_usages['invite_id']->workspace_invites['id']: final CASCADE vs model NO ACTION`
-- `workspace_invite_usages['member_id']->workspace_memberships['id']: final CASCADE vs model NO ACTION`
-- `workspace_invites['created_by']->users['id']: final RESTRICT vs model NO ACTION`
-- `workspace_invites['workspace_id']->workspaces['id']: final CASCADE vs model NO ACTION`
+- `billing_accounts['user_id']->users['id']: final RESTRICT vs model ['CASCADE']`
+- `billing_addresses['billing_account_id']->billing_accounts['id']: final CASCADE vs model ['NO ACTION']`
+- `billing_payment_methods['billing_account_id']->billing_accounts['id']: final CASCADE vs model ['NO ACTION']`
+- `brand_assets['brand_id']->brands['id']: final CASCADE vs model ['NO ACTION']`
+- `brand_colors['brand_id']->brands['id']: final CASCADE vs model ['NO ACTION']`
+- `brands['workspace_id']->workspaces['id']: final CASCADE vs model ['RESTRICT']`
+- `campaigns['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
+- `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
+- `charges['invoice_id']->invoices['id']: final SET NULL vs model ['NO ACTION']`
+- `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model ['NO ACTION']`
+- `coupons['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
+- `invoices['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
+- `invoices['subscription_id']->subscriptions['id']: final RESTRICT vs model ['NO ACTION']`
+- `notification_preferences['user_id']->users['id']: final CASCADE vs model ['NO ACTION']`
+- `notification_recipients['notification_id']->notifications['id']: final CASCADE vs model ['NO ACTION']`
+- `notification_recipients['user_id']->users['id']: final CASCADE vs model ['NO ACTION']`
+- `notifications['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
+- `notifications['workspace_id']->workspaces['id']: final CASCADE vs model ['NO ACTION']`
+- `orders['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
+- `orders['credit_package_id']->credit_packages['id']: final SET NULL vs model ['NO ACTION']`
+- `orders['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
+- `personas['brand_id']->brands['id']: final CASCADE vs model ['NO ACTION']`
+- `personas['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
+- `provider_disputes['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
+- `provider_disputes['charge_id']->charges['id']: final RESTRICT vs model ['NO ACTION']`
+- `subscription_history['subscription_id']->subscriptions['id']: final CASCADE vs model ['NO ACTION']`
+- `subscriptions['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
+- `subscriptions['plan_id']->plans['id']: final RESTRICT vs model ['NO ACTION']`
+- `subscriptions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
+- `user_devices['user_id']->users['id']: final CASCADE vs model ['NO ACTION']`
+- `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
+- `workspace_invite_usages['invite_id']->workspace_invites['id']: final CASCADE vs model ['NO ACTION']`
+- `workspace_invite_usages['member_id']->workspace_memberships['id']: final CASCADE vs model ['NO ACTION']`
+- `workspace_invites['created_by']->users['id']: final RESTRICT vs model ['NO ACTION']`
+- `workspace_invites['workspace_id']->workspaces['id']: final CASCADE vs model ['NO ACTION']`
 
 ## 7. CHECK constraints
 
