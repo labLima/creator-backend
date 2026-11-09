@@ -134,6 +134,7 @@ cuida do vocabulário de papel), cada uma declarando o workspace
 | `SHC-10` | T9 — content_plans e satélites | done | revisão 0012; expand do planejamento |
 | `SHC-11` | T10 — posts, captions, post_designs, design_slides | done | revisão 0013; expand editorial |
 | `SHC-12` | T11 — generated_images e image_resizes | done | revisão 0014; **0 tabelas ausentes** |
+| `SHC-13` | T12 — backfill dos 4 redesenhos | done | `backfill_redesigns.py` idempotente; doc de mapeamento |
 
 Orçamento de paridade: **728 divergências**, com **0 tabelas ausentes**. O restante é
 alinhamento de colunas/índices/FKs/CHECKs nas tabelas existentes (T14/T15) e as
