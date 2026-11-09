@@ -43,6 +43,7 @@ class ContentPlan(Base):
             "idx_m8_content_plans_created_by",
             "created_by",
             sqlite_where=text("created_by IS NOT NULL"),
+            postgresql_where=text("created_by IS NOT NULL"),
         ),
         ForeignKeyConstraint(
             ["campaign_id", "brand_id"],

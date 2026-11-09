@@ -16,12 +16,20 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade() -> None:
-    inspector = sa.inspect(op.get_bind())
-    if inspector.has_table("content_plans"):
-        # Fresh database: the baseline already created the final shape.
-        return
+def _missing(table: str) -> bool:
+    return not sa.inspect(op.get_bind()).has_table(table)
 
+
+def upgrade() -> None:
+    if _missing("content_plans"):
+        _create_plans()
+    if _missing("content_plan_items"):
+        _create_items()
+    if _missing("content_plan_special_dates"):
+        _create_special_dates()
+
+
+def _create_plans() -> None:
     op.create_table(
         "content_plans",
         sa.Column("id", uuid_pk, primary_key=True),
@@ -80,8 +88,11 @@ def upgrade() -> None:
         "content_plans",
         ["created_by"],
         sqlite_where=sa.text("created_by IS NOT NULL"),
+        postgresql_where=sa.text("created_by IS NOT NULL"),
     )
 
+
+def _create_items() -> None:
     op.create_table(
         "content_plan_items",
         sa.Column("id", uuid_pk, primary_key=True),
@@ -104,6 +115,8 @@ def upgrade() -> None:
         unique=True,
     )
 
+
+def _create_special_dates() -> None:
     op.create_table(
         "content_plan_special_dates",
         sa.Column("id", uuid_pk, primary_key=True),
