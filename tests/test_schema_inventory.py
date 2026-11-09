@@ -15,12 +15,14 @@ shrink, so every PR that fixes a table lowers a count in the same diff.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import sqlalchemy as sa
+from alembic import command
+from alembic.autogenerate import compare_metadata
+from alembic.config import Config
+from alembic.migration import MigrationContext
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.schema import CreateTable
 
 from creator.infrastructure.database import metadata as _models  # noqa: F401  (registers tables)
 from creator.infrastructure.database.db import Base
@@ -35,6 +37,7 @@ from creator.infrastructure.database.final_schema import (
     gap_digest,
     parse_final,
     parse_models,
+    render_schema_ddl,
     sha256_file,
 )
 
@@ -49,8 +52,10 @@ def _frozen_tables() -> list[str]:
     return json.loads((CONTRACTS / "schema_tables.json").read_text(encoding="utf-8"))
 
 
-def _normalize(statement: str) -> str:
-    return re.sub(r"\s+", " ", statement).strip()
+def _canonical(text: str) -> str:
+    """Normalise only line endings and trailing whitespace."""
+    normalised = text.replace("\r\n", "\n").replace("\r", "\n")
+    return "\n".join(line.rstrip() for line in normalised.split("\n")).strip() + "\n"
 
 
 def _final() -> FinalSchema:
@@ -100,15 +105,61 @@ def test_mappers_configure() -> None:
 
 
 def test_ddl_is_byte_identical() -> None:
-    dialect = sa.dialects.sqlite.dialect()
-    current = "\n\n".join(
-        _normalize(str(CreateTable(table).compile(dialect=dialect)))
-        for table in sorted(Base.metadata.tables.values(), key=lambda item: item.name)
-    )
-    current_text = _normalize(current)
-    frozen = _normalize((CONTRACTS / "schema_ddl.sql").read_text(encoding="utf-8"))
+    """Canonical bytes, tables and indexes: a formatting drift must fail too."""
+    current_text = _canonical(render_schema_ddl(Base.metadata))
+    frozen = _canonical((CONTRACTS / "schema_ddl.sql").read_text(encoding="utf-8"))
 
     assert current_text == frozen
+
+
+def test_ddl_snapshot_includes_indexes() -> None:
+    """Without indexes an index-only change would be invisible in the snapshot."""
+    frozen = (CONTRACTS / "schema_ddl.sql").read_text(encoding="utf-8")
+    assert "CREATE INDEX" in frozen
+
+
+PREV_SCHEMA = CONTRACTS / "schema_prev_ddl.sql"
+PREV_REVISION = "0005_content_text_versions"
+
+
+def test_upgrade_from_previous_schema_converges(tmp_path: Path) -> None:
+    """A forgotten revision must fail: the DB is built from the previous schema.
+
+    ``0001_sqlite_baseline`` creates the schema from ``Base.metadata``, so a
+    database upgraded from scratch is always self-consistent. This test builds
+    the database from the committed previous schema, stamps it at the previous
+    head and upgrades: only the new revisions run, exactly like a real database.
+    """
+    statements = [
+        statement.strip()
+        for statement in PREV_SCHEMA.read_text(encoding="utf-8").split("\n\n")
+        if statement.strip()
+    ]
+    database = tmp_path / "previous.db"
+    url = f"sqlite+pysqlite:///{database}"
+    engine = sa.create_engine(url)
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.exec_driver_sql(statement)
+        connection.exec_driver_sql(
+            "CREATE TABLE alembic_version ("
+            "version_num VARCHAR(32) NOT NULL, "
+            "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO alembic_version (version_num) VALUES (?)", (PREV_REVISION,)
+        )
+
+    config = Config(str(PROJECT_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
+    config.set_main_option("sqlalchemy.url", url)
+    command.upgrade(config, "head")
+
+    with engine.connect() as connection:
+        diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
+    engine.dispose()
+
+    assert diff == [], diff
 
 
 def test_create_all_succeeds_on_sqlite() -> None:

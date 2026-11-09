@@ -1,24 +1,30 @@
 """Freeze the observable HTTP and persistence contract as reviewable snapshots.
 
-The refactor moves code between modules without changing behavior. These
-snapshots make "nothing changed" a machine-checked fact instead of a review
-opinion. Running this script rewrites the snapshots; commit the diff only when
-the contract change is intentional and reviewed.
+The snapshots make "nothing changed" a machine-checked fact instead of a review
+opinion. Running this script rewrites them; commit the diff only when the
+contract change is intentional and reviewed.
+
+``--check`` compares without writing and exits non-zero on any difference, so
+``make check`` fails when a schema change ships without regenerating the
+snapshots. The DDL snapshot includes tables **and** indexes: without indexes a
+change that only touches an index would be invisible.
 
 Usage:
-    python scripts/snapshot_contract.py
+    python scripts/snapshot_contract.py            # rewrite the snapshots
+    python scripts/snapshot_contract.py --check    # fail on any drift
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
-import sqlalchemy as sa
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.schema import CreateTable
 
 from creator.infrastructure.database.db import Base
+from creator.infrastructure.database.final_schema import render_schema_ddl
 from creator.main import app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -45,48 +51,59 @@ def route_table() -> list[dict[str, object]]:
 
 
 def schema_ddl() -> str:
-    """Return deterministic DDL for every registered table.
-
-    Sorted by table name, not by dependency: the topological order of
-    `sorted_tables` depends on model import order, which is exactly what this
-    refactor changes. The snapshot must not care.
-    """
+    """Return deterministic DDL for every registered table and index."""
     configure_mappers()
-    dialect = sa.dialects.sqlite.dialect()
-    statements = [
-        _strip_trailing_whitespace(str(CreateTable(table).compile(dialect=dialect)).strip())
-        for table in sorted(Base.metadata.tables.values(), key=lambda item: item.name)
-    ]
-    return "\n\n".join(statements) + "\n"
-
-
-def _strip_trailing_whitespace(statement: str) -> str:
-    """Keep the snapshot free of invisible trailing spaces.
-
-    The compiled DDL separates columns with `, `; writing that verbatim makes
-    every line end with a space, so ``make snapshot-contract`` produced a
-    whitespace-only diff against the committed file and was not idempotent.
-    """
-    return "\n".join(line.rstrip() for line in statement.splitlines())
+    return render_schema_ddl(Base.metadata, include_indexes=True)
 
 
 def registered_tables() -> list[str]:
     return sorted(Base.metadata.tables)
 
 
-def write_json(path: Path, payload: object) -> None:
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-
-
-def main() -> None:
-    CONTRACTS.mkdir(parents=True, exist_ok=True)
+def generate() -> dict[Path, str]:
+    """Return the expected contents of every snapshot file."""
     rows = route_table()
-    write_json(CONTRACTS / "route_table.json", rows)
-    write_json(CONTRACTS / "schema_tables.json", registered_tables())
-    (CONTRACTS / "schema_ddl.sql").write_text(schema_ddl(), encoding="utf-8")
-    print(f"route_table.json: {len(rows)} operations")
+    return {
+        CONTRACTS / "route_table.json": json.dumps(rows, indent=2) + "\n",
+        CONTRACTS / "schema_tables.json": json.dumps(registered_tables(), indent=2) + "\n",
+        CONTRACTS / "schema_ddl.sql": schema_ddl(),
+    }
+
+
+def check() -> int:
+    """Compare the snapshots with the live contract without writing."""
+    failures: list[str] = []
+    for path, expected in generate().items():
+        actual = path.read_text(encoding="utf-8") if path.exists() else ""
+        if actual != expected:
+            failures.append(str(path.relative_to(PROJECT_ROOT)))
+    if failures:
+        for name in failures:
+            print(f"snapshot drift: {name}", file=sys.stderr)
+        print(
+            "Run `make snapshot-contract` and review the diff in the same PR.",
+            file=sys.stderr,
+        )
+        return 1
+    print("snapshots are up to date")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="do not write; fail on drift")
+    args = parser.parse_args()
+    if args.check:
+        return check()
+
+    CONTRACTS.mkdir(parents=True, exist_ok=True)
+    for path, content in generate().items():
+        path.write_text(content, encoding="utf-8")
+    print(f"route_table.json: {len(route_table())} operations")
     print(f"schema_tables.json: {len(registered_tables())} tables")
+    print(f"schema_ddl.sql: {len(schema_ddl().splitlines())} lines")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

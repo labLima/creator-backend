@@ -1092,3 +1092,93 @@ CREATE TABLE workspaces (
 	deleted_at DATETIME,
 	PRIMARY KEY (id)
 )
+
+CREATE INDEX ix_activity_events_brand ON activity_events (brand_id)
+
+CREATE INDEX ix_activity_events_entity ON activity_events (entity_type, entity_id)
+
+CREATE INDEX ix_activity_events_user ON activity_events (user_id)
+
+CREATE INDEX ix_activity_events_workspace_created ON activity_events (workspace_id, created_at, id)
+
+CREATE INDEX ix_agent_workflow_runs_workspace_status_created ON agent_workflow_runs (workspace_id, status, created_at)
+
+CREATE INDEX ix_agent_workflow_steps_run_sequence ON agent_workflow_steps (run_id, sequence_number)
+
+CREATE INDEX ix_agent_workflow_steps_source_event ON agent_workflow_steps (source_event_id)
+
+CREATE UNIQUE INDEX uq_agent_workflow_steps_completed_source_role_item ON agent_workflow_steps (source_event_id, role, stage_item) WHERE status = 'COMPLETED' AND source_event_id IS NOT NULL
+
+CREATE INDEX ix_assets_brand_id ON assets (brand_id)
+
+CREATE INDEX ix_assets_content_id ON assets (content_id)
+
+CREATE INDEX ix_assets_project_id ON assets (project_id)
+
+CREATE INDEX ix_assets_workspace_filter ON assets (workspace_id, deleted_at, created_at)
+
+CREATE INDEX ix_auth_sessions_absolute_expires_at ON auth_sessions (absolute_expires_at)
+
+CREATE INDEX ix_auth_sessions_expires_at ON auth_sessions (expires_at)
+
+CREATE INDEX ix_auth_sessions_family_id ON auth_sessions (family_id)
+
+CREATE INDEX ix_auth_sessions_user_id ON auth_sessions (user_id)
+
+CREATE INDEX ix_brand_settings_workspace_id ON brand_settings (workspace_id)
+
+CREATE INDEX ix_brands_created_by_user_id ON brands (created_by_user_id)
+
+CREATE INDEX ix_brands_workspace_filter ON brands (workspace_id, deleted_at, created_at)
+
+CREATE INDEX ix_content_text_versions_content_version ON content_text_versions (content_id, version_number)
+
+CREATE INDEX ix_contents_created_by_user_id ON contents (created_by_user_id)
+
+CREATE INDEX ix_contents_workspace_created_id ON contents (workspace_id, deleted_at, created_at, id)
+
+CREATE INDEX ix_contents_workspace_filter ON contents (workspace_id, type, deleted_at, created_at)
+
+CREATE INDEX ix_generation_job_status_events_job_occurred_at ON generation_job_status_events (generation_job_id, occurred_at)
+
+CREATE INDEX ix_generation_jobs_generation_id ON generation_jobs (generation_id)
+
+CREATE INDEX ix_generation_jobs_status_created_at ON generation_jobs (status, created_at)
+
+CREATE INDEX ix_generation_jobs_workspace_status_created_at ON generation_jobs (workspace_id, status, created_at)
+
+CREATE UNIQUE INDEX uq_generation_jobs_external_id ON generation_jobs (external_id) WHERE external_id IS NOT NULL
+
+CREATE INDEX ix_generations_requested_by_user_id ON generations (requested_by_user_id)
+
+CREATE INDEX ix_generations_workspace_filter ON generations (workspace_id, type, deleted_at, created_at)
+
+CREATE INDEX ix_images_content_version ON images (content_id, version_number)
+
+CREATE INDEX ix_images_workspace_filter ON images (workspace_id, deleted_at, created_at)
+
+CREATE UNIQUE INDEX uq_images_active_content_version ON images (content_id, version_number) WHERE deleted_at IS NULL
+
+CREATE INDEX ix_outbox_events_consume ON outbox_events (consumed_at, consumer_available_at, dead_lettered_at)
+
+CREATE INDEX ix_outbox_events_dispatch ON outbox_events (published_at, available_at)
+
+CREATE INDEX ix_outbox_events_workspace ON outbox_events (workspace_id, created_at)
+
+CREATE INDEX ix_projects_brand_id ON projects (brand_id)
+
+CREATE INDEX ix_projects_created_by_user_id ON projects (created_by_user_id)
+
+CREATE INDEX ix_projects_workspace_filter ON projects (workspace_id, deleted_at, created_at)
+
+CREATE INDEX ix_settings_user_id ON settings (user_id)
+
+CREATE INDEX ix_users_deleted_at ON users (deleted_at)
+
+CREATE INDEX ix_workspace_memberships_user_id ON workspace_memberships (user_id)
+
+CREATE INDEX ix_workspace_memberships_workspace_id ON workspace_memberships (workspace_id)
+
+CREATE UNIQUE INDEX uq_workspace_memberships_active_user_workspace ON workspace_memberships (user_id, workspace_id) WHERE deleted_at IS NULL
+
+CREATE INDEX ix_workspaces_deleted_at ON workspaces (deleted_at)

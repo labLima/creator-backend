@@ -1,4 +1,4 @@
-.PHONY: install format format-check lint typecheck test e2e migrate-check dependency-audit secrets security check ci run worker dev/start dev/stop dev/clean dev/logs snapshot-contract
+.PHONY: install format format-check lint typecheck test e2e migrate-check snapshot-check dependency-audit secrets security check ci run worker dev/start dev/stop dev/clean dev/logs snapshot-contract
 
 PYTHON ?= $(or $(shell command -v python3 2>/dev/null),$(shell command -v python 2>/dev/null),python)
 ifeq ($(OS),Windows_NT)
@@ -36,6 +36,9 @@ migrate-check:
 snapshot-contract:
 	$(PYTHON) scripts/snapshot_contract.py
 
+snapshot-check:
+	$(PYTHON) scripts/snapshot_contract.py --check
+
 e2e:
 	$(PYTEST) -m e2e --no-cov
 
@@ -51,7 +54,7 @@ secrets:
 
 security: dependency-audit secrets
 
-check: lint format-check typecheck test migrate-check
+check: lint format-check typecheck test migrate-check snapshot-check
 
 ci: check security e2e
 

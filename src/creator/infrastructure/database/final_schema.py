@@ -848,7 +848,7 @@ def render_schema_ddl(metadata: MetaData, *, include_indexes: bool = True) -> st
         for table in sorted(metadata.tables.values(), key=lambda item: item.name):
             for index in sorted(table.indexes, key=lambda item: item.name or ""):
                 statement = str(CreateIndex(index).compile(dialect=dialect)).strip()
-                statements.append(_strip_trailing_whitespace(statement) + ";")
+                statements.append(_strip_trailing_whitespace(statement))
 
     return "\n\n".join(statements) + "\n"
 
