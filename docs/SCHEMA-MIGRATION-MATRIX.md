@@ -100,6 +100,8 @@ Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
 | `captions` | T10 (`0013`) | ativo | legendas versionadas por post |
 | `post_designs` | T10 (`0013`) | ativo | formato/proporção da arte por post |
 | `design_slides` | T10 (`0013`) | ativo | slides ordenados por design |
+| `generated_images` | T11 (`0014`) | ativo (expand) | substitui `generated_image` no contract T13 |
+| `image_resizes` | T11 (`0014`) | ativo | variações por proporção da imagem gerada |
 
 ## Regras
 

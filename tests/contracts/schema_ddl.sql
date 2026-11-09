@@ -641,6 +641,48 @@ CREATE TABLE generated_image (
 	FOREIGN KEY(design_structure_id) REFERENCES design_structure (id)
 )
 
+CREATE TABLE generated_images (
+	id CHAR(32) NOT NULL,
+	design_slide_id CHAR(32) NOT NULL,
+	storage_bucket VARCHAR(63),
+	storage_key VARCHAR(1024),
+	mime_type VARCHAR(127) DEFAULT 'image/png' NOT NULL,
+	size_bytes BIGINT,
+	width INTEGER,
+	height INTEGER,
+	model VARCHAR(50),
+	prompt VARCHAR,
+	created_by CHAR(32),
+	error_message VARCHAR,
+	generation_status VARCHAR(10) DEFAULT 'GENERATING' NOT NULL,
+	is_current BOOLEAN DEFAULT false NOT NULL,
+	approval_status VARCHAR(8) DEFAULT 'PENDING' NOT NULL,
+	approved_by CHAR(32),
+	approved_at DATETIME,
+	rejection_reason VARCHAR(500),
+	feedback_type VARCHAR(8),
+	feedback_text VARCHAR(1000),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	deleted_at DATETIME,
+	PRIMARY KEY (id),
+	CONSTRAINT chk_generated_images_current_complete CHECK (NOT is_current OR (generation_status = 'SUCCEEDED' AND deleted_at IS NULL)),
+	CONSTRAINT chk_generated_images_size_bytes CHECK (size_bytes IS NULL OR size_bytes >= 0),
+	CONSTRAINT chk_generated_images_dimensions CHECK (width IS NULL OR height IS NULL OR (width > 0 AND height > 0)),
+	CONSTRAINT chk_generated_images_approval_pair CHECK ((approved_at IS NULL) = (approved_by IS NULL)),
+	CONSTRAINT chk_generated_images_rejected_reason CHECK (approval_status <> 'REJECTED' OR rejection_reason IS NOT NULL),
+	CONSTRAINT chk_generated_images_approved_metadata CHECK (approval_status <> 'APPROVED' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL)),
+	CONSTRAINT chk_generated_images_approval_after_generation CHECK (approval_status = 'PENDING' OR generation_status = 'SUCCEEDED'),
+	CONSTRAINT chk_generated_images_file_by_status CHECK (generation_status <> 'SUCCEEDED' OR (storage_bucket IS NOT NULL AND storage_key IS NOT NULL AND size_bytes IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL)),
+	CONSTRAINT chk_generated_images_failed_message CHECK (generation_status <> 'FAILED' OR error_message IS NOT NULL),
+	FOREIGN KEY(design_slide_id) REFERENCES design_slides (id) ON DELETE CASCADE,
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL,
+	CONSTRAINT generation_status CHECK (generation_status IN ('GENERATING', 'SUCCEEDED', 'FAILED')),
+	CONSTRAINT approval_status CHECK (approval_status IN ('PENDING', 'APPROVED', 'REJECTED')),
+	FOREIGN KEY(approved_by) REFERENCES users (id) ON DELETE SET NULL,
+	CONSTRAINT image_feedback_type CHECK (feedback_type IN ('POSITIVE', 'NEGATIVE', 'NOT_USED'))
+)
+
 CREATE TABLE generation_job_status_events (
 	id CHAR(32) NOT NULL,
 	generation_job_id CHAR(32) NOT NULL,
@@ -717,6 +759,32 @@ CREATE TABLE generations (
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
 	FOREIGN KEY(requested_by_user_id) REFERENCES users (id) ON DELETE SET NULL,
 	CONSTRAINT generation_type CHECK (type IN ('IMAGE', 'TEXT', 'COPY', 'CAPTION'))
+)
+
+CREATE TABLE image_resizes (
+	id CHAR(32) NOT NULL,
+	source_image_id CHAR(32) NOT NULL,
+	ratio VARCHAR(10) NOT NULL,
+	status VARCHAR(10) DEFAULT 'PENDING' NOT NULL,
+	storage_bucket VARCHAR(63),
+	storage_key VARCHAR(1024),
+	mime_type VARCHAR(127),
+	size_bytes BIGINT,
+	width INTEGER,
+	height INTEGER,
+	error_message VARCHAR,
+	created_by CHAR(32),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT chk_image_resizes_file CHECK (status <> 'SUCCEEDED' OR (storage_bucket IS NOT NULL AND storage_key IS NOT NULL AND size_bytes IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL)),
+	CONSTRAINT chk_image_resizes_failed CHECK (status <> 'FAILED' OR error_message IS NOT NULL),
+	CONSTRAINT chk_image_resizes_size CHECK (size_bytes IS NULL OR size_bytes > 0),
+	CONSTRAINT chk_image_resizes_dimensions CHECK ((width IS NULL OR width > 0) AND (height IS NULL OR height > 0)),
+	FOREIGN KEY(source_image_id) REFERENCES generated_images (id) ON DELETE CASCADE,
+	CONSTRAINT art_ratio CHECK (ratio IN ('RATIO_4_5', 'RATIO_1_1', 'RATIO_9_16', 'RATIO_16_9')),
+	CONSTRAINT resize_status CHECK (status IN ('PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED')),
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE images (
@@ -1535,6 +1603,20 @@ CREATE UNIQUE INDEX uq_fiscal_invoices_access_key ON fiscal_invoices (access_key
 
 CREATE UNIQUE INDEX uq_fiscal_invoices_number_series_account ON fiscal_invoices (billing_account_id, series, number) WHERE series IS NOT NULL AND number IS NOT NULL
 
+CREATE INDEX idx_m8_generated_images_created_by ON generated_images (created_by) WHERE created_by IS NOT NULL
+
+CREATE INDEX ix_generated_images_approval_status ON generated_images (approval_status)
+
+CREATE INDEX ix_generated_images_approved_by ON generated_images (approved_by)
+
+CREATE INDEX ix_generated_images_design_slide_id ON generated_images (design_slide_id)
+
+CREATE INDEX ix_generated_images_generation_status ON generated_images (generation_status)
+
+CREATE UNIQUE INDEX uq_generated_images_current_per_slide ON generated_images (design_slide_id) WHERE is_current AND deleted_at IS NULL
+
+CREATE UNIQUE INDEX uq_generated_images_storage_bucket_storage_key ON generated_images (storage_bucket, storage_key)
+
 CREATE INDEX ix_generation_job_status_events_job_occurred_at ON generation_job_status_events (generation_job_id, occurred_at)
 
 CREATE INDEX ix_generation_jobs_generation_id ON generation_jobs (generation_id)
@@ -1548,6 +1630,12 @@ CREATE UNIQUE INDEX uq_generation_jobs_external_id ON generation_jobs (external_
 CREATE INDEX ix_generations_requested_by_user_id ON generations (requested_by_user_id)
 
 CREATE INDEX ix_generations_workspace_filter ON generations (workspace_id, type, deleted_at, created_at)
+
+CREATE INDEX idx_image_resizes_created_by ON image_resizes (created_by) WHERE created_by IS NOT NULL
+
+CREATE INDEX ix_image_resizes_source_image_id ON image_resizes (source_image_id)
+
+CREATE UNIQUE INDEX uq_image_resizes_storage_bucket_storage_key ON image_resizes (storage_bucket, storage_key)
 
 CREATE INDEX ix_images_content_version ON images (content_id, version_number)
 

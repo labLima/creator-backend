@@ -8,18 +8,18 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **73**
+- Tabelas no metadata atual: **75**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **702**
+- Divergências: **728**
 
 ## Divergências por categoria
 
 | Categoria | Ocorrências |
 | --- | --- |
-| `table_missing` | 2 |
+| `table_missing` | 0 |
 | `table_extra` | 4 |
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
@@ -34,12 +34,12 @@
 | `unique_extra` | 7 |
 | `index_missing` | 101 |
 | `index_extra` | 4 |
-| `index_name` | 27 |
-| `fk_missing` | 26 |
+| `index_name` | 29 |
+| `fk_missing` | 21 |
 | `fk_extra` | 49 |
 | `fk_ondelete` | 35 |
-| `check_missing` | 67 |
-| `check_extra` | 33 |
+| `check_missing` | 80 |
+| `check_extra` | 51 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
 
@@ -54,8 +54,7 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 ## 2. Tabelas do modelo final ausentes no ORM
 
-- **`generated_images`** (23 colunas, 9 CHECKs): `id`, `design_slide_id`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `model`, `prompt`, `created_by`, `error_message`, `generation_status`, `is_current`, `approval_status`, `approved_by`, `approved_at`, `rejection_reason`, `feedback_type`, `feedback_text`, `created_at`, `updated_at`, `deleted_at`
-- **`image_resizes`** (14 colunas, 4 CHECKs): `id`, `source_image_id`, `ratio`, `status`, `storage_bucket`, `storage_key`, `mime_type`, `size_bytes`, `width`, `height`, `error_message`, `created_by`, `created_at`, `updated_at`
+Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
@@ -407,7 +406,7 @@ Total: **34**.
 
 ## 5. Índices
 
-Total: **132**.
+Total: **134**.
 
 ### `index_missing` (101)
 
@@ -520,7 +519,7 @@ Total: **132**.
 - `captions: UNIQUE (post_id) WHERE is_current`
 - `users: (deleted_at)`
 
-### `index_name` (27)
+### `index_name` (29)
 
 - `billing_addresses: missing index name uq_billing_addresses_default`
 - `billing_payment_methods: missing index name idx_m8_billing_payment_methods_billing_address_id`
@@ -533,6 +532,8 @@ Total: **132**.
 - `coupon_redemptions: missing index name uq_coupon_redemptions_once_per_workspace`
 - `coupons: missing index name idx_m8_coupons_created_by`
 - `coupons: missing index name uq_coupons_code_active`
+- `image_resizes: missing index name idx_image_resizes_source_image`
+- `image_resizes: missing index name uq_image_resizes_storage`
 - `notifications: missing index name idx_m8_notifications_created_by`
 - `orders: missing index name idx_m8_orders_credit_package_id`
 - `personas: missing index name idx_m8_personas_created_by`
@@ -552,9 +553,9 @@ Total: **132**.
 
 ## 6. Foreign keys
 
-Total: **110**.
+Total: **105**.
 
-### `fk_missing` (26)
+### `fk_missing` (21)
 
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `brand_assets['created_by']->users['id'] [SET NULL]`
@@ -566,11 +567,6 @@ Total: **110**.
 - `coupon_redemptions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 - `coupon_redemptions['subscription_id', 'workspace_id']->subscriptions['id', 'workspace_id'] [RESTRICT]`
 - `coupon_redemptions['user_id']->users['id'] [RESTRICT]`
-- `generated_images['approved_by']->users['id'] [SET NULL]`
-- `generated_images['created_by']->users['id'] [SET NULL]`
-- `generated_images['design_slide_id']->design_slides['id'] [CASCADE]`
-- `image_resizes['created_by']->users['id'] [SET NULL]`
-- `image_resizes['source_image_id']->generated_images['id'] [CASCADE]`
 - `refunds['charge_id']->charges['id'] [RESTRICT]`
 - `refunds['requested_by']->users['id'] [SET NULL]`
 - `subscription_history['changed_by']->users['id'] [SET NULL]`
@@ -675,9 +671,9 @@ Total: **110**.
 
 ## 7. CHECK constraints
 
-Total: **100**.
+Total: **131**.
 
-### `check_missing` (67)
+### `check_missing` (80)
 
 - `unmapped:billing_accounts.chk_billing_accounts_company_name`
 - `unmapped:billing_accounts.chk_billing_accounts_document_pair`
@@ -708,6 +704,19 @@ Total: **100**.
 - `unmapped:fiscal_invoices.chk_fiscal_invoices_amount_nonnegative`
 - `unmapped:fiscal_invoices.chk_fiscal_invoices_currency_format`
 - `unmapped:fiscal_invoices.chk_fiscal_invoices_one_origin`
+- `unmapped:generated_images.chk_generated_images_approval_after_generation`
+- `unmapped:generated_images.chk_generated_images_approval_pair`
+- `unmapped:generated_images.chk_generated_images_approved_metadata`
+- `unmapped:generated_images.chk_generated_images_current_complete`
+- `unmapped:generated_images.chk_generated_images_dimensions`
+- `unmapped:generated_images.chk_generated_images_failed_message`
+- `unmapped:generated_images.chk_generated_images_file_by_status`
+- `unmapped:generated_images.chk_generated_images_rejected_reason`
+- `unmapped:generated_images.chk_generated_images_size_bytes`
+- `unmapped:image_resizes.chk_image_resizes_dimensions`
+- `unmapped:image_resizes.chk_image_resizes_failed`
+- `unmapped:image_resizes.chk_image_resizes_file`
+- `unmapped:image_resizes.chk_image_resizes_size`
 - `unmapped:invoices.chk_invoices_cents_nonnegative`
 - `unmapped:invoices.chk_invoices_currency_format`
 - `unmapped:invoices.chk_invoices_installments`
@@ -747,7 +756,7 @@ Total: **100**.
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_by_type`
 - `unmapped:workspace_invites.chk_workspace_invites_max_uses_positive`
 
-### `check_extra` (33)
+### `check_extra` (51)
 
 - `brands.ck_brands_deleted_after_created`
 - `campaign_voices.campaign_voice`
@@ -763,6 +772,24 @@ Total: **100**.
 - `fiscal_invoices.chk_fiscal_invoices_currency_format`
 - `fiscal_invoices.chk_fiscal_invoices_one_origin`
 - `fiscal_invoices.fiscal_invoice_status`
+- `generated_images.approval_status`
+- `generated_images.chk_generated_images_approval_after_generation`
+- `generated_images.chk_generated_images_approval_pair`
+- `generated_images.chk_generated_images_approved_metadata`
+- `generated_images.chk_generated_images_current_complete`
+- `generated_images.chk_generated_images_dimensions`
+- `generated_images.chk_generated_images_failed_message`
+- `generated_images.chk_generated_images_file_by_status`
+- `generated_images.chk_generated_images_rejected_reason`
+- `generated_images.chk_generated_images_size_bytes`
+- `generated_images.generation_status`
+- `generated_images.image_feedback_type`
+- `image_resizes.art_ratio`
+- `image_resizes.chk_image_resizes_dimensions`
+- `image_resizes.chk_image_resizes_failed`
+- `image_resizes.chk_image_resizes_file`
+- `image_resizes.chk_image_resizes_size`
+- `image_resizes.resize_status`
 - `plan_payment_methods.chk_plan_payment_methods_max_installments`
 - `plan_payment_methods.payment_method_type`
 - `post_designs.art_ratio`

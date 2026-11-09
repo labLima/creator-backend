@@ -26,6 +26,7 @@ from creator.design_structure import models as _design_structure_tables  # noqa:
 from creator.fiscal_invoice import models as _fiscal_invoice_tables  # noqa: F401
 from creator.generation import models as _generation_tables  # noqa: F401
 from creator.invoice import models as _invoice_tables  # noqa: F401
+from creator.media import models as _media_tables  # noqa: F401
 from creator.notification import models as _notification_tables  # noqa: F401
 from creator.order import models as _order_tables  # noqa: F401
 from creator.payment_method import models as _payment_method_tables  # noqa: F401
