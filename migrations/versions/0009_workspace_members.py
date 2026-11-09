@@ -38,6 +38,23 @@ def upgrade() -> None:
         return
 
     op.rename_table("workspace_memberships", "workspace_members")
+
+    # Discarded memberships have child rows in invite usages and notification
+    # recipients. Alembic does not enable SQLite foreign keys, so orphans would
+    # survive silently (or abort the drop when the app engine enforces them).
+    # Policy: a removed member's invite usage is dropped (the member is gone and
+    # there is no restoration path), while the notification recipient is kept
+    # and simply loses the reference.
+    op.execute(
+        "DELETE FROM workspace_invite_usages WHERE member_id IN ("
+        "SELECT id FROM workspace_members WHERE deleted_at IS NOT NULL)"
+    )
+    op.execute(
+        "UPDATE notification_recipients SET workspace_member_id = NULL "
+        "WHERE workspace_member_id IN ("
+        "SELECT id FROM workspace_members WHERE deleted_at IS NOT NULL)"
+    )
+
     op.create_table(
         "workspace_members_new",
         sa.Column("id", uuid_pk, primary_key=True),

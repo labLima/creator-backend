@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from creator.core.pagination import PageRequest
 from creator.core.types import JsonObject
 from creator.domain.exceptions import ConcurrencyError, ConflictError, PersistenceError
+from creator.infrastructure.database.enums import MemberStatus
 from creator.workspace import models as workspace_tables
 
 
@@ -124,9 +125,16 @@ def user_has_workspace_role(
 ) -> bool:
     minimum_rank = ROLE_RANK[minimum_role]
     row = session.scalars(
-        select(workspace_tables.WorkspaceMembership).where(
+        select(workspace_tables.WorkspaceMembership)
+        .join(
+            workspace_tables.Workspace,
+            workspace_tables.Workspace.id == workspace_tables.WorkspaceMembership.workspace_id,
+        )
+        .where(
             workspace_tables.WorkspaceMembership.user_id == user_id,
             workspace_tables.WorkspaceMembership.workspace_id == workspace_id,
+            workspace_tables.WorkspaceMembership.status == MemberStatus.ACTIVE,
+            workspace_tables.Workspace.deleted_at.is_(None),
         )
     ).one_or_none()
     if row is None:

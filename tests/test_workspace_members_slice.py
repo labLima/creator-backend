@@ -128,3 +128,54 @@ def test_invited_by_is_nulled_when_the_inviter_is_deleted(engine: sa.Engine) -> 
         assert invited_by is None
     finally:
         engine.dispose()
+
+
+def test_deleted_workspace_denies_access_and_invite_listing(engine: sa.Engine) -> None:
+    """Soft-deleted workspaces must not stay writable through surviving members."""
+    from sqlalchemy.orm import Session
+
+    from creator.domain.exceptions import EntityNotFoundError
+    from creator.workspace.repository import (
+        SqlAlchemyWorkspaceInviteRepository,
+        SqlAlchemyWorkspaceRepository,
+    )
+
+    user_id = uuid4()
+    with Session(engine) as session:
+        repository = SqlAlchemyWorkspaceRepository(session)
+        created = repository.create_for_user(user_id=user_id, name="ws")
+        workspace_id = created.workspace.id
+        assert repository.user_has_workspace_role(
+            user_id=user_id, workspace_id=workspace_id, minimum_role="viewer"
+        )
+
+        repository.soft_delete_for_user(user_id=user_id, workspace_id=workspace_id)
+        session.flush()
+
+        assert not repository.user_has_workspace_role(
+            user_id=user_id, workspace_id=workspace_id, minimum_role="viewer"
+        )
+        with pytest.raises(EntityNotFoundError):
+            repository.update(user_id=user_id, workspace_id=workspace_id, name="renamed")
+        invites = SqlAlchemyWorkspaceInviteRepository(session)
+        assert invites.list_for_user(user_id=user_id) == []
+
+
+def test_removed_member_loses_access(engine: sa.Engine) -> None:
+    from sqlalchemy.orm import Session
+
+    from creator.workspace.repository import SqlAlchemyWorkspaceRepository
+
+    user_id = uuid4()
+    with Session(engine) as session:
+        repository = SqlAlchemyWorkspaceRepository(session)
+        created = repository.create_for_user(user_id=user_id, name="ws")
+        workspace_id = created.workspace.id
+        session.execute(
+            sa.text("UPDATE workspace_members SET status = 'REMOVED' WHERE id = :id"),
+            {"id": created.membership.id.hex},
+        )
+        session.flush()
+        assert not repository.user_has_workspace_role(
+            user_id=user_id, workspace_id=workspace_id, minimum_role="viewer"
+        )

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 import creator.workspace.models as workspace_models
 from creator.core.pagination import Page, PageRequest
 from creator.domain.exceptions import EntityNotFoundError
-from creator.infrastructure.database.enums import WorkspaceRole
+from creator.infrastructure.database.enums import MemberStatus, WorkspaceRole
 from creator.infrastructure.persistence.sql import (
     as_datetime,
     as_optional_datetime,
@@ -258,6 +258,12 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
                 workspace_models.WorkspaceInvite.id == invite_id,
                 workspace_models.WorkspaceMembership.user_id == user_id,
                 workspace_models.WorkspaceInvite.deleted_at.is_(None),
+                workspace_models.WorkspaceInvite.workspace_id.in_(
+                    select(workspace_models.Workspace.id).where(
+                        workspace_models.Workspace.deleted_at.is_(None)
+                    )
+                ),
+                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
             )
         )
 
@@ -274,6 +280,12 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
                 workspace_models.WorkspaceInvite.deleted_at.is_(None),
+                workspace_models.WorkspaceInvite.workspace_id.in_(
+                    select(workspace_models.Workspace.id).where(
+                        workspace_models.Workspace.deleted_at.is_(None)
+                    )
+                ),
+                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
             )
         )
         if workspace_id is not None:
@@ -359,6 +371,12 @@ class SqlAlchemyWorkspaceInviteUsageRepository(WorkspaceInviteUsageRepository):
                 workspace_models.WorkspaceInviteUsage.id == usage_id,
                 workspace_models.WorkspaceMembership.user_id == uid,
                 workspace_models.WorkspaceInviteUsage.deleted_at.is_(None),
+                workspace_models.WorkspaceInviteUsage.workspace_id.in_(
+                    select(workspace_models.Workspace.id).where(
+                        workspace_models.Workspace.deleted_at.is_(None)
+                    )
+                ),
+                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
             )
         )
 
@@ -373,6 +391,12 @@ class SqlAlchemyWorkspaceInviteUsageRepository(WorkspaceInviteUsageRepository):
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
                 workspace_models.WorkspaceInviteUsage.deleted_at.is_(None),
+                workspace_models.WorkspaceInviteUsage.workspace_id.in_(
+                    select(workspace_models.Workspace.id).where(
+                        workspace_models.Workspace.deleted_at.is_(None)
+                    )
+                ),
+                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
             )
         )
         if workspace_id is not None:
