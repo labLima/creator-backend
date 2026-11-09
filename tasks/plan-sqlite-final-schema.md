@@ -169,7 +169,8 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 **Critérios de aceite:**
 - [ ] `currency_code_check`, `uf_check`, `zip_code_check`, `hex_color_check`, `exactly_one_of`, `at_most_one_of` com teste de equivalência semântica (aceitam e rejeitam os mesmos casos que o PostgreSQL).
-- [ ] `CHECK_MAP` cobre os 80 CHECKs do dump; o teste falha se algum ficar sem entrada ou apontar coluna inexistente.
+- [ ] `CHECK_MAP` só aceita entrada válida (check existente no dump, tabela e constraint existentes no modelo e SQL portável
+  declarado); a cobertura dos 80 CHECKs cresce junto com as tabelas e é medida por `check_missing` no orçamento.
 - [ ] Nenhum `~`, `num_nonnulls` ou `gen_random_uuid` em model ou migration.
 - [ ] Defaults documentados: UUID por `uuid4` em Python, timestamps por `CURRENT_TIMESTAMP`.
 
