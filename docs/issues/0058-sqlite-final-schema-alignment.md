@@ -243,9 +243,20 @@ T23 (SHC-24), fatia 1 — planning:
 - Dados legados aparecem após rodar `python scripts/backfill_redesigns.py`
   (T12); T18 deve exigir o backfill antes do fechamento.
 
-Próximo passo: T23 fatia 2 — `post_structure` para `posts`/`captions`/
-`post_designs`/`design_slides`; depois `design_structure` e `generated_image`,
-e então T13, T15, T20, T16, T17 e T18.
+T23 (SHC-24), fatia 2 — post_structure:
+
+- `SqlAlchemyPostStructureRepository` grava `posts`, `post_designs` e o
+  primeiro `design_slides`; a tabela `post_structure` não é mais escrita.
+- Contrato HTTP preservado: título/objetivo/big idea/main message↔`posts`;
+  headline/CTA/art_guiding↔slide; formato (`STATIC`→`IMAGE`) e ratio
+  normalizados; `resolution` derivada do ratio.
+- `status = PUBLISHED` grava `approval_status = APPROVED` e timestamps para
+  satisfazer os CHECKs do modelo final.
+- `tests/test_post_structure_content_models.py` cobre add/update/list/delete
+  e prova que `post_structure` permanece vazia.
+
+Próximo passo: T23 fatia 3 — `design_structure` e `generated_image`; depois
+T13, T15, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

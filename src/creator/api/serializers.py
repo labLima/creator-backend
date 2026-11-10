@@ -132,7 +132,7 @@ def _post_structure_data(post_structure: Any) -> dict[str, Any]:
         "id": str(post_structure.id),
         "workspace_id": str(post_structure.workspace_id),
         "planning_id": str(post_structure.planning_id),
-        "created_by": str(post_structure.created_by),
+        "created_by": str(post_structure.created_by) if post_structure.created_by else None,
         "title": post_structure.title,
         "objective": post_structure.objective,
         "big_idea": post_structure.big_idea,

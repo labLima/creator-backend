@@ -15,7 +15,7 @@ class PostStructureRecord:
     id: UUID
     workspace_id: UUID
     planning_id: UUID
-    created_by: UUID
+    created_by: UUID | None
     title: str | None
     objective: str | None
     big_idea: str | None
@@ -34,7 +34,12 @@ class PostStructureRecord:
 
 class PostStructureRepository(Protocol):
     def add(
-        self, *, workspace_id: UUID, planning_id: UUID, created_by: UUID, **fields: str | None
+        self,
+        *,
+        workspace_id: UUID,
+        planning_id: UUID,
+        created_by: UUID | None,
+        **fields: str | None,
     ) -> PostStructureRecord: ...
     def get_for_user(
         self, *, user_id: UUID, post_structure_id: UUID
