@@ -6,8 +6,8 @@
 
 ## Fatias propostas
 
-> **B1 e B2 concluídas** em 2026-11-10 (`0020_billing_account_alignment` e
-> `0021_plan_alignment`); as demais fatias seguem o plano abaixo.
+> **B1, B2 e B3 concluídas** em 2026-11-10 (`0020`, `0021` e
+> `0022_subscription_alignment`); as demais fatias seguem o plano abaixo.
 
 | Fatia | Tabelas | Risco principal |
 | --- | --- | --- |

@@ -310,7 +310,25 @@ T15 (SHC-16), fatia B2 concluída — planos e itens:
 - CHECK_MAP ganha os 4 CHECKs do lote; CHECKs de enum ficam adiados.
 - Relatório: **395 divergências** (431 antes da B2).
 
-Próximo passo: B3 (`subscriptions`/`subscription_history`), depois B4/B5,
+T15 (SHC-16), fatia B3 concluída — assinaturas e histórico:
+
+- `subscriptions`: colunas finais (`contracted_price_cents`, `currency`,
+  `status`/`provider_status`/`status_reason`, `provider`, `external_id/code`,
+  `payment_method(_id)`, `billing_interval/type`, `installments`,
+  `current_cycle_id`, períodos, `canceled_at`); `provider_subscription_id`/
+  `provider_code` viram `external_*`; `billing_day`/`start_at`/`deleted_at`
+  saem (cancelamento vira `CANCELED` + `canceled_at`).
+- `subscription_history`: `old_/new_plan_id`, `old_/new_status`,
+  `old_/new_provider_status`, `changed_by`, `reason_code/text`; append-only
+  no schema (sem `updated_at`/`deleted_at`).
+- `0022_subscription_alignment` com backfill determinístico (preço do plano,
+  normalização de enums, dedupe de assinatura ativa por workspace) e downgrade
+  funcional; `tests/test_subscription_alignment_migration.py` cobre o
+  mapeamento.
+- CHECK_MAP +3; CHECKs de enum adiados.
+- Relatório: **320 divergências** (395 antes da B3).
+
+Próximo passo: B4 (orders/invoices/charges/refunds/provider_*), depois B5,
 T20, T16, T17 e T18.
 
 ## Critérios de aceite

@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **395**
+- Divergências: **320**
 
 ## Divergências por categoria
 
@@ -24,23 +24,23 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 75 |
-| `column_extra` | 51 |
-| `nullability` | 2 |
-| `width` | 15 |
+| `column_missing` | 57 |
+| `column_extra` | 37 |
+| `nullability` | 1 |
+| `width` | 14 |
 | `kind` | 3 |
-| `enum` | 17 |
+| `enum` | 12 |
 | `unique_missing` | 1 |
 | `unique_extra` | 3 |
-| `index_missing` | 64 |
+| `index_missing` | 52 |
 | `index_extra` | 1 |
-| `index_name` | 19 |
-| `fk_missing` | 18 |
-| `fk_extra` | 23 |
-| `fk_ondelete` | 16 |
-| `check_missing` | 34 |
+| `index_name` | 13 |
+| `fk_missing` | 14 |
+| `fk_extra` | 17 |
+| `fk_ondelete` | 12 |
+| `check_missing` | 31 |
 | `check_extra` | 30 |
-| `default_missing` | 6 |
+| `default_missing` | 5 |
 | `default_value` | 0 |
 
 ## 1. Tabelas com nome divergente
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **149**.
+Total: **114**.
 
-### `column_missing` (75)
+### `column_missing` (57)
 
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
@@ -112,24 +112,6 @@ Total: **149**.
 - `refunds.provider`
 - `refunds.reason_code`
 - `refunds.requested_by`
-- `subscription_history.changed_by`
-- `subscription_history.new_plan_id`
-- `subscription_history.new_provider_status`
-- `subscription_history.new_status`
-- `subscription_history.old_plan_id`
-- `subscription_history.old_provider_status`
-- `subscription_history.old_status`
-- `subscription_history.reason_code`
-- `subscription_history.reason_text`
-- `subscriptions.billing_interval`
-- `subscriptions.contracted_price_cents`
-- `subscriptions.currency`
-- `subscriptions.current_cycle_id`
-- `subscriptions.external_code`
-- `subscriptions.external_id`
-- `subscriptions.payment_method_id`
-- `subscriptions.provider`
-- `subscriptions.status_reason`
 - `workspace_credit_transactions.balance_after`
 - `workspace_credit_transactions.created_by`
 - `workspace_credit_transactions.generated_image_id`
@@ -138,7 +120,7 @@ Total: **149**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (51)
+### `column_extra` (37)
 
 - `charges.deleted_at`
 - `charges.provider_card_id`
@@ -170,20 +152,6 @@ Total: **149**.
 - `refunds.provider_charge_id`
 - `refunds.provider_refund_id`
 - `refunds.reason`
-- `subscription_history.deleted_at`
-- `subscription_history.plan_id`
-- `subscription_history.previous_plan_id`
-- `subscription_history.previous_status`
-- `subscription_history.reason`
-- `subscription_history.status`
-- `subscription_history.updated_at`
-- `subscriptions.billing_day`
-- `subscriptions.deleted_at`
-- `subscriptions.interval`
-- `subscriptions.provider_card_id`
-- `subscriptions.provider_code`
-- `subscriptions.provider_subscription_id`
-- `subscriptions.start_at`
 - `users.global_role`
 - `users.password_hash`
 - `workspace_credit_transactions.deleted_at`
@@ -192,12 +160,11 @@ Total: **149**.
 - `workspace_credit_transactions.transaction_type`
 - `workspace_credit_transactions.updated_at`
 
-### `nullability` (2)
+### `nullability` (1)
 
 - `invoices.subscription_id: final NOT NULL, model nullable`
-- `subscriptions.installments: final NOT NULL, model nullable`
 
-### `width` (15)
+### `width` (14)
 
 - `charges.amount_cents: final bigint, model integer`
 - `charges.status: final unbounded varchar, model varchar(20)`
@@ -213,22 +180,20 @@ Total: **149**.
 - `orders.discount_cents: final bigint, model integer`
 - `orders.subtotal_cents: final bigint, model integer`
 - `refunds.amount_cents: final bigint, model integer`
-- `subscriptions.minimum_price_cents: final bigint, model integer`
 
-### `default_missing` (6)
+### `default_missing` (5)
 
 - `charges.currency: final default 'BRL'`
 - `credit_packages.currency: final default 'BRL'`
 - `invoices.currency: final default 'BRL'`
 - `orders.currency: final default 'BRL'`
 - `refunds.currency: final default 'BRL'`
-- `subscriptions.installments: final default 1`
 
 ## 4. Enums
 
-Total: **17**.
+Total: **12**.
 
-### `enum` (17)
+### `enum` (12)
 
 - `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
 - `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
@@ -242,17 +207,12 @@ Total: **17**.
 - `provider_webhook_events.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
 - `provider_webhook_events.status: model has no vocabulary (expected ['RECEIVED', 'PROCESSING', 'PROCESSED', 'FAILED', 'IGNORED'])`
 - `refunds.status: model has no vocabulary (expected ['PENDING', 'SUCCEEDED', 'FAILED'])`
-- `subscription_history.change_type: model has no vocabulary (expected ['CREATE', 'UPGRADE', 'DOWNGRADE', 'CANCEL', 'RENEW'])`
-- `subscriptions.billing_type: model has no vocabulary (expected ['PREPAID', 'POSTPAID'])`
-- `subscriptions.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
-- `subscriptions.provider_status: model has no vocabulary (expected ['ACTIVE', 'CANCELED', 'FUTURE'])`
-- `subscriptions.status: model has no vocabulary (expected ['ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED', 'EXPIRED'])`
 
 ## 5. Índices
 
-Total: **84**.
+Total: **66**.
 
-### `index_missing` (64)
+### `index_missing` (52)
 
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
 - `charges: (billing_account_id, status)`
@@ -300,18 +260,6 @@ Total: **84**.
 - `refunds: (requested_by) WHERE requested_by is not null`
 - `refunds: (status)`
 - `refunds: UNIQUE (provider, external_id)`
-- `subscription_history: (changed_by) WHERE changed_by is not null`
-- `subscription_history: (new_plan_id) WHERE new_plan_id is not null`
-- `subscription_history: (old_plan_id) WHERE old_plan_id is not null`
-- `subscription_history: (subscription_id, created_at)`
-- `subscriptions: (billing_account_id)`
-- `subscriptions: (next_billing_at)`
-- `subscriptions: (payment_method_id) WHERE payment_method_id is not null`
-- `subscriptions: (plan_id)`
-- `subscriptions: (workspace_id)`
-- `subscriptions: UNIQUE (id, workspace_id)`
-- `subscriptions: UNIQUE (provider, external_id)`
-- `subscriptions: UNIQUE (workspace_id) WHERE status in ('active', 'trialing', 'past_due')`
 - `workspace_credit_transactions: (created_by) WHERE created_by is not null`
 - `workspace_credit_transactions: (workspace_id, created_at)`
 - `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
@@ -323,7 +271,7 @@ Total: **84**.
 
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (19)
+### `index_name` (13)
 
 - `charges: missing index name idx_m8_charges_payment_method_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
@@ -336,20 +284,14 @@ Total: **84**.
 - `orders: missing index name idx_m8_orders_credit_package_id`
 - `provider_disputes: missing index name idx_m8_provider_disputes_billing_account_id`
 - `refunds: missing index name idx_m8_refunds_requested_by`
-- `subscription_history: missing index name idx_m8_subscription_history_changed_by`
-- `subscription_history: missing index name idx_m8_subscription_history_new_plan_id`
-- `subscription_history: missing index name idx_m8_subscription_history_old_plan_id`
-- `subscriptions: missing index name idx_m8_subscriptions_payment_method_id`
-- `subscriptions: missing index name idx_m8_subscriptions_plan_id`
-- `subscriptions: missing index name uq_subscriptions_workspace_current`
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
 
 ## 6. Foreign keys
 
-Total: **57**.
+Total: **43**.
 
-### `fk_missing` (18)
+### `fk_missing` (14)
 
 - `charges['order_id']->orders['id'] [SET NULL]`
 - `charges['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
@@ -360,17 +302,13 @@ Total: **57**.
 - `coupon_redemptions['user_id']->users['id'] [RESTRICT]`
 - `refunds['charge_id']->charges['id'] [RESTRICT]`
 - `refunds['requested_by']->users['id'] [SET NULL]`
-- `subscription_history['changed_by']->users['id'] [SET NULL]`
-- `subscription_history['new_plan_id']->plans['id'] [SET NULL]`
-- `subscription_history['old_plan_id']->plans['id'] [SET NULL]`
-- `subscriptions['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
 - `workspace_credit_transactions['created_by']->users['id'] [SET NULL]`
 - `workspace_credit_transactions['generated_image_id']->generated_images['id'] [RESTRICT]`
 - `workspace_credit_transactions['image_resize_id']->image_resizes['id'] [RESTRICT]`
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (23)
+### `fk_extra` (17)
 
 - `charges['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `charges['invoice_id']->invoices['id'] [NO ACTION]`
@@ -388,15 +326,9 @@ Total: **57**.
 - `provider_disputes['charge_id']->charges['id'] [NO ACTION]`
 - `refunds['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `refunds['invoice_id']->invoices['id'] [NO ACTION]`
-- `subscription_history['plan_id']->plans['id'] [NO ACTION]`
-- `subscription_history['previous_plan_id']->plans['id'] [NO ACTION]`
-- `subscription_history['subscription_id']->subscriptions['id'] [NO ACTION]`
-- `subscriptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
-- `subscriptions['plan_id']->plans['id'] [NO ACTION]`
-- `subscriptions['workspace_id']->workspaces['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (16)
+### `fk_ondelete` (12)
 
 - `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `charges['invoice_id']->invoices['id']: final SET NULL vs model ['NO ACTION']`
@@ -409,17 +341,13 @@ Total: **57**.
 - `orders['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 - `provider_disputes['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `provider_disputes['charge_id']->charges['id']: final RESTRICT vs model ['NO ACTION']`
-- `subscription_history['subscription_id']->subscriptions['id']: final CASCADE vs model ['NO ACTION']`
-- `subscriptions['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
-- `subscriptions['plan_id']->plans['id']: final RESTRICT vs model ['NO ACTION']`
-- `subscriptions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 
 ## 7. CHECK constraints
 
-Total: **64**.
+Total: **61**.
 
-### `check_missing` (34)
+### `check_missing` (31)
 
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
@@ -448,9 +376,6 @@ Total: **64**.
 - `unmapped:refunds.chk_refunds_amount_nonnegative`
 - `unmapped:refunds.chk_refunds_currency_format`
 - `unmapped:refunds.chk_refunds_processed_by_status`
-- `unmapped:subscriptions.chk_subscriptions_cents_nonnegative`
-- `unmapped:subscriptions.chk_subscriptions_currency_format`
-- `unmapped:subscriptions.chk_subscriptions_installments`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`

@@ -1200,55 +1200,64 @@ CREATE TABLE settings (
 )
 
 CREATE TABLE subscription_history (
-	subscription_id CHAR(32) NOT NULL,
-	change_type VARCHAR(20) NOT NULL,
-	previous_plan_id CHAR(32),
-	plan_id CHAR(32),
-	previous_status VARCHAR(20),
-	status VARCHAR(20),
-	reason TEXT,
 	id CHAR(32) NOT NULL,
+	subscription_id CHAR(32) NOT NULL,
+	change_type VARCHAR(9) NOT NULL,
+	old_plan_id CHAR(32),
+	new_plan_id CHAR(32),
+	old_status VARCHAR(8),
+	new_status VARCHAR(8),
+	old_provider_status VARCHAR(8),
+	new_provider_status VARCHAR(8),
+	changed_by CHAR(32),
+	reason_code VARCHAR(17),
+	reason_text VARCHAR(500),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id),
-	FOREIGN KEY(previous_plan_id) REFERENCES plans (id),
-	FOREIGN KEY(plan_id) REFERENCES plans (id)
+	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id) ON DELETE CASCADE,
+	FOREIGN KEY(old_plan_id) REFERENCES plans (id) ON DELETE SET NULL,
+	FOREIGN KEY(new_plan_id) REFERENCES plans (id) ON DELETE SET NULL,
+	FOREIGN KEY(changed_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE subscriptions (
+	id CHAR(32) NOT NULL,
 	billing_account_id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
 	plan_id CHAR(32) NOT NULL,
-	status VARCHAR(20) NOT NULL,
-	provider_status VARCHAR(20),
-	provider_subscription_id VARCHAR(64),
-	provider_code VARCHAR(52),
-	payment_method VARCHAR(20),
-	provider_card_id VARCHAR(64),
-	billing_type VARCHAR(20),
-	billing_day INTEGER,
-	interval VARCHAR(10),
+	contracted_price_cents BIGINT NOT NULL,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	status VARCHAR(8) NOT NULL,
+	provider_status VARCHAR(8),
+	status_reason VARCHAR(17),
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	external_code VARCHAR(52),
+	payment_method VARCHAR(11),
+	payment_method_id CHAR(32),
+	billing_type VARCHAR(8),
+	billing_interval VARCHAR(5),
 	interval_count INTEGER,
-	installments INTEGER,
-	minimum_price_cents INTEGER,
+	installments INTEGER DEFAULT 1 NOT NULL,
+	minimum_price_cents BIGINT,
 	statement_descriptor VARCHAR(22),
 	trial_period_days INTEGER,
+	current_cycle_id VARCHAR(64),
 	current_period_start DATETIME,
 	current_period_end DATETIME,
 	next_billing_at DATETIME,
-	start_at DATETIME,
 	canceled_at DATETIME,
-	metadata JSON DEFAULT '{}' NOT NULL,
-	id CHAR(32) NOT NULL,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(plan_id) REFERENCES plans (id)
+	CONSTRAINT chk_subscriptions_installments CHECK (installments IS NULL OR installments >= 1),
+	CONSTRAINT chk_subscriptions_cents_nonnegative CHECK (contracted_price_cents >= 0 AND (minimum_price_cents IS NULL OR minimum_price_cents >= 0)),
+	CONSTRAINT chk_subscriptions_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE RESTRICT,
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
+	FOREIGN KEY(plan_id) REFERENCES plans (id) ON DELETE RESTRICT,
+	FOREIGN KEY(payment_method_id) REFERENCES billing_payment_methods (id) ON DELETE SET NULL
 )
 
 CREATE TABLE user_consents (
@@ -1658,6 +1667,30 @@ CREATE INDEX ix_projects_created_by_user_id ON projects (created_by_user_id)
 CREATE INDEX ix_projects_workspace_filter ON projects (workspace_id, deleted_at, created_at)
 
 CREATE INDEX ix_settings_user_id ON settings (user_id)
+
+CREATE INDEX idx_m8_subscription_history_changed_by ON subscription_history (changed_by) WHERE changed_by IS NOT NULL
+
+CREATE INDEX idx_m8_subscription_history_new_plan_id ON subscription_history (new_plan_id) WHERE new_plan_id IS NOT NULL
+
+CREATE INDEX idx_m8_subscription_history_old_plan_id ON subscription_history (old_plan_id) WHERE old_plan_id IS NOT NULL
+
+CREATE INDEX ix_subscription_history_subscription_created ON subscription_history (subscription_id, created_at)
+
+CREATE INDEX idx_m8_subscriptions_payment_method_id ON subscriptions (payment_method_id) WHERE payment_method_id IS NOT NULL
+
+CREATE INDEX idx_m8_subscriptions_plan_id ON subscriptions (plan_id)
+
+CREATE INDEX ix_subscriptions_billing_account_id ON subscriptions (billing_account_id)
+
+CREATE INDEX ix_subscriptions_next_billing_at ON subscriptions (next_billing_at)
+
+CREATE INDEX ix_subscriptions_workspace_id ON subscriptions (workspace_id)
+
+CREATE UNIQUE INDEX uq_subscriptions_id_workspace_id ON subscriptions (id, workspace_id)
+
+CREATE UNIQUE INDEX uq_subscriptions_provider_external_id ON subscriptions (provider, external_id)
+
+CREATE UNIQUE INDEX uq_subscriptions_workspace_current ON subscriptions (workspace_id) WHERE status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
 
 CREATE UNIQUE INDEX uq_user_consents_user_id_type_document_version ON user_consents (user_id, type, document_version)
 

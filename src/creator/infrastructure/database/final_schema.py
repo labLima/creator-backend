@@ -220,6 +220,18 @@ CHECK_MAP: Final[dict[str, tuple[str, str]]] = {
         "billing_payment_methods.chk_billing_payment_methods_exp_month",
         "exp_month is null or exp_month between 1 and 12",
     ),
+    "subscriptions.chk_subscriptions_installments": (
+        "subscriptions.chk_subscriptions_installments",
+        "installments is null or installments >= 1",
+    ),
+    "subscriptions.chk_subscriptions_cents_nonnegative": (
+        "subscriptions.chk_subscriptions_cents_nonnegative",
+        "contracted_price_cents >= 0 and (minimum_price_cents is null or minimum_price_cents >= 0)",
+    ),
+    "subscriptions.chk_subscriptions_currency_format": (
+        "subscriptions.chk_subscriptions_currency_format",
+        "currency glob '[a-z][a-z][a-z]'",
+    ),
     "plans.chk_plans_cents_nonnegative": (
         "plans.chk_plans_cents_nonnegative",
         "price_cents >= 0 and (minimum_price_cents is null or minimum_price_cents >= 0)",
