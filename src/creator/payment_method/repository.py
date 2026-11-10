@@ -16,26 +16,44 @@ import creator.payment_method.models as payment_method_models
 from creator.payment_method.ports import BillingPaymentMethodRecord, BillingPaymentMethodRepository
 
 
+def _method_fields(fields: dict[str, object]) -> dict[str, object]:
+    mapping = {
+        "card_brand": "brand",
+        "card_type": "type",
+        "card_status": "status",
+        "provider_card_id": "external_id",
+    }
+    values: dict[str, object] = {}
+    for key, value in fields.items():
+        target = mapping.get(key, key)
+        if target == "brand":
+            value = str(value).upper() if value is not None else None
+        elif target == "type":
+            value = str(value).upper() if value is not None else None
+        values[target] = value
+    return values
+
+
 class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
     def _record(self, x: payment_method_models.BillingPaymentMethod) -> BillingPaymentMethodRecord:
         return BillingPaymentMethodRecord(
-            x.id,
-            x.billing_account_id,
-            x.holder_name,
-            x.holder_document,
-            x.card_brand,
-            x.card_last_four,
-            x.exp_month,
-            x.exp_year,
-            x.card_type,
-            x.card_status,
-            x.is_default,
-            x.created_at,
-            x.updated_at,
-            x.deleted_at,
+            id=x.id,
+            billing_account_id=x.billing_account_id,
+            holder_name=x.holder_name,
+            holder_document=x.holder_document,
+            card_brand=x.brand,
+            card_last_four=x.card_last_four,
+            exp_month=x.exp_month,
+            exp_year=x.exp_year,
+            card_type=x.type,
+            card_status=x.status,
+            is_default=x.is_default,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
+            deleted_at=None,
         )
 
     def _owned(self, uid: UUID, mid: UUID):
@@ -45,7 +63,7 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
             .where(
                 payment_method_models.BillingPaymentMethod.id == mid,
                 billing_account_models.BillingAccount.user_id == uid,
-                payment_method_models.BillingPaymentMethod.deleted_at.is_(None),
+                payment_method_models.BillingPaymentMethod.status != "DELETED",
             )
         )
 
@@ -55,7 +73,7 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
             .join(billing_account_models.BillingAccount)
             .where(
                 billing_account_models.BillingAccount.user_id == user_id,
-                payment_method_models.BillingPaymentMethod.deleted_at.is_(None),
+                payment_method_models.BillingPaymentMethod.status != "DELETED",
             )
         )
         if account_id is not None:
@@ -67,8 +85,10 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
         return self._record(x) if x else None
 
     def add(self, *, billing_account_id: UUID, fields: dict[str, object]):
+        values = _method_fields(fields)
+        values.setdefault("status", "ACTIVE")
         x = payment_method_models.BillingPaymentMethod(
-            billing_account_id=billing_account_id, **fields
+            billing_account_id=billing_account_id, **values
         )
         self.s.add(x)
         self.s.flush()
@@ -76,18 +96,18 @@ class SqlAlchemyBillingPaymentMethodRepository(BillingPaymentMethodRepository):
 
     def update(self, *, method_id: UUID, fields: dict[str, object]):
         x = self.s.get(payment_method_models.BillingPaymentMethod, method_id)
-        if x is None or x.deleted_at is not None:
+        if x is None or x.status == "DELETED":
             raise ValueError("Billing payment method not found")
-        for k, v in fields.items():
-            setattr(x, k, v)
+        for key, value in _method_fields(fields).items():
+            setattr(x, key, value)
         x.updated_at = datetime.now(UTC)
         self.s.flush()
         return self._record(x)
 
     def soft_delete(self, *, method_id: UUID):
         x = self.s.get(payment_method_models.BillingPaymentMethod, method_id)
-        if x is None or x.deleted_at is not None:
+        if x is None or x.status == "DELETED":
             raise ValueError("Billing payment method not found")
-        x.deleted_at = datetime.now(UTC)
-        x.updated_at = x.deleted_at
+        x.status = "DELETED"
+        x.updated_at = datetime.now(UTC)
         self.s.flush()

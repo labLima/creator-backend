@@ -8503,12 +8503,12 @@ components:
           title: Payer Type
         name:
           type: string
-          maxLength: 64
+          maxLength: 254
           minLength: 1
           title: Name
         email:
           type: string
-          maxLength: 64
+          maxLength: 254
           minLength: 1
           title: Email
         phone:
@@ -8594,43 +8594,53 @@ components:
           format: uuid
           title: Billing Account Id
         street:
-          anyOf:
-          - type: string
-          - type: 'null'
+          type: string
+          maxLength: 256
+          minLength: 1
           title: Street
         number:
-          anyOf:
-          - type: string
-          - type: 'null'
+          type: string
+          maxLength: 20
+          minLength: 1
           title: Number
         complement:
           anyOf:
           - type: string
+            maxLength: 128
           - type: 'null'
           title: Complement
         neighborhood:
           anyOf:
           - type: string
+            maxLength: 64
           - type: 'null'
           title: Neighborhood
         zip_code:
-          anyOf:
-          - type: string
-          - type: 'null'
+          type: string
+          pattern: '^[0-9]{8}$'
           title: Zip Code
         city:
-          anyOf:
-          - type: string
-          - type: 'null'
+          type: string
+          maxLength: 64
+          minLength: 1
           title: City
         state:
-          anyOf:
-          - type: string
-          - type: 'null'
+          type: string
+          pattern: '^[A-Z]{2}$'
           title: State
+        country:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          title: Country
+          default: BR
       type: object
       required:
       - billing_account_id
+      - street
+      - number
+      - zip_code
+      - city
+      - state
       title: BillingAddressCreateRequest
     BillingAddressUpdateRequest:
       properties:
@@ -9433,16 +9443,30 @@ components:
         holder_name:
           anyOf:
           - type: string
+            maxLength: 64
           - type: 'null'
           title: Holder Name
         holder_document:
           anyOf:
           - type: string
+            maxLength: 16
           - type: 'null'
           title: Holder Document
         card_brand:
           anyOf:
           - type: string
+            enum:
+            - VISA
+            - MASTERCARD
+            - AMEX
+            - ELO
+            - HIPERCARD
+            - DINERS
+            - DISCOVER
+            - JCB
+            - AURA
+            - CABAL
+            - OTHER
           - type: 'null'
           title: Card Brand
         card_last_four:
@@ -9463,6 +9487,9 @@ components:
         card_type:
           anyOf:
           - type: string
+            enum:
+            - CREDIT
+            - DEBIT
           - type: 'null'
           title: Card Type
         is_default:

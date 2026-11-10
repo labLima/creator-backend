@@ -200,6 +200,30 @@ CHECK_MAP: Final[dict[str, tuple[str, str]]] = {
         "workspace_credit_lot_consumptions.chk_lot_consumptions_amount",
         "amount > 0",
     ),
+    "billing_accounts.chk_billing_accounts_company_name": (
+        "billing_accounts.chk_billing_accounts_company_name",
+        "(payer_type = 'company') = (company_name is not null)",
+    ),
+    "billing_accounts.chk_billing_accounts_document_pair": (
+        "billing_accounts.chk_billing_accounts_document_pair",
+        "(document is null) = (document_hash is null)",
+    ),
+    "billing_addresses.chk_billing_addresses_zip_code": (
+        "billing_addresses.chk_billing_addresses_zip_code",
+        "country <> 'br' or zip_code glob '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'",
+    ),
+    "billing_addresses.chk_billing_addresses_state_uf": (
+        "billing_addresses.chk_billing_addresses_state_uf",
+        "country <> 'br' or state glob '[a-z][a-z]'",
+    ),
+    "billing_payment_methods.chk_billing_payment_methods_exp_month": (
+        "billing_payment_methods.chk_billing_payment_methods_exp_month",
+        "exp_month is null or exp_month between 1 and 12",
+    ),
+    "billing_payment_methods.chk_billing_payment_methods_exp_year": (
+        "billing_payment_methods.chk_billing_payment_methods_exp_year",
+        "exp_year is null or exp_year between 2000 and 2100",
+    ),
     "brand_colors.chk_brand_colors_hex": (
         "brand_colors.chk_brand_colors_hex",
         "hex glob '#[0-9a-fa-f][0-9a-fa-f][0-9a-fa-f][0-9a-fa-f][0-9a-fa-f][0-9a-fa-f]'",

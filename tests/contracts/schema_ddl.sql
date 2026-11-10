@@ -154,62 +154,76 @@ CREATE TABLE auth_sessions (
 )
 
 CREATE TABLE billing_accounts (
-	user_id CHAR(32) NOT NULL,
-	payer_type VARCHAR(20) NOT NULL,
-	name VARCHAR(64) NOT NULL,
-	email VARCHAR(64) NOT NULL,
-	phone VARCHAR(20),
-	document VARCHAR(50),
-	document_type VARCHAR(10),
-	company_name VARCHAR(64),
-	provider VARCHAR(20),
-	provider_customer_id VARCHAR(64),
-	provider_customer_code VARCHAR(52),
-	delinquent BOOLEAN DEFAULT false NOT NULL,
-	metadata JSON DEFAULT '{}' NOT NULL,
 	id CHAR(32) NOT NULL,
+	user_id CHAR(32) NOT NULL,
+	payer_type VARCHAR(10) NOT NULL,
+	name VARCHAR(64) NOT NULL,
+	email VARCHAR(254) NOT NULL,
+	phone VARCHAR(20),
+	document BLOB,
+	document_hash VARCHAR(64),
+	company_name VARCHAR(64),
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	external_code VARCHAR(52),
+	delinquent BOOLEAN DEFAULT false NOT NULL,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+	CONSTRAINT chk_billing_accounts_company_name CHECK ((payer_type = 'COMPANY') = (company_name IS NOT NULL)),
+	CONSTRAINT chk_billing_accounts_document_pair CHECK ((document IS NULL) = (document_hash IS NULL)),
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT
 )
 
 CREATE TABLE billing_addresses (
-	billing_account_id CHAR(32) NOT NULL,
-	street VARCHAR(128),
-	number VARCHAR(16),
-	complement VARCHAR(64),
-	neighborhood VARCHAR(64),
-	zip_code VARCHAR(16),
-	city VARCHAR(64),
-	state VARCHAR(16),
 	id CHAR(32) NOT NULL,
+	billing_account_id CHAR(32) NOT NULL,
+	external_id VARCHAR(64),
+	line_1 VARCHAR(256) NOT NULL,
+	number VARCHAR(20) NOT NULL,
+	line_2 VARCHAR(128),
+	district VARCHAR(64),
+	zip_code VARCHAR(8) NOT NULL,
+	city VARCHAR(64) NOT NULL,
+	state VARCHAR(2) NOT NULL,
+	country VARCHAR(2) NOT NULL,
+	status VARCHAR(8) DEFAULT 'ACTIVE' NOT NULL,
+	is_default BOOLEAN DEFAULT false NOT NULL,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id)
+	CONSTRAINT uq_billing_addresses_external_id UNIQUE (external_id),
+	CONSTRAINT chk_billing_addresses_zip_code CHECK (country <> 'BR' OR zip_code GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
+	CONSTRAINT chk_billing_addresses_state_uf CHECK (country <> 'BR' OR state GLOB '[A-Z][A-Z]'),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE CASCADE
 )
 
 CREATE TABLE billing_payment_methods (
+	id CHAR(32) NOT NULL,
 	billing_account_id CHAR(32) NOT NULL,
-	provider_card_id VARCHAR(64),
+	billing_address_id CHAR(32),
+	external_id VARCHAR(64),
+	external_network_token_id VARCHAR(64),
+	first_six_digits VARCHAR(6),
+	brand VARCHAR(10),
+	card_last_four VARCHAR(4),
 	holder_name VARCHAR(64),
 	holder_document VARCHAR(16),
-	card_brand VARCHAR(20),
-	card_last_four VARCHAR(4),
 	exp_month INTEGER,
 	exp_year INTEGER,
-	card_type VARCHAR(20),
-	card_status VARCHAR(20),
+	type VARCHAR(6),
+	status VARCHAR(7) DEFAULT 'ACTIVE' NOT NULL,
 	is_default BOOLEAN DEFAULT false NOT NULL,
-	id CHAR(32) NOT NULL,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id)
+	CONSTRAINT chk_billing_payment_methods_exp_month CHECK (exp_month IS NULL OR exp_month BETWEEN 1 AND 12),
+	CONSTRAINT chk_billing_payment_methods_exp_year CHECK (exp_year IS NULL OR exp_year BETWEEN 2000 AND 2100),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE CASCADE,
+	FOREIGN KEY(billing_address_id) REFERENCES billing_addresses (id) ON DELETE SET NULL
 )
 
 CREATE TABLE brand_assets (
@@ -1417,6 +1431,24 @@ CREATE INDEX ix_auth_sessions_expires_at ON auth_sessions (expires_at)
 CREATE INDEX ix_auth_sessions_family_id ON auth_sessions (family_id)
 
 CREATE INDEX ix_auth_sessions_user_id ON auth_sessions (user_id)
+
+CREATE INDEX ix_billing_accounts_document_hash ON billing_accounts (document_hash)
+
+CREATE INDEX ix_billing_accounts_user_id ON billing_accounts (user_id)
+
+CREATE UNIQUE INDEX uq_billing_accounts_provider_external_id ON billing_accounts (provider, external_id)
+
+CREATE INDEX ix_billing_addresses_billing_account_id ON billing_addresses (billing_account_id)
+
+CREATE UNIQUE INDEX uq_billing_addresses_default ON billing_addresses (billing_account_id) WHERE is_default AND status = 'ACTIVE'
+
+CREATE INDEX idx_m8_billing_payment_methods_billing_address_id ON billing_payment_methods (billing_address_id) WHERE billing_address_id IS NOT NULL
+
+CREATE INDEX ix_billing_payment_methods_account_default ON billing_payment_methods (billing_account_id, is_default)
+
+CREATE UNIQUE INDEX uq_billing_payment_methods_account_external_id ON billing_payment_methods (billing_account_id, external_id)
+
+CREATE UNIQUE INDEX uq_billing_payment_methods_default ON billing_payment_methods (billing_account_id) WHERE is_default AND status = 'ACTIVE'
 
 CREATE INDEX ix_brand_assets_brand_id ON brand_assets (brand_id)
 

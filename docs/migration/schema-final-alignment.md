@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **501**
+- Divergências: **431**
 
 ## Divergências por categoria
 
@@ -24,21 +24,21 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 110 |
-| `column_extra` | 70 |
-| `nullability` | 8 |
-| `width` | 20 |
-| `kind` | 4 |
-| `enum` | 22 |
-| `unique_missing` | 2 |
+| `column_missing` | 91 |
+| `column_extra` | 57 |
+| `nullability` | 3 |
+| `width` | 16 |
+| `kind` | 3 |
+| `enum` | 20 |
+| `unique_missing` | 1 |
 | `unique_extra` | 4 |
-| `index_missing` | 76 |
+| `index_missing` | 67 |
 | `index_extra` | 1 |
-| `index_name` | 23 |
-| `fk_missing` | 19 |
-| `fk_extra` | 26 |
-| `fk_ondelete` | 19 |
-| `check_missing` | 44 |
+| `index_name` | 20 |
+| `fk_missing` | 18 |
+| `fk_extra` | 23 |
+| `fk_ondelete` | 16 |
+| `check_missing` | 38 |
 | `check_extra` | 30 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
@@ -58,29 +58,10 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **214**.
+Total: **173**.
 
-### `column_missing` (110)
+### `column_missing` (91)
 
-- `billing_accounts.document_hash`
-- `billing_accounts.external_code`
-- `billing_accounts.external_id`
-- `billing_addresses.country`
-- `billing_addresses.district`
-- `billing_addresses.external_id`
-- `billing_addresses.is_default`
-- `billing_addresses.line_1`
-- `billing_addresses.line_2`
-- `billing_addresses.metadata`
-- `billing_addresses.status`
-- `billing_payment_methods.billing_address_id`
-- `billing_payment_methods.brand`
-- `billing_payment_methods.external_id`
-- `billing_payment_methods.external_network_token_id`
-- `billing_payment_methods.first_six_digits`
-- `billing_payment_methods.metadata`
-- `billing_payment_methods.status`
-- `billing_payment_methods.type`
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
 - `charges.code`
@@ -173,21 +154,8 @@ Total: **214**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (70)
+### `column_extra` (57)
 
-- `billing_accounts.deleted_at`
-- `billing_accounts.document_type`
-- `billing_accounts.provider_customer_code`
-- `billing_accounts.provider_customer_id`
-- `billing_addresses.complement`
-- `billing_addresses.deleted_at`
-- `billing_addresses.neighborhood`
-- `billing_addresses.street`
-- `billing_payment_methods.card_brand`
-- `billing_payment_methods.card_status`
-- `billing_payment_methods.card_type`
-- `billing_payment_methods.deleted_at`
-- `billing_payment_methods.provider_card_id`
 - `charges.deleted_at`
 - `charges.provider_card_id`
 - `charges.provider_charge_id`
@@ -246,23 +214,14 @@ Total: **214**.
 - `workspace_credit_transactions.transaction_type`
 - `workspace_credit_transactions.updated_at`
 
-### `nullability` (8)
+### `nullability` (3)
 
-- `billing_accounts.provider: final NOT NULL, model nullable`
-- `billing_addresses.city: final NOT NULL, model nullable`
-- `billing_addresses.number: final NOT NULL, model nullable`
-- `billing_addresses.state: final NOT NULL, model nullable`
-- `billing_addresses.zip_code: final NOT NULL, model nullable`
 - `invoices.subscription_id: final NOT NULL, model nullable`
 - `plan_items.status: final NOT NULL, model nullable`
 - `subscriptions.installments: final NOT NULL, model nullable`
 
-### `width` (20)
+### `width` (16)
 
-- `billing_accounts.email: final varchar(254), model varchar(64)`
-- `billing_addresses.number: final varchar(20), model varchar(16)`
-- `billing_addresses.state: final varchar(2), model varchar(16)`
-- `billing_addresses.zip_code: final varchar(8), model varchar(16)`
 - `charges.amount_cents: final bigint, model integer`
 - `charges.status: final unbounded varchar, model varchar(20)`
 - `coupon_redemptions.discount_amount_cents: final bigint, model integer`
@@ -291,12 +250,10 @@ Total: **214**.
 
 ## 4. Enums
 
-Total: **22**.
+Total: **20**.
 
-### `enum` (22)
+### `enum` (20)
 
-- `billing_accounts.payer_type: model has no vocabulary (expected ['INDIVIDUAL', 'COMPANY'])`
-- `billing_accounts.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
 - `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
 - `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
 - `coupons.type: model has no vocabulary (expected ['DISCOUNT', 'CREDIT'])`
@@ -320,19 +277,10 @@ Total: **22**.
 
 ## 5. Índices
 
-Total: **100**.
+Total: **88**.
 
-### `index_missing` (76)
+### `index_missing` (67)
 
-- `billing_accounts: (document_hash)`
-- `billing_accounts: (user_id)`
-- `billing_accounts: UNIQUE (provider, external_id)`
-- `billing_addresses: (billing_account_id)`
-- `billing_addresses: UNIQUE (billing_account_id) WHERE is_default and status = 'active'`
-- `billing_payment_methods: (billing_account_id, is_default)`
-- `billing_payment_methods: (billing_address_id) WHERE billing_address_id is not null`
-- `billing_payment_methods: UNIQUE (billing_account_id) WHERE is_default and status = 'active'`
-- `billing_payment_methods: UNIQUE (billing_account_id, external_id)`
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
 - `charges: (billing_account_id, status)`
 - `charges: (code)`
@@ -405,11 +353,8 @@ Total: **100**.
 
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (23)
+### `index_name` (20)
 
-- `billing_addresses: missing index name uq_billing_addresses_default`
-- `billing_payment_methods: missing index name idx_m8_billing_payment_methods_billing_address_id`
-- `billing_payment_methods: missing index name uq_billing_payment_methods_default`
 - `charges: missing index name idx_m8_charges_payment_method_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_invoice_id`
@@ -433,11 +378,10 @@ Total: **100**.
 
 ## 6. Foreign keys
 
-Total: **64**.
+Total: **57**.
 
-### `fk_missing` (19)
+### `fk_missing` (18)
 
-- `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
 - `charges['order_id']->orders['id'] [SET NULL]`
 - `charges['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
 - `coupon_redemptions['credit_transaction_id']->workspace_credit_transactions['id'] [SET NULL]`
@@ -457,11 +401,8 @@ Total: **64**.
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (26)
+### `fk_extra` (23)
 
-- `billing_accounts['user_id']->users['id'] [CASCADE]`
-- `billing_addresses['billing_account_id']->billing_accounts['id'] [NO ACTION]`
-- `billing_payment_methods['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `charges['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `charges['invoice_id']->invoices['id'] [NO ACTION]`
 - `coupon_redemptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
@@ -486,11 +427,8 @@ Total: **64**.
 - `subscriptions['workspace_id']->workspaces['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (19)
+### `fk_ondelete` (16)
 
-- `billing_accounts['user_id']->users['id']: final RESTRICT vs model ['CASCADE']`
-- `billing_addresses['billing_account_id']->billing_accounts['id']: final CASCADE vs model ['NO ACTION']`
-- `billing_payment_methods['billing_account_id']->billing_accounts['id']: final CASCADE vs model ['NO ACTION']`
 - `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `charges['invoice_id']->invoices['id']: final SET NULL vs model ['NO ACTION']`
 - `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model ['NO ACTION']`
@@ -510,16 +448,10 @@ Total: **64**.
 
 ## 7. CHECK constraints
 
-Total: **74**.
+Total: **68**.
 
-### `check_missing` (44)
+### `check_missing` (38)
 
-- `unmapped:billing_accounts.chk_billing_accounts_company_name`
-- `unmapped:billing_accounts.chk_billing_accounts_document_pair`
-- `unmapped:billing_addresses.chk_billing_addresses_state_uf`
-- `unmapped:billing_addresses.chk_billing_addresses_zip_code`
-- `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_month`
-- `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_year`
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
 - `unmapped:charges.chk_charges_installments`

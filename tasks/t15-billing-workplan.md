@@ -6,6 +6,9 @@
 
 ## Fatias propostas
 
+> **B1 concluída** em 2026-11-10 (`0020_billing_account_alignment`); as demais
+> fatias seguem o plano abaixo.
+
 | Fatia | Tabelas | Risco principal |
 | --- | --- | --- |
 | B1 | `billing_accounts`, `billing_addresses`, `billing_payment_methods` | `document` vira bytea + hash; `street`→`line_1`; enums de cartão; APIs de billing account |

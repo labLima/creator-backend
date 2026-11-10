@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -19,6 +20,23 @@ from creator.billing_account.ports import (
 )
 
 
+def _document_text(value: bytes | None) -> str | None:
+    return value.decode("utf-8") if value is not None else None
+
+
+def _document_type(value: bytes | None) -> str | None:
+    if value is None:
+        return None
+    return {11: "cpf", 14: "cnpj"}.get(len(value))
+
+
+def _document_fields(value: object) -> dict[str, object]:
+    if value is None:
+        return {"document": None, "document_hash": None}
+    encoded = str(value).encode("utf-8")
+    return {"document": encoded, "document_hash": hashlib.sha256(encoded).hexdigest()}
+
+
 def _billing_account(row: billing_account_models.BillingAccount) -> BillingAccountRecord:
     return BillingAccountRecord(
         id=row.id,
@@ -27,17 +45,17 @@ def _billing_account(row: billing_account_models.BillingAccount) -> BillingAccou
         name=row.name,
         email=row.email,
         phone=row.phone,
-        document=row.document,
-        document_type=row.document_type,
+        document=_document_text(row.document),
+        document_type=_document_type(row.document),
         company_name=row.company_name,
         provider=row.provider,
-        provider_customer_id=row.provider_customer_id,
-        provider_customer_code=row.provider_customer_code,
+        provider_customer_id=row.external_id,
+        provider_customer_code=row.external_code,
         delinquent=row.delinquent,
         metadata=dict(row.metadata_json or {}),
         created_at=row.created_at,
         updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
+        deleted_at=None,
     )
 
 
@@ -48,10 +66,7 @@ class SqlAlchemyBillingAccountRepository:
     def list_for_user(self, *, user_id: UUID) -> list[BillingAccountRecord]:
         rows = self._session.scalars(
             select(billing_account_models.BillingAccount)
-            .where(
-                billing_account_models.BillingAccount.user_id == user_id,
-                billing_account_models.BillingAccount.deleted_at.is_(None),
-            )
+            .where(billing_account_models.BillingAccount.user_id == user_id)
             .order_by(billing_account_models.BillingAccount.created_at.desc())
         ).all()
         return [_billing_account(row) for row in rows]
@@ -61,7 +76,6 @@ class SqlAlchemyBillingAccountRepository:
             select(billing_account_models.BillingAccount).where(
                 billing_account_models.BillingAccount.id == account_id,
                 billing_account_models.BillingAccount.user_id == user_id,
-                billing_account_models.BillingAccount.deleted_at.is_(None),
             )
         ).one_or_none()
         return _billing_account(row) if row else None
@@ -83,8 +97,8 @@ class SqlAlchemyBillingAccountRepository:
             name=name,
             email=email,
             phone=phone,
-            document=document,
-            document_type=document_type,
+            provider="PAGARME",
+            **_document_fields(document),
         )
         self._session.add(row)
         self._session.flush()
@@ -97,13 +111,26 @@ class SqlAlchemyBillingAccountRepository:
             select(billing_account_models.BillingAccount).where(
                 billing_account_models.BillingAccount.id == account_id,
                 billing_account_models.BillingAccount.user_id == user_id,
-                billing_account_models.BillingAccount.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
             raise ValueError("Billing account not found")
+        mapping = {
+            "provider_customer_id": "external_id",
+            "provider_customer_code": "external_code",
+            "document_type": None,
+            "document": "document",
+        }
         for name, value in fields.items():
-            setattr(row, name, value)
+            if name == "document_type":
+                continue
+            if name == "document":
+                for column, column_value in _document_fields(value).items():
+                    setattr(row, column, column_value)
+                continue
+            target = mapping.get(name, name)
+            if target is not None:
+                setattr(row, target, value)
         row.updated_at = datetime.now(UTC)
         self._session.flush()
         return _billing_account(row)
@@ -113,14 +140,11 @@ class SqlAlchemyBillingAccountRepository:
             select(billing_account_models.BillingAccount).where(
                 billing_account_models.BillingAccount.id == account_id,
                 billing_account_models.BillingAccount.user_id == user_id,
-                billing_account_models.BillingAccount.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
             raise ValueError("Billing account not found")
-        timestamp = datetime.now(UTC)
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
+        self._session.delete(row)
         self._session.flush()
 
 
@@ -130,18 +154,18 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
 
     def _record(self, x: billing_account_models.BillingAddress) -> BillingAddressRecord:
         return BillingAddressRecord(
-            x.id,
-            x.billing_account_id,
-            x.street,
-            x.number,
-            x.complement,
-            x.neighborhood,
-            x.zip_code,
-            x.city,
-            x.state,
-            x.created_at,
-            x.updated_at,
-            x.deleted_at,
+            id=x.id,
+            billing_account_id=x.billing_account_id,
+            street=x.line_1,
+            number=x.number,
+            complement=x.line_2,
+            neighborhood=x.district,
+            zip_code=x.zip_code,
+            city=x.city,
+            state=x.state,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
+            deleted_at=None,
         )
 
     def _owned(self, uid: UUID, aid: UUID):
@@ -151,7 +175,7 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
             .where(
                 billing_account_models.BillingAddress.id == aid,
                 billing_account_models.BillingAccount.user_id == uid,
-                billing_account_models.BillingAddress.deleted_at.is_(None),
+                billing_account_models.BillingAddress.status != "DELETED",
             )
         )
 
@@ -161,7 +185,7 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
             .join(billing_account_models.BillingAccount)
             .where(
                 billing_account_models.BillingAccount.user_id == user_id,
-                billing_account_models.BillingAddress.deleted_at.is_(None),
+                billing_account_models.BillingAddress.status != "DELETED",
             )
         )
         if account_id is not None:
@@ -173,25 +197,42 @@ class SqlAlchemyBillingAddressRepository(BillingAddressRepository):
         return self._record(x) if x else None
 
     def add(self, *, billing_account_id: UUID, fields: dict[str, object]):
-        x = billing_account_models.BillingAddress(billing_account_id=billing_account_id, **fields)
+        mapping = {
+            "street": "line_1",
+            "complement": "line_2",
+            "neighborhood": "district",
+        }
+        values = {mapping.get(key, key): value for key, value in fields.items()}
+        values["line_1"] = values.get("line_1") or ""
+        values["number"] = values.get("number") or ""
+        values["zip_code"] = values.get("zip_code") or ""
+        values["city"] = values.get("city") or ""
+        values["state"] = values.get("state") or ""
+        values.setdefault("country", "BR")
+        values.setdefault("status", "ACTIVE")
+        x = billing_account_models.BillingAddress(billing_account_id=billing_account_id, **values)
         self.s.add(x)
         self.s.flush()
         return self._record(x)
 
     def update(self, *, address_id: UUID, fields: dict[str, object]):
         x = self.s.get(billing_account_models.BillingAddress, address_id)
-        if x is None or x.deleted_at is not None:
+        if x is None or x.status == "DELETED":
             raise ValueError("Billing address not found")
-        for k, v in fields.items():
-            setattr(x, k, v)
+        mapping = {"street": "line_1", "complement": "line_2", "neighborhood": "district"}
+        for key, value in fields.items():
+            if key in {"status", "is_default", "country", "external_id", "metadata"}:
+                setattr(x, key, value)
+            else:
+                setattr(x, mapping.get(key, key), value)
         x.updated_at = datetime.now(UTC)
         self.s.flush()
         return self._record(x)
 
     def soft_delete(self, *, address_id: UUID):
         x = self.s.get(billing_account_models.BillingAddress, address_id)
-        if x is None or x.deleted_at is not None:
+        if x is None or x.status == "DELETED":
             raise ValueError("Billing address not found")
-        x.deleted_at = datetime.now(UTC)
-        x.updated_at = x.deleted_at
+        x.status = "DELETED"
+        x.updated_at = datetime.now(UTC)
         self.s.flush()

@@ -272,9 +272,29 @@ T13 (SHC-14) concluída — contract:
 - Ordem de deploy: rodar o backfill antes de aplicar 0019 em banco com dados
   legados (o downgrade não devolve dados).
 
-Próximo passo: T15 (SHC-16) — lote B de billing/créditos/cupons. O escopo
-medido e as fatias B1–B5 estão em
-[`tasks/t15-billing-workplan.md`](../../tasks/t15-billing-workplan.md); depois
+T15 (SHC-16), fatia B1 concluída — contas, endereços e cartões:
+
+- `billing_accounts`: documento vira `document` bytes + `document_hash`;
+  `provider_customer_*` viram `external_id`/`external_code`; entram
+  `document_hash`, `company_name`, enum `payment_provider` e os CHECKs de
+  empresa/documento; `deleted_at` sai (delete físico).
+- `billing_addresses`: `street`/`complement`/`neighborhood` viram
+  `line_1`/`line_2`/`district`; entram `country`, `status`, `is_default`,
+  `external_id`, `metadata` e os CHECKs de CEP/UF (GLOB).
+- `billing_payment_methods`: `provider_card_id`→`external_id`,
+  `card_brand`→`brand`, `card_type`→`type`, `card_status`→`status`; entra
+  `billing_address_id`; `deleted_at` sai.
+- `migrations/versions/0020_billing_account_alignment.py` reconstrói as três
+  tabelas, normaliza tipos/status e tem downgrade funcional.
+- Repositórios mantêm o vocabulário antigo no record (street/document_type/
+  card_brand) traduzindo na borda; schemas exigem CEP/UF válidos e enums de
+  cartão.
+- `tests/test_billing_account_alignment_migration.py` cobre o backfill.
+- CHECK_MAP ganha os 6 CHECKs do lote; CHECKs de enum ficam adiados para a
+  fatia que reescrever cada tabela.
+- Relatório: **431 divergências** (501 antes da B1).
+
+Próximo passo: B2 (`plans`/`plan_items`/`plan_payment_methods`), depois B3–B5,
 T20, T16, T17 e T18.
 
 ## Critérios de aceite
