@@ -312,23 +312,23 @@ def test_planning_workflow_snapshots_context_and_source_references() -> None:
         resolution="1080x1080",
     )
     campaign = SimpleNamespace(
+        brand_id=BRAND_ID,
         workspace_id=WORKSPACE_ID,
         name="Spring",
         objectives="Reach",
         target_audience="Commuters",
-        voice="Optimistic",
+        expected_action="Optimistic",
     )
     persona = SimpleNamespace(
         brand_id=BRAND_ID,
         name="Morning commuter",
-        age=30,
-        gender="any",
+        age_range="FROM_25_TO_34",
+        gender="OTHER",
         main_goal="Save time",
         challenge="Busy mornings",
-        interest="Coffee",
         routine="Commute",
         journey="Awareness",
-        trigger="Convenience",
+        trigger_event="Convenience",
     )
     uow = FakeUow()
     uow.planning = SimpleNamespace(get_for_user=lambda **kwargs: planning)
@@ -699,9 +699,12 @@ class WorkerUow:
                 id=BRAND_ID,
                 workspace_id=WORKSPACE_ID,
                 name="Brand",
-                description="Description",
-                brand_voice="Clear",
-                metadata={},
+                segment="creator",
+                promise="Description",
+                goals="Growth",
+                indicators="Reach",
+                inspirations="Minimalism",
+                restrictions="Clear",
             )
         )
         self.brand_settings = SimpleNamespace(get_for_user=lambda **kwargs: None)

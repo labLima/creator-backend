@@ -72,8 +72,8 @@ def improve_content(
             brand_context = {
                 "brand_id": str(brand.id),
                 "brand_name": brand.name,
-                "brand_description": brand.description or "",
-                "brand_voice": brand.brand_voice or "",
+                "brand_description": brand.promise or brand.segment or "",
+                "brand_voice": brand.restrictions or "",
             }
 
     rendered_prompt = build_text_improvement_prompt(

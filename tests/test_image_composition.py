@@ -36,8 +36,12 @@ def _image(width: int, height: int) -> ImageGenerationResult:
 def _setup(monkeypatch: pytest.MonkeyPatch, decision: str = "APPROVED") -> tuple[object, object]:
     workspace_id, brand_id, user_id = uuid4(), uuid4(), uuid4()
     assets = {
-        "font": SimpleNamespace(brand_id=brand_id, type="FONT", file_url="storage://assets/font"),
-        "logo": SimpleNamespace(brand_id=brand_id, type="LOGO", file_url="storage://assets/logo"),
+        "font": SimpleNamespace(
+            brand_id=brand_id, type="FONT", storage_bucket="assets", storage_key="font"
+        ),
+        "logo": SimpleNamespace(
+            brand_id=brand_id, type="LOGO", storage_bucket="assets", storage_key="logo"
+        ),
     }
     logo_buffer = BytesIO()
     Image.new("RGBA", (80, 40), "#FFFFFF").save(logo_buffer, format="PNG")

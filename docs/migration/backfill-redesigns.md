@@ -10,7 +10,7 @@ direto e a reexecução não duplica dados (`INSERT OR IGNORE` + chaves naturais
 
 | Etapa | Origem | Destino | Regra |
 | --- | --- | --- | --- |
-| 1 | `planning.campaign_id` + `brand_id` | `campaigns.brand_id` | preenche a chave pai exigida pelas FKs compostas (só quando nulo) |
+| 1 | `planning.campaign_id` + `brand_id` | `campaigns.brand_id` | encerrado na T25: a migração `0018` preenche e torna a coluna NOT NULL; o script não escreve mais nela |
 | 2 | `planning` | `content_plans` | `briefing = planning_info`; datas convertidas com `date()`; pula plano cujo campaign/persona não pertence à marca |
 | 3 | `planning_*_amount` | `content_plan_items` | `IMAGE`/`CAROUSEL`/`STORIES`, somente quantidades > 0 |
 | 4 | `planning_special_dates` | `content_plan_special_dates` | data válida; `label = 'legacy'` para a unicidade funcionar |

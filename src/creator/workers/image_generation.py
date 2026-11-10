@@ -717,8 +717,8 @@ def _authorized_brand_context(work_item: ImageGenerationWorkItem) -> dict[str, o
     context: dict[str, object] = {
         "brand_id": str(brand.id),
         "name": brand.name,
-        "description": brand.description or "",
-        "brand_voice": brand.brand_voice or "",
+        "description": brand.promise or brand.segment or "",
+        "brand_voice": brand.restrictions or "",
     }
     if (
         settings is not None
@@ -728,9 +728,9 @@ def _authorized_brand_context(work_item: ImageGenerationWorkItem) -> dict[str, o
         context["voice_settings"] = settings.voice_settings
         context["visual_settings"] = settings.visual_settings
     context["colors"] = [
-        {"name": color.color_name, "hex": color.hex_code}
-        for color in sorted(colors, key=lambda item: (item.order, str(item.id)))
-        if color.brand_id == brand.id and color.workspace_id == work_item.job.workspace_id
+        {"name": color.name, "hex": color.hex}
+        for color in sorted(colors, key=lambda item: (item.position or 0, str(item.id)))
+        if color.brand_id == brand.id
     ][:30]
     return context
 

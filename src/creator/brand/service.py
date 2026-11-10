@@ -47,11 +47,14 @@ def create_brand(
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
     brand = uow.brand.brands.add(
         workspace_id=payload.workspace_id,
-        created_by_user_id=actor.id,
+        created_by=actor.id,
         name=payload.name,
-        description=payload.description,
-        brand_voice=payload.brand_voice,
-        metadata=payload.metadata,
+        segment=payload.segment,
+        promise=payload.promise,
+        goals=payload.goals,
+        indicators=payload.indicators,
+        inspirations=payload.inspirations,
+        restrictions=payload.restrictions,
     )
     uow.activity_events.add_brand_event(
         workspace_id=brand.workspace_id,
@@ -92,9 +95,12 @@ def update_brand(
             user_id=actor.id,
             brand_id=brand_id,
             name=payload.name,
-            description=payload.description,
-            brand_voice=payload.brand_voice,
-            metadata=payload.metadata,
+            segment=payload.segment,
+            promise=payload.promise,
+            goals=payload.goals,
+            indicators=payload.indicators,
+            inspirations=payload.inspirations,
+            restrictions=payload.restrictions,
         )
     except EntityNotFoundError as error:
         raise not_found("Brand") from error
@@ -255,9 +261,11 @@ def create_brand_asset(
     asset = uow.brand.assets.add(
         brand_id=payload.brand_id,
         type=payload.type,
-        file_url=payload.file_url,
+        storage_bucket=payload.storage_bucket,
+        storage_key=payload.storage_key,
         file_name=payload.file_name,
         description=payload.description,
+        created_by=actor.id,
     )
     uow.commit()
 
@@ -343,10 +351,11 @@ def create_brand_color(
     request: Any,
     payload: Any,
 ) -> Any:
-    require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
-    data = payload.model_dump()
-    data["created_by"] = actor.id
-    item = uow.brand.colors.add(fields=data)
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=payload.brand_id)
+    if brand is None:
+        raise not_found("Brand")
+    require_workspace_write(uow, user_id=actor.id, workspace_id=brand.workspace_id)
+    item = uow.brand.colors.add(fields=payload.model_dump())
     uow.commit()
 
     return _brand_color_data(item)

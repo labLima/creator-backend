@@ -39,16 +39,18 @@ def create_campaign(
     payload: Any,
 ) -> Any:
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
+    brand = uow.brand.brands.get_for_user(user_id=actor.id, brand_id=payload.brand_id)
+    if brand is None or brand.workspace_id != payload.workspace_id:
+        raise not_found("Brand")
     campaign = uow.campaigns.add(
+        brand_id=payload.brand_id,
         workspace_id=payload.workspace_id,
         created_by=actor.id,
         name=payload.name,
         description=payload.description,
         target_audience=payload.target_audience,
         objectives=payload.objectives,
-        voice=payload.voice,
-        start_at=payload.start_at,
-        end_at=payload.end_at,
+        expected_action=payload.expected_action,
     )
     uow.commit()
 

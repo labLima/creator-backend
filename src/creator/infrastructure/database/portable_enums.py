@@ -415,7 +415,7 @@ ENUMS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 
-def enum_column(name: str, *, length: int | None = None) -> sa.Enum:
+def enum_column(name: str, *, length: int | None = None, create_constraint: bool = True) -> sa.Enum:
     """Render a portable enum column: VARCHAR plus CHECK, never a native type.
 
     ``validate_strings`` makes an out-of-vocabulary value fail at flush time
@@ -429,7 +429,7 @@ def enum_column(name: str, *, length: int | None = None) -> sa.Enum:
         *values,
         name=name,
         native_enum=False,
-        create_constraint=True,
+        create_constraint=create_constraint,
         length=size,
         validate_strings=True,
     )

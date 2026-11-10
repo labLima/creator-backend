@@ -204,8 +204,34 @@ Relatório regenerado: **589 divergências** (728 no handoff), `column_missing`
 126, `column_extra` 98, `enum` 24, `index_missing` 84, `fk_ondelete` 25,
 `check_missing` 45, `check_extra` 30.
 
-Próximo passo: T25 (SHC-26) — brand, campanha e persona + backfill de
-`campaigns.brand_id`, seguida de T23 (SHC-24).
+T25 (SHC-26) concluída — brand, campanha e persona:
+
+- `brands` passa a ter `created_by`, `segment`, `promise`, `goals`,
+  `indicators`, `inspirations` e `restrictions`; `description`, `brand_voice`,
+  `metadata` e `created_by_user_id` foram absorvidos/dobrados nos novos campos.
+- `brand_colors` vira `name`/`hex`/`position` com CHECK GLOB; `brand_assets`
+  vira `storage_bucket`/`storage_key` + enum `brand_asset_type` e UNIQUE de
+  storage; `brand_settings` tem a FK composta estreitada para `brands.id`.
+- `campaigns`: `brand_id` NOT NULL, `workspace_id` derivado de `brands`,
+  `voice` migrado para `campaign_voices`, período removido e `expected_action`
+  adicionado; `personas`: `age`→`age_range`, `trigger`→`trigger_event`,
+  `interest`→`persona_interests`, `gender` validado pelo enum.
+- `migrations/versions/0017_brand_alignment.py` e
+  `0018_campaign_persona_alignment.py` com backfill e downgrade (perda de
+  texto original documentada); testes de dados em
+  `tests/test_campaign_persona_migration.py`.
+- Contrato: novas colunas de brand, `brand_id` obrigatório em campanha,
+  enums de cor/asset/persona e `expected_action`.
+- Exceção de transição: `brands(id, workspace_id)` UNIQUE permanece porque
+  cinco tabelas legadas ainda usam FK composta; T16 remove as tabelas e a
+  constraint. Dois CHECKs de enum de `charge_transactions` ficam para T15.
+
+Relatório regenerado: **505 divergências** (589 após T24), `column_missing`
+110, `column_extra` 70, `enum` 22, `index_missing` 76, `check_extra` 30,
+`unique_extra` 4.
+
+Próximo passo: T23 (SHC-24) — migrar os consumidores legados; depois T13,
+T15, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

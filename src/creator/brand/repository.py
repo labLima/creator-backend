@@ -30,7 +30,6 @@ from creator.infrastructure.persistence.sql import (
     as_datetime,
     as_optional_datetime,
     flush_or_raise,
-    json_object,
     now,
     paginate,
     scoped_resource_count,
@@ -52,11 +51,14 @@ def _brand_record(row: brand_models.Brand) -> BrandRecord:
     return BrandRecord(
         id=row.id,
         workspace_id=row.workspace_id,
-        created_by_user_id=row.created_by_user_id,
+        created_by=row.created_by,
         name=row.name,
-        description=row.description,
-        brand_voice=row.brand_voice,
-        metadata=json_object(row.metadata_json),
+        segment=row.segment,
+        promise=row.promise,
+        goals=row.goals,
+        indicators=row.indicators,
+        inspirations=row.inspirations,
+        restrictions=row.restrictions,
         created_at=as_datetime(row.created_at),
         updated_at=as_datetime(row.updated_at),
         deleted_at=as_optional_datetime(row.deleted_at),
@@ -71,26 +73,32 @@ class SqlAlchemyBrandRepository:
         self,
         *,
         workspace_id: UUID,
-        created_by_user_id: UUID | None,
+        created_by: UUID | None,
         name: str,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
+        segment: str | None = None,
+        promise: str | None = None,
+        goals: str | None = None,
+        indicators: str | None = None,
+        inspirations: str | None = None,
+        restrictions: str | None = None,
     ) -> BrandRecord:
-        if created_by_user_id is not None and not user_has_workspace_role(
+        if created_by is not None and not user_has_workspace_role(
             self._session,
-            user_id=created_by_user_id,
+            user_id=created_by,
             workspace_id=workspace_id,
             minimum_role="EDITOR",
         ):
             raise EntityNotFoundError("Workspace not found")
         row = brand_models.Brand(
             workspace_id=workspace_id,
-            created_by_user_id=created_by_user_id,
+            created_by=created_by,
             name=name,
-            description=description,
-            brand_voice=brand_voice,
-            metadata_json=json_object(metadata),
+            segment=segment,
+            promise=promise,
+            goals=goals,
+            indicators=indicators,
+            inspirations=inspirations,
+            restrictions=restrictions,
         )
         self._session.add(row)
         flush_or_raise(self._session)
@@ -138,19 +146,26 @@ class SqlAlchemyBrandRepository:
         user_id: UUID,
         brand_id: UUID,
         name: str | None = None,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
+        segment: str | None = None,
+        promise: str | None = None,
+        goals: str | None = None,
+        indicators: str | None = None,
+        inspirations: str | None = None,
+        restrictions: str | None = None,
     ) -> BrandRecord:
         row = self._writable_brand(user_id=user_id, brand_id=brand_id)
-        if name is not None:
-            row.name = name
-        if description is not None:
-            row.description = description
-        if brand_voice is not None:
-            row.brand_voice = brand_voice
-        if metadata is not None:
-            row.metadata_json = json_object(metadata)
+        values = {
+            "name": name,
+            "segment": segment,
+            "promise": promise,
+            "goals": goals,
+            "indicators": indicators,
+            "inspirations": inspirations,
+            "restrictions": restrictions,
+        }
+        for field_name, value in values.items():
+            if value is not None:
+                setattr(row, field_name, value)
         row.updated_at = now()
         flush_or_raise(self._session)
         return _brand_record(row)
@@ -189,31 +204,29 @@ class SqlAlchemyBrandColorRepository(BrandColorRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
-    def _r(self, x):
+    def _r(self, x) -> BrandColorRecord:
         return BrandColorRecord(
-            x.id,
-            x.brand_id,
-            x.workspace_id,
-            x.created_by,
-            x.order,
-            x.color_name,
-            x.hex_code,
-            x.created_at,
-            x.updated_at,
-            x.deleted_at,
+            id=x.id,
+            brand_id=x.brand_id,
+            name=x.name,
+            hex=x.hex,
+            position=x.position,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
         )
 
-    def _q(self, uid):
+    def _q(self, uid: UUID):
         return (
             select(brand_models.BrandColor)
+            .join(brand_models.Brand, brand_models.Brand.id == brand_models.BrandColor.brand_id)
             .join(
                 workspace_models.WorkspaceMembership,
                 workspace_models.WorkspaceMembership.workspace_id
-                == brand_models.BrandColor.workspace_id,
+                == brand_models.Brand.workspace_id,
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == uid,
-                brand_models.BrandColor.deleted_at.is_(None),
+                brand_models.Brand.deleted_at.is_(None),
             )
         )
 
@@ -235,7 +248,7 @@ class SqlAlchemyBrandColorRepository(BrandColorRepository):
 
     def update(self, *, color_id, fields):
         x = self.s.get(brand_models.BrandColor, color_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Brand color not found")
         for k, v in fields.items():
             setattr(x, k, v)
@@ -245,10 +258,9 @@ class SqlAlchemyBrandColorRepository(BrandColorRepository):
 
     def soft_delete(self, *, color_id):
         x = self.s.get(brand_models.BrandColor, color_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Brand color not found")
-        x.deleted_at = datetime.now(UTC)
-        x.updated_at = x.deleted_at
+        self.s.delete(x)
         self.s.flush()
 
 
@@ -390,12 +402,13 @@ def _brand_asset_record(row: brand_tables.BrandAsset) -> BrandAssetRecord:
         id=row.id,
         brand_id=row.brand_id,
         type=row.type,
-        file_url=row.file_url,
+        storage_bucket=row.storage_bucket,
+        storage_key=row.storage_key,
         file_name=row.file_name,
         description=row.description,
+        created_by=row.created_by,
         created_at=row.created_at,
         updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
     )
 
 
@@ -408,16 +421,20 @@ class SqlAlchemyBrandAssetRepository:
         *,
         brand_id: UUID,
         type: str,
-        file_url: str,
+        storage_bucket: str,
+        storage_key: str,
         file_name: str | None = None,
         description: str | None = None,
+        created_by: UUID | None = None,
     ) -> BrandAssetRecord:
         row = brand_tables.BrandAsset(
             brand_id=brand_id,
             type=type,
-            file_url=file_url,
+            storage_bucket=storage_bucket,
+            storage_key=storage_key,
             file_name=file_name,
             description=description,
+            created_by=created_by,
         )
         self._session.add(row)
         self._session.flush()
@@ -449,7 +466,6 @@ class SqlAlchemyBrandAssetRepository:
             )
             .where(
                 workspace_tables.WorkspaceMembership.user_id == user_id,
-                brand_tables.BrandAsset.deleted_at.is_(None),
                 brand_tables.Brand.deleted_at.is_(None),
             )
         )
@@ -472,8 +488,19 @@ class SqlAlchemyBrandAssetRepository:
         )
 
     def update(self, *, asset_id: UUID, fields: dict[str, object]) -> BrandAssetRecord:
+        allowed = {
+            "type",
+            "storage_bucket",
+            "storage_key",
+            "file_name",
+            "description",
+            "created_by",
+        }
+        unexpected = set(fields) - allowed
+        if unexpected:
+            raise ValueError(f"unsupported field(s) for brand asset: {sorted(unexpected)}")
         row = self._session.get(brand_tables.BrandAsset, asset_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Brand asset not found")
         for name, value in fields.items():
             setattr(row, name, value)
@@ -483,11 +510,9 @@ class SqlAlchemyBrandAssetRepository:
 
     def soft_delete(self, *, asset_id: UUID) -> None:
         row = self._session.get(brand_tables.BrandAsset, asset_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Brand asset not found")
-        timestamp = datetime.now(UTC)
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
+        self._session.delete(row)
         self._session.flush()
 
     def _select(self, user_id: UUID) -> Select[brand_tables.BrandAsset]:
@@ -501,7 +526,6 @@ class SqlAlchemyBrandAssetRepository:
             )
             .where(
                 workspace_tables.WorkspaceMembership.user_id == user_id,
-                brand_tables.BrandAsset.deleted_at.is_(None),
                 brand_tables.Brand.deleted_at.is_(None),
             )
         )

@@ -50,17 +50,17 @@ def _seed(engine: sa.Engine) -> dict[str, object]:
         )
         connection.execute(
             sa.text(
-                "INSERT INTO brands (id, workspace_id, created_by_user_id, name, metadata) "
-                "VALUES (:id, :w, :u, 'brand', '{}')"
+                "INSERT INTO brands (id, workspace_id, created_by, name) "
+                "VALUES (:id, :w, :u, 'brand')"
             ),
             {"id": ids["brand"].hex, "w": ids["workspace"].hex, "u": ids["user"].hex},
         )
         connection.execute(
             sa.text(
-                "INSERT INTO campaigns (id, workspace_id, created_by, name) "
-                "VALUES (:id, :w, :u, 'campaign')"
+                "INSERT INTO campaigns (id, brand_id, created_by, name) "
+                "VALUES (:id, :b, :u, 'campaign')"
             ),
-            {"id": ids["campaign"].hex, "w": ids["workspace"].hex, "u": ids["user"].hex},
+            {"id": ids["campaign"].hex, "b": ids["brand"].hex, "u": ids["user"].hex},
         )
         connection.execute(
             sa.text(
@@ -127,7 +127,6 @@ def test_backfill_preserves_ids_and_is_idempotent(database: tuple[str, sa.Engine
     ids = _seed(engine)
 
     first = backfill_redesigns.run(url)
-    assert first["campaigns.brand_id"] == 1
     assert first["content_plans"] == 1
     assert first["content_plan_items"] == 2
     assert first["content_plan_special_dates"] == 1
@@ -180,8 +179,8 @@ def test_backfill_skips_unmappable_rows_and_flags_broken_images(
     with engine.begin() as connection:
         connection.execute(
             sa.text(
-                "INSERT INTO brands (id, workspace_id, created_by_user_id, name, metadata) "
-                "VALUES (:id, :w, :u, 'other', '{}')"
+                "INSERT INTO brands (id, workspace_id, created_by, name) "
+                "VALUES (:id, :w, :u, 'other')"
             ),
             {"id": other_brand.hex, "w": ids["workspace"].hex, "u": ids["user"].hex},
         )

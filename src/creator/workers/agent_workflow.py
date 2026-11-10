@@ -679,9 +679,16 @@ def _load_brand_context(
             {
                 "id": str(brand.id),
                 "name": brand.name,
-                "description": brand.description,
-                "voice": brand.brand_voice,
-                "metadata": brand.metadata,
+                "description": brand.promise,
+                "voice": brand.restrictions,
+                "metadata": {
+                    "segment": brand.segment,
+                    "promise": brand.promise,
+                    "goals": brand.goals,
+                    "indicators": brand.indicators,
+                    "inspirations": brand.inspirations,
+                    "restrictions": brand.restrictions,
+                },
             },
             {
                 "voice_settings": settings.voice_settings,

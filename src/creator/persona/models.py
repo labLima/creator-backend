@@ -14,36 +14,57 @@ from uuid import UUID
 from sqlalchemy import (
     ForeignKey,
     Index,
-    Integer,
     String,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import timestamp_tz, uuid_default, uuid_pk
+from creator.infrastructure.database.db import Base
+from creator.infrastructure.database.types import (
+    enum_column,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
 
-class Persona(SchemaRow, Base):
+class Persona(Base):
     __tablename__ = "personas"
     __table_args__ = (
         Index("uq_personas_id_brand_id", "id", "brand_id", unique=True),
         Index("ix_personas_brand_id", "brand_id"),
+        Index(
+            "idx_m8_personas_created_by",
+            "created_by",
+            sqlite_where=text("created_by IS NOT NULL"),
+        ),
     )
 
-    brand_id: Mapped[UUID] = mapped_column(ForeignKey("brands.id"), nullable=False)
-    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String(30), nullable=False)
-    age: Mapped[int | None] = mapped_column(Integer)
-    gender: Mapped[str | None] = mapped_column(String(10))
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    brand_id: Mapped[UUID] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    age_range: Mapped[str | None] = mapped_column(enum_column("age_range"))
+    gender: Mapped[str | None] = mapped_column(enum_column("persona_gender"))
     main_goal: Mapped[str | None] = mapped_column(String(60))
     challenge: Mapped[str | None] = mapped_column(String(50))
-    interest: Mapped[str | None] = mapped_column(String(200))
     routine: Mapped[str | None] = mapped_column(String(300))
     journey: Mapped[str | None] = mapped_column(String(250))
-    trigger: Mapped[str | None] = mapped_column(String(200))
+    trigger_event: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp)
 
 
 class PersonaInterest(Base):

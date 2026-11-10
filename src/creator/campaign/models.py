@@ -16,10 +16,11 @@ from sqlalchemy import (
     Index,
     String,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from creator.infrastructure.database.db import Base, SchemaRow
+from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.types import (
     enum_column,
     timestamp_tz,
@@ -30,26 +31,37 @@ from creator.infrastructure.database.types import (
 timestamp = timestamp_tz
 
 
-class Campaign(SchemaRow, Base):
+class Campaign(Base):
     __tablename__ = "campaigns"
     __table_args__ = (
         Index("uq_campaigns_id_brand_id", "id", "brand_id", unique=True),
         Index("ix_campaigns_brand_id", "brand_id"),
+        Index(
+            "idx_m8_campaigns_created_by",
+            "created_by",
+            sqlite_where=text("created_by IS NOT NULL"),
+        ),
     )
 
-    # Nullable until the T14 backfill: the final modeling requires NOT NULL.
-    brand_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("brands.id", ondelete="CASCADE"), nullable=True
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    brand_id: Mapped[UUID] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=False
     )
-    workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
-    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String(30), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(String(500))
     target_audience: Mapped[str | None] = mapped_column(String(300))
     objectives: Mapped[str | None] = mapped_column(String(400))
-    voice: Mapped[str | None] = mapped_column(String(20))
-    start_at: Mapped[datetime | None] = mapped_column(timestamp)
-    end_at: Mapped[datetime | None] = mapped_column(timestamp)
+    expected_action: Mapped[str | None] = mapped_column(String(250))
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp)
 
 
 class CampaignHashtag(Base):

@@ -200,6 +200,10 @@ CHECK_MAP: Final[dict[str, tuple[str, str]]] = {
         "workspace_credit_lot_consumptions.chk_lot_consumptions_amount",
         "amount > 0",
     ),
+    "brand_colors.chk_brand_colors_hex": (
+        "brand_colors.chk_brand_colors_hex",
+        "hex glob '#[0-9a-fa-f][0-9a-fa-f][0-9a-fa-f][0-9a-fa-f][0-9a-fa-f][0-9a-fa-f]'",
+    ),
 }
 
 GAP_CATEGORIES: Final[tuple[str, ...]] = (

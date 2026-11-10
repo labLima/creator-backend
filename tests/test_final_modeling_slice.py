@@ -67,8 +67,8 @@ def _insert_brand(connection: sa.Connection) -> tuple[object, object]:
     connection.execute(
         sa.text(
             "INSERT INTO brands "
-            "(id, workspace_id, created_by_user_id, name, metadata, created_at, updated_at) "
-            "VALUES (:id, :workspace, :user, 'brand', '{}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "(id, workspace_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :workspace, :user, 'brand', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {"id": brand_id.hex, "workspace": workspace_id.hex, "user": user_id.hex},
     )
@@ -89,29 +89,14 @@ def _insert_persona(connection: sa.Connection) -> object:
 
 
 def _insert_campaign(connection: sa.Connection) -> object:
-    workspace_id, user_id = uuid4(), uuid4()
-    connection.execute(
-        sa.text(
-            "INSERT INTO workspaces (id, name, created_at, updated_at) "
-            "VALUES (:id, 'ws', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-        ),
-        {"id": workspace_id.hex},
-    )
-    connection.execute(
-        sa.text(
-            "INSERT INTO users (id, auth_provider_id, display_name, global_role, "
-            "created_at, updated_at) "
-            "VALUES (:id, :external_id, 'User', 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-        ),
-        {"id": user_id.hex, "external_id": f"ext-{user_id}"},
-    )
+    brand_id, user_id = _insert_brand(connection)
     campaign_id = uuid4()
     connection.execute(
         sa.text(
-            "INSERT INTO campaigns (id, workspace_id, created_by, name, created_at, updated_at) "
-            "VALUES (:id, :workspace, :user, 'campaign', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO campaigns (id, brand_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :brand, :user, 'campaign', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
-        {"id": campaign_id.hex, "workspace": workspace_id.hex, "user": user_id.hex},
+        {"id": campaign_id.hex, "brand": brand_id.hex, "user": user_id.hex},
     )
     return campaign_id
 

@@ -67,7 +67,8 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
             json={
                 "brand_id": brand["id"],
                 "type": "FONT",
-                "file_url": "storage://brand-assets/font.ttf",
+                "storage_bucket": "brand-assets",
+                "storage_key": "font.ttf",
             },
         )
         logo_response = await client.post(
@@ -76,7 +77,8 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
             json={
                 "brand_id": brand["id"],
                 "type": "LOGO",
-                "file_url": "storage://brand-assets/logo.png",
+                "storage_bucket": "brand-assets",
+                "storage_key": "logo.png",
             },
         )
         assert font_response.status_code == logo_response.status_code == 201
@@ -115,7 +117,7 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
         approved={"headline": "Pão quentinho", "call_to_action": "Peça já"},
         workspace_id=UUID(workspace_id),
         brand_id=UUID(brand["id"]),
-        user_id=UUID(brand["created_by_user_id"]),
+        user_id=UUID(brand["created_by"]),
         settings=state.e2e_settings,
     )
     assert Image.open(BytesIO(result.image_bytes)).size == (1024, 1024)
@@ -177,7 +179,7 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
         )
         uow.commit()
         run = uow.agent_workflow.workflows.get_internal(run_id)
-        user = uow.user.users.get_by_id(UUID(brand["created_by_user_id"]))
+        user = uow.user.users.get_by_id(UUID(brand["created_by"]))
     assert run is not None and user is not None
     candidate, _ = workflow_worker._generate_workflow_image(
         run=run,
@@ -354,12 +356,22 @@ async def test_independent_scene_review_resumes_same_scene(
         font_response = await client.post(
             "/api/v1/brand-assets",
             headers=token,
-            json={"brand_id": brand_id, "type": "FONT", "file_url": "storage://assets/font.ttf"},
+            json={
+                "brand_id": brand_id,
+                "type": "FONT",
+                "storage_bucket": "assets",
+                "storage_key": "font.ttf",
+            },
         )
         logo_response = await client.post(
             "/api/v1/brand-assets",
             headers=token,
-            json={"brand_id": brand_id, "type": "LOGO", "file_url": "storage://assets/logo.png"},
+            json={
+                "brand_id": brand_id,
+                "type": "LOGO",
+                "storage_bucket": "assets",
+                "storage_key": "logo.png",
+            },
         )
         assert font_response.status_code == logo_response.status_code == 201
         settings_response = await client.put(
@@ -884,7 +896,7 @@ async def test_independent_generation_job_is_idempotent_and_workspace_scoped(
             json={
                 "workspace_id": workspace_id,
                 "name": "Generation Brand",
-                "brand_voice": "Clear and direct",
+                "promise": "Clear and direct",
             },
         )
         assert brand_response.status_code == 201, brand_response.text
@@ -988,12 +1000,7 @@ async def test_independent_image_job_runs_artist_and_returns_reviewed_image(
         color_response = await client.post(
             "/api/v1/brand-colors",
             headers=_auth(token),
-            json={
-                "workspace_id": workspace_id,
-                "brand_id": brand_id,
-                "color_name": "Plum",
-                "hex_code": "#770044",
-            },
+            json={"brand_id": brand_id, "name": "Plum", "hex": "#770044"},
         )
         assert color_response.status_code == 201, color_response.text
         accepted = await client.post(

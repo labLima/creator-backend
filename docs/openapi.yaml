@@ -7715,15 +7715,19 @@ components:
       type: object
       required:
       - workspace_id
+      - brand_id
       - name
       properties:
         workspace_id:
           type: string
           format: uuid
+        brand_id:
+          type: string
+          format: uuid
         name:
           type: string
           minLength: 1
-          maxLength: 30
+          maxLength: 100
         description:
           type:
           - string
@@ -7739,30 +7743,25 @@ components:
           - string
           - 'null'
           maxLength: 400
-        voice:
+        expected_action:
           type:
           - string
           - 'null'
-          maxLength: 20
-        start_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        end_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
+          maxLength: 250
     CampaignUpdateRequest:
       type: object
       properties:
+        brand_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
         name:
           type:
           - string
           - 'null'
           minLength: 1
-          maxLength: 30
+          maxLength: 100
         description:
           type:
           - string
@@ -7778,21 +7777,11 @@ components:
           - string
           - 'null'
           maxLength: 400
-        voice:
+        expected_action:
           type:
           - string
           - 'null'
-          maxLength: 20
-        start_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        end_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
+          maxLength: 250
     PostStructureCreateRequest:
       type: object
       required:
@@ -7912,54 +7901,71 @@ components:
       required:
       - brand_id
       - type
-      - file_url
+      - storage_bucket
+      - storage_key
       properties:
         brand_id:
           type: string
           format: uuid
         type:
           type: string
-          minLength: 1
-          maxLength: 30
-        file_url:
+          enum:
+          - LOGO
+          - IMAGE
+          - FONT
+          - ICON
+          - DOCUMENT
+          - OTHER
+        storage_bucket:
           type: string
           minLength: 1
-          maxLength: 2048
+          maxLength: 63
+        storage_key:
+          type: string
+          minLength: 1
+          maxLength: 1024
         file_name:
           type:
           - string
           - 'null'
-          maxLength: 255
         description:
           type:
           - string
           - 'null'
-          maxLength: 500
     BrandAssetUpdateRequest:
       type: object
       properties:
         type:
+          anyOf:
+          - type: string
+            enum:
+            - LOGO
+            - IMAGE
+            - FONT
+            - ICON
+            - DOCUMENT
+            - OTHER
+          - type: 'null'
+        storage_bucket:
           type:
           - string
           - 'null'
           minLength: 1
-          maxLength: 30
-        file_url:
+          maxLength: 63
+        storage_key:
           type:
           - string
           - 'null'
           minLength: 1
-          maxLength: 2048
+          maxLength: 1024
         file_name:
           type:
           - string
           - 'null'
-          maxLength: 255
         description:
           type:
           - string
           - 'null'
-          maxLength: 500
     NotificationCreateRequest:
       type: object
       required:
@@ -8288,18 +8294,29 @@ components:
         name:
           type: string
           minLength: 1
-          maxLength: 30
-        age:
+          maxLength: 100
+        age_range:
           type:
-          - integer
+          - string
           - 'null'
-          minimum: 0
-          maximum: 150
+          enum:
+          - UP_TO_17
+          - FROM_18_TO_24
+          - FROM_25_TO_34
+          - FROM_35_TO_44
+          - FROM_45_TO_54
+          - FROM_55_TO_64
+          - FROM_65_PLUS
         gender:
           type:
           - string
           - 'null'
-          maxLength: 10
+          enum:
+          - MALE
+          - FEMALE
+          - NON_BINARY
+          - OTHER
+          - PREFER_NOT_TO_SAY
         main_goal:
           type:
           - string
@@ -8310,11 +8327,6 @@ components:
           - string
           - 'null'
           maxLength: 50
-        interest:
-          type:
-          - string
-          - 'null'
-          maxLength: 200
         routine:
           type:
           - string
@@ -8325,7 +8337,7 @@ components:
           - string
           - 'null'
           maxLength: 250
-        trigger:
+        trigger_event:
           type:
           - string
           - 'null'
@@ -8338,18 +8350,29 @@ components:
           - string
           - 'null'
           minLength: 1
-          maxLength: 30
-        age:
+          maxLength: 100
+        age_range:
           type:
-          - integer
+          - string
           - 'null'
-          minimum: 0
-          maximum: 150
+          enum:
+          - UP_TO_17
+          - FROM_18_TO_24
+          - FROM_25_TO_34
+          - FROM_35_TO_44
+          - FROM_45_TO_54
+          - FROM_55_TO_64
+          - FROM_65_PLUS
         gender:
           type:
           - string
           - 'null'
-          maxLength: 10
+          enum:
+          - MALE
+          - FEMALE
+          - NON_BINARY
+          - OTHER
+          - PREFER_NOT_TO_SAY
         main_goal:
           type:
           - string
@@ -8360,11 +8383,6 @@ components:
           - string
           - 'null'
           maxLength: 50
-        interest:
-          type:
-          - string
-          - 'null'
-          maxLength: 200
         routine:
           type:
           - string
@@ -8375,7 +8393,7 @@ components:
           - string
           - 'null'
           maxLength: 250
-        trigger:
+        trigger_event:
           type:
           - string
           - 'null'
@@ -8659,46 +8677,45 @@ components:
           type: string
           format: uuid
           title: Brand Id
-        workspace_id:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 50
+          - type: 'null'
+          title: Name
+        hex:
           type: string
-          format: uuid
-          title: Workspace Id
-        order:
-          type: integer
-          title: Order
-          default: 0
-        color_name:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Color Name
-        hex_code:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Hex Code
-      type: object
-      required:
-      - brand_id
-      - workspace_id
-      title: BrandColorCreateRequest
-    BrandColorUpdateRequest:
-      properties:
-        order:
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          title: Hex
+        position:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Order
-        color_name:
+          title: Position
+      type: object
+      required:
+      - brand_id
+      - hex
+      title: BrandColorCreateRequest
+    BrandColorUpdateRequest:
+      properties:
+        name:
           anyOf:
           - type: string
+            maxLength: 50
           - type: 'null'
-          title: Color Name
-        hex_code:
+          title: Name
+        hex:
           anyOf:
           - type: string
+            pattern: '^#[0-9A-Fa-f]{6}$'
           - type: 'null'
-          title: Hex Code
+          title: Hex
+        position:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Position
       type: object
       title: BrandColorUpdateRequest
     BrandCreateRequest:
@@ -8709,23 +8726,45 @@ components:
           title: Workspace Id
         name:
           type: string
-          maxLength: 255
+          maxLength: 100
           minLength: 1
           title: Name
-        description:
+        segment:
           anyOf:
           - type: string
+            maxLength: 100
           - type: 'null'
-          title: Description
-        brand_voice:
+          title: Segment
+        promise:
           anyOf:
           - type: string
+            maxLength: 250
           - type: 'null'
-          title: Brand Voice
-        metadata:
-          additionalProperties: true
-          type: object
-          title: Metadata
+          title: Promise
+        goals:
+          anyOf:
+          - type: string
+            maxLength: 1800
+          - type: 'null'
+          title: Goals
+        indicators:
+          anyOf:
+          - type: string
+            maxLength: 250
+          - type: 'null'
+          title: Indicators
+        inspirations:
+          anyOf:
+          - type: string
+            maxLength: 1500
+          - type: 'null'
+          title: Inspirations
+        restrictions:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Restrictions
       additionalProperties: false
       type: object
       required:
@@ -8793,26 +8832,46 @@ components:
         name:
           anyOf:
           - type: string
-            maxLength: 255
+            maxLength: 100
             minLength: 1
           - type: 'null'
           title: Name
-        description:
+        segment:
           anyOf:
           - type: string
+            maxLength: 100
           - type: 'null'
-          title: Description
-        brand_voice:
+          title: Segment
+        promise:
           anyOf:
           - type: string
+            maxLength: 250
           - type: 'null'
-          title: Brand Voice
-        metadata:
+          title: Promise
+        goals:
           anyOf:
-          - additionalProperties: true
-            type: object
+          - type: string
+            maxLength: 1800
           - type: 'null'
-          title: Metadata
+          title: Goals
+        indicators:
+          anyOf:
+          - type: string
+            maxLength: 250
+          - type: 'null'
+          title: Indicators
+        inspirations:
+          anyOf:
+          - type: string
+            maxLength: 1500
+          - type: 'null'
+          title: Inspirations
+        restrictions:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Restrictions
       additionalProperties: false
       type: object
       title: BrandUpdateRequest

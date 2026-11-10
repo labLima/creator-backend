@@ -39,7 +39,6 @@ class Project(Base):
             name="fk_projects_brand_workspace",
             ondelete="RESTRICT",
         ),
-        CheckConstraint("status IN ('ACTIVE', 'ARCHIVED')", name="ck_projects_status_valid"),
         CheckConstraint(
             "deleted_at IS NULL OR deleted_at >= created_at",
             name="ck_projects_deleted_after_created",

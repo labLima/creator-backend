@@ -68,7 +68,10 @@ def compose_generated_image(
             or logo_asset.type.upper() != "LOGO"
         ):
             raise CompositionError("COMPOSITION_ASSET_INVALID")
-        asset_paths = (font_asset.file_url, logo_asset.file_url)
+        asset_paths = (
+            f"storage://{font_asset.storage_bucket}/{font_asset.storage_key}",
+            f"storage://{logo_asset.storage_bucket}/{logo_asset.storage_key}",
+        )
         asset_ids = (font_id, logo_id)
     storage = create_storage_provider(settings)
     assets: list[bytes] = []

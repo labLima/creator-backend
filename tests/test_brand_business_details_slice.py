@@ -52,16 +52,16 @@ def _chain(connection: sa.Connection) -> dict[str, str]:
     connection.execute(
         sa.text(
             "INSERT INTO brands "
-            "(id, workspace_id, created_by_user_id, name, metadata, created_at, updated_at) "
-            "VALUES (:id, :workspace, :user, 'brand', '{}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "(id, workspace_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :workspace, :user, 'brand', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {"id": brand.hex, "workspace": workspace.hex, "user": user.hex},
     )
     connection.execute(
         sa.text(
             "INSERT INTO campaigns "
-            "(id, brand_id, workspace_id, created_by, name, created_at, updated_at) "
-            "VALUES (:id, :brand, :workspace, :user, 'campaign', "
+            "(id, brand_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :brand, :user, 'campaign', "
             "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {
@@ -91,16 +91,16 @@ def _tenant(connection: sa.Connection, workspace: str, user: str, name: str) -> 
     connection.execute(
         sa.text(
             "INSERT INTO brands "
-            "(id, workspace_id, created_by_user_id, name, metadata, created_at, updated_at) "
-            "VALUES (:id, :workspace, :user, :name, '{}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "(id, workspace_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :workspace, :user, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {"id": brand.hex, "workspace": workspace, "user": user, "name": name},
     )
     connection.execute(
         sa.text(
             "INSERT INTO campaigns "
-            "(id, brand_id, workspace_id, created_by, name, created_at, updated_at) "
-            "VALUES (:id, :brand, :workspace, :user, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "(id, brand_id, created_by, name, created_at, updated_at) "
+            "VALUES (:id, :brand, :user, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {
             "id": campaign.hex,
@@ -166,32 +166,6 @@ def test_business_details_requires_matching_tenant(engine: sa.Engine) -> None:
                 _insert_details(connection, brand=brand, campaign=campaign, persona=persona)
 
 
-def test_business_details_rejects_campaign_without_brand(engine: sa.Engine) -> None:
-    with engine.begin() as connection:
-        base = _chain(connection)
-        workspace = connection.execute(
-            sa.text("SELECT workspace_id FROM brands WHERE id = :id"),
-            {"id": base["brand"]},
-        ).scalar_one()
-        campaign = uuid4().hex
-        connection.execute(
-            sa.text(
-                "INSERT INTO campaigns "
-                "(id, workspace_id, created_by, name, created_at, updated_at) "
-                "VALUES (:id, :workspace, :user, 'legacy', "
-                "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-            ),
-            {"id": campaign, "workspace": workspace, "user": base["user"]},
-        )
-        with pytest.raises(IntegrityError):
-            _insert_details(
-                connection,
-                brand=base["brand"],
-                campaign=campaign,
-                persona=base["persona"],
-            )
-
-
 def test_business_details_foreign_keys_are_composite(engine: sa.Engine) -> None:
     inspector = sa.inspect(engine)
     foreign_keys = {
@@ -211,7 +185,7 @@ def test_parent_unique_keys_exist_for_the_composite_foreign_keys(engine: sa.Engi
     assert personas["uq_personas_id_brand_id"]["unique"]
 
 
-def test_campaign_brand_id_is_nullable_debt_until_the_backfill(engine: sa.Engine) -> None:
-    """Documented gap: the dump requires NOT NULL and there is no backfill yet."""
+def test_campaign_brand_id_is_not_null(engine: sa.Engine) -> None:
+    """T25 closed the documented gap: campaigns require a brand."""
     campaigns = Base.metadata.tables["campaigns"]
-    assert campaigns.c.brand_id.nullable is True
+    assert campaigns.c.brand_id.nullable is False

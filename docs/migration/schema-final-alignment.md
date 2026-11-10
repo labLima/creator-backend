@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **589**
+- Divergências: **505**
 
 ## Divergências por categoria
 
@@ -24,21 +24,21 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 126 |
-| `column_extra` | 98 |
-| `nullability` | 9 |
-| `width` | 25 |
+| `column_missing` | 110 |
+| `column_extra` | 70 |
+| `nullability` | 8 |
+| `width` | 20 |
 | `kind` | 4 |
-| `enum` | 24 |
+| `enum` | 22 |
 | `unique_missing` | 2 |
 | `unique_extra` | 4 |
-| `index_missing` | 84 |
-| `index_extra` | 3 |
-| `index_name` | 26 |
-| `fk_missing` | 21 |
-| `fk_extra` | 36 |
-| `fk_ondelete` | 25 |
-| `check_missing` | 45 |
+| `index_missing` | 76 |
+| `index_extra` | 1 |
+| `index_name` | 23 |
+| `fk_missing` | 19 |
+| `fk_extra` | 26 |
+| `fk_ondelete` | 19 |
+| `check_missing` | 44 |
 | `check_extra` | 30 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **264**.
+Total: **214**.
 
-### `column_missing` (126)
+### `column_missing` (110)
 
 - `billing_accounts.document_hash`
 - `billing_accounts.external_code`
@@ -81,20 +81,6 @@ Total: **264**.
 - `billing_payment_methods.metadata`
 - `billing_payment_methods.status`
 - `billing_payment_methods.type`
-- `brand_assets.created_by`
-- `brand_assets.storage_bucket`
-- `brand_assets.storage_key`
-- `brand_colors.hex`
-- `brand_colors.name`
-- `brand_colors.position`
-- `brands.created_by`
-- `brands.goals`
-- `brands.indicators`
-- `brands.inspirations`
-- `brands.promise`
-- `brands.restrictions`
-- `brands.segment`
-- `campaigns.expected_action`
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
 - `charges.code`
@@ -130,8 +116,6 @@ Total: **264**.
 - `orders.code`
 - `orders.external_id`
 - `orders.provider`
-- `personas.age_range`
-- `personas.trigger_event`
 - `plan_items.currency`
 - `plan_items.external_id`
 - `plan_items.provider`
@@ -189,7 +173,7 @@ Total: **264**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (98)
+### `column_extra` (70)
 
 - `billing_accounts.deleted_at`
 - `billing_accounts.document_type`
@@ -204,31 +188,6 @@ Total: **264**.
 - `billing_payment_methods.card_type`
 - `billing_payment_methods.deleted_at`
 - `billing_payment_methods.provider_card_id`
-- `brand_assets.deleted_at`
-- `brand_assets.file_url`
-- `brand_colors.brand_goals`
-- `brand_colors.brand_indicators`
-- `brand_colors.brand_inspirations`
-- `brand_colors.brand_main_hashtags`
-- `brand_colors.brand_name`
-- `brand_colors.brand_promise`
-- `brand_colors.brand_restrictions`
-- `brand_colors.brand_segment`
-- `brand_colors.brand_values`
-- `brand_colors.color_name`
-- `brand_colors.created_by`
-- `brand_colors.deleted_at`
-- `brand_colors.hex_code`
-- `brand_colors.order`
-- `brand_colors.workspace_id`
-- `brands.brand_voice`
-- `brands.created_by_user_id`
-- `brands.description`
-- `brands.metadata`
-- `campaigns.end_at`
-- `campaigns.start_at`
-- `campaigns.voice`
-- `campaigns.workspace_id`
 - `charges.deleted_at`
 - `charges.provider_card_id`
 - `charges.provider_charge_id`
@@ -246,9 +205,6 @@ Total: **264**.
 - `orders.closed`
 - `orders.deleted_at`
 - `orders.provider_order_id`
-- `personas.age`
-- `personas.interest`
-- `personas.trigger`
 - `plan_items.deleted_at`
 - `plan_items.gateway_id`
 - `plan_items.provider_plan_item_id`
@@ -290,28 +246,23 @@ Total: **264**.
 - `workspace_credit_transactions.transaction_type`
 - `workspace_credit_transactions.updated_at`
 
-### `nullability` (9)
+### `nullability` (8)
 
 - `billing_accounts.provider: final NOT NULL, model nullable`
 - `billing_addresses.city: final NOT NULL, model nullable`
 - `billing_addresses.number: final NOT NULL, model nullable`
 - `billing_addresses.state: final NOT NULL, model nullable`
 - `billing_addresses.zip_code: final NOT NULL, model nullable`
-- `campaigns.brand_id: final NOT NULL, model nullable`
 - `invoices.subscription_id: final NOT NULL, model nullable`
 - `plan_items.status: final NOT NULL, model nullable`
 - `subscriptions.installments: final NOT NULL, model nullable`
 
-### `width` (25)
+### `width` (20)
 
 - `billing_accounts.email: final varchar(254), model varchar(64)`
 - `billing_addresses.number: final varchar(20), model varchar(16)`
 - `billing_addresses.state: final varchar(2), model varchar(16)`
 - `billing_addresses.zip_code: final varchar(8), model varchar(16)`
-- `brand_assets.description: final unbounded varchar, model varchar(500)`
-- `brand_assets.file_name: final unbounded varchar, model varchar(255)`
-- `brands.name: final varchar(100), model varchar(255)`
-- `campaigns.name: final varchar(100), model varchar(30)`
 - `charges.amount_cents: final bigint, model integer`
 - `charges.status: final unbounded varchar, model varchar(20)`
 - `coupon_redemptions.discount_amount_cents: final bigint, model integer`
@@ -325,7 +276,6 @@ Total: **264**.
 - `orders.amount_cents: final bigint, model integer`
 - `orders.discount_cents: final bigint, model integer`
 - `orders.subtotal_cents: final bigint, model integer`
-- `personas.name: final varchar(100), model varchar(30)`
 - `plan_items.price_cents: final bigint, model integer`
 - `refunds.amount_cents: final bigint, model integer`
 - `subscriptions.minimum_price_cents: final bigint, model integer`
@@ -341,20 +291,18 @@ Total: **264**.
 
 ## 4. Enums
 
-Total: **24**.
+Total: **22**.
 
-### `enum` (24)
+### `enum` (22)
 
 - `billing_accounts.payer_type: model has no vocabulary (expected ['INDIVIDUAL', 'COMPANY'])`
 - `billing_accounts.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
-- `brand_assets.type: model has no vocabulary (expected ['LOGO', 'IMAGE', 'FONT', 'ICON', 'DOCUMENT', 'OTHER'])`
 - `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
 - `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
 - `coupons.type: model has no vocabulary (expected ['DISCOUNT', 'CREDIT'])`
 - `invoices.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
 - `invoices.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'SCHEDULED', 'FAILED'])`
 - `orders.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'FAILED'])`
-- `personas.gender: model has no vocabulary (expected ['MALE', 'FEMALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'])`
 - `plan_items.pricing_scheme_type: model has no vocabulary (expected ['FLAT', 'TIERED', 'VOLUME', 'STAIRSTEP'])`
 - `plan_items.status: model has no vocabulary (expected ['ACTIVE', 'INACTIVE', 'ARCHIVED'])`
 - `plans.type: model has no vocabulary (expected ['FREE', 'STARTER', 'PRO', 'STUDIO', 'ENTERPRISE'])`
@@ -372,9 +320,9 @@ Total: **24**.
 
 ## 5. Índices
 
-Total: **113**.
+Total: **100**.
 
-### `index_missing` (84)
+### `index_missing` (76)
 
 - `billing_accounts: (document_hash)`
 - `billing_accounts: (user_id)`
@@ -385,13 +333,6 @@ Total: **113**.
 - `billing_payment_methods: (billing_address_id) WHERE billing_address_id is not null`
 - `billing_payment_methods: UNIQUE (billing_account_id) WHERE is_default and status = 'active'`
 - `billing_payment_methods: UNIQUE (billing_account_id, external_id)`
-- `brand_assets: (brand_id)`
-- `brand_assets: (created_by)`
-- `brand_assets: UNIQUE (storage_bucket, storage_key)`
-- `brand_colors: (brand_id)`
-- `brands: (created_by) WHERE created_by is not null`
-- `brands: (workspace_id)`
-- `campaigns: (created_by) WHERE created_by is not null`
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
 - `charges: (billing_account_id, status)`
 - `charges: (code)`
@@ -424,7 +365,6 @@ Total: **113**.
 - `orders: (workspace_id)`
 - `orders: UNIQUE (id, workspace_id)`
 - `orders: UNIQUE (provider, external_id)`
-- `personas: (created_by) WHERE created_by is not null`
 - `plan_items: (plan_id)`
 - `plan_items: UNIQUE (provider, external_id)`
 - `plans: UNIQUE (provider, external_id)`
@@ -461,19 +401,15 @@ Total: **113**.
 - `workspace_credit_transactions: UNIQUE (invoice_id, type)`
 - `workspace_credit_transactions: UNIQUE (order_id, type)`
 
-### `index_extra` (3)
+### `index_extra` (1)
 
-- `brands: (created_by_user_id)`
-- `brands: (workspace_id, deleted_at, created_at)`
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (26)
+### `index_name` (23)
 
 - `billing_addresses: missing index name uq_billing_addresses_default`
 - `billing_payment_methods: missing index name idx_m8_billing_payment_methods_billing_address_id`
 - `billing_payment_methods: missing index name uq_billing_payment_methods_default`
-- `brands: missing index name idx_m8_brands_created_by`
-- `campaigns: missing index name idx_m8_campaigns_created_by`
 - `charges: missing index name idx_m8_charges_payment_method_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_invoice_id`
@@ -483,7 +419,6 @@ Total: **113**.
 - `image_resizes: missing index name idx_image_resizes_source_image`
 - `image_resizes: missing index name uq_image_resizes_storage`
 - `orders: missing index name idx_m8_orders_credit_package_id`
-- `personas: missing index name idx_m8_personas_created_by`
 - `plan_items: missing index name idx_m8_plan_items_plan_id`
 - `provider_disputes: missing index name idx_m8_provider_disputes_billing_account_id`
 - `refunds: missing index name idx_m8_refunds_requested_by`
@@ -498,13 +433,11 @@ Total: **113**.
 
 ## 6. Foreign keys
 
-Total: **82**.
+Total: **64**.
 
-### `fk_missing` (21)
+### `fk_missing` (19)
 
 - `billing_payment_methods['billing_address_id']->billing_addresses['id'] [SET NULL]`
-- `brand_assets['created_by']->users['id'] [SET NULL]`
-- `brands['created_by']->users['id'] [SET NULL]`
 - `charges['order_id']->orders['id'] [SET NULL]`
 - `charges['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
 - `coupon_redemptions['credit_transaction_id']->workspace_credit_transactions['id'] [SET NULL]`
@@ -524,19 +457,11 @@ Total: **82**.
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (36)
+### `fk_extra` (26)
 
 - `billing_accounts['user_id']->users['id'] [CASCADE]`
 - `billing_addresses['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `billing_payment_methods['billing_account_id']->billing_accounts['id'] [NO ACTION]`
-- `brand_assets['brand_id']->brands['id'] [NO ACTION]`
-- `brand_colors['brand_id']->brands['id'] [NO ACTION]`
-- `brand_colors['created_by']->users['id'] [NO ACTION]`
-- `brand_colors['workspace_id']->workspaces['id'] [NO ACTION]`
-- `brands['created_by_user_id']->users['id'] [SET NULL]`
-- `brands['workspace_id']->workspaces['id'] [RESTRICT]`
-- `campaigns['created_by']->users['id'] [NO ACTION]`
-- `campaigns['workspace_id']->workspaces['id'] [NO ACTION]`
 - `charges['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `charges['invoice_id']->invoices['id'] [NO ACTION]`
 - `coupon_redemptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
@@ -549,8 +474,6 @@ Total: **82**.
 - `orders['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `orders['credit_package_id']->credit_packages['id'] [NO ACTION]`
 - `orders['workspace_id']->workspaces['id'] [NO ACTION]`
-- `personas['brand_id']->brands['id'] [NO ACTION]`
-- `personas['created_by']->users['id'] [NO ACTION]`
 - `provider_disputes['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `provider_disputes['charge_id']->charges['id'] [NO ACTION]`
 - `refunds['billing_account_id']->billing_accounts['id'] [NO ACTION]`
@@ -563,15 +486,11 @@ Total: **82**.
 - `subscriptions['workspace_id']->workspaces['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (25)
+### `fk_ondelete` (19)
 
 - `billing_accounts['user_id']->users['id']: final RESTRICT vs model ['CASCADE']`
 - `billing_addresses['billing_account_id']->billing_accounts['id']: final CASCADE vs model ['NO ACTION']`
 - `billing_payment_methods['billing_account_id']->billing_accounts['id']: final CASCADE vs model ['NO ACTION']`
-- `brand_assets['brand_id']->brands['id']: final CASCADE vs model ['NO ACTION']`
-- `brand_colors['brand_id']->brands['id']: final CASCADE vs model ['NO ACTION']`
-- `brands['workspace_id']->workspaces['id']: final CASCADE vs model ['RESTRICT']`
-- `campaigns['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
 - `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `charges['invoice_id']->invoices['id']: final SET NULL vs model ['NO ACTION']`
 - `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model ['NO ACTION']`
@@ -581,8 +500,6 @@ Total: **82**.
 - `orders['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `orders['credit_package_id']->credit_packages['id']: final SET NULL vs model ['NO ACTION']`
 - `orders['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
-- `personas['brand_id']->brands['id']: final CASCADE vs model ['NO ACTION']`
-- `personas['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
 - `provider_disputes['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `provider_disputes['charge_id']->charges['id']: final RESTRICT vs model ['NO ACTION']`
 - `subscription_history['subscription_id']->subscriptions['id']: final CASCADE vs model ['NO ACTION']`
@@ -593,9 +510,9 @@ Total: **82**.
 
 ## 7. CHECK constraints
 
-Total: **75**.
+Total: **74**.
 
-### `check_missing` (45)
+### `check_missing` (44)
 
 - `unmapped:billing_accounts.chk_billing_accounts_company_name`
 - `unmapped:billing_accounts.chk_billing_accounts_document_pair`
@@ -603,7 +520,6 @@ Total: **75**.
 - `unmapped:billing_addresses.chk_billing_addresses_zip_code`
 - `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_month`
 - `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_year`
-- `unmapped:brand_colors.chk_brand_colors_hex`
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
 - `unmapped:charges.chk_charges_installments`
@@ -645,10 +561,8 @@ Total: **75**.
 
 ### `check_extra` (30)
 
-- `brands.ck_brands_deleted_after_created`
+- `brand_assets.brand_asset_type`
 - `campaign_voices.campaign_voice`
-- `charge_transactions.payment_provider`
-- `charge_transactions.transaction_status`
 - `content_plan_items.content_format`
 - `fiscal_invoices.fiscal_invoice_status`
 - `generated_images.approval_status`
@@ -662,6 +576,8 @@ Total: **75**.
 - `notification_recipients.notification_delivery_status`
 - `notifications.notification_resource_type`
 - `notifications.notification_type`
+- `personas.age_range`
+- `personas.persona_gender`
 - `plan_payment_methods.payment_method_type`
 - `post_designs.art_ratio`
 - `post_designs.content_format`

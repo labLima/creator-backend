@@ -66,6 +66,14 @@ def test_campaign_rebuild_preserves_children(tmp_path: Path) -> None:
         )
         connection.execute(
             sa.text(
+                "INSERT INTO brands "
+                "(id, workspace_id, created_by_user_id, name, metadata) "
+                "VALUES (:id, :workspace, :user, 'brand', '{}')"
+            ),
+            {"id": uuid4().hex, "workspace": workspace.hex, "user": user.hex},
+        )
+        connection.execute(
+            sa.text(
                 "INSERT INTO campaigns "
                 "(id, workspace_id, created_by, name, created_at, updated_at) "
                 "VALUES (:id, :workspace, :user, 'campaign', "

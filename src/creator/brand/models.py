@@ -18,78 +18,112 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    Text,
     UniqueConstraint,
     func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import json_type, timestamp_tz, uuid_default, uuid_pk
+from creator.infrastructure.database.constraints import hex_color_check
+from creator.infrastructure.database.db import Base
+from creator.infrastructure.database.types import (
+    enum_column,
+    json_type,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
 
-class BrandColor(SchemaRow, Base):
+class BrandColor(Base):
     __tablename__ = "brand_colors"
-    brand_id: Mapped[UUID] = mapped_column(ForeignKey("brands.id"), nullable=False)
-    workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
-    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    brand_name: Mapped[str | None] = mapped_column(String(30))
-    brand_segment: Mapped[str | None] = mapped_column(String(30))
-    brand_promise: Mapped[str | None] = mapped_column(String(250))
-    brand_values: Mapped[str | None] = mapped_column(String(100))
-    brand_main_hashtags: Mapped[str | None] = mapped_column(String(200))
-    brand_goals: Mapped[str | None] = mapped_column(String(1800))
-    brand_indicators: Mapped[str | None] = mapped_column(String(250))
-    brand_inspirations: Mapped[str | None] = mapped_column(String(1500))
-    brand_restrictions: Mapped[str | None] = mapped_column(String(200))
-    color_name: Mapped[str | None] = mapped_column(String(50))
-    hex_code: Mapped[str | None] = mapped_column(String(7))
+    __table_args__ = (
+        CheckConstraint(hex_color_check("hex"), name="chk_brand_colors_hex"),
+        Index("ix_brand_colors_brand_id", "brand_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    brand_id: Mapped[UUID] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str | None] = mapped_column(String(50))
+    hex: Mapped[str] = mapped_column(String(7), nullable=False)
+    position: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
-class BrandAsset(SchemaRow, Base):
+class BrandAsset(Base):
     __tablename__ = "brand_assets"
-    brand_id: Mapped[UUID] = mapped_column(ForeignKey("brands.id"), nullable=False)
-    type: Mapped[str] = mapped_column(String(30), nullable=False)
-    file_url: Mapped[str] = mapped_column(String(2048), nullable=False)
-    file_name: Mapped[str | None] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(String(500))
+    __table_args__ = (
+        Index(
+            "uq_brand_assets_storage_bucket_storage_key",
+            "storage_bucket",
+            "storage_key",
+            unique=True,
+        ),
+        Index("ix_brand_assets_brand_id", "brand_id"),
+        Index("ix_brand_assets_created_by", "created_by"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    brand_id: Mapped[UUID] = mapped_column(
+        ForeignKey("brands.id", ondelete="CASCADE"), nullable=False
+    )
+    type: Mapped[str] = mapped_column(enum_column("brand_asset_type"), nullable=False)
+    storage_bucket: Mapped[str] = mapped_column(String(63), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    file_name: Mapped[str | None] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(String)
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Brand(Base):
     __tablename__ = "brands"
     __table_args__ = (
+        # Legacy compatibility (T25): the five legacy tables still declare
+        # composite (brand_id, workspace_id) FKs; T16 retires them and drops this.
         UniqueConstraint("id", "workspace_id", name="uq_brands_id_workspace_id"),
-        CheckConstraint(
-            "deleted_at IS NULL OR deleted_at >= created_at",
-            name="ck_brands_deleted_after_created",
+        Index("ix_brands_workspace_id", "workspace_id"),
+        Index(
+            "idx_m8_brands_created_by",
+            "created_by",
+            sqlite_where=text("created_by IS NOT NULL"),
         ),
-        Index("ix_brands_workspace_filter", "workspace_id", "deleted_at", "created_at"),
-        Index("ix_brands_created_by_user_id", "created_by_user_id"),
     )
 
     id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     workspace_id: Mapped[UUID] = mapped_column(
         uuid_pk,
-        ForeignKey("workspaces.id", ondelete="RESTRICT"),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
     )
-    created_by_user_id: Mapped[UUID | None] = mapped_column(
+    created_by: Mapped[UUID | None] = mapped_column(
         uuid_pk,
         ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text)
-    brand_voice: Mapped[str | None] = mapped_column(Text)
-    metadata_json: Mapped[dict[str, object]] = mapped_column(
-        "metadata",
-        json_type,
-        nullable=False,
-        server_default=text("'{}'"),
-    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    segment: Mapped[str | None] = mapped_column(String(100))
+    promise: Mapped[str | None] = mapped_column(String(250))
+    goals: Mapped[str | None] = mapped_column(String(1800))
+    indicators: Mapped[str | None] = mapped_column(String(250))
+    inspirations: Mapped[str | None] = mapped_column(String(1500))
+    restrictions: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[object] = mapped_column(
         timestamp_tz,
         nullable=False,
@@ -109,9 +143,9 @@ class BrandSettings(Base):
     __table_args__ = (
         UniqueConstraint("brand_id", name="uq_brand_settings_brand_id"),
         ForeignKeyConstraint(
-            ["brand_id", "workspace_id"],
-            ["brands.id", "brands.workspace_id"],
-            name="fk_brand_settings_brand_workspace",
+            ["brand_id"],
+            ["brands.id"],
+            name="fk_brand_settings_brand",
             ondelete="CASCADE",
         ),
         CheckConstraint(

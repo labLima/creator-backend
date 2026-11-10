@@ -14,23 +14,22 @@ from creator.core.pagination import Page, PageRequest
 class PersonaRecord:
     id: UUID
     brand_id: UUID
-    created_by: UUID
+    created_by: UUID | None
     name: str
-    age: int | None
+    age_range: str | None
     gender: str | None
     main_goal: str | None
     challenge: str | None
-    interest: str | None
     routine: str | None
     journey: str | None
-    trigger: str | None
+    trigger_event: str | None
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
 
 
 class PersonaRepository(Protocol):
-    def add(self, *, created_by: UUID, **fields: object) -> PersonaRecord: ...
+    def add(self, *, created_by: UUID | None, **fields: object) -> PersonaRecord: ...
     def get_for_user(self, *, user_id: UUID, persona_id: UUID) -> PersonaRecord | None: ...
     def update(self, *, persona_id: UUID, fields: dict[str, object]) -> PersonaRecord: ...
     def soft_delete(self, *, persona_id: UUID) -> None: ...

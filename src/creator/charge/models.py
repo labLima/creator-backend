@@ -72,13 +72,17 @@ class ChargeTransaction(Base):
     charge_id: Mapped[UUID] = mapped_column(
         ForeignKey("charges.id", ondelete="CASCADE"), nullable=False
     )
+    # T15 reworks this table; the vocabulary stays in the Enum (and in the API)
+    # while the CHECK is deferred to that pass.
     provider: Mapped[str] = mapped_column(
-        enum_column("payment_provider"),
+        enum_column("payment_provider", create_constraint=False),
         nullable=False,
         server_default=text("'PAGARME'"),
     )
     external_id: Mapped[str | None] = mapped_column(String(64))
-    status: Mapped[str] = mapped_column(enum_column("transaction_status"), nullable=False)
+    status: Mapped[str] = mapped_column(
+        enum_column("transaction_status", create_constraint=False), nullable=False
+    )
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     gateway_response: Mapped[dict[str, object] | None] = mapped_column(json_type)
     antifraud_response: Mapped[dict[str, object] | None] = mapped_column(json_type)

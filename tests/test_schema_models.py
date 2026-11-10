@@ -1,6 +1,7 @@
 import pytest
 
 from creator.campaign.schemas import CampaignCreateRequest
+from creator.infrastructure.database import metadata as _models  # noqa: F401
 from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.schema_manifest import LEGACY_TABLES, PDF_TABLES
 from creator.notification.schemas import NotificationCreateRequest
@@ -75,16 +76,9 @@ def test_marketing_columns_match_pdf_names() -> None:
     generated_image = Base.metadata.tables["generated_image"]
     assert "image_status" in generated_image.c
     assert "status" not in generated_image.c
-    assert {
-        "brand_segment",
-        "brand_promise",
-        "brand_values",
-        "brand_main_hashtags",
-        "brand_goals",
-        "brand_indicators",
-        "brand_inspirations",
-        "brand_restrictions",
-    } <= set(brand_colors.c.keys())
+    assert {"name", "hex", "position"} <= set(brand_colors.c.keys())
+    assert "hex_code" not in brand_colors.c
+    assert "workspace_id" not in brand_colors.c
 
 
 def test_new_dtos_reject_unknown_fields() -> None:
@@ -92,6 +86,7 @@ def test_new_dtos_reject_unknown_fields() -> None:
     assert (
         CampaignCreateRequest(
             workspace_id="00000000-0000-0000-0000-000000000001",
+            brand_id="00000000-0000-0000-0000-000000000002",
             name="Launch",
         ).name
         == "Launch"
@@ -108,6 +103,7 @@ def test_new_dtos_reject_unknown_fields() -> None:
     with pytest.raises(ValueError):
         CampaignCreateRequest(
             workspace_id="00000000-0000-0000-0000-000000000001",
+            brand_id="00000000-0000-0000-0000-000000000002",
             name="Launch",
             unexpected=True,
         )

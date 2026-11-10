@@ -211,8 +211,12 @@ def brand(*, brand_id: UUID, workspace_id: UUID) -> SimpleNamespace:
         id=brand_id,
         workspace_id=workspace_id,
         name="Test Brand",
-        description="Brand description",
-        brand_voice="Clear",
+        segment="creator",
+        promise="Brand description",
+        goals=None,
+        indicators=None,
+        inspirations=None,
+        restrictions="Clear",
     )
 
 
@@ -571,27 +575,24 @@ def test_artist_and_reviewer_receive_only_authorized_brand_settings_and_colors(
     repository.brand_colors = [
         SimpleNamespace(
             id=uuid4(),
-            brand_id=JOB_BRAND_ID,
-            workspace_id=uuid4(),
-            order=0,
-            color_name="Other Workspace",
-            hex_code="#000000",
+            brand_id=uuid4(),
+            position=0,
+            name="Other Brand",
+            hex="#000000",
         ),
         SimpleNamespace(
             id=uuid4(),
             brand_id=JOB_BRAND_ID,
-            workspace_id=item.job.workspace_id,
-            order=2,
-            color_name="Orange",
-            hex_code="#ff6600",
+            position=2,
+            name="Orange",
+            hex="#ff6600",
         ),
         SimpleNamespace(
             id=uuid4(),
             brand_id=JOB_BRAND_ID,
-            workspace_id=item.job.workspace_id,
-            order=1,
-            color_name="Plum",
-            hex_code="#770044",
+            position=1,
+            name="Plum",
+            hex="#770044",
         ),
     ]
     specialist = FakeSpecialistExecutor()

@@ -180,8 +180,12 @@ def brand() -> object:
         id=BRAND_ID,
         workspace_id=WORKSPACE_ID,
         name="Example",
-        brand_voice="Direct",
-        description="",
+        segment="creator",
+        promise="",
+        goals=None,
+        indicators=None,
+        inspirations=None,
+        restrictions="Direct",
     )
 
 

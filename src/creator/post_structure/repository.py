@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import Select, asc, desc, func, select
 from sqlalchemy.orm import Session
 
+import creator.brand.models as brand_models
 import creator.campaign.models as campaign_models
 import creator.planning.models as planning_models
 import creator.post_structure.models as post_structure_models
@@ -51,7 +52,10 @@ class SqlAlchemyPostStructureRepository:
         if planning is None or planning.deleted_at is not None:
             raise ValueError("Planning does not exist")
         campaign = self._session.get(campaign_models.Campaign, planning.campaign_id)
-        if campaign is None or campaign.workspace_id != workspace_id:
+        if campaign is None:
+            raise ValueError("Planning and post structure workspace do not match")
+        brand = self._session.get(brand_models.Brand, campaign.brand_id)
+        if brand is None or brand.workspace_id != workspace_id:
             raise ValueError("Planning and post structure workspace do not match")
         field_names = {
             "title": "post_title",

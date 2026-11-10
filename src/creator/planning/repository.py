@@ -51,11 +51,7 @@ class SqlAlchemyPlanningRepository:
         if persona.brand_id != fields["brand_id"]:
             raise ValueError("Persona and planning brand do not match")
         brand = self._session.get(brand_models.Brand, fields["brand_id"])
-        if (
-            brand is None
-            or brand.deleted_at is not None
-            or brand.workspace_id != campaign.workspace_id
-        ):
+        if brand is None or brand.deleted_at is not None or campaign.brand_id != brand.id:
             raise ValueError("Brand and campaign workspace do not match")
         fields = {"planning_info" if key == "info" else key: value for key, value in fields.items()}
         fields = {
@@ -72,14 +68,14 @@ class SqlAlchemyPlanningRepository:
         fields.update(
             {
                 "persona_name": persona.name,
-                "persona_age": persona.age,
+                "persona_age": persona.age_range,
                 "persona_gender": persona.gender,
                 "persona_main_goal": persona.main_goal,
                 "persona_challenge": persona.challenge,
-                "persona_interest": persona.interest,
+                "persona_interest": persona.main_goal,
                 "persona_routine": persona.routine,
                 "persona_journey": persona.journey,
-                "persona_trigger": persona.trigger,
+                "persona_trigger": persona.trigger_event,
             }
         )
         row = planning_models.Planning(created_by=created_by, **fields)
@@ -104,9 +100,13 @@ class SqlAlchemyPlanningRepository:
                 campaign_models.Campaign.id == planning_models.Planning.campaign_id,
             )
             .join(
+                brand_models.Brand,
+                brand_models.Brand.id == campaign_models.Campaign.brand_id,
+            )
+            .join(
                 workspace_models.WorkspaceMembership,
                 workspace_models.WorkspaceMembership.workspace_id
-                == campaign_models.Campaign.workspace_id,
+                == brand_models.Brand.workspace_id,
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,
@@ -174,9 +174,13 @@ class SqlAlchemyPlanningRepository:
                 campaign_models.Campaign.id == planning_models.Planning.campaign_id,
             )
             .join(
+                brand_models.Brand,
+                brand_models.Brand.id == campaign_models.Campaign.brand_id,
+            )
+            .join(
                 workspace_models.WorkspaceMembership,
                 workspace_models.WorkspaceMembership.workspace_id
-                == campaign_models.Campaign.workspace_id,
+                == brand_models.Brand.workspace_id,
             )
             .where(
                 workspace_models.WorkspaceMembership.user_id == user_id,

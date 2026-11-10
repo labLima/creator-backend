@@ -52,7 +52,6 @@ class Asset(Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint("byte_size >= 0", name="ck_assets_byte_size_non_negative"),
-        CheckConstraint("length(asset_type) BETWEEN 1 AND 100", name="ck_assets_type_length"),
         CheckConstraint(
             "deleted_at IS NULL OR deleted_at >= created_at", name="ck_assets_deleted_after_created"
         ),

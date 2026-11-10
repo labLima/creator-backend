@@ -7,13 +7,14 @@ idempotent through ``INSERT OR IGNORE`` plus the natural keys.
 
 Order matters:
 
-1. ``campaigns.brand_id`` is filled from ``planning`` because the composite
-   foreign keys of ``content_plans`` require the campaign to carry the brand;
-2. ``content_plans`` and its items/dates from ``planning``;
-3. ``posts`` from ``post_structure``;
-4. ``post_designs`` from ``post_structure`` and ``design_structure``;
-5. ``design_slides`` from ``design_structure`` (using the parent art fields);
-6. ``generated_images`` from ``generated_image``.
+1. ``content_plans`` and its items/dates from ``planning``;
+2. ``posts`` from ``post_structure``;
+3. ``post_designs`` from ``post_structure`` and ``design_structure``;
+4. ``design_slides`` from ``design_structure`` (using the parent art fields);
+5. ``generated_images`` from ``generated_image``.
+
+``campaigns.brand_id`` is no longer backfilled here: T25 made it NOT NULL and
+the migration derives it from the brand/planning before that constraint exists.
 
 Rows that cannot satisfy the final-modeling constraints are skipped and counted
 in the report instead of aborting the whole migration.
@@ -38,22 +39,6 @@ ART_RATIOS = ("RATIO_4_5", "RATIO_1_1", "RATIO_9_16", "RATIO_16_9")
 ART_RATIO_9_16 = "RATIO_9_16"
 
 STEPS: tuple[tuple[str, str], ...] = (
-    (
-        "campaigns.brand_id",
-        """
-        UPDATE campaigns
-        SET brand_id = (
-            SELECT p.brand_id FROM planning p
-            WHERE p.campaign_id = campaigns.id AND p.deleted_at IS NULL
-            LIMIT 1
-        )
-        WHERE campaigns.brand_id IS NULL
-          AND EXISTS (
-            SELECT 1 FROM planning p
-            WHERE p.campaign_id = campaigns.id AND p.deleted_at IS NULL
-          )
-        """,
-    ),
     (
         "content_plans",
         """

@@ -174,11 +174,11 @@ def brand_row(
     return brand_tables.Brand(
         id=uuid4(),
         workspace_id=workspace_id or uuid4(),
-        created_by_user_id=user_id or uuid4(),
+        created_by=user_id or uuid4(),
         name="Brand",
-        description="Description",
-        brand_voice="Voice",
-        metadata_json={"segment": "creator"},
+        segment="creator",
+        promise="Description",
+        restrictions="Voice",
         created_at=NOW,
         updated_at=NOW,
     )
@@ -189,7 +189,7 @@ def project_row(brand: brand_tables.Brand) -> project_tables.Project:
         id=uuid4(),
         workspace_id=brand.workspace_id,
         brand_id=brand.id,
-        created_by_user_id=brand.created_by_user_id,
+        created_by_user_id=brand.created_by,
         name="Project",
         description="Description",
         status="ACTIVE",
@@ -443,9 +443,10 @@ def test_brand_project_asset_generation_and_settings_repositories_crud_paths() -
     session.scalars_results.append(ScalarResult(membership))
     created_brand = brand_repository.add(
         workspace_id=workspace.id,
-        created_by_user_id=user.id,
+        created_by=user.id,
         name="Created Brand",
-        metadata={"source": "test"},
+        segment="creator",
+        promise="Test",
     )
     assert created_brand.name == "Created Brand"
 

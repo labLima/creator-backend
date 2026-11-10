@@ -86,8 +86,12 @@ class FakeUnitOfWork:
                     id=BRAND_ID,
                     workspace_id=WORKSPACE_ID,
                     name="Test Brand",
-                    description="Brand context",
-                    brand_voice="Clear",
+                    segment="creator",
+                    promise="Brand context",
+                    goals=None,
+                    indicators=None,
+                    inspirations=None,
+                    restrictions="Clear",
                 )
             )
         )

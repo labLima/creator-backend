@@ -21,14 +21,13 @@ def _persona_record(row: persona_models.Persona) -> PersonaRecord:
         brand_id=row.brand_id,
         created_by=row.created_by,
         name=row.name,
-        age=row.age,
+        age_range=row.age_range,
         gender=row.gender,
         main_goal=row.main_goal,
         challenge=row.challenge,
-        interest=row.interest,
         routine=row.routine,
         journey=row.journey,
-        trigger=row.trigger,
+        trigger_event=row.trigger_event,
         created_at=row.created_at,
         updated_at=row.updated_at,
         deleted_at=row.deleted_at,
@@ -39,7 +38,7 @@ class SqlAlchemyPersonaRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def add(self, *, created_by: UUID, **fields: object) -> PersonaRecord:
+    def add(self, *, created_by: UUID | None, **fields: object) -> PersonaRecord:
         row = persona_models.Persona(created_by=created_by, **fields)
         self._session.add(row)
         self._session.flush()

@@ -111,7 +111,6 @@ CREATE TABLE assets (
 	CONSTRAINT fk_assets_project_workspace FOREIGN KEY(project_id, workspace_id) REFERENCES projects (id, workspace_id) ON DELETE RESTRICT,
 	CONSTRAINT fk_assets_content_workspace FOREIGN KEY(content_id, workspace_id) REFERENCES contents (id, workspace_id) ON DELETE RESTRICT,
 	CONSTRAINT ck_assets_byte_size_non_negative CHECK (byte_size >= 0),
-	CONSTRAINT ck_assets_type_length CHECK (length(asset_type) BETWEEN 1 AND 100),
 	CONSTRAINT ck_assets_deleted_after_created CHECK (deleted_at IS NULL OR deleted_at >= created_at),
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
 	FOREIGN KEY(uploaded_by_user_id) REFERENCES users (id) ON DELETE SET NULL
@@ -214,17 +213,20 @@ CREATE TABLE billing_payment_methods (
 )
 
 CREATE TABLE brand_assets (
-	brand_id CHAR(32) NOT NULL,
-	type VARCHAR(30) NOT NULL,
-	file_url VARCHAR(2048) NOT NULL,
-	file_name VARCHAR(255),
-	description VARCHAR(500),
 	id CHAR(32) NOT NULL,
+	brand_id CHAR(32) NOT NULL,
+	type VARCHAR(8) NOT NULL,
+	storage_bucket VARCHAR(63) NOT NULL,
+	storage_key VARCHAR(1024) NOT NULL,
+	file_name VARCHAR,
+	description VARCHAR,
+	created_by CHAR(32),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(brand_id) REFERENCES brands (id)
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE,
+	CONSTRAINT brand_asset_type CHECK (type IN ('LOGO', 'IMAGE', 'FONT', 'ICON', 'DOCUMENT', 'OTHER')),
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE brand_business_details (
@@ -246,29 +248,16 @@ CREATE TABLE brand_business_details (
 )
 
 CREATE TABLE brand_colors (
-	brand_id CHAR(32) NOT NULL,
-	workspace_id CHAR(32) NOT NULL,
-	created_by CHAR(32) NOT NULL,
-	"order" INTEGER DEFAULT 0 NOT NULL,
-	brand_name VARCHAR(30),
-	brand_segment VARCHAR(30),
-	brand_promise VARCHAR(250),
-	brand_values VARCHAR(100),
-	brand_main_hashtags VARCHAR(200),
-	brand_goals VARCHAR(1800),
-	brand_indicators VARCHAR(250),
-	brand_inspirations VARCHAR(1500),
-	brand_restrictions VARCHAR(200),
-	color_name VARCHAR(50),
-	hex_code VARCHAR(7),
 	id CHAR(32) NOT NULL,
+	brand_id CHAR(32) NOT NULL,
+	name VARCHAR(50),
+	hex VARCHAR(7) NOT NULL,
+	position INTEGER,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(brand_id) REFERENCES brands (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(created_by) REFERENCES users (id)
+	CONSTRAINT chk_brand_colors_hex CHECK (hex GLOB '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'),
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE
 )
 
 CREATE TABLE brand_hashtags (
@@ -294,7 +283,7 @@ CREATE TABLE brand_settings (
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
 	CONSTRAINT uq_brand_settings_brand_id UNIQUE (brand_id),
-	CONSTRAINT fk_brand_settings_brand_workspace FOREIGN KEY(brand_id, workspace_id) REFERENCES brands (id, workspace_id) ON DELETE CASCADE,
+	CONSTRAINT fk_brand_settings_brand FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE,
 	CONSTRAINT ck_brand_settings_deleted_after_created CHECK (deleted_at IS NULL OR deleted_at >= created_at),
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT
 )
@@ -312,19 +301,21 @@ CREATE TABLE brand_values (
 CREATE TABLE brands (
 	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
-	created_by_user_id CHAR(32),
-	name VARCHAR(255) NOT NULL,
-	description TEXT,
-	brand_voice TEXT,
-	metadata JSON DEFAULT '{}' NOT NULL,
+	created_by CHAR(32),
+	name VARCHAR(100) NOT NULL,
+	segment VARCHAR(100),
+	promise VARCHAR(250),
+	goals VARCHAR(1800),
+	indicators VARCHAR(250),
+	inspirations VARCHAR(1500),
+	restrictions VARCHAR(200),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
 	CONSTRAINT uq_brands_id_workspace_id UNIQUE (id, workspace_id),
-	CONSTRAINT ck_brands_deleted_after_created CHECK (deleted_at IS NULL OR deleted_at >= created_at),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
-	FOREIGN KEY(created_by_user_id) REFERENCES users (id) ON DELETE SET NULL
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE campaign_hashtags (
@@ -350,24 +341,20 @@ CREATE TABLE campaign_voices (
 )
 
 CREATE TABLE campaigns (
-	brand_id CHAR(32),
-	workspace_id CHAR(32) NOT NULL,
-	created_by CHAR(32) NOT NULL,
-	name VARCHAR(30) NOT NULL,
+	id CHAR(32) NOT NULL,
+	brand_id CHAR(32) NOT NULL,
+	created_by CHAR(32),
+	name VARCHAR(100) NOT NULL,
 	description VARCHAR(500),
 	target_audience VARCHAR(300),
 	objectives VARCHAR(400),
-	voice VARCHAR(20),
-	start_at DATETIME,
-	end_at DATETIME,
-	id CHAR(32) NOT NULL,
+	expected_action VARCHAR(250),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
 	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE,
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(created_by) REFERENCES users (id)
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE captions (
@@ -398,9 +385,7 @@ CREATE TABLE charge_transactions (
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT chk_charge_transactions_amount_nonnegative CHECK (amount_cents >= 0),
-	FOREIGN KEY(charge_id) REFERENCES charges (id) ON DELETE CASCADE,
-	CONSTRAINT payment_provider CHECK (provider IN ('PAGARME', 'STRIPE')),
-	CONSTRAINT transaction_status CHECK (status IN ('AUTHORIZED_PENDING_CAPTURE', 'NOT_AUTHORIZED', 'CAPTURED', 'PARTIAL_CAPTURE', 'WAITING_CAPTURE', 'REFUNDED', 'VOIDED', 'PARTIAL_REFUNDED', 'PARTIAL_VOID', 'ERROR_ON_VOIDING', 'ERROR_ON_REFUNDING', 'WAITING_CANCELLATION', 'WITH_ERROR', 'FAILED', 'WAITING_PAYMENT', 'PENDING_REFUND', 'GENERATED', 'VIEWED', 'PAID', 'CHARGEDBACK'))
+	FOREIGN KEY(charge_id) REFERENCES charges (id) ON DELETE CASCADE
 )
 
 CREATE TABLE charges (
@@ -962,24 +947,25 @@ CREATE TABLE persona_interests (
 )
 
 CREATE TABLE personas (
+	id CHAR(32) NOT NULL,
+	created_by CHAR(32),
 	brand_id CHAR(32) NOT NULL,
-	created_by CHAR(32) NOT NULL,
-	name VARCHAR(30) NOT NULL,
-	age INTEGER,
-	gender VARCHAR(10),
+	name VARCHAR(100) NOT NULL,
+	age_range VARCHAR(13),
+	gender VARCHAR(17),
 	main_goal VARCHAR(60),
 	challenge VARCHAR(50),
-	interest VARCHAR(200),
 	routine VARCHAR(300),
 	journey VARCHAR(250),
-	"trigger" VARCHAR(200),
-	id CHAR(32) NOT NULL,
+	trigger_event VARCHAR(200),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(brand_id) REFERENCES brands (id),
-	FOREIGN KEY(created_by) REFERENCES users (id)
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL,
+	FOREIGN KEY(brand_id) REFERENCES brands (id) ON DELETE CASCADE,
+	CONSTRAINT age_range CHECK (age_range IN ('UP_TO_17', 'FROM_18_TO_24', 'FROM_25_TO_34', 'FROM_35_TO_44', 'FROM_45_TO_54', 'FROM_55_TO_64', 'FROM_65_PLUS')),
+	CONSTRAINT persona_gender CHECK (gender IN ('MALE', 'FEMALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'))
 )
 
 CREATE TABLE plan_items (
@@ -1148,7 +1134,6 @@ CREATE TABLE projects (
 	PRIMARY KEY (id),
 	CONSTRAINT uq_projects_id_workspace_id UNIQUE (id, workspace_id),
 	CONSTRAINT fk_projects_brand_workspace FOREIGN KEY(brand_id, workspace_id) REFERENCES brands (id, workspace_id) ON DELETE RESTRICT,
-	CONSTRAINT ck_projects_status_valid CHECK (status IN ('ACTIVE', 'ARCHIVED')),
 	CONSTRAINT ck_projects_deleted_after_created CHECK (deleted_at IS NULL OR deleted_at >= created_at),
 	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
 	FOREIGN KEY(created_by_user_id) REFERENCES users (id) ON DELETE SET NULL
@@ -1517,6 +1502,12 @@ CREATE INDEX ix_auth_sessions_family_id ON auth_sessions (family_id)
 
 CREATE INDEX ix_auth_sessions_user_id ON auth_sessions (user_id)
 
+CREATE INDEX ix_brand_assets_brand_id ON brand_assets (brand_id)
+
+CREATE INDEX ix_brand_assets_created_by ON brand_assets (created_by)
+
+CREATE UNIQUE INDEX uq_brand_assets_storage_bucket_storage_key ON brand_assets (storage_bucket, storage_key)
+
 CREATE INDEX idx_m8_brand_business_details_campaign_id_brand_id ON brand_business_details (campaign_id, brand_id)
 
 CREATE INDEX idx_m8_brand_business_details_created_by ON brand_business_details (created_by) WHERE created_by IS NOT NULL
@@ -1527,19 +1518,23 @@ CREATE INDEX ix_brand_business_details_brand_id_campaign_id_persona_id ON brand_
 
 CREATE INDEX ix_brand_business_details_created_at ON brand_business_details (created_at)
 
+CREATE INDEX ix_brand_colors_brand_id ON brand_colors (brand_id)
+
 CREATE UNIQUE INDEX uq_brand_hashtags_brand_id_hashtag ON brand_hashtags (brand_id, hashtag)
 
 CREATE INDEX ix_brand_settings_workspace_id ON brand_settings (workspace_id)
 
 CREATE UNIQUE INDEX uq_brand_values_brand_id_value ON brand_values (brand_id, value)
 
-CREATE INDEX ix_brands_created_by_user_id ON brands (created_by_user_id)
+CREATE INDEX idx_m8_brands_created_by ON brands (created_by) WHERE created_by IS NOT NULL
 
-CREATE INDEX ix_brands_workspace_filter ON brands (workspace_id, deleted_at, created_at)
+CREATE INDEX ix_brands_workspace_id ON brands (workspace_id)
 
 CREATE UNIQUE INDEX uq_campaign_hashtags_campaign_id_hashtag ON campaign_hashtags (campaign_id, hashtag)
 
 CREATE UNIQUE INDEX uq_campaign_voices_campaign_id_voice ON campaign_voices (campaign_id, voice)
+
+CREATE INDEX idx_m8_campaigns_created_by ON campaigns (created_by) WHERE created_by IS NOT NULL
 
 CREATE INDEX ix_campaigns_brand_id ON campaigns (brand_id)
 
@@ -1664,6 +1659,8 @@ CREATE INDEX ix_outbox_events_dispatch ON outbox_events (published_at, available
 CREATE INDEX ix_outbox_events_workspace ON outbox_events (workspace_id, created_at)
 
 CREATE UNIQUE INDEX uq_persona_interests_persona_id_interest ON persona_interests (persona_id, interest)
+
+CREATE INDEX idx_m8_personas_created_by ON personas (created_by) WHERE created_by IS NOT NULL
 
 CREATE INDEX ix_personas_brand_id ON personas (brand_id)
 

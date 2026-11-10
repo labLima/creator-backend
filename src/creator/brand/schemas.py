@@ -5,6 +5,7 @@ Moved from `creator.api.dtos`; field definitions are unchanged.
 
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -14,39 +15,46 @@ from creator.core.schemas import CreatorDTO
 
 class BrandColorCreateRequest(BaseModel):
     brand_id: UUID
-    workspace_id: UUID
-    order: int = 0
-    color_name: str | None = None
-    hex_code: str | None = None
+    name: str | None = Field(default=None, max_length=50)
+    hex: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
+    position: int | None = None
 
 
 class BrandColorUpdateRequest(BaseModel):
-    order: int | None = None
-    color_name: str | None = None
-    hex_code: str | None = None
+    name: str | None = Field(default=None, max_length=50)
+    hex: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    position: int | None = None
+
+
+BrandAssetType = Literal["LOGO", "IMAGE", "FONT", "ICON", "DOCUMENT", "OTHER"]
 
 
 class BrandAssetCreateRequest(CreatorDTO):
     brand_id: UUID
-    type: str = Field(min_length=1, max_length=30)
-    file_url: str = Field(min_length=1, max_length=2048)
-    file_name: str | None = Field(default=None, max_length=255)
-    description: str | None = Field(default=None, max_length=500)
+    type: BrandAssetType
+    storage_bucket: str = Field(min_length=1, max_length=63)
+    storage_key: str = Field(min_length=1, max_length=1024)
+    file_name: str | None = None
+    description: str | None = None
 
 
 class BrandAssetUpdateRequest(CreatorDTO):
-    type: str | None = Field(default=None, min_length=1, max_length=30)
-    file_url: str | None = Field(default=None, min_length=1, max_length=2048)
-    file_name: str | None = Field(default=None, max_length=255)
-    description: str | None = Field(default=None, max_length=500)
+    type: BrandAssetType | None = None
+    storage_bucket: str | None = Field(default=None, min_length=1, max_length=63)
+    storage_key: str | None = Field(default=None, min_length=1, max_length=1024)
+    file_name: str | None = None
+    description: str | None = None
 
 
 class BrandCreateRequest(CreatorDTO):
     workspace_id: UUID
-    name: str = Field(min_length=1, max_length=255)
-    description: str | None = None
-    brand_voice: str | None = None
-    metadata: dict[str, object] = Field(default_factory=dict)
+    name: str = Field(min_length=1, max_length=100)
+    segment: str | None = Field(default=None, max_length=100)
+    promise: str | None = Field(default=None, max_length=250)
+    goals: str | None = Field(default=None, max_length=1800)
+    indicators: str | None = Field(default=None, max_length=250)
+    inspirations: str | None = Field(default=None, max_length=1500)
+    restrictions: str | None = Field(default=None, max_length=200)
 
 
 class BrandSettingsUpdateRequest(CreatorDTO):
@@ -65,7 +73,10 @@ class BrandSettingsUpsertRequest(CreatorDTO):
 
 
 class BrandUpdateRequest(CreatorDTO):
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
-    brand_voice: str | None = None
-    metadata: dict[str, object] | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    segment: str | None = Field(default=None, max_length=100)
+    promise: str | None = Field(default=None, max_length=250)
+    goals: str | None = Field(default=None, max_length=1800)
+    indicators: str | None = Field(default=None, max_length=250)
+    inspirations: str | None = Field(default=None, max_length=1500)
+    restrictions: str | None = Field(default=None, max_length=200)

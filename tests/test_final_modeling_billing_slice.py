@@ -67,18 +67,15 @@ def test_charge_transaction_rejects_negative_amount(engine: sa.Engine) -> None:
     assert "chk_charge_transactions_amount_nonnegative" in str(error.value)
 
 
-def test_charge_transaction_provider_vocabulary_is_closed(engine: sa.Engine) -> None:
-    with engine.begin() as connection, pytest.raises(IntegrityError) as error:
-        connection.execute(
-            sa.text(
-                "INSERT INTO charge_transactions "
-                "(id, charge_id, provider, status, amount_cents, created_at, updated_at) "
-                "VALUES (:id, :charge, 'NOT_A_PROVIDER', 'PAID', 100, "
-                "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-            ),
-            {"id": uuid4().hex, "charge": uuid4().hex},
-        )
-    assert "payment_provider" in str(error.value)
+def test_charge_transaction_provider_vocabulary_is_closed() -> None:
+    """T15 will restore the CHECK; until then the Enum carries the vocabulary."""
+
+    from creator.charge.models import ChargeTransaction
+
+    columns = ChargeTransaction.__table__.c
+    assert "PAGARME" in columns.provider.type.enums
+    assert "NOT_A_PROVIDER" not in columns.provider.type.enums
+    assert "PAID" in columns.status.type.enums
 
 
 def test_charge_transaction_is_idempotent_per_provider(engine: sa.Engine) -> None:

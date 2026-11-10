@@ -172,9 +172,12 @@ def test_brand_lifecycle_and_failed_audit_roll_back(db: Session) -> None:
     payload = SimpleNamespace(
         workspace_id=workspace.id,
         name="New",
-        description=None,
-        brand_voice=None,
-        metadata={"token": "never recorded"},
+        segment=None,
+        promise=None,
+        goals=None,
+        indicators=None,
+        inspirations=None,
+        restrictions=None,
     )
     uow = SqlAlchemyUnitOfWork(lambda: db)
     with uow:
@@ -189,7 +192,13 @@ def test_brand_lifecycle_and_failed_audit_roll_back(db: Session) -> None:
             request=None,
             brand_id=brand_id,
             payload=SimpleNamespace(
-                name="Changed", description=None, brand_voice=None, metadata=None
+                name="Changed",
+                segment=None,
+                promise=None,
+                goals=None,
+                indicators=None,
+                inspirations=None,
+                restrictions=None,
             ),
         )
     with SqlAlchemyUnitOfWork(lambda: db) as uow:

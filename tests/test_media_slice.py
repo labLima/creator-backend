@@ -49,15 +49,14 @@ def _slide(connection: sa.Connection) -> str:
     )
     connection.execute(
         sa.text(
-            "INSERT INTO brands (id, workspace_id, created_by_user_id, name, metadata) "
-            "VALUES (:id, :w, :u, 'brand', '{}')"
+            "INSERT INTO brands (id, workspace_id, created_by, name) VALUES (:id, :w, :u, 'brand')"
         ),
         {"id": brand.hex, "w": workspace.hex, "u": user.hex},
     )
     connection.execute(
         sa.text(
-            "INSERT INTO campaigns (id, brand_id, workspace_id, created_by, name) "
-            "VALUES (:id, :b, :w, :u, 'campaign')"
+            "INSERT INTO campaigns (id, brand_id, created_by, name) "
+            "VALUES (:id, :b, :u, 'campaign')"
         ),
         {"id": campaign.hex, "b": brand.hex, "w": workspace.hex, "u": user.hex},
     )

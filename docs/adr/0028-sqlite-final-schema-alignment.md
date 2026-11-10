@@ -214,6 +214,18 @@ Efeitos colaterais já conhecidos, que precisam ser tratados nas mesmas PRs:
 - `tests/test_module_boundaries.py` continua valendo: tabela nova nasce em `<entity>/models.py` +
   `repository.py`.
 
+## Exceções de transição (T25)
+
+Duas exceções ficam registradas até as tarefas que as encerram:
+
+- `brands(id, workspace_id)` mantém o UNIQUE do modelo anterior porque cinco
+  tabelas legadas (`contents`, `assets`, `projects`, `generations`,
+  `agent_workflow_runs`) ainda declaram FK composta para `brands`. A T16
+  aposenta essas tabelas e remove o UNIQUE; o dump não o declara.
+- Os CHECKs de `charge_transactions.provider`/`status` ficam adiados para a
+  T15, que reescreve a tabela de billing; até lá o vocabulário continua no
+  `Enum` (validado pela aplicação) sem crescer o orçamento de `check_extra`.
+
 ## Inconsistências conhecidas do dump
 
 Duas declarações da modelagem final não são aplicáveis literalmente e foram

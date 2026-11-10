@@ -15,11 +15,14 @@ from creator.core.types import JsonObject
 class BrandRecord:
     id: UUID
     workspace_id: UUID
-    created_by_user_id: UUID | None
+    created_by: UUID | None
     name: str
-    description: str | None
-    brand_voice: str | None
-    metadata: JsonObject
+    segment: str | None
+    promise: str | None
+    goals: str | None
+    indicators: str | None
+    inspirations: str | None
+    restrictions: str | None
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
@@ -30,11 +33,14 @@ class BrandRepository(Protocol):
         self,
         *,
         workspace_id: UUID,
-        created_by_user_id: UUID | None,
+        created_by: UUID | None,
         name: str,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
+        segment: str | None = None,
+        promise: str | None = None,
+        goals: str | None = None,
+        indicators: str | None = None,
+        inspirations: str | None = None,
+        restrictions: str | None = None,
     ) -> BrandRecord: ...
 
     def get_for_user(
@@ -59,9 +65,12 @@ class BrandRepository(Protocol):
         user_id: UUID,
         brand_id: UUID,
         name: str | None = None,
-        description: str | None = None,
-        brand_voice: str | None = None,
-        metadata: JsonObject | None = None,
+        segment: str | None = None,
+        promise: str | None = None,
+        goals: str | None = None,
+        indicators: str | None = None,
+        inspirations: str | None = None,
+        restrictions: str | None = None,
     ) -> BrandRecord: ...
 
     def soft_delete(self, *, user_id: UUID, brand_id: UUID) -> None: ...
@@ -120,14 +129,11 @@ class BrandSettingsRepository(Protocol):
 class BrandColorRecord:
     id: UUID
     brand_id: UUID
-    workspace_id: UUID
-    created_by: UUID
-    order: int
-    color_name: str | None
-    hex_code: str | None
+    name: str | None
+    hex: str
+    position: int | None
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class BrandColorRepository(Protocol):
@@ -145,12 +151,13 @@ class BrandAssetRecord:
     id: UUID
     brand_id: UUID
     type: str
-    file_url: str
+    storage_bucket: str
+    storage_key: str
     file_name: str | None
     description: str | None
+    created_by: UUID | None
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class BrandAssetRepository(Protocol):
@@ -159,9 +166,11 @@ class BrandAssetRepository(Protocol):
         *,
         brand_id: UUID,
         type: str,
-        file_url: str,
+        storage_bucket: str,
+        storage_key: str,
         file_name: str | None = None,
         description: str | None = None,
+        created_by: UUID | None = None,
     ) -> BrandAssetRecord: ...
     def get_for_user(self, *, user_id: UUID, asset_id: UUID) -> BrandAssetRecord | None: ...
     def update(self, *, asset_id: UUID, fields: dict[str, object]) -> BrandAssetRecord: ...

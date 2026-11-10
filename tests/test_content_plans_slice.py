@@ -47,8 +47,8 @@ def _tenant(connection: sa.Connection, name: str) -> dict[str, str]:
     )
     connection.execute(
         sa.text(
-            "INSERT INTO brands (id, workspace_id, created_by_user_id, name, metadata) "
-            "VALUES (:id, :workspace, :user, :name, '{}')"
+            "INSERT INTO brands (id, workspace_id, created_by, name) "
+            "VALUES (:id, :workspace, :user, :name)"
         ),
         {
             "id": brand.hex,
@@ -59,8 +59,8 @@ def _tenant(connection: sa.Connection, name: str) -> dict[str, str]:
     )
     connection.execute(
         sa.text(
-            "INSERT INTO campaigns (id, brand_id, workspace_id, created_by, name) "
-            "VALUES (:id, :brand, :workspace, :user, :name)"
+            "INSERT INTO campaigns (id, brand_id, created_by, name) "
+            "VALUES (:id, :brand, :user, :name)"
         ),
         {
             "id": campaign.hex,

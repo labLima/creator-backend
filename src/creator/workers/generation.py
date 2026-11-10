@@ -76,8 +76,8 @@ def _run_text_job(job_id: UUID) -> None:
                 "briefing": input_data["briefing"],
                 "brand_context": {
                     "name": brand.name,
-                    "description": brand.description or "",
-                    "brand_voice": brand.brand_voice or "",
+                    "description": brand.promise or brand.segment or "",
+                    "brand_voice": brand.restrictions or "",
                 },
                 "source_content_id": input_data.get("source_content_id"),
                 "source_content": input_data.get("source_content"),
