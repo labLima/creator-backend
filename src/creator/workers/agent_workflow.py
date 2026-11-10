@@ -1032,6 +1032,8 @@ def _generate_workflow_image(
             unit_of_work.commit()
     if existing is not None and existing.image is not None:
         image_record = existing.image
+        if image_record.model is None or image_record.prompt is None:
+            raise RuntimeError("Workflow image is missing Generation metadata")
         if image_record.metadata.get("scene_review_pending") is True:
             _wait_for_scene_review(run, index, image_record.id, source_event_id)
             return image_record, ImageGenerationResult(
@@ -1083,6 +1085,8 @@ def _generate_workflow_image(
             scene is None
             or scene.workspace_id != run.workspace_id
             or scene.content_id != run.content_id
+            or scene.model is None
+            or scene.prompt is None
         ):
             raise RuntimeError("Approved scene is outside the workflow Content")
         scene_bytes = create_storage_provider(typed_settings).download(

@@ -4,7 +4,11 @@ import hashlib
 import logging
 import time
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from uuid import UUID
+
+from PIL import Image as PillowImage
+from PIL import UnidentifiedImageError
 
 from creator.config import Settings, get_settings
 from creator.core.types import JsonObject
@@ -40,6 +44,8 @@ from creator.services.agents.errors import AgentKickoffError, AgentKickoffErrorC
 from creator.services.agents.factory import create_specialist_executor
 from creator.services.ai.factory import create_image_reviewer
 from creator.services.ai.image_provider import (
+    ImageEditRequest,
+    ImageGenerationEditor,
     ImageGenerationRequest,
     ImageGenerationResult,
     ImageProviderAuthenticationError,
@@ -174,38 +180,144 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
         if composition_requested:
             prompt += SCENE_SUFFIX
         scene_review = work_item.parameters.get("scene_review")
-        approved_scene = (
+        approved_review = (
             scene_review
             if isinstance(scene_review, dict) and scene_review.get("status") == "APPROVED"
             else None
         )
-        if approved_scene is not None:
-            path = approved_scene.get("storage_path")
+        approved_intermediate = (
+            approved_review
+            if approved_review and approved_review.get("stage") == "INTERMEDIATE"
+            else None
+        )
+        approved_final = (
+            approved_review if approved_review and approved_review.get("stage") == "FINAL" else None
+        )
+        if approved_review is not None:
+            path = approved_review.get("storage_path")
             if not isinstance(path, str) or not path.startswith("scene-reviews/"):
                 raise CompositionError("COMPOSITION_SCENE_UNAVAILABLE")
             storage = create_storage_provider(settings)
             scene_bytes = storage.download(path, max_bytes=settings.storage_max_object_bytes)
             result = ImageGenerationResult(
                 scene_bytes,
-                str(approved_scene.get("mime_type")),
-                int(approved_scene.get("width", 0)),
-                int(approved_scene.get("height", 0)),
+                str(approved_review.get("mime_type")),
+                int(approved_review.get("width", 0)),
+                int(approved_review.get("height", 0)),
                 model,
                 prompt,
                 {"scene_review_source_path": path},
             )
         else:
-            result = create_image_generator(settings).generate(
-                ImageGenerationRequest(
-                    prompt=prompt,
-                    model=model,
-                    metadata=_image_request_metadata(work_item),
-                    size=_image_request_size(work_item),
-                    aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
-                    resolution=_image_request_option(work_item, "resolution"),
+            source_image_bytes = None
+            source_image_mime_type = None
+            source_image = work_item.parameters.get("source_image")
+            destination_preset = work_item.parameters.get("destination_preset")
+            if isinstance(request_input, dict) and request_input.get("operation") == "TRANSFORM":
+                if not isinstance(source_image, dict):
+                    raise ImageProviderInvalidResponseError("Source image version is unavailable")
+                source_path = source_image.get("storage_path")
+                source_image_mime_type = source_image.get("mime_type")
+                if (
+                    not isinstance(source_path, str)
+                    or not source_path.startswith("users/")
+                    or source_image_mime_type not in {"image/png", "image/jpeg", "image/webp"}
+                    or destination_preset
+                    not in {"1080x1080", "1080x1350", "1080x1920", "1920x1080"}
+                ):
+                    raise ImageProviderInvalidResponseError("Source image version is invalid")
+                source_image_bytes = create_storage_provider(settings).download(
+                    source_path, max_bytes=settings.storage_max_object_bytes
                 )
-            )
-        if composition_requested:
+                expected_hash = source_image.get("checksum_sha256")
+                if (
+                    expected_hash
+                    and hashlib.sha256(source_image_bytes).hexdigest() != expected_hash
+                ):
+                    raise ImageProviderInvalidResponseError(
+                        "Source image version checksum is invalid"
+                    )
+                if len(source_image_bytes) > settings.storage_max_object_bytes:
+                    raise ImageProviderInvalidResponseError(
+                        "Source image version exceeds size limit"
+                    )
+                try:
+                    with PillowImage.open(BytesIO(source_image_bytes)) as decoded_source:
+                        decoded_source.verify()
+                    with PillowImage.open(BytesIO(source_image_bytes)) as decoded_source:
+                        if decoded_source.format not in {
+                            "PNG",
+                            "JPEG",
+                            "WEBP",
+                        } or decoded_source.size != (
+                            int(source_image.get("width", 0)),
+                            int(source_image.get("height", 0)),
+                        ):
+                            raise ImageProviderInvalidResponseError(
+                                "Source image version metadata is invalid"
+                            )
+                except (UnidentifiedImageError, OSError, ValueError) as error:
+                    raise ImageProviderInvalidResponseError(
+                        "Source image version is invalid"
+                    ) from error
+                safe_brand_context = _authorized_brand_context(work_item) or {}
+                result = ImageGenerationEditor(create_image_generator(settings)).edit(
+                    ImageEditRequest(
+                        source_image=source_image_bytes,
+                        source_mime_type=str(source_image_mime_type),
+                        destination_size=str(destination_preset),
+                        direction=prompt,
+                        brand_context={
+                            key: str(safe_brand_context[key])
+                            for key in ("brand_name", "brand_voice", "brand_description")
+                            if safe_brand_context.get(key)
+                        },
+                        model=model,
+                        metadata=_image_request_metadata(work_item),
+                    )
+                )
+            else:
+                result = create_image_generator(settings).generate(
+                    ImageGenerationRequest(
+                        prompt=prompt,
+                        model=model,
+                        metadata=_image_request_metadata(work_item),
+                        size=_image_request_size(work_item),
+                        aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
+                        resolution=_image_request_option(work_item, "resolution"),
+                    )
+                )
+            if source_image_bytes is not None and isinstance(destination_preset, str):
+                expected_width, expected_height = (
+                    int(part) for part in destination_preset.split("x")
+                )
+                if (result.width, result.height) != (expected_width, expected_height):
+                    raise ImageProviderInvalidResponseError(
+                        "Provider returned invalid destination dimensions"
+                    )
+                try:
+                    with PillowImage.open(BytesIO(result.image_bytes)) as output:
+                        output.verify()
+                    with PillowImage.open(BytesIO(result.image_bytes)) as output:
+                        expected_mime_type = {
+                            "PNG": "image/png",
+                            "JPEG": "image/jpeg",
+                            "WEBP": "image/webp",
+                        }.get(output.format or "")
+                        if (
+                            output.format not in {"PNG", "JPEG", "WEBP"}
+                            or result.mime_type != expected_mime_type
+                            or output.size != (expected_width, expected_height)
+                            or len(result.image_bytes) > settings.storage_max_object_bytes
+                        ):
+                            raise ImageProviderInvalidResponseError(
+                                "Provider returned invalid destination image"
+                            )
+                except (UnidentifiedImageError, OSError, ValueError) as error:
+                    raise ImageProviderInvalidResponseError(
+                        "Provider returned invalid destination image"
+                    ) from error
+        if composition_requested and approved_final is None:
             if work_item.brand_id is None:
                 raise CompositionError("COMPOSITION_BRAND_UNAVAILABLE")
             assert isinstance(request_input, dict)
@@ -221,15 +333,15 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     brand_id=work_item.brand_id,
                     user_id=work_item.requested_by_user.id,
                     settings=settings,
-                    scene_review_approved=approved_scene is not None,
+                    scene_review_approved=approved_intermediate is not None,
                 )
             except CompositionError as error:
                 if (
                     error.code != "COMPOSITION_TEXT_CHECK_INCONCLUSIVE"
-                    or approved_scene is not None
+                    or approved_intermediate is not None
                 ):
                     raise
-                _hold_scene_for_review(work_item, result, settings)
+                _hold_scene_for_review(work_item, result, settings, stage="INTERMEDIATE")
                 _log(
                     "image_generation_waiting_for_scene_review",
                     request_id=parsed_request_id,
@@ -237,8 +349,40 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     attempt=work_item.job.attempt_count,
                 )
                 return
+        if (
+            isinstance(request_input, dict)
+            and request_input.get("operation") == "TRANSFORM"
+            and approved_review is None
+        ):
+            _hold_scene_for_review(work_item, result, settings)
+            _log(
+                "image_variation_waiting_for_human_review",
+                request_id=parsed_request_id,
+                job_id=parsed_job_id,
+                attempt=work_item.job.attempt_count,
+            )
+            return
+        if (
+            isinstance(request_input, dict)
+            and request_input.get("operation") == "TRANSFORM"
+            and approved_intermediate is not None
+        ):
+            _hold_scene_for_review(work_item, result, settings, stage="FINAL")
+            _log(
+                "image_variation_waiting_for_human_review",
+                request_id=parsed_request_id,
+                job_id=parsed_job_id,
+                attempt=work_item.job.attempt_count,
+            )
+            return
         image_metadata = dict(result.metadata)
         image_metadata.update(artist_metadata)
+        if isinstance(request_input, dict) and request_input.get("operation") == "TRANSFORM":
+            source_image = work_item.parameters.get("source_image")
+            if isinstance(source_image, dict):
+                image_metadata["source_image_id"] = source_image.get("id")
+                image_metadata["source_version_number"] = source_image.get("version_number")
+            image_metadata["destination_preset"] = work_item.parameters.get("destination_preset")
         if composition_requested or (
             isinstance(request_input, dict) and request_input.get("review_image") is True
         ):
@@ -428,10 +572,17 @@ def cleanup_rejected_scene_objects(*, limit: int = 100) -> int:
 
 
 def _hold_scene_for_review(
-    work_item: ImageGenerationWorkItem, result: ImageGenerationResult, settings: Settings
+    work_item: ImageGenerationWorkItem,
+    result: ImageGenerationResult,
+    settings: Settings,
+    *,
+    stage: str = "FINAL",
 ) -> None:
     extension = image_extension_for_mime_type(result.mime_type)
-    path = f"scene-reviews/{work_item.job.workspace_id}/{work_item.job.id}.{extension}"
+    stage_suffix = "-intermediate" if stage == "INTERMEDIATE" else ""
+    path = (
+        f"scene-reviews/{work_item.job.workspace_id}/{work_item.job.id}{stage_suffix}.{extension}"
+    )
     checksum = hashlib.sha256(result.image_bytes).hexdigest()
     storage = create_storage_provider(settings)
     try:
@@ -458,6 +609,7 @@ def _hold_scene_for_review(
             mime_type=result.mime_type,
             width=result.width,
             height=result.height,
+            stage=stage,
         )
         unit_of_work.commit()
 

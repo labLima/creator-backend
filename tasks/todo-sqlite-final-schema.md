@@ -3,7 +3,7 @@
 > Checklist de execução de [`plan-sqlite-final-schema.md`](plan-sqlite-final-schema.md).
 > Issues filhas no board `SHC` (Shared Context): `SHC-2` em diante, filhas de `SHC-1`.
 > Issue global: [#159](https://github.com/labLima/creator-backend/issues/159).
-> Rastreabilidade local: [docs/issues/0057](../docs/issues/0057-sqlite-final-schema-alignment.md).
+> Rastreabilidade local: [docs/issues/0058](../docs/issues/0058-sqlite-final-schema-alignment.md).
 >
 > Gates por tarefa: `XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python`,
 > `... make security ...`, `... make e2e ...`. PRs contra `dev`.

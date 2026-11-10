@@ -786,7 +786,14 @@ class SqlAlchemyImageGenerationRepository:
         return _job_record(job, content_id)
 
     def mark_scene_review_pending(
-        self, job_id: UUID, *, storage_path: str, mime_type: str, width: int, height: int
+        self,
+        job_id: UUID,
+        *,
+        storage_path: str,
+        mime_type: str,
+        width: int,
+        height: int,
+        stage: str = "FINAL",
     ) -> None:
         job = self._locked_job(job_id)
         if job.status != GenerationJobStatus.PROCESSING:
@@ -799,6 +806,7 @@ class SqlAlchemyImageGenerationRepository:
             "mime_type": mime_type,
             "width": width,
             "height": height,
+            "stage": stage,
         }
         generation.parameters = parameters
         job.started_at = None

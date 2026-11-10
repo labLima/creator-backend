@@ -17,6 +17,7 @@ from creator.content.ports import (
     ContentTextVersionRecord,
     GeneratedTextContentRecord,
     ImageRecord,
+    ImportedImageMetadata,
 )
 from creator.core.pagination import Page, PageRequest
 from creator.core.types import JsonObject
@@ -91,6 +92,27 @@ def _text_version_record(
 class SqlAlchemyContentRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def add_imported_image(
+        self, *, workspace_id: UUID, content_id: UUID, image: ImportedImageMetadata
+    ) -> ImageRecord:
+        row = content_tables.Image(
+            workspace_id=workspace_id,
+            content_id=content_id,
+            generation_id=None,
+            version_number=1,
+            storage_path=image.storage_path,
+            public_url=image.public_url,
+            mime_type=image.mime_type,
+            width=image.width,
+            height=image.height,
+            model=None,
+            prompt=None,
+            metadata_json=image.metadata,
+        )
+        self._session.add(row)
+        flush_or_raise(self._session)
+        return _image_record(row)
 
     def add(
         self,

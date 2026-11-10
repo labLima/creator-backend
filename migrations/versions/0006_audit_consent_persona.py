@@ -13,7 +13,7 @@ from creator.infrastructure.database.portable_enums import enum_column
 from creator.infrastructure.database.types import json_type, timestamp_tz, uuid_pk
 
 revision = "0006_audit_consent_persona"
-down_revision = "0005_content_text_versions"
+down_revision = "0006_imported_image_versions"
 branch_labels = None
 depends_on = None
 

@@ -1,4 +1,4 @@
-# 0057 — Alinhamento do schema SQLite ao Creator_DB_final.sql
+# 0058 — Alinhamento do schema SQLite ao Creator_DB_final.sql
 
 - Status: planejado
 - ADR primária: [ADR-021](../adr/0021-sqlite-default-database.md) (SQLite como banco padrão) e [ADR-015](../adr/0015-database-diagram-alignment.md) (alinhamento ao diagrama)

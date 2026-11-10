@@ -79,15 +79,15 @@ class Image(Base):
         nullable=False,
     )
     content_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
-    generation_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
+    generation_id: Mapped[UUID | None] = mapped_column(uuid_pk, nullable=True)
     version_number: Mapped[int] = mapped_column(nullable=False)
     storage_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     public_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     width: Mapped[int] = mapped_column(nullable=False)
     height: Mapped[int] = mapped_column(nullable=False)
-    model: Mapped[str] = mapped_column(String(255), nullable=False)
-    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_json: Mapped[dict[str, object]] = mapped_column(
         "metadata",
         json_type,

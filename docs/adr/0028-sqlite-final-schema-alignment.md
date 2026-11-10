@@ -2,9 +2,9 @@
 
 - Status: accepted
 - Fonte: decisão da Fase 2 (schema), 2026-11-09
-- Tracker: [docs/issues/0057](../issues/0057-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159)
+- Tracker: [docs/issues/0058](../issues/0058-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159)
 - ADRs relacionadas: [ADR-020](0020-self-hosted-authentication.md) (autenticação própria), [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão), [ADR-015](0015-database-diagram-alignment.md) (alinhamento ao diagrama)
-- Issues de implementação: `SHC-2` a `SHC-20` no board `SHC` do Shared Context; plano em [`tasks/plan-sqlite-final-schema.md`](../../tasks/plan-sqlite-final-schema.md)
+- Issues de implementação: `SHC-2` a `SHC-26` no board `SHC` do Shared Context; plano em [`tasks/plan-sqlite-final-schema.md`](../../tasks/plan-sqlite-final-schema.md)
 
 ## Contexto
 
@@ -55,9 +55,9 @@ volume, então precisa de condição explícita de inversão.
 
 ### 1. Incremental agora, baseline consolidada no fim, com condição de inversão
 
-O trabalho usa revisões Alembic encadeadas a partir da head atual (`0005_content_text_versions`),
-uma por tarefa, e a fase final regenera `0001_sqlite_baseline` e remove as revisões
-intermediárias. A prova de equivalência é `make snapshot-contract --check` sem diff.
+O trabalho usa revisões Alembic encadeadas a partir da head da `dev`
+(`0006_imported_image_versions`, após a integração de 2026-11-10), uma por tarefa, e a fase final
+regenera `0001_sqlite_baseline` e remove as revisões intermediárias. A prova de equivalência é `make snapshot-contract --check` sem diff.
 
 **Condição de inversão:** se existir banco com dados a preservar, a consolidação fica proibida e
 a estratégia vira migração incremental permanente, com backfill obrigatório também nas 31
@@ -191,7 +191,7 @@ cobertos por (a) ou (b).
 
 ### 12. Rastreabilidade
 
-ADR-028 é a decisão primária desta frente; ADR-015 e ADR-021 são relacionadas. `docs/issues/0057`
+ADR-028 é a decisão primária desta frente; ADR-015 e ADR-021 são relacionadas. `docs/issues/0058`
 e o tracker passam a apontar ADR-028 como primária. A ADR-029 (aposentadoria do legado) é criada
 em T16, não antes, e o conjunto de 71 tabelas só reduz depois dela.
 

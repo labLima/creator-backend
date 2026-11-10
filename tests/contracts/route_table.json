@@ -488,6 +488,14 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/api/v1/contents/import-image",
+    "operation_id": "importContentImage",
+    "tags": [
+      "Contents"
+    ]
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/contents/{id}",
     "operation_id": "deleteContentCanonical",

@@ -96,7 +96,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
    verificação de consumidores. Tabela retida precisa de justificativa e prazo escritos.
 15. **Rastreabilidade**: ADR-028 e ADR-029 em `docs/adr/`, indexadas em
     `docs/ADR-ISSUE-TRACKER.md`; épico local
-    [0057](../docs/issues/0057-sqlite-final-schema-alignment.md) e issue
+    [0058](/../docs/issues/0058-sqlite-final-schema-alignment.md) e issue
     [#159](https://github.com/labLima/creator-backend/issues/159); issues filhas no board `SHC`
     do Shared Context, uma por tarefa (cada uma declara o workspace
     `/home/emanueljtrodrigues/Documents/LeFil/creator-backend`). `docs/openapi.yaml` é
@@ -132,12 +132,12 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ### T1 — ADR-028, épico e tracker
 
-**Descrição:** Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade em `tests/test_schema_inventory.py`, convenção de nomes de índice, gate `make snapshot-contract`, política de enums e de constraints portáveis) e amarrar a rastreabilidade do épico 0057 / #159 às ADR-021 e ADR-015.
+**Descrição:** Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade em `tests/test_schema_inventory.py`, convenção de nomes de índice, gate `make snapshot-contract`, política de enums e de constraints portáveis) e amarrar a rastreabilidade do épico 0058 / #159 às ADR-021 e ADR-015.
 
 **Critérios de aceite:**
 - [ ] `docs/adr/0028-sqlite-final-schema-alignment.md` aceita, cobrindo as decisões 1–15.
 - [ ] `docs/ADR-ISSUE-TRACKER.md` lista ADR-028 com tracker e issues de implementação.
-- [ ] Épico [0057](../docs/issues/0057-sqlite-final-schema-alignment.md) aponta para o plano e para as issues filhas.
+- [ ] Épico [0058](/../docs/issues/0058-sqlite-final-schema-alignment.md) aponta para o plano e para as issues filhas.
 - [ ] `tasks/plan.md` e `tasks/todo.md` (históricos) permanecem intocados.
 
 **Verificação:**
@@ -145,7 +145,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `git diff --exit-code tests/contracts/` (fase sem mudança de schema).
 
 **Dependências:** Nenhuma
-**Arquivos prováveis:** `docs/adr/0028-sqlite-final-schema-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0057-sqlite-final-schema-alignment.md`
+**Arquivos prováveis:** `docs/adr/0028-sqlite-final-schema-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0058-sqlite-final-schema-alignment.md`
 **Tamanho:** S
 
 ### T2 — Comparador único e teste de paridade com orçamento
@@ -228,7 +228,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Tamanho:** M
 
 ### Checkpoint — Fase 0
-- [ ] ADR-028 aceita e tracker consistente; épico 0057 alinhado.
+- [ ] ADR-028 aceita e tracker consistente; épico 0058 alinhado.
 - [ ] Comparador único em `final_schema.py`, usado pelo script e pelos testes.
 - [ ] Orçamento de paridade com as oito dimensões, em igualdade com o estado atual.
 - [ ] `snapshot-contract --check` no `make check`, com índices no fixture.
@@ -624,13 +624,13 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ### T18 — Fechamento do épico
 
-**Descrição:** Regenerar relatório de paridade e `docs/openapi.yaml`, atualizar tracker, épico 0057 e issue #159 com evidência de CI, e rodar os três gates finais.
+**Descrição:** Regenerar relatório de paridade e `docs/openapi.yaml`, atualizar tracker, épico 0058 e issue #159 com evidência de CI, e rodar os três gates finais.
 
 **Critérios de aceite:**
 - [ ] `docs/openapi.yaml` em paridade com `app.openapi()`.
 - [ ] Relatório de paridade mostrando 54/54 + 4 extensões e zero divergência não declarada.
 - [ ] Tracker, épico e #159 com critérios marcados e evidência.
-- [ ] Critérios de aceite de `docs/issues/0057` revisados um a um.
+- [ ] Critérios de aceite de `docs/issues/0058` revisados um a um.
 
 **Verificação:**
 - [ ] `XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python`.
@@ -638,7 +638,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `XDG_DATA_HOME=$PWD/.local/xdg make e2e PYTHON=.venv/bin/python`.
 
 **Dependências:** T17
-**Arquivos prováveis:** `docs/openapi.yaml`, `docs/migration/schema-final-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0057-sqlite-final-schema-alignment.md`
+**Arquivos prováveis:** `docs/openapi.yaml`, `docs/migration/schema-final-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0058-sqlite-final-schema-alignment.md`
 **Tamanho:** S
 
 ### Checkpoint — Fase 6 (final)
@@ -833,14 +833,14 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
   {
     "id": "T1",
     "title": "ADR-028, épico e tracker",
-    "description": "Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade, convenção de índices, gate de snapshot, enums e constraints portáveis) e amarrar épico 0057 e #159 às ADR-021/015.",
+    "description": "Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade, convenção de índices, gate de snapshot, enums e constraints portáveis) e amarrar épico 0058 e #159 às ADR-021/015.",
     "priority": "high",
     "depends_on": [],
     "phase": "Fase 0 — Contrato, paridade e portabilidade",
     "files": [
       "docs/adr/0028-sqlite-final-schema-alignment.md",
       "docs/ADR-ISSUE-TRACKER.md",
-      "docs/issues/0057-sqlite-final-schema-alignment.md"
+      "docs/issues/0058-sqlite-final-schema-alignment.md"
     ],
     "size": "S"
   },
@@ -1118,7 +1118,7 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
   {
     "id": "T18",
     "title": "Fechamento do épico",
-    "description": "Regenerar relatório de paridade e OpenAPI, atualizar tracker, épico 0057 e #159 com evidência de CI e rodar os três gates finais.",
+    "description": "Regenerar relatório de paridade e OpenAPI, atualizar tracker, épico 0058 e #159 com evidência de CI e rodar os três gates finais.",
     "priority": "high",
     "depends_on": [
       "T17"
