@@ -956,22 +956,24 @@ CREATE TABLE personas (
 )
 
 CREATE TABLE plan_items (
+	id CHAR(32) NOT NULL,
 	plan_id CHAR(32) NOT NULL,
-	gateway_id VARCHAR(128),
-	provider_plan_item_id VARCHAR(64),
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
 	name VARCHAR(64) NOT NULL,
-	description TEXT,
+	description VARCHAR,
 	quantity INTEGER DEFAULT 1 NOT NULL,
 	cycles INTEGER,
-	pricing_scheme_type VARCHAR(20),
-	price_cents INTEGER NOT NULL,
+	pricing_scheme_type VARCHAR(9),
+	price_cents BIGINT NOT NULL,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
 	price_brackets JSON,
-	status VARCHAR(20),
-	id CHAR(32) NOT NULL,
+	status VARCHAR(8) DEFAULT 'ACTIVE' NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
+	CONSTRAINT chk_plan_items_price_nonnegative CHECK (price_cents IS NULL OR price_cents >= 0),
+	CONSTRAINT chk_plan_items_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
 	FOREIGN KEY(plan_id) REFERENCES plans (id) ON DELETE CASCADE
 )
 
@@ -989,18 +991,29 @@ CREATE TABLE plan_payment_methods (
 )
 
 CREATE TABLE plans (
-	code VARCHAR(32) NOT NULL,
-	type VARCHAR(20) NOT NULL,
-	name VARCHAR(64) NOT NULL,
-	description TEXT,
-	metadata JSON DEFAULT '{}' NOT NULL,
-	is_active BOOLEAN DEFAULT true NOT NULL,
 	id CHAR(32) NOT NULL,
+	name VARCHAR(64) NOT NULL,
+	type VARCHAR(10) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	price_cents BIGINT NOT NULL,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	credits_per_month INTEGER NOT NULL,
+	credits_validity_days INTEGER DEFAULT 30 NOT NULL,
+	billing_interval VARCHAR(5) DEFAULT 'MONTH' NOT NULL,
+	interval_count INTEGER DEFAULT 1 NOT NULL,
+	billing_type VARCHAR(8) DEFAULT 'PREPAID' NOT NULL,
+	minimum_price_cents BIGINT,
+	trial_period_days INTEGER,
+	statement_descriptor VARCHAR(22),
+	status VARCHAR(8) DEFAULT 'ACTIVE' NOT NULL,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	UNIQUE (code)
+	CONSTRAINT chk_plans_cents_nonnegative CHECK (price_cents >= 0 AND (minimum_price_cents IS NULL OR minimum_price_cents >= 0)),
+	CONSTRAINT chk_plans_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]')
 )
 
 CREATE TABLE post_designs (
@@ -1614,7 +1627,13 @@ CREATE INDEX ix_personas_brand_id ON personas (brand_id)
 
 CREATE UNIQUE INDEX uq_personas_id_brand_id ON personas (id, brand_id)
 
+CREATE INDEX idx_m8_plan_items_plan_id ON plan_items (plan_id)
+
+CREATE UNIQUE INDEX uq_plan_items_provider_external_id ON plan_items (provider, external_id)
+
 CREATE UNIQUE INDEX uq_plan_payment_methods_plan_id_method ON plan_payment_methods (plan_id, method)
+
+CREATE UNIQUE INDEX uq_plans_provider_external_id ON plans (provider, external_id)
 
 CREATE INDEX ix_post_designs_post_id ON post_designs (post_id)
 

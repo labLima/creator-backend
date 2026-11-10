@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **431**
+- Divergências: **395**
 
 ## Divergências por categoria
 
@@ -24,21 +24,21 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 91 |
-| `column_extra` | 57 |
-| `nullability` | 3 |
-| `width` | 16 |
+| `column_missing` | 75 |
+| `column_extra` | 51 |
+| `nullability` | 2 |
+| `width` | 15 |
 | `kind` | 3 |
-| `enum` | 20 |
+| `enum` | 17 |
 | `unique_missing` | 1 |
-| `unique_extra` | 4 |
-| `index_missing` | 67 |
+| `unique_extra` | 3 |
+| `index_missing` | 64 |
 | `index_extra` | 1 |
-| `index_name` | 20 |
+| `index_name` | 19 |
 | `fk_missing` | 18 |
 | `fk_extra` | 23 |
 | `fk_ondelete` | 16 |
-| `check_missing` | 38 |
+| `check_missing` | 34 |
 | `check_extra` | 30 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **173**.
+Total: **149**.
 
-### `column_missing` (91)
+### `column_missing` (75)
 
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
@@ -97,22 +97,6 @@ Total: **173**.
 - `orders.code`
 - `orders.external_id`
 - `orders.provider`
-- `plan_items.currency`
-- `plan_items.external_id`
-- `plan_items.provider`
-- `plans.billing_interval`
-- `plans.billing_type`
-- `plans.credits_per_month`
-- `plans.credits_validity_days`
-- `plans.currency`
-- `plans.external_id`
-- `plans.interval_count`
-- `plans.minimum_price_cents`
-- `plans.price_cents`
-- `plans.provider`
-- `plans.statement_descriptor`
-- `plans.status`
-- `plans.trial_period_days`
 - `provider_disputes.amount_cents`
 - `provider_disputes.currency`
 - `provider_disputes.external_id`
@@ -154,7 +138,7 @@ Total: **173**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (57)
+### `column_extra` (51)
 
 - `charges.deleted_at`
 - `charges.provider_card_id`
@@ -173,12 +157,6 @@ Total: **173**.
 - `orders.closed`
 - `orders.deleted_at`
 - `orders.provider_order_id`
-- `plan_items.deleted_at`
-- `plan_items.gateway_id`
-- `plan_items.provider_plan_item_id`
-- `plans.code`
-- `plans.description`
-- `plans.is_active`
 - `provider_disputes.code`
 - `provider_disputes.deleted_at`
 - `provider_disputes.provider_dispute_id`
@@ -214,13 +192,12 @@ Total: **173**.
 - `workspace_credit_transactions.transaction_type`
 - `workspace_credit_transactions.updated_at`
 
-### `nullability` (3)
+### `nullability` (2)
 
 - `invoices.subscription_id: final NOT NULL, model nullable`
-- `plan_items.status: final NOT NULL, model nullable`
 - `subscriptions.installments: final NOT NULL, model nullable`
 
-### `width` (16)
+### `width` (15)
 
 - `charges.amount_cents: final bigint, model integer`
 - `charges.status: final unbounded varchar, model varchar(20)`
@@ -235,7 +212,6 @@ Total: **173**.
 - `orders.amount_cents: final bigint, model integer`
 - `orders.discount_cents: final bigint, model integer`
 - `orders.subtotal_cents: final bigint, model integer`
-- `plan_items.price_cents: final bigint, model integer`
 - `refunds.amount_cents: final bigint, model integer`
 - `subscriptions.minimum_price_cents: final bigint, model integer`
 
@@ -250,9 +226,9 @@ Total: **173**.
 
 ## 4. Enums
 
-Total: **20**.
+Total: **17**.
 
-### `enum` (20)
+### `enum` (17)
 
 - `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
 - `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
@@ -260,9 +236,6 @@ Total: **20**.
 - `invoices.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
 - `invoices.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'SCHEDULED', 'FAILED'])`
 - `orders.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'FAILED'])`
-- `plan_items.pricing_scheme_type: model has no vocabulary (expected ['FLAT', 'TIERED', 'VOLUME', 'STAIRSTEP'])`
-- `plan_items.status: model has no vocabulary (expected ['ACTIVE', 'INACTIVE', 'ARCHIVED'])`
-- `plans.type: model has no vocabulary (expected ['FREE', 'STARTER', 'PRO', 'STUDIO', 'ENTERPRISE'])`
 - `provider_disputes.status: model has no vocabulary (expected ['OPEN', 'UNDER_REVIEW', 'RESOLVED'])`
 - `provider_idempotency_keys.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
 - `provider_idempotency_keys.status: model has no vocabulary (expected ['STARTED', 'COMPLETED', 'FAILED'])`
@@ -277,9 +250,9 @@ Total: **20**.
 
 ## 5. Índices
 
-Total: **88**.
+Total: **84**.
 
-### `index_missing` (67)
+### `index_missing` (64)
 
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
 - `charges: (billing_account_id, status)`
@@ -313,9 +286,6 @@ Total: **88**.
 - `orders: (workspace_id)`
 - `orders: UNIQUE (id, workspace_id)`
 - `orders: UNIQUE (provider, external_id)`
-- `plan_items: (plan_id)`
-- `plan_items: UNIQUE (provider, external_id)`
-- `plans: UNIQUE (provider, external_id)`
 - `provider_disputes: (billing_account_id) WHERE billing_account_id is not null`
 - `provider_disputes: (charge_id)`
 - `provider_disputes: (status, resolved_at)`
@@ -353,7 +323,7 @@ Total: **88**.
 
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (20)
+### `index_name` (19)
 
 - `charges: missing index name idx_m8_charges_payment_method_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
@@ -364,7 +334,6 @@ Total: **88**.
 - `image_resizes: missing index name idx_image_resizes_source_image`
 - `image_resizes: missing index name uq_image_resizes_storage`
 - `orders: missing index name idx_m8_orders_credit_package_id`
-- `plan_items: missing index name idx_m8_plan_items_plan_id`
 - `provider_disputes: missing index name idx_m8_provider_disputes_billing_account_id`
 - `refunds: missing index name idx_m8_refunds_requested_by`
 - `subscription_history: missing index name idx_m8_subscription_history_changed_by`
@@ -448,9 +417,9 @@ Total: **57**.
 
 ## 7. CHECK constraints
 
-Total: **68**.
+Total: **64**.
 
-### `check_missing` (38)
+### `check_missing` (34)
 
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
@@ -472,10 +441,6 @@ Total: **68**.
 - `unmapped:orders.chk_orders_amount_consistency`
 - `unmapped:orders.chk_orders_cents_nonnegative`
 - `unmapped:orders.chk_orders_currency_format`
-- `unmapped:plan_items.chk_plan_items_currency_format`
-- `unmapped:plan_items.chk_plan_items_price_nonnegative`
-- `unmapped:plans.chk_plans_cents_nonnegative`
-- `unmapped:plans.chk_plans_currency_format`
 - `unmapped:provider_disputes.chk_provider_disputes_amount_nonnegative`
 - `unmapped:provider_disputes.chk_provider_disputes_currency_format`
 - `unmapped:provider_disputes.chk_provider_disputes_resolved_at`

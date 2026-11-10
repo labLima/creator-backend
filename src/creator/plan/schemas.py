@@ -5,6 +5,7 @@ Moved from `creator.api.dtos`; field definitions are unchanged.
 
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID
 
 from pydantic import Field
@@ -19,6 +20,11 @@ class PlanCreateRequest(CreatorDTO):
     description: str | None = None
     metadata: dict[str, object] = Field(default_factory=dict)
     is_active: bool = True
+    price_cents: int = Field(default=0, ge=0)
+    credits_per_month: int = Field(default=0, ge=0)
+    currency: str = Field(default="BRL", pattern=r"^[A-Z]{3}$")
+    provider: Literal["PAGARME", "STRIPE"] = "PAGARME"
+    external_id: str | None = Field(default=None, max_length=64)
 
 
 class PlanItemCreateRequest(CreatorDTO):
@@ -30,7 +36,10 @@ class PlanItemCreateRequest(CreatorDTO):
     pricing_scheme_type: str | None = Field(default=None, max_length=20)
     price_cents: int = Field(ge=0)
     price_brackets: dict[str, object] | None = None
-    status: str | None = Field(default=None, max_length=20)
+    status: Literal["ACTIVE", "INACTIVE", "ARCHIVED"] | None = None
+    provider: Literal["PAGARME", "STRIPE"] = "PAGARME"
+    external_id: str | None = Field(default=None, max_length=64)
+    currency: str = Field(default="BRL", pattern=r"^[A-Z]{3}$")
 
 
 class PlanItemUpdateRequest(CreatorDTO):

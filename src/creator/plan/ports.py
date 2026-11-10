@@ -34,6 +34,11 @@ class PlanRepository(Protocol):
         description: str | None,
         metadata: dict[str, object],
         is_active: bool,
+        price_cents: int = 0,
+        credits_per_month: int = 0,
+        currency: str = "BRL",
+        provider: str = "PAGARME",
+        external_id: str | None = None,
     ) -> PlanRecord: ...
     def update(self, *, plan_id: UUID, fields: dict[str, object]) -> PlanRecord: ...
     def soft_delete(self, *, plan_id: UUID) -> None: ...
@@ -71,6 +76,9 @@ class PlanItemRepository(Protocol):
         price_cents: int,
         price_brackets: dict[str, object] | None,
         status: str | None,
+        provider: str = "PAGARME",
+        external_id: str | None = None,
+        currency: str = "BRL",
     ) -> PlanItemRecord: ...
     def update(self, *, item_id: UUID, fields: dict[str, object]) -> PlanItemRecord: ...
     def soft_delete(self, *, item_id: UUID) -> None: ...

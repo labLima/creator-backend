@@ -294,7 +294,23 @@ T15 (SHC-16), fatia B1 concluída — contas, endereços e cartões:
   fatia que reescrever cada tabela.
 - Relatório: **431 divergências** (501 antes da B1).
 
-Próximo passo: B2 (`plans`/`plan_items`/`plan_payment_methods`), depois B3–B5,
+T15 (SHC-16), fatia B2 concluída — planos e itens:
+
+- `plans`: colunas finais (`provider`, `external_id`, `price_cents`,
+  `currency`, `credits_per_month`, `credits_validity_days`,
+  `billing_interval`, `interval_count`, `billing_type`,
+  `minimum_price_cents`, `trial_period_days`, `statement_descriptor`,
+  `status`); `code`/`description`/`is_active` migram para `metadata`/`status`
+  e continuam no contrato do record.
+- `plan_items`: `provider`, `external_id`, `currency`, `pricing_scheme_type`
+  e `status` como enum; `gateway_id`/`provider_plan_item_id` viram
+  `external_id`; `deleted_at` sai (delete físico).
+- `0021_plan_alignment` com backfill e downgrade funcional;
+  `tests/test_plan_alignment_migration.py` cobre ida e volta.
+- CHECK_MAP ganha os 4 CHECKs do lote; CHECKs de enum ficam adiados.
+- Relatório: **395 divergências** (431 antes da B2).
+
+Próximo passo: B3 (`subscriptions`/`subscription_history`), depois B4/B5,
 T20, T16, T17 e T18.
 
 ## Critérios de aceite
