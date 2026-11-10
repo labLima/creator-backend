@@ -7,7 +7,7 @@
 - Plano: [tasks/plan-sqlite-final-schema.md](../../tasks/plan-sqlite-final-schema.md)
 - Checklist: [tasks/todo-sqlite-final-schema.md](../../tasks/todo-sqlite-final-schema.md)
 - Board local: projeto `SHC` do Shared Context (`SHC-1` e filhas)
-- Branch: `feat/sqlite-final-schema-alignment`
+- Branch: `feat/sqlite`
 
 ## Contexto
 
