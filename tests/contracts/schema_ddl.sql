@@ -1171,21 +1171,25 @@ CREATE TABLE provider_webhook_events (
 )
 
 CREATE TABLE refunds (
-	billing_account_id CHAR(32) NOT NULL,
-	invoice_id CHAR(32),
-	provider_charge_id VARCHAR(64),
-	provider_refund_id VARCHAR(64),
-	amount_cents INTEGER NOT NULL,
-	currency VARCHAR(3) NOT NULL,
-	reason TEXT,
-	status VARCHAR(20) NOT NULL,
 	id CHAR(32) NOT NULL,
+	charge_id CHAR(32) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	amount_cents BIGINT NOT NULL,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	reason_code VARCHAR(16),
+	status VARCHAR(9) NOT NULL,
+	requested_by CHAR(32),
+	processed_at DATETIME,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id),
-	FOREIGN KEY(invoice_id) REFERENCES invoices (id)
+	CONSTRAINT chk_refunds_amount_nonnegative CHECK (amount_cents >= 0),
+	CONSTRAINT chk_refunds_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
+	CONSTRAINT chk_refunds_processed_by_status CHECK ((status = 'PENDING') = (processed_at IS NULL)),
+	FOREIGN KEY(charge_id) REFERENCES charges (id) ON DELETE RESTRICT,
+	FOREIGN KEY(requested_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE settings (
@@ -1690,6 +1694,14 @@ CREATE INDEX ix_provider_webhook_events_resource_id ON provider_webhook_events (
 CREATE INDEX ix_provider_webhook_events_status_received_at ON provider_webhook_events (status, received_at)
 
 CREATE UNIQUE INDEX uq_provider_webhook_events_provider_external_id ON provider_webhook_events (provider, external_id)
+
+CREATE INDEX idx_m8_refunds_requested_by ON refunds (requested_by) WHERE requested_by IS NOT NULL
+
+CREATE INDEX ix_refunds_charge_id ON refunds (charge_id)
+
+CREATE INDEX ix_refunds_status ON refunds (status)
+
+CREATE UNIQUE INDEX uq_refunds_provider_external_id ON refunds (provider, external_id)
 
 CREATE INDEX ix_settings_user_id ON settings (user_id)
 

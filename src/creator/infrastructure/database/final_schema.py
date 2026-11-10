@@ -220,6 +220,18 @@ CHECK_MAP: Final[dict[str, tuple[str, str]]] = {
         "billing_payment_methods.chk_billing_payment_methods_exp_month",
         "exp_month is null or exp_month between 1 and 12",
     ),
+    "refunds.chk_refunds_amount_nonnegative": (
+        "refunds.chk_refunds_amount_nonnegative",
+        "amount_cents >= 0",
+    ),
+    "refunds.chk_refunds_currency_format": (
+        "refunds.chk_refunds_currency_format",
+        "currency glob '[a-z][a-z][a-z]'",
+    ),
+    "refunds.chk_refunds_processed_by_status": (
+        "refunds.chk_refunds_processed_by_status",
+        "(status = 'pending') = (processed_at is null)",
+    ),
     "provider_disputes.chk_provider_disputes_amount_nonnegative": (
         "provider_disputes.chk_provider_disputes_amount_nonnegative",
         "amount_cents is null or amount_cents >= 0",

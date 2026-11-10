@@ -357,7 +357,17 @@ T15 (SHC-16), fatia B4c — provider_webhook_events:
 - `0025_provider_webhook` com backfill/dedupe e downgrade funcional.
 - Relatório: **281 divergências** (291 antes).
 
-Próximo passo: orders/invoices/charges/refunds, B5, T20, T16, T17 e T18.
+T15 (SHC-16), fatia B4d — refunds:
+
+- `charge_id` NOT NULL (derivado de `provider_charge_id`), `provider`,
+  `external_id` (de `provider_refund_id`), `reason_code` enum e `status`
+  enum; `billing_account_id`/`invoice_id`/`provider_charge_id`/`reason` saem;
+  CHECKs de centavos/moeda/processed_by_status e índices do dump.
+- `0026_refund_alignment` com backfill e downgrade funcional; schema aceita
+  `charge_id` e mantém `reason` no record.
+- Relatório: **253 divergências** (281 antes).
+
+Próximo passo: orders/invoices/charges, B5, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

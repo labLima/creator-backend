@@ -34,7 +34,12 @@ def create_refund(
     ):
         raise not_found("Billing account")
     data = payload.model_dump()
-    data["status"] = "pending"
+    data.pop("billing_account_id", None)
+    data.pop("invoice_id", None)
+    data["reason_code"] = (
+        str(data.pop("reason")).upper() if data.get("reason") is not None else None
+    )
+    data["status"] = "PENDING"
     item = uow.refunds.add(fields=data)
     uow.commit()
 
