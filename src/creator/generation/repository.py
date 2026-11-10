@@ -10,7 +10,10 @@ from sqlalchemy import Integer, Select, and_, asc, desc, func, select, update
 from sqlalchemy import cast as sql_cast
 from sqlalchemy.orm import Session
 
-import creator.generation.models as generation_models
+import creator.brand.models as brand_tables
+import creator.content_plan.models as content_plan_tables
+import creator.media.models as media_tables
+import creator.post.models as post_tables
 import creator.workspace.models as workspace_models
 from creator.content import models as content_tables
 from creator.content.ports import ImageMetadata, ImageRecord
@@ -45,16 +48,35 @@ from creator.user.ports import UserRecord
 from creator.workspace import models as workspace_tables
 
 
-def _generated_image_record(row: generation_models.GeneratedImage) -> GeneratedImageRecord:
+def _generated_image_record(
+    row: media_tables.GeneratedImage,
+    *,
+    workspace_id: UUID,
+    design_id: UUID,
+    ratio: str,
+) -> GeneratedImageRecord:
+    signed_url = (
+        f"storage://{row.storage_bucket}/{row.storage_key}"
+        if row.storage_bucket and row.storage_key
+        else None
+    )
+    resolution = (
+        f"{row.width}x{row.height}" if row.width is not None and row.height is not None else None
+    )
     return GeneratedImageRecord(
         id=row.id,
-        workspace_id=row.workspace_id,
-        design_structure_id=row.design_structure_id,
-        signed_url=row.signed_url,
-        size=row.size,
-        resolution=row.resolution,
-        image_ratio=row.image_ratio,
-        status=row.image_status,
+        workspace_id=workspace_id,
+        design_structure_id=design_id,
+        signed_url=signed_url,
+        size=str(row.size_bytes) if row.size_bytes is not None else None,
+        resolution=resolution,
+        image_ratio={
+            "RATIO_1_1": "1:1",
+            "RATIO_4_5": "4:5",
+            "RATIO_9_16": "9:16",
+            "RATIO_16_9": "16:9",
+        }.get(ratio, ratio),
+        status=row.generation_status,
         created_at=row.created_at,
         updated_at=row.updated_at,
         deleted_at=row.deleted_at,
@@ -87,20 +109,47 @@ class SqlAlchemyGeneratedImageRepository:
         self._session = session
 
     def get_for_user(self, *, user_id: UUID, image_id: UUID) -> GeneratedImageRecord | None:
-        row = self._session.scalars(
-            select(generation_models.GeneratedImage)
+        found = self._session.execute(
+            select(
+                media_tables.GeneratedImage,
+                brand_tables.Brand.workspace_id,
+                post_tables.PostDesign.id,
+                post_tables.PostDesign.ratio,
+            )
+            .join(
+                post_tables.DesignSlide,
+                post_tables.DesignSlide.id == media_tables.GeneratedImage.design_slide_id,
+            )
+            .join(
+                post_tables.PostDesign,
+                post_tables.PostDesign.id == post_tables.DesignSlide.post_design_id,
+            )
+            .join(post_tables.Post, post_tables.Post.id == post_tables.PostDesign.post_id)
+            .join(
+                content_plan_tables.ContentPlan,
+                content_plan_tables.ContentPlan.id == post_tables.Post.content_plan_id,
+            )
+            .join(
+                brand_tables.Brand,
+                brand_tables.Brand.id == content_plan_tables.ContentPlan.brand_id,
+            )
             .join(
                 workspace_models.WorkspaceMembership,
                 workspace_models.WorkspaceMembership.workspace_id
-                == generation_models.GeneratedImage.workspace_id,
+                == brand_tables.Brand.workspace_id,
             )
             .where(
-                generation_models.GeneratedImage.id == image_id,
-                generation_models.GeneratedImage.deleted_at.is_(None),
+                media_tables.GeneratedImage.id == image_id,
+                media_tables.GeneratedImage.deleted_at.is_(None),
                 workspace_models.WorkspaceMembership.user_id == user_id,
             )
         ).one_or_none()
-        return _generated_image_record(row) if row else None
+        if found is None:
+            return None
+        image, workspace_id, design_id, ratio = found
+        return _generated_image_record(
+            image, workspace_id=workspace_id, design_id=design_id, ratio=ratio
+        )
 
 
 def _generation_record(row: generation_tables.Generation) -> GenerationRecord:
