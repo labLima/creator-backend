@@ -432,6 +432,21 @@ T15 (SHC-16), fatia B5c — coupon_redemptions:
 Próximo passo: `workspace_credit_transactions` e `fiscal_invoices` (restante de
 T15), depois T20, T16, T17 e T18.
 
+## Rastreabilidade GitHub (2026-11-10)
+
+As tarefas restantes foram abertas no repositório e agrupadas na milestone
+**08 · Alinhamento SQLite — Creator_DB_final** (milestone #11):
+
+| Tarefa | Issue | Board |
+| --- | --- | --- |
+| T15 (restante: credit ledger e fiscal_invoices) | [#162](https://github.com/labLima/creator-backend/issues/162) | `SHC-16` |
+| T20 (triggers, funções e view) | [#163](https://github.com/labLima/creator-backend/issues/163) | `SHC-21` |
+| T16 (ADR-029 e legadas) | [#164](https://github.com/labLima/creator-backend/issues/164) | `SHC-17` |
+| T17 (consolidar baseline) | [#165](https://github.com/labLima/creator-backend/issues/165) | `SHC-18` |
+| T18 (fechamento do épico) | [#166](https://github.com/labLima/creator-backend/issues/166) | `SHC-19` |
+
+O épico permanece em [#159](https://github.com/labLima/creator-backend/issues/159).
+
 ## Critérios de aceite
 
 - [ ] ADR registrada para a estratégia de migração (reconstruir do baseline vs
