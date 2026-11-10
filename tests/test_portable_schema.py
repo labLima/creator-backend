@@ -40,7 +40,8 @@ def test_sqlite_round_trips_uuid_json_and_utc_timestamp() -> None:
 
     with Session(engine) as session:
         user = User(
-            external_id="external-1",
+            auth_provider_id="external-1",
+            display_name="External",
             global_role=GlobalRole.MEMBRO,
             created_at=instant,
             updated_at=instant,

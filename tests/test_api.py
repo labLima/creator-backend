@@ -296,7 +296,7 @@ class FakeUserRepository:
     def __init__(self, existing: UserRecord | None = None) -> None:
         self.user = existing or user_record(
             UUID("00000000-0000-0000-0000-000000000002"),
-            external_id="existing-principal",
+            auth_provider_id="existing-principal",
         )
         self.added: list[dict[str, str | None]] = []
         self.deleted: list[UUID] = []
@@ -304,20 +304,22 @@ class FakeUserRepository:
     def add(self, **kwargs: object) -> UserRecord:
         self.added.append(
             {
-                "external_id": str(kwargs["external_id"]),
-                "email": kwargs.get("email") if isinstance(kwargs.get("email"), str) else None,
-                "display_name": kwargs.get("display_name")
-                if isinstance(kwargs.get("display_name"), str)
+                "auth_provider_id": str(kwargs["auth_provider_id"])
+                if kwargs.get("auth_provider_id") is not None
                 else None,
+                "email": kwargs.get("email") if isinstance(kwargs.get("email"), str) else None,
+                "display_name": str(kwargs["display_name"]),
             }
         )
         return UserRecord(
             id=UUID("00000000-0000-0000-0000-000000000001"),
-            external_id=str(kwargs["external_id"]),
+            auth_provider_id=(
+                str(kwargs["auth_provider_id"])
+                if kwargs.get("auth_provider_id") is not None
+                else None
+            ),
             email=kwargs.get("email") if isinstance(kwargs.get("email"), str) else None,
-            display_name=kwargs.get("display_name")
-            if isinstance(kwargs.get("display_name"), str)
-            else None,
+            display_name=str(kwargs["display_name"]),
             global_role=str(kwargs.get("global_role", "membro")),
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
@@ -330,10 +332,10 @@ class FakeUserRepository:
     def get_by_id(self, user_id: UUID, *, include_deleted: bool = False) -> UserRecord | None:
         return self.user if user_id == self.user.id else None
 
-    def get_by_external_id(
-        self, external_id: str, *, include_deleted: bool = False
+    def get_by_auth_provider_id(
+        self, auth_provider_id: str, *, include_deleted: bool = False
     ) -> UserRecord | None:
-        return self.user if self.user.external_id == external_id else None
+        return self.user if self.user.auth_provider_id == auth_provider_id else None
 
     def update(self, user_id: UUID, **kwargs: object) -> UserRecord:
         return user_record(user_id, global_role=str(kwargs.get("global_role") or "membro"))
@@ -878,15 +880,15 @@ def local_access_token(subject: str = "00000000-0000-0000-0000-000000000001") ->
 def user_record(
     user_id: UUID | None = None,
     *,
-    external_id: str = "principal-123",
+    auth_provider_id: str | None = "principal-123",
     email: str | None = "principal@example.com",
-    display_name: str | None = "Principal Example",
+    display_name: str = "Principal Example",
     global_role: str = "membro",
     deleted_at: datetime | None = None,
 ) -> UserRecord:
     return UserRecord(
         id=user_id or UUID("00000000-0000-0000-0000-000000000001"),
-        external_id=external_id,
+        auth_provider_id=auth_provider_id,
         email=email,
         display_name=display_name,
         global_role=global_role,
@@ -934,7 +936,7 @@ async def test_user_admin_crud_routes_return_envelopes() -> None:
         create_response = await client.post(
             "/api/v1/users",
             json={
-                "external_id": "local:new",
+                "auth_provider_id": "local:new",
                 "email": "new@example.com",
                 "display_name": "New User",
                 "global_role": "gestor",

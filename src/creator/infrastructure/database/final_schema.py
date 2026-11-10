@@ -57,7 +57,150 @@ NO_TARGET: Final[tuple[str, ...]] = ("provider_customers", "provider_subscriptio
 # Final (table, constraint) -> (metadata table.constraint, expected portable SQL).
 # Filled as CHECKs are ported; an entry missing here counts as unmapped debt, and a
 # mapped entry also asserts the portable expression, not just the constraint name.
-CHECK_MAP: Final[dict[str, tuple[str, str]]] = {}
+CHECK_MAP: Final[dict[str, tuple[str, str]]] = {
+    "notifications.chk_notifications_resource_pair": (
+        "notifications.chk_notifications_resource_pair",
+        "(resource_type is null) = (resource_id is null)",
+    ),
+    "charge_transactions.chk_charge_transactions_amount_nonnegative": (
+        "charge_transactions.chk_charge_transactions_amount_nonnegative",
+        "amount_cents >= 0",
+    ),
+    "workspace_credit_lots.chk_credit_lots_amounts": (
+        "workspace_credit_lots.chk_credit_lots_amounts",
+        "original_amount > 0 and remaining_amount >= 0 and remaining_amount <= original_amount",
+    ),
+    "content_plans.chk_content_plans_period_order": (
+        "content_plans.chk_content_plans_period_order",
+        "start_date is null or end_date is null or end_date >= start_date",
+    ),
+    "posts.chk_posts_approval_pair": (
+        "posts.chk_posts_approval_pair",
+        "(approved_at is null) = (approved_by is null)",
+    ),
+    "posts.chk_posts_rejected_reason": (
+        "posts.chk_posts_rejected_reason",
+        "approval_status <> 'rejected' or rejection_reason is not null",
+    ),
+    "posts.chk_posts_approved_metadata": (
+        "posts.chk_posts_approved_metadata",
+        "approval_status <> 'approved' or (approved_by is not null and approved_at is not null)",
+    ),
+    "posts.chk_posts_scheduled_at": (
+        "posts.chk_posts_scheduled_at",
+        "publication_status <> 'scheduled' or scheduled_at is not null",
+    ),
+    "posts.chk_posts_published_at": (
+        "posts.chk_posts_published_at",
+        "publication_status <> 'published' or published_at is not null",
+    ),
+    "posts.chk_posts_publish_requires_approval": (
+        "posts.chk_posts_publish_requires_approval",
+        "publication_status = 'draft' or approval_status = 'approved'",
+    ),
+    "post_designs.chk_post_designs_stories_ratio": (
+        "post_designs.chk_post_designs_stories_ratio",
+        "format <> 'stories' or ratio = 'ratio_9_16'",
+    ),
+    "generated_images.chk_generated_images_current_complete": (
+        "generated_images.chk_generated_images_current_complete",
+        "not is_current or (generation_status = 'succeeded' and deleted_at is null)",
+    ),
+    "generated_images.chk_generated_images_size_bytes": (
+        "generated_images.chk_generated_images_size_bytes",
+        "size_bytes is null or size_bytes >= 0",
+    ),
+    "generated_images.chk_generated_images_dimensions": (
+        "generated_images.chk_generated_images_dimensions",
+        "width is null or height is null or (width > 0 and height > 0)",
+    ),
+    "generated_images.chk_generated_images_approval_pair": (
+        "generated_images.chk_generated_images_approval_pair",
+        "(approved_at is null) = (approved_by is null)",
+    ),
+    "generated_images.chk_generated_images_rejected_reason": (
+        "generated_images.chk_generated_images_rejected_reason",
+        "approval_status <> 'rejected' or rejection_reason is not null",
+    ),
+    "generated_images.chk_generated_images_approved_metadata": (
+        "generated_images.chk_generated_images_approved_metadata",
+        "approval_status <> 'approved' or (approved_by is not null and approved_at is not null)",
+    ),
+    "generated_images.chk_generated_images_approval_after_generation": (
+        "generated_images.chk_generated_images_approval_after_generation",
+        "approval_status = 'pending' or generation_status = 'succeeded'",
+    ),
+    "generated_images.chk_generated_images_file_by_status": (
+        "generated_images.chk_generated_images_file_by_status",
+        "generation_status <> 'succeeded' or (storage_bucket is not null and "
+        "storage_key is not null and size_bytes is not null and width is not null "
+        "and height is not null)",
+    ),
+    "generated_images.chk_generated_images_failed_message": (
+        "generated_images.chk_generated_images_failed_message",
+        "generation_status <> 'failed' or error_message is not null",
+    ),
+    "image_resizes.chk_image_resizes_file": (
+        "image_resizes.chk_image_resizes_file",
+        "status <> 'succeeded' or (storage_bucket is not null and storage_key is not null "
+        "and size_bytes is not null and width is not null and height is not null)",
+    ),
+    "image_resizes.chk_image_resizes_failed": (
+        "image_resizes.chk_image_resizes_failed",
+        "status <> 'failed' or error_message is not null",
+    ),
+    "image_resizes.chk_image_resizes_size": (
+        "image_resizes.chk_image_resizes_size",
+        "size_bytes is null or size_bytes > 0",
+    ),
+    "image_resizes.chk_image_resizes_dimensions": (
+        "image_resizes.chk_image_resizes_dimensions",
+        "(width is null or width > 0) and (height is null or height > 0)",
+    ),
+    "fiscal_invoices.chk_fiscal_invoices_one_origin": (
+        "fiscal_invoices.chk_fiscal_invoices_one_origin",
+        "(case when order_id is not null then 1 else 0 end) + "
+        "(case when invoice_id is not null then 1 else 0 end) + "
+        "(case when subscription_id is not null then 1 else 0 end) = 1",
+    ),
+    "fiscal_invoices.chk_fiscal_invoices_amount_nonnegative": (
+        "fiscal_invoices.chk_fiscal_invoices_amount_nonnegative",
+        "amount_cents >= 0",
+    ),
+    "fiscal_invoices.chk_fiscal_invoices_currency_format": (
+        "fiscal_invoices.chk_fiscal_invoices_currency_format",
+        "currency glob '[a-z][a-z][a-z]'",
+    ),
+    "workspace_invites.chk_workspace_invites_email_by_type": (
+        "workspace_invites.chk_workspace_invites_email_by_type",
+        "(type = 'EMAIL') = (email IS NOT NULL)",
+    ),
+    "workspace_invites.chk_workspace_invites_max_uses_by_type": (
+        "workspace_invites.chk_workspace_invites_max_uses_by_type",
+        "(type = 'LINK') = (max_uses IS NOT NULL)",
+    ),
+    "workspace_invites.chk_workspace_invites_max_uses_positive": (
+        "workspace_invites.chk_workspace_invites_max_uses_positive",
+        "max_uses IS NULL OR max_uses >= 1",
+    ),
+    "design_slides.design_slides.position": (
+        "design_slides.ck_design_slides_position",
+        "position >= 0",
+    ),
+    "captions.captions.version": ("captions.ck_captions_version", "version >= 1"),
+    "content_plan_items.content_plan_items.quantity": (
+        "content_plan_items.ck_content_plan_items_quantity",
+        "quantity >= 0",
+    ),
+    "plan_payment_methods.plan_payment_methods.max_installments": (
+        "plan_payment_methods.chk_plan_payment_methods_max_installments",
+        "max_installments >= 1",
+    ),
+    "workspace_credit_lot_consumptions.workspace_credit_lot_consumptions.amount": (
+        "workspace_credit_lot_consumptions.chk_lot_consumptions_amount",
+        "amount > 0",
+    ),
+}
 
 GAP_CATEGORIES: Final[tuple[str, ...]] = (
     "table_missing",

@@ -14,9 +14,9 @@ from creator.core.types import JsonObject
 @dataclass(frozen=True, slots=True)
 class UserRecord:
     id: UUID
-    external_id: str
+    auth_provider_id: str | None
     email: str | None
-    display_name: str | None
+    display_name: str
     global_role: str
     created_at: datetime
     updated_at: datetime
@@ -28,17 +28,17 @@ class UserRepository(Protocol):
     def add(
         self,
         *,
-        external_id: str,
+        auth_provider_id: str | None = None,
         email: str | None = None,
-        display_name: str | None = None,
+        display_name: str,
         global_role: str = "membro",
         password_hash: str | None = None,
     ) -> UserRecord: ...
 
     def get_by_id(self, user_id: UUID, *, include_deleted: bool = False) -> UserRecord | None: ...
 
-    def get_by_external_id(
-        self, external_id: str, *, include_deleted: bool = False
+    def get_by_auth_provider_id(
+        self, auth_provider_id: str, *, include_deleted: bool = False
     ) -> UserRecord | None: ...
 
     def get_by_email(self, email: str, *, include_deleted: bool = False) -> UserRecord | None: ...

@@ -38,7 +38,10 @@ def _seed(engine: sa.Engine) -> dict[str, object]:
     ids.update({name: uuid4() for name in ("planning", "post", "design", "image")})
     with engine.begin() as connection:
         connection.execute(
-            sa.text("INSERT INTO users (id, external_id, global_role) VALUES (:id, :e, 'membro')"),
+            sa.text(
+                "INSERT INTO users (id, auth_provider_id, display_name, global_role) "
+                "VALUES (:id, :e, 'User', 'membro')"
+            ),
             {"id": ids["user"].hex, "e": f"ext-{ids['user']}"},
         )
         connection.execute(

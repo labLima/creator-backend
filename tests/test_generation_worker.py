@@ -15,7 +15,7 @@ from creator.workers import generation
 NOW = datetime(2026, 11, 5, tzinfo=UTC)
 USER = UserRecord(
     id=uuid4(),
-    external_id="principal-copy",
+    auth_provider_id="principal-copy",
     email=None,
     display_name="Writer",
     global_role="membro",

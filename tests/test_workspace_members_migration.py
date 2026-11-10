@@ -19,11 +19,11 @@ PREV_SCHEMA = CONTRACTS / "schema_prev_ddl.sql"
 PREV_REVISION = "0005_content_text_versions"
 
 
-def _upgrade(path: Path) -> None:
+def _upgrade(path: Path, revision: str = "head") -> None:
     config = Config(str(PROJECT_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
     config.set_main_option("sqlalchemy.url", f"sqlite+pysqlite:///{path}")
-    command.upgrade(config, "head")
+    command.upgrade(config, revision)
 
 
 def _prepare(path: Path) -> None:
@@ -130,7 +130,9 @@ def test_upgrade_keeps_active_members_and_drops_soft_deleted(tmp_path: Path) -> 
         )
     engine.dispose()
 
-    _upgrade(database)
+    # Stop at T8: later revisions (T21/T24) change the child tables again and
+    # are covered by their own data-safety tests.
+    _upgrade(database, "0009_workspace_members")
 
     engine = sa.create_engine(f"sqlite+pysqlite:///{database}")
     with engine.begin() as connection:

@@ -200,7 +200,7 @@ def job_record(content_id: UUID | None = None) -> GenerationJobRecord:
 def user_record() -> UserRecord:
     return UserRecord(
         id=uuid4(),
-        external_id="principal-123",
+        auth_provider_id="principal-123",
         email="principal@example.com",
         display_name="Principal Example",
         global_role="membro",
@@ -226,7 +226,7 @@ def test_immutable_image_path_is_scoped_by_user_content_and_version() -> None:
     content_id = uuid4()
 
     path = immutable_image_path(
-        user_external_id="principal-123",
+        user_id="principal-123",
         content_id=content_id,
         version_number=2,
         mime_type="image/png",
@@ -238,7 +238,7 @@ def test_immutable_image_path_is_scoped_by_user_content_and_version() -> None:
 def test_immutable_image_path_rejects_unsafe_user_segment() -> None:
     with pytest.raises(StorageValidationError):
         immutable_image_path(
-            user_external_id="../other-user",
+            user_id="../other-user",
             content_id=uuid4(),
             version_number=1,
             mime_type="image/png",
@@ -247,7 +247,7 @@ def test_immutable_image_path_rejects_unsafe_user_segment() -> None:
 
 def test_local_principal_image_path_is_portable_on_windows() -> None:
     path = immutable_image_path(
-        user_external_id="local:principal-123",
+        user_id="local:principal-123",
         content_id=uuid4(),
         version_number=1,
         mime_type="image/png",
@@ -343,17 +343,18 @@ def test_persist_generated_image_uploads_before_completing_job() -> None:
     unit_of_work = FakeUnitOfWork(repository)
     storage = FakeStorage()
     job = job_record()
+    user = user_record()
 
     image = persist_generated_image(
         unit_of_work=unit_of_work,
         storage=storage,
         job=job,
-        user=user_record(),
+        user=user,
         image=generated_image(),
     )
 
     assert storage.uploads[0].path == (
-        f"users/principal-123/contents/{job.content_id}/versions/3/image.png"
+        f"users/{user.id}/contents/{job.content_id}/versions/3/image.png"
     )
     assert repository.completed[0].storage_path == storage.uploads[0].path
     assert repository.completed[0].version_number == 3
@@ -383,10 +384,11 @@ def test_persist_generated_image_recovers_existing_upload_without_duplicate() ->
     repository = FakeImageGenerationRepository()
     unit_of_work = FakeUnitOfWork(repository)
     job = job_record()
+    user = user_record()
     storage = FakeStorage(
         fail_upload=True,
         existing=StoredObjectMetadata(
-            path=f"users/principal-123/contents/{job.content_id}/versions/3/image.png",
+            path=f"users/{user.id}/contents/{job.content_id}/versions/3/image.png",
             mime_type="image/png",
             size_bytes=len(generated_image().content),
             checksum_sha256=None,
@@ -398,7 +400,7 @@ def test_persist_generated_image_recovers_existing_upload_without_duplicate() ->
         unit_of_work=unit_of_work,
         storage=storage,
         job=job,
-        user=user_record(),
+        user=user,
         image=generated_image(),
     )
 
@@ -411,10 +413,11 @@ def test_persist_generated_image_keeps_recovered_upload_when_completion_fails() 
     repository = FakeImageGenerationRepository(complete_error=RuntimeError("db failed"))
     unit_of_work = FakeUnitOfWork(repository)
     job = job_record()
+    user = user_record()
     storage = FakeStorage(
         fail_upload=True,
         existing=StoredObjectMetadata(
-            path=f"users/principal-123/contents/{job.content_id}/versions/3/image.png",
+            path=f"users/{user.id}/contents/{job.content_id}/versions/3/image.png",
             mime_type="image/png",
             size_bytes=len(generated_image().content),
             checksum_sha256=None,
@@ -427,7 +430,7 @@ def test_persist_generated_image_keeps_recovered_upload_when_completion_fails() 
             unit_of_work=unit_of_work,
             storage=storage,
             job=job,
-            user=user_record(),
+            user=user,
             image=generated_image(),
         )
 

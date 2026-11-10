@@ -59,7 +59,7 @@ def user_record() -> UserRecord:
     now = datetime.now(UTC)
     return UserRecord(
         id=UUID("00000000-0000-0000-0000-000000000001"),
-        external_id="principal-123",
+        auth_provider_id="principal-123",
         email="principal@example.com",
         display_name="Principal",
         global_role="membro",

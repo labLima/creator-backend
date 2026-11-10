@@ -38,8 +38,9 @@ def _insert_user(connection: sa.Connection) -> object:
     user_id = uuid4()
     connection.execute(
         sa.text(
-            "INSERT INTO users (id, external_id, global_role, created_at, updated_at) "
-            "VALUES (:id, :external_id, 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO users (id, auth_provider_id, display_name, global_role, "
+            "created_at, updated_at) "
+            "VALUES (:id, :external_id, 'User', 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {"id": user_id.hex, "external_id": f"ext-{user_id}"},
     )
@@ -57,8 +58,9 @@ def _insert_brand(connection: sa.Connection) -> tuple[object, object]:
     )
     connection.execute(
         sa.text(
-            "INSERT INTO users (id, external_id, global_role, created_at, updated_at) "
-            "VALUES (:id, :external_id, 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO users (id, auth_provider_id, display_name, global_role, "
+            "created_at, updated_at) "
+            "VALUES (:id, :external_id, 'User', 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {"id": user_id.hex, "external_id": f"ext-{user_id}"},
     )
@@ -97,8 +99,9 @@ def _insert_campaign(connection: sa.Connection) -> object:
     )
     connection.execute(
         sa.text(
-            "INSERT INTO users (id, external_id, global_role, created_at, updated_at) "
-            "VALUES (:id, :external_id, 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO users (id, auth_provider_id, display_name, global_role, "
+            "created_at, updated_at) "
+            "VALUES (:id, :external_id, 'User', 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {"id": user_id.hex, "external_id": f"ext-{user_id}"},
     )

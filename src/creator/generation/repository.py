@@ -327,7 +327,7 @@ def _job_record(row: generation_tables.GenerationJob, content_id: UUID) -> Gener
 def _user_record(row: user_tables.User) -> UserRecord:
     return UserRecord(
         id=row.id,
-        external_id=row.external_id,
+        auth_provider_id=row.auth_provider_id,
         email=row.email,
         display_name=row.display_name,
         global_role=_enum_value(row.global_role),

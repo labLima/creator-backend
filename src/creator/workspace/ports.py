@@ -45,16 +45,13 @@ class WorkspaceInviteRecord:
     role: str
     email: str | None
     max_uses: int | None
-    uses_count: int
     status: str
-    is_active: bool
     created_by: UUID
     expires_at: datetime | None
     last_used_at: datetime | None
     revoked_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class WorkspaceInviteRepository(Protocol):
@@ -72,7 +69,7 @@ class WorkspaceInviteRepository(Protocol):
         email: str | None,
         max_uses: int | None,
         expires_at: datetime | None,
-        token: str,
+        token_hash: str,
     ) -> WorkspaceInviteRecord: ...
     def update(self, *, invite_id: UUID, fields: dict[str, object]) -> WorkspaceInviteRecord: ...
     def soft_delete(self, *, invite_id: UUID) -> None: ...
@@ -123,13 +120,9 @@ class WorkspaceRepository(Protocol):
 class WorkspaceInviteUsageRecord:
     id: UUID
     invite_id: UUID
-    user_id: UUID
-    workspace_id: UUID
-    member_id: UUID | None
+    member_id: UUID
     used_at: datetime
-    created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class WorkspaceInviteUsageRepository(Protocol):

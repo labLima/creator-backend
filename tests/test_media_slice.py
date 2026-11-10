@@ -38,7 +38,10 @@ def _slide(connection: sa.Connection) -> str:
         uuid4() for _ in range(9)
     )
     connection.execute(
-        sa.text("INSERT INTO users (id, external_id, global_role) VALUES (:id, :e, 'membro')"),
+        sa.text(
+            "INSERT INTO users (id, auth_provider_id, display_name, global_role) "
+            "VALUES (:id, :e, 'User', 'membro')"
+        ),
         {"id": user.hex, "e": f"ext-{user}"},
     )
     connection.execute(
@@ -193,7 +196,10 @@ def test_approval_requires_a_successful_generation(engine: sa.Engine) -> None:
         slide = _slide(connection)
         approver = uuid4()
         connection.execute(
-            sa.text("INSERT INTO users (id, external_id, global_role) VALUES (:id, :e, 'membro')"),
+            sa.text(
+                "INSERT INTO users (id, auth_provider_id, display_name, global_role) "
+                "VALUES (:id, :e, 'User', 'membro')"
+            ),
             {"id": approver.hex, "e": f"ext-{approver}"},
         )
         image = _image(connection, slide)

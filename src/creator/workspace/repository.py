@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Select, and_, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 import creator.workspace.models as workspace_models
 from creator.core.pagination import Page, PageRequest
@@ -223,22 +223,27 @@ class SqlAlchemyWorkspaceRepository:
 
 def _record(row: workspace_models.WorkspaceInvite) -> WorkspaceInviteRecord:
     return WorkspaceInviteRecord(
-        row.id,
-        row.workspace_id,
-        row.type,
-        row.role,
-        row.email,
-        row.max_uses,
-        row.uses_count,
-        row.status,
-        row.is_active,
-        row.created_by,
-        row.expires_at,
-        row.last_used_at,
-        row.revoked_at,
-        row.created_at,
-        row.updated_at,
-        row.deleted_at,
+        id=row.id,
+        workspace_id=row.workspace_id,
+        type=row.type,
+        role=row.role,
+        email=row.email,
+        max_uses=row.max_uses,
+        status=row.status,
+        created_by=row.created_by,
+        expires_at=row.expires_at,
+        last_used_at=row.last_used_at,
+        revoked_at=row.revoked_at,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def _active_workspace_scope(user_id: UUID):
+    return (
+        workspace_models.WorkspaceMembership.user_id == user_id,
+        workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
+        workspace_models.Workspace.deleted_at.is_(None),
     )
 
 
@@ -254,16 +259,14 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
                 workspace_models.WorkspaceMembership.workspace_id
                 == workspace_models.WorkspaceInvite.workspace_id,
             )
+            .join(
+                workspace_models.Workspace,
+                workspace_models.Workspace.id == workspace_models.WorkspaceInvite.workspace_id,
+            )
             .where(
                 workspace_models.WorkspaceInvite.id == invite_id,
-                workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceInvite.deleted_at.is_(None),
-                workspace_models.WorkspaceInvite.workspace_id.in_(
-                    select(workspace_models.Workspace.id).where(
-                        workspace_models.Workspace.deleted_at.is_(None)
-                    )
-                ),
-                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
+                workspace_models.WorkspaceInvite.status != "REVOKED",
+                *_active_workspace_scope(user_id),
             )
         )
 
@@ -277,15 +280,13 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
                 workspace_models.WorkspaceMembership.workspace_id
                 == workspace_models.WorkspaceInvite.workspace_id,
             )
+            .join(
+                workspace_models.Workspace,
+                workspace_models.Workspace.id == workspace_models.WorkspaceInvite.workspace_id,
+            )
             .where(
-                workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceInvite.deleted_at.is_(None),
-                workspace_models.WorkspaceInvite.workspace_id.in_(
-                    select(workspace_models.Workspace.id).where(
-                        workspace_models.Workspace.deleted_at.is_(None)
-                    )
-                ),
-                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
+                workspace_models.WorkspaceInvite.status != "REVOKED",
+                *_active_workspace_scope(user_id),
             )
         )
         if workspace_id is not None:
@@ -306,7 +307,7 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
         email: str | None,
         max_uses: int | None,
         expires_at: datetime | None,
-        token: str,
+        token_hash: str,
     ) -> WorkspaceInviteRecord:
         row = workspace_models.WorkspaceInvite(
             workspace_id=workspace_id,
@@ -316,8 +317,8 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
             email=email,
             max_uses=max_uses,
             expires_at=expires_at,
-            token=token,
-            status="pending",
+            token_hash=token_hash,
+            status="PENDING",
         )
         self._session.add(row)
         self._session.flush()
@@ -325,20 +326,32 @@ class SqlAlchemyWorkspaceInviteRepository(WorkspaceInviteRepository):
 
     def update(self, *, invite_id: UUID, fields: dict[str, object]) -> WorkspaceInviteRecord:
         row = self._session.get(workspace_models.WorkspaceInvite, invite_id)
-        if row is None or row.deleted_at is not None:
+        if row is None or row.status == "REVOKED":
             raise ValueError("Workspace invite not found")
-        for name, value in fields.items():
-            setattr(row, name, value)
+
+        values = dict(fields)
+        is_active = values.pop("is_active", None)
+        if is_active is not None:
+            if bool(is_active):
+                values["status"] = "PENDING"
+                values["revoked_at"] = None
+            else:
+                values["status"] = "REVOKED"
+                values["revoked_at"] = datetime.now(UTC)
+        for name in ("type", "role", "email", "max_uses", "expires_at", "status", "revoked_at"):
+            if name in values:
+                setattr(row, name, values[name])
         row.updated_at = datetime.now(UTC)
         self._session.flush()
         return _record(row)
 
     def soft_delete(self, *, invite_id: UUID) -> None:
         row = self._session.get(workspace_models.WorkspaceInvite, invite_id)
-        if row is None or row.deleted_at is not None:
+        if row is None or row.status == "REVOKED":
             raise ValueError("Workspace invite not found")
-        row.deleted_at = datetime.now(UTC)
-        row.updated_at = row.deleted_at
+        row.status = "REVOKED"
+        row.revoked_at = datetime.now(UTC)
+        row.updated_at = row.revoked_at
         self._session.flush()
 
 
@@ -346,87 +359,84 @@ class SqlAlchemyWorkspaceInviteUsageRepository(WorkspaceInviteUsageRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
-    def _r(self, x):
+    def _r(self, x: workspace_models.WorkspaceInviteUsage) -> WorkspaceInviteUsageRecord:
         return WorkspaceInviteUsageRecord(
-            x.id,
-            x.invite_id,
-            x.user_id,
-            x.workspace_id,
-            x.member_id,
-            x.used_at,
-            x.created_at,
-            x.updated_at,
-            x.deleted_at,
+            id=x.id,
+            invite_id=x.invite_id,
+            member_id=x.member_id,
+            used_at=x.used_at,
+            updated_at=x.updated_at,
         )
 
-    def _owned(self, uid, usage_id):
+    def _scoped(self, user_id: UUID):
+        target_member = aliased(workspace_models.WorkspaceMembership)
+        current_member = aliased(workspace_models.WorkspaceMembership)
+        return (
+            select(workspace_models.WorkspaceInviteUsage)
+            .join(
+                target_member,
+                target_member.id == workspace_models.WorkspaceInviteUsage.member_id,
+            )
+            .join(
+                current_member,
+                current_member.workspace_id == target_member.workspace_id,
+            )
+            .join(
+                workspace_models.Workspace,
+                workspace_models.Workspace.id == target_member.workspace_id,
+            )
+            .where(
+                current_member.user_id == user_id,
+                current_member.status == MemberStatus.ACTIVE,
+                workspace_models.Workspace.deleted_at.is_(None),
+            )
+        )
+
+    def _owned(self, uid: UUID, usage_id: UUID):
         return self.s.scalar(
-            select(workspace_models.WorkspaceInviteUsage)
-            .join(
-                workspace_models.WorkspaceMembership,
-                workspace_models.WorkspaceMembership.workspace_id
-                == workspace_models.WorkspaceInviteUsage.workspace_id,
-            )
-            .where(
-                workspace_models.WorkspaceInviteUsage.id == usage_id,
-                workspace_models.WorkspaceMembership.user_id == uid,
-                workspace_models.WorkspaceInviteUsage.deleted_at.is_(None),
-                workspace_models.WorkspaceInviteUsage.workspace_id.in_(
-                    select(workspace_models.Workspace.id).where(
-                        workspace_models.Workspace.deleted_at.is_(None)
-                    )
-                ),
-                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
-            )
+            self._scoped(uid).where(workspace_models.WorkspaceInviteUsage.id == usage_id)
         )
 
-    def list_for_user(self, *, user_id, workspace_id=None):
-        q = (
-            select(workspace_models.WorkspaceInviteUsage)
-            .join(
-                workspace_models.WorkspaceMembership,
-                workspace_models.WorkspaceMembership.workspace_id
-                == workspace_models.WorkspaceInviteUsage.workspace_id,
-            )
-            .where(
-                workspace_models.WorkspaceMembership.user_id == user_id,
-                workspace_models.WorkspaceInviteUsage.deleted_at.is_(None),
-                workspace_models.WorkspaceInviteUsage.workspace_id.in_(
-                    select(workspace_models.Workspace.id).where(
-                        workspace_models.Workspace.deleted_at.is_(None)
-                    )
-                ),
-                workspace_models.WorkspaceMembership.status == MemberStatus.ACTIVE,
-            )
-        )
+    def list_for_user(self, *, user_id: UUID, workspace_id: UUID | None = None):
+        q = self._scoped(user_id)
         if workspace_id is not None:
-            q = q.where(workspace_models.WorkspaceInviteUsage.workspace_id == workspace_id)
+            target_member = aliased(workspace_models.WorkspaceMembership)
+            q = q.where(target_member.workspace_id == workspace_id)
         return [self._r(x) for x in self.s.scalars(q).all()]
 
-    def get_for_user(self, *, user_id, usage_id):
+    def get_for_user(self, *, user_id: UUID, usage_id: UUID):
         x = self._owned(user_id, usage_id)
         return self._r(x) if x else None
 
-    def add(self, *, fields):
+    def add(self, *, fields: dict[str, object]) -> WorkspaceInviteUsageRecord:
+        allowed = {"invite_id", "member_id", "used_at"}
+        unexpected = set(fields) - allowed
+        if unexpected:
+            raise ValueError(f"unsupported field(s) for invite usage: {sorted(unexpected)}")
+        if fields.get("invite_id") is None or fields.get("member_id") is None:
+            raise ValueError("invite_id and member_id are required")
         x = workspace_models.WorkspaceInviteUsage(**fields)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
-    def update(self, *, usage_id, fields):
+    def update(self, *, usage_id, fields: dict[str, object]):
         x = self.s.get(workspace_models.WorkspaceInviteUsage, usage_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Workspace invite usage not found")
+        allowed = {"member_id", "used_at"}
+        unexpected = set(fields) - allowed
+        if unexpected:
+            raise ValueError(f"unsupported field(s) for invite usage: {sorted(unexpected)}")
         for key, value in fields.items():
             setattr(x, key, value)
         x.updated_at = datetime.now(UTC)
         self.s.flush()
         return self._r(x)
 
-    def soft_delete(self, *, usage_id):
+    def soft_delete(self, *, usage_id) -> None:
         x = self.s.get(workspace_models.WorkspaceInviteUsage, usage_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Workspace invite usage not found")
-        x.deleted_at = datetime.now(UTC)
-        x.updated_at = x.deleted_at
+        self.s.delete(x)
         self.s.flush()

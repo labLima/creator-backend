@@ -73,7 +73,7 @@ def create_user(
 ) -> Any:
     require_admin(actor)
     user = uow.user.users.add(
-        external_id=payload.external_id,
+        auth_provider_id=payload.auth_provider_id,
         email=payload.email,
         display_name=payload.display_name,
         global_role=payload.global_role,

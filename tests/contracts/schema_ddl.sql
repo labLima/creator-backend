@@ -848,56 +848,58 @@ CREATE TABLE invoices (
 )
 
 CREATE TABLE notification_preferences (
-	user_id CHAR(32) NOT NULL,
-	type VARCHAR(30) NOT NULL,
-	channel VARCHAR(10) NOT NULL,
-	is_enabled BOOLEAN DEFAULT true NOT NULL,
 	id CHAR(32) NOT NULL,
+	user_id CHAR(32) NOT NULL,
+	type VARCHAR(18) NOT NULL,
+	channel VARCHAR(6) NOT NULL,
+	is_enabled BOOLEAN DEFAULT true NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(user_id) REFERENCES users (id)
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+	CONSTRAINT notification_type CHECK (type IN ('CONTENT_GENERATION', 'CONTENT_APPROVAL', 'INVITE', 'BILLING', 'CREDITS', 'COUPON', 'SYSTEM')),
+	CONSTRAINT notification_channel CHECK (channel IN ('EMAIL', 'IN_APP', 'PUSH'))
 )
 
 CREATE TABLE notification_recipients (
+	id CHAR(32) NOT NULL,
 	notification_id CHAR(32) NOT NULL,
 	user_id CHAR(32) NOT NULL,
-	workspace_member_id CHAR(32),
-	channel VARCHAR(10) NOT NULL,
-	status VARCHAR(20) NOT NULL,
-	provider_message_id VARCHAR(128),
+	channel VARCHAR(6) NOT NULL,
+	status VARCHAR(7) DEFAULT 'PENDING' NOT NULL,
+	external_message_id VARCHAR(128),
 	error_message TEXT,
 	attempts INTEGER DEFAULT 0 NOT NULL,
 	sent_at DATETIME,
 	read_at DATETIME,
-	id CHAR(32) NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(notification_id) REFERENCES notifications (id),
-	FOREIGN KEY(user_id) REFERENCES users (id),
-	FOREIGN KEY(workspace_member_id) REFERENCES workspace_members (id)
+	FOREIGN KEY(notification_id) REFERENCES notifications (id) ON DELETE CASCADE,
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+	CONSTRAINT notification_channel CHECK (channel IN ('EMAIL', 'IN_APP', 'PUSH')),
+	CONSTRAINT notification_delivery_status CHECK (status IN ('PENDING', 'SENT', 'FAILED'))
 )
 
 CREATE TABLE notifications (
+	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
-	type VARCHAR(30) NOT NULL,
+	type VARCHAR(18) NOT NULL,
 	title VARCHAR(150) NOT NULL,
-	body VARCHAR(2000) NOT NULL,
-	payload JSON DEFAULT '{}' NOT NULL,
-	resource_type VARCHAR(40),
+	body VARCHAR(2000),
+	payload JSON,
+	resource_type VARCHAR(16),
 	resource_id CHAR(32),
 	dedupe_key VARCHAR(128),
 	created_by CHAR(32),
-	id CHAR(32) NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(created_by) REFERENCES users (id)
+	CONSTRAINT chk_notifications_resource_pair CHECK ((resource_type IS NULL) = (resource_id IS NULL)),
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+	CONSTRAINT notification_type CHECK (type IN ('CONTENT_GENERATION', 'CONTENT_APPROVAL', 'INVITE', 'BILLING', 'CREDITS', 'COUPON', 'SYSTEM')),
+	CONSTRAINT notification_resource_type CHECK (resource_type IN ('WORKSPACE_INVITE', 'WORKSPACE_MEMBER', 'POST', 'GENERATED_IMAGE', 'SUBSCRIPTION', 'ORDER', 'INVOICE', 'CHARGE', 'COUPON')),
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE orders (
@@ -1338,27 +1340,26 @@ CREATE TABLE user_consents (
 )
 
 CREATE TABLE user_devices (
+	id CHAR(32) NOT NULL,
 	user_id CHAR(32) NOT NULL,
-	platform VARCHAR(10) NOT NULL,
+	platform VARCHAR(7) NOT NULL,
 	fcm_token VARCHAR(255) NOT NULL,
 	is_active BOOLEAN DEFAULT true NOT NULL,
 	last_seen_at DATETIME,
-	id CHAR(32) NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(user_id) REFERENCES users (id)
+	CONSTRAINT uq_user_devices_fcm_token UNIQUE (fcm_token),
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+	CONSTRAINT device_platform CHECK (platform IN ('IOS', 'ANDROID', 'WEB'))
 )
 
 CREATE TABLE users (
 	id CHAR(32) NOT NULL,
-	external_id VARCHAR(255) NOT NULL,
-	email VARCHAR(320),
+	auth_provider_id VARCHAR,
+	email VARCHAR(254),
 	password_hash VARCHAR(255),
-	display_name VARCHAR(50),
-	cpf VARCHAR(11),
-	cnpj VARCHAR(14),
+	display_name VARCHAR(50) NOT NULL,
 	bio VARCHAR(350),
 	avatar_url VARCHAR,
 	global_role VARCHAR(6) DEFAULT 'membro' NOT NULL,
@@ -1366,8 +1367,6 @@ CREATE TABLE users (
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	CONSTRAINT uq_users_external_id UNIQUE (external_id),
-	CONSTRAINT uq_users_email UNIQUE (email),
 	CONSTRAINT global_role CHECK (global_role IN ('admin', 'gestor', 'membro'))
 )
 
@@ -1415,44 +1414,41 @@ CREATE TABLE workspace_credit_transactions (
 )
 
 CREATE TABLE workspace_invite_usages (
-	invite_id CHAR(32) NOT NULL,
-	user_id CHAR(32) NOT NULL,
-	workspace_id CHAR(32) NOT NULL,
-	member_id CHAR(32),
-	used_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	invite_id CHAR(32) NOT NULL,
+	member_id CHAR(32) NOT NULL,
+	used_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(invite_id) REFERENCES workspace_invites (id),
-	FOREIGN KEY(user_id) REFERENCES users (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(member_id) REFERENCES workspace_members (id)
+	FOREIGN KEY(invite_id) REFERENCES workspace_invites (id) ON DELETE CASCADE,
+	FOREIGN KEY(member_id) REFERENCES workspace_members (id) ON DELETE CASCADE
 )
 
 CREATE TABLE workspace_invites (
+	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
-	type VARCHAR(10) NOT NULL,
-	role VARCHAR(20) NOT NULL,
-	email VARCHAR(255),
-	token VARCHAR(64) NOT NULL,
+	type VARCHAR(5) NOT NULL,
+	role VARCHAR(7) NOT NULL,
+	email VARCHAR(254),
+	token_hash VARCHAR(64) NOT NULL,
 	max_uses INTEGER,
-	uses_count INTEGER DEFAULT 0 NOT NULL,
-	status VARCHAR(20) NOT NULL,
-	is_active BOOLEAN DEFAULT true NOT NULL,
+	status VARCHAR(8) DEFAULT 'PENDING' NOT NULL,
 	created_by CHAR(32) NOT NULL,
 	expires_at DATETIME,
 	last_used_at DATETIME,
 	revoked_at DATETIME,
-	id CHAR(32) NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	UNIQUE (token),
-	FOREIGN KEY(created_by) REFERENCES users (id)
+	CONSTRAINT uq_workspace_invites_token_hash UNIQUE (token_hash),
+	CONSTRAINT chk_workspace_invites_email_by_type CHECK ((type = 'EMAIL') = (email IS NOT NULL)),
+	CONSTRAINT chk_workspace_invites_max_uses_by_type CHECK ((type = 'LINK') = (max_uses IS NOT NULL)),
+	CONSTRAINT chk_workspace_invites_max_uses_positive CHECK (max_uses IS NULL OR max_uses >= 1),
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+	CONSTRAINT invite_type CHECK (type IN ('EMAIL', 'LINK')),
+	CONSTRAINT workspace_role CHECK (role IN ('OWNER', 'MANAGER', 'EDITOR', 'VIEWER')),
+	CONSTRAINT invite_status CHECK (status IN ('PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED')),
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE RESTRICT
 )
 
 CREATE TABLE workspace_members (
@@ -1643,6 +1639,24 @@ CREATE INDEX ix_images_workspace_filter ON images (workspace_id, deleted_at, cre
 
 CREATE UNIQUE INDEX uq_images_active_content_version ON images (content_id, version_number) WHERE deleted_at IS NULL
 
+CREATE UNIQUE INDEX uq_notification_preferences_user_type_channel ON notification_preferences (user_id, type, channel)
+
+CREATE INDEX ix_notification_recipients_user_channel ON notification_recipients (user_id, channel)
+
+CREATE INDEX ix_notification_recipients_user_created_at ON notification_recipients (user_id, created_at)
+
+CREATE INDEX ix_notification_recipients_user_read_at ON notification_recipients (user_id, read_at)
+
+CREATE UNIQUE INDEX uq_notification_recipients_notification_user_channel ON notification_recipients (notification_id, user_id, channel)
+
+CREATE INDEX idx_m8_notifications_created_by ON notifications (created_by) WHERE created_by IS NOT NULL
+
+CREATE INDEX ix_notifications_created_at ON notifications (created_at)
+
+CREATE INDEX ix_notifications_type ON notifications (type)
+
+CREATE UNIQUE INDEX uq_notifications_workspace_dedupe ON notifications (workspace_id, dedupe_key)
+
 CREATE INDEX ix_outbox_events_consume ON outbox_events (consumed_at, consumer_available_at, dead_lettered_at)
 
 CREATE INDEX ix_outbox_events_dispatch ON outbox_events (published_at, available_at)
@@ -1683,7 +1697,9 @@ CREATE INDEX ix_settings_user_id ON settings (user_id)
 
 CREATE UNIQUE INDEX uq_user_consents_user_id_type_document_version ON user_consents (user_id, type, document_version)
 
-CREATE INDEX ix_users_deleted_at ON users (deleted_at)
+CREATE INDEX ix_user_devices_user_id ON user_devices (user_id)
+
+CREATE UNIQUE INDEX uq_users_email_active ON users (email) WHERE deleted_at IS NULL
 
 CREATE INDEX idx_m8_lot_consumptions_transaction_workspace ON workspace_credit_lot_consumptions (transaction_id, workspace_id)
 
@@ -1700,6 +1716,18 @@ CREATE INDEX ix_workspace_credit_lots_workspace_id_expires_at ON workspace_credi
 CREATE UNIQUE INDEX uq_credit_lots_id_workspace ON workspace_credit_lots (id, workspace_id)
 
 CREATE UNIQUE INDEX uq_credit_tx_id_workspace ON workspace_credit_transactions (id, workspace_id)
+
+CREATE INDEX ix_workspace_invite_usages_member_id ON workspace_invite_usages (member_id)
+
+CREATE UNIQUE INDEX uq_workspace_invite_usages_invite_member ON workspace_invite_usages (invite_id, member_id)
+
+CREATE INDEX idx_m8_workspace_invites_created_by ON workspace_invites (created_by)
+
+CREATE INDEX ix_workspace_invites_email ON workspace_invites (email)
+
+CREATE INDEX ix_workspace_invites_status ON workspace_invites (status)
+
+CREATE INDEX ix_workspace_invites_workspace_id ON workspace_invites (workspace_id)
 
 CREATE INDEX ix_workspace_members_invited_by ON workspace_members (invited_by)
 

@@ -130,7 +130,7 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     workspace_id=work_item.job.workspace_id,
                     brand_id=work_item.brand_id,
                     authorization=WorkspaceAuthorizationContext(
-                        principal=Principal(subject=work_item.requested_by_user.external_id),
+                        principal=Principal(subject=str(work_item.requested_by_user.id)),
                         workspace_id=work_item.job.workspace_id,
                         workspace_role=WorkspaceRole.EDITOR,
                     ),

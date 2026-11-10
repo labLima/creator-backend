@@ -57,7 +57,7 @@ def test_image_claim_does_not_claim_copy_or_caption_jobs() -> None:
     workspace_id = uuid4()
     user_id = uuid4()
     with Session(engine) as session:
-        session.add(User(id=user_id, external_id="test-user"))
+        session.add(User(id=user_id, auth_provider_id="test-user", display_name="Test"))
         jobs = []
         for index, artifact_type in enumerate(
             (GenerationType.COPY, GenerationType.CAPTION, GenerationType.IMAGE)

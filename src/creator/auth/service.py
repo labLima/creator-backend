@@ -129,6 +129,13 @@ def _session_for(
     )
 
 
+def _display_name_from_email(email: str) -> str:
+    """Derive the NOT NULL ``display_name`` for a self-service signup."""
+
+    local = email.split("@", 1)[0].strip()
+    return (local or "creator")[:50]
+
+
 def signup(
     *,
     unit_of_work: UnitOfWork,
@@ -148,10 +155,9 @@ def signup(
         raise EmailAlreadyRegisteredError("email is already registered")
     try:
         user = unit_of_work.user.users.add(
-            external_id=f"local:{uuid4().hex}",
             email=normalized,
             password_hash=password_hash,
-            display_name=None,
+            display_name=_display_name_from_email(normalized),
         )
         workspace = unit_of_work.workspace.workspaces.create_for_user(
             user_id=user.id,

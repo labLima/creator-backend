@@ -27,7 +27,7 @@ from creator.user.ports import SettingsRecord, UserRecord
 def _user_record(row: user_models.User) -> UserRecord:
     return UserRecord(
         id=row.id,
-        external_id=row.external_id,
+        auth_provider_id=row.auth_provider_id,
         email=row.email,
         display_name=row.display_name,
         global_role=enum_value(row.global_role),
@@ -45,14 +45,14 @@ class SqlAlchemyUserRepository:
     def add(
         self,
         *,
-        external_id: str,
+        auth_provider_id: str | None = None,
         email: str | None = None,
-        display_name: str | None = None,
+        display_name: str,
         global_role: str = "membro",
         password_hash: str | None = None,
     ) -> UserRecord:
         row = user_models.User(
-            external_id=external_id,
+            auth_provider_id=auth_provider_id,
             email=email,
             display_name=display_name,
             global_role=global_role,
@@ -69,10 +69,12 @@ class SqlAlchemyUserRepository:
         row = self._session.scalars(statement).one_or_none()
         return _user_record(row) if row else None
 
-    def get_by_external_id(
-        self, external_id: str, *, include_deleted: bool = False
+    def get_by_auth_provider_id(
+        self, auth_provider_id: str, *, include_deleted: bool = False
     ) -> UserRecord | None:
-        statement = select(user_models.User).where(user_models.User.external_id == external_id)
+        statement = select(user_models.User).where(
+            user_models.User.auth_provider_id == auth_provider_id
+        )
         if not include_deleted:
             statement = statement.where(user_models.User.deleted_at.is_(None))
         row = self._session.scalars(statement).one_or_none()

@@ -36,7 +36,8 @@ def _tenant(connection: sa.Connection, name: str) -> dict[str, str]:
     user, workspace, brand, campaign, persona = (uuid4() for _ in range(5))
     connection.execute(
         sa.text(
-            "INSERT INTO users (id, external_id, global_role) VALUES (:id, :external, 'membro')"
+            "INSERT INTO users (id, auth_provider_id, display_name, global_role) "
+            "VALUES (:id, :external, 'User', 'membro')"
         ),
         {"id": user.hex, "external": f"ext-{user}"},
     )

@@ -43,7 +43,7 @@ def persist_generated_image(
 
     version_number = unit_of_work.generation.image_jobs.reserve_image_version(job.id)
     storage_path = immutable_image_path(
-        user_external_id=user.external_id,
+        user_id=str(user.id),
         content_id=job.content_id,
         version_number=version_number,
         mime_type=image.mime_type,
@@ -60,7 +60,7 @@ def persist_generated_image(
             "content_id": str(job.content_id),
             "generation_id": str(job.generation_id),
             "version_number": version_number,
-            "owner_external_id": user.external_id,
+            "owner_external_id": str(user.id),
             **image.metadata,
         },
     )

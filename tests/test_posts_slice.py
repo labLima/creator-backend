@@ -35,7 +35,10 @@ def engine() -> Iterator[sa.Engine]:
 def _content_plan(connection: sa.Connection) -> str:
     user, workspace, brand, campaign, persona, plan = (uuid4() for _ in range(6))
     connection.execute(
-        sa.text("INSERT INTO users (id, external_id, global_role) VALUES (:id, :e, 'membro')"),
+        sa.text(
+            "INSERT INTO users (id, auth_provider_id, display_name, global_role) "
+            "VALUES (:id, :e, 'User', 'membro')"
+        ),
         {"id": user.hex, "e": f"ext-{user}"},
     )
     connection.execute(
@@ -133,7 +136,10 @@ def test_posts_approval_metadata_is_consistent(engine: sa.Engine) -> None:
 
         approver = uuid4()
         connection.execute(
-            sa.text("INSERT INTO users (id, external_id, global_role) VALUES (:id, :e, 'membro')"),
+            sa.text(
+                "INSERT INTO users (id, auth_provider_id, display_name, global_role) "
+                "VALUES (:id, :e, 'User', 'membro')"
+            ),
             {"id": approver.hex, "e": f"ext-{approver}"},
         )
         approved = _post(connection, plan)

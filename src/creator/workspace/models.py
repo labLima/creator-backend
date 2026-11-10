@@ -12,51 +12,117 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    CheckConstraint,
     ForeignKey,
     Index,
     Integer,
     String,
+    UniqueConstraint,
     func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from creator.infrastructure.database.db import Base, SchemaRow
+from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.enums import (
     MemberStatus,
     WorkspaceRole,
     member_status_enum,
     workspace_role_enum,
 )
-from creator.infrastructure.database.types import timestamp_tz, uuid_default, uuid_pk
+from creator.infrastructure.database.types import (
+    enum_column,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
 
-class WorkspaceInvite(SchemaRow, Base):
+class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
-    workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
-    type: Mapped[str] = mapped_column(String(10), nullable=False)
-    role: Mapped[str] = mapped_column(String(20), nullable=False)
-    email: Mapped[str | None] = mapped_column(String(255))
-    token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_workspace_invites_token_hash"),
+        CheckConstraint(
+            "(type = 'EMAIL') = (email IS NOT NULL)",
+            name="chk_workspace_invites_email_by_type",
+        ),
+        CheckConstraint(
+            "(type = 'LINK') = (max_uses IS NOT NULL)",
+            name="chk_workspace_invites_max_uses_by_type",
+        ),
+        CheckConstraint(
+            "max_uses IS NULL OR max_uses >= 1",
+            name="chk_workspace_invites_max_uses_positive",
+        ),
+        Index("ix_workspace_invites_workspace_id", "workspace_id"),
+        Index("ix_workspace_invites_email", "email"),
+        Index("ix_workspace_invites_status", "status"),
+        Index("idx_m8_workspace_invites_created_by", "created_by"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    workspace_id: Mapped[UUID] = mapped_column(
+        uuid_pk,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    type: Mapped[str] = mapped_column(enum_column("invite_type"), nullable=False)
+    role: Mapped[WorkspaceRole] = mapped_column(workspace_role_enum, nullable=False)
+    email: Mapped[str | None] = mapped_column(String(254))
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     max_uses: Mapped[int | None] = mapped_column(Integer)
-    uses_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
-    is_active: Mapped[bool] = mapped_column(nullable=False, server_default=text("true"))
-    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    status: Mapped[str] = mapped_column(
+        enum_column("invite_status"),
+        nullable=False,
+        server_default=text("'PENDING'"),
+    )
+    created_by: Mapped[UUID] = mapped_column(
+        uuid_pk,
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
     expires_at: Mapped[datetime | None] = mapped_column(timestamp)
     last_used_at: Mapped[datetime | None] = mapped_column(timestamp)
     revoked_at: Mapped[datetime | None] = mapped_column(timestamp)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp_tz, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp_tz, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
-class WorkspaceInviteUsage(SchemaRow, Base):
+class WorkspaceInviteUsage(Base):
     __tablename__ = "workspace_invite_usages"
-    invite_id: Mapped[UUID] = mapped_column(ForeignKey("workspace_invites.id"), nullable=False)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
-    member_id: Mapped[UUID | None] = mapped_column(ForeignKey("workspace_members.id"))
-    used_at: Mapped[datetime] = mapped_column(timestamp, nullable=False, server_default=func.now())
+    __table_args__ = (
+        Index(
+            "uq_workspace_invite_usages_invite_member",
+            "invite_id",
+            "member_id",
+            unique=True,
+        ),
+        Index("ix_workspace_invite_usages_member_id", "member_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    invite_id: Mapped[UUID] = mapped_column(
+        uuid_pk,
+        ForeignKey("workspace_invites.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    member_id: Mapped[UUID] = mapped_column(
+        uuid_pk,
+        ForeignKey("workspace_members.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    used_at: Mapped[datetime] = mapped_column(
+        timestamp_tz, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp_tz, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Workspace(Base):

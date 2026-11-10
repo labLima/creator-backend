@@ -1656,7 +1656,7 @@ paths:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
-          description: Notification soft-deleted.
+          description: Notification deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -1736,7 +1736,7 @@ paths:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
-          description: User device soft-deleted.
+          description: User device deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -1818,7 +1818,7 @@ paths:
       - $ref: '#/components/parameters/ResourceId'
       responses:
         '200':
-          description: Notification preference soft-deleted.
+          description: Notification preference deleted.
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
@@ -6219,7 +6219,7 @@ components:
       type: object
       required:
       - id
-      - external_id
+      - display_name
       - global_role
       - created_at
       - updated_at
@@ -6227,19 +6227,19 @@ components:
         id:
           type: string
           format: uuid
-        external_id:
-          type: string
+        auth_provider_id:
+          type:
+          - string
+          - 'null'
           maxLength: 255
         email:
           type:
           - string
           - 'null'
           format: email
-          maxLength: 50
+          maxLength: 254
         display_name:
-          type:
-          - string
-          - 'null'
+          type: string
           maxLength: 50
         global_role:
           type: string
@@ -7966,21 +7966,28 @@ components:
       - workspace_id
       - type
       - title
-      - body
       properties:
         workspace_id:
           type: string
           format: uuid
         type:
           type: string
-          minLength: 1
-          maxLength: 30
+          enum:
+          - CONTENT_GENERATION
+          - CONTENT_APPROVAL
+          - INVITE
+          - BILLING
+          - CREDITS
+          - COUPON
+          - SYSTEM
         title:
           type: string
           minLength: 1
           maxLength: 150
         body:
-          type: string
+          type:
+          - string
+          - 'null'
           minLength: 1
           maxLength: 2000
         payload:
@@ -7990,7 +7997,16 @@ components:
           type:
           - string
           - 'null'
-          maxLength: 40
+          enum:
+          - WORKSPACE_INVITE
+          - WORKSPACE_MEMBER
+          - POST
+          - GENERATED_IMAGE
+          - SUBSCRIPTION
+          - ORDER
+          - INVOICE
+          - CHARGE
+          - COUPON
         resource_id:
           type:
           - string
@@ -8020,7 +8036,16 @@ components:
           type:
           - string
           - 'null'
-          maxLength: 40
+          enum:
+          - WORKSPACE_INVITE
+          - WORKSPACE_MEMBER
+          - POST
+          - GENERATED_IMAGE
+          - SUBSCRIPTION
+          - ORDER
+          - INVOICE
+          - CHARGE
+          - COUPON
         resource_id:
           type:
           - string
@@ -8034,12 +8059,20 @@ components:
       properties:
         type:
           type: string
-          minLength: 1
-          maxLength: 30
+          enum:
+          - CONTENT_GENERATION
+          - CONTENT_APPROVAL
+          - INVITE
+          - BILLING
+          - CREDITS
+          - COUPON
+          - SYSTEM
         channel:
           type: string
-          minLength: 1
-          maxLength: 10
+          enum:
+          - EMAIL
+          - IN_APP
+          - PUSH
         is_enabled:
           type: boolean
     UserDeviceCreateRequest:
@@ -8050,8 +8083,10 @@ components:
       properties:
         platform:
           type: string
-          minLength: 1
-          maxLength: 10
+          enum:
+          - IOS
+          - ANDROID
+          - WEB
         fcm_token:
           type: string
           minLength: 1
@@ -8063,8 +8098,10 @@ components:
           type:
           - string
           - 'null'
-          minLength: 1
-          maxLength: 10
+          enum:
+          - IOS
+          - ANDROID
+          - WEB
         fcm_token:
           type:
           - string
@@ -9756,22 +9793,23 @@ components:
       title: SubscriptionUpdateRequest
     UserCreateRequest:
       properties:
-        external_id:
-          type: string
-          maxLength: 255
-          minLength: 1
-          title: External Id
+        auth_provider_id:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 1
+          - type: 'null'
+          title: Auth Provider Id
         email:
           anyOf:
           - type: string
-            maxLength: 50
+            maxLength: 254
           - type: 'null'
           title: Email
         display_name:
-          anyOf:
-          - type: string
-            maxLength: 50
-          - type: 'null'
+          type: string
+          maxLength: 50
+          minLength: 1
           title: Display Name
         global_role:
           type: string
@@ -9784,14 +9822,14 @@ components:
       additionalProperties: false
       type: object
       required:
-      - external_id
+      - display_name
       title: UserCreateRequest
     UserUpdateRequest:
       properties:
         email:
           anyOf:
           - type: string
-            maxLength: 50
+            maxLength: 254
           - type: 'null'
           title: Email
         display_name:
@@ -9849,17 +9887,22 @@ components:
           title: Workspace Id
         type:
           type: string
-          maxLength: 10
-          minLength: 1
+          enum:
+          - EMAIL
+          - LINK
           title: Type
         role:
           type: string
-          maxLength: 20
-          minLength: 1
+          enum:
+          - OWNER
+          - MANAGER
+          - EDITOR
+          - VIEWER
           title: Role
         email:
           anyOf:
           - type: string
+            maxLength: 254
           - type: 'null'
           title: Email
         max_uses:
@@ -9886,12 +9929,17 @@ components:
         role:
           anyOf:
           - type: string
-            maxLength: 20
+            enum:
+            - OWNER
+            - MANAGER
+            - EDITOR
+            - VIEWER
           - type: 'null'
           title: Role
         email:
           anyOf:
           - type: string
+            maxLength: 254
           - type: 'null'
           title: Email
         max_uses:

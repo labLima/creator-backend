@@ -94,14 +94,14 @@ def image_extension_for_mime_type(mime_type: str) -> str:
 
 def immutable_image_path(
     *,
-    user_external_id: str,
+    user_id: str,
     content_id: object,
     version_number: int,
     mime_type: str,
 ) -> str:
     if version_number < 1:
         raise StorageValidationError("Image version must be positive")
-    safe_user = _safe_path_segment(user_external_id)
+    safe_user = _safe_path_segment(user_id)
     extension = image_extension_for_mime_type(mime_type)
     return f"users/{safe_user}/contents/{content_id}/versions/{version_number}/image.{extension}"
 

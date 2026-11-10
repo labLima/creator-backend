@@ -73,13 +73,13 @@ def seed_user_workspace_content(connection: Any) -> dict[str, Any]:
     connection.execute(
         text(
             """
-            INSERT INTO users (id, external_id, email, display_name)
-            VALUES (:id, :external_id, :email, :display_name)
+            INSERT INTO users (id, auth_provider_id, email, display_name)
+            VALUES (:id, :auth_provider_id, :email, :display_name)
             """
         ),
         {
             "id": user_id.hex,
-            "external_id": f"local:{suffix}",
+            "auth_provider_id": f"local:{suffix}",
             "email": f"{suffix}@example.com",
             "display_name": "Creator Test User",
         },
@@ -586,7 +586,7 @@ def test_outbox_next_event_and_consumption_rollback_together(
 def test_repositories_create_and_update_user_settings(migrated_engine: Engine) -> None:
     with uow_for_engine(migrated_engine) as unit_of_work:
         user = unit_of_work.user.users.add(
-            external_id=f"local:{uuid4()}",
+            auth_provider_id=f"local:{uuid4()}",
             email="repository-user@example.com",
             display_name="Repository User",
         )
@@ -598,7 +598,7 @@ def test_repositories_create_and_update_user_settings(migrated_engine: Engine) -
         unit_of_work.commit()
 
     with uow_for_engine(migrated_engine) as unit_of_work:
-        stored_user = unit_of_work.user.users.get_by_external_id(user.external_id)
+        stored_user = unit_of_work.user.users.get_by_auth_provider_id(user.auth_provider_id)
         updated_settings = unit_of_work.user.settings.update_partial(
             user.id,
             {"default_preferences": {"theme": "dark"}},

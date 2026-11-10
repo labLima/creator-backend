@@ -97,8 +97,9 @@ def test_invited_by_is_nulled_when_the_inviter_is_deleted(engine: sa.Engine) -> 
         with engine.begin() as connection:
             inviter, member, workspace = uuid4(), uuid4(), uuid4()
             users = sa.text(
-                "INSERT INTO users (id, external_id, global_role, created_at, updated_at) "
-                "VALUES (:id, :external, 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+                "INSERT INTO users (id, auth_provider_id, display_name, global_role, "
+                "created_at, updated_at) "
+                "VALUES (:id, :external, 'User', 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
             )
             for user in (inviter, member):
                 connection.execute(users, {"id": user.hex, "external": f"ext-{user}"})

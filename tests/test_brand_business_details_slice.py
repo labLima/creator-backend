@@ -36,8 +36,9 @@ def _chain(connection: sa.Connection) -> dict[str, str]:
     user, workspace, brand, campaign, persona = (uuid4() for _ in range(5))
     connection.execute(
         sa.text(
-            "INSERT INTO users (id, external_id, global_role, created_at, updated_at) "
-            "VALUES (:id, :external, 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO users (id, auth_provider_id, display_name, global_role, "
+            "created_at, updated_at) "
+            "VALUES (:id, :external, 'User', 'membro', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ),
         {"id": user.hex, "external": f"ext-{user}"},
     )

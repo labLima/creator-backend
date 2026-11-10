@@ -1,6 +1,6 @@
 # 0058 — Alinhamento do schema SQLite ao Creator_DB_final.sql
 
-- Status: planejado
+- Status: em execução (T24 concluída; T25/T23 e fechamento pendentes)
 - ADR primária: [ADR-021](../adr/0021-sqlite-default-database.md) (SQLite como banco padrão) e [ADR-015](../adr/0015-database-diagram-alignment.md) (alinhamento ao diagrama)
 - Issue tracker: [#159](https://github.com/labLima/creator-backend/issues/159)
 - Relacionadas: [#106](https://github.com/labLima/creator-backend/issues/106), [#97](https://github.com/labLima/creator-backend/issues/97)–[#102](https://github.com/labLima/creator-backend/issues/102)
@@ -153,6 +153,59 @@ Alembic (rebuilds não podem cascatear); migrations antigas são história imut�
 e não importam enums vivos; o review automático por subagente estourou o tempo
 em várias rodadas e foi substituído por verificação dirigida (execução em banco
 migrado, `PRAGMA foreign_key_check`, idempotência).
+
+## Progresso (2026-11-10)
+
+`origin/dev` integrada na branch (`92c7950`): a feature de importação de imagens
+foi preservada e a issue local renumerada para `0058` porque a `dev` publicou
+`0057-image-import`. A revisão `0006_imported_image_versions` entrou na cadeia
+antes de `0006_audit_consent_persona`, com head única em `0014_generated_images`.
+
+T24 (SHC-25), primeira fatia concluída — grupo notificações:
+
+- `user_devices`, `notification_preferences`, `notifications` e
+  `notification_recipients` alinhados ao dump: sem `deleted_at`,
+  `external_message_id` no lugar de `provider_message_id`, sem
+  `workspace_member_id`, enums `notification_type`/`notification_channel`/
+  `notification_delivery_status`/`device_platform`/`notification_resource_type`,
+  FKs com `CASCADE`/`SET NULL`, índices e UNIQUE do modelo final.
+- `migrations/versions/0015_notification_alignment.py` reconstrói as quatro
+  tabelas (SQLite), remove linhas soft-deleted e deduplica chaves antes dos
+  UNIQUE; downgrade recria a forma anterior sem restaurar as linhas removidas.
+- `CHECK_MAP` populado com 27 CHECKs cujo nome já coincide entre dump e models,
+  o que zerou quase toda a dívida de `check_extra` dessa frente
+  (`check_missing` 80→53, `check_extra` 51→32).
+- Relatório regenerado: **643 divergências** (era 728), `column_missing` 128,
+  `enum` 27, `index_missing` 91, `fk_ondelete` 29.
+- `docs/openapi.yaml` atualizado para os enums e para `body` opcional.
+
+T24 (SHC-25), segunda fatia concluída — identidade e convites:
+
+- `users`: `external_id` absorvido por `auth_provider_id` (ids sintéticos
+  `local:*` viram NULL), `cpf`/`cnpj` removidos, `email` 254 com UNIQUE parcial
+  `uq_users_email_active` em linhas ativas, `display_name` NOT NULL (backfill a
+  partir do e-mail; signup deriva o nome) e `password_hash`/`global_role`
+  mantidos como exceção da ADR-020.
+- `workspace_invites`: `token` vira `token_hash` SHA-256, `role`/`type`/`status`
+  viram enums do dump, `uses_count`/`is_active`/`deleted_at` saem; inativas e
+  soft-deleted viram `status = REVOKED`; CHECKs de tipo/e-mail/`max_uses`.
+- `workspace_invite_usages`: `user_id`/`workspace_id` derivados de `member_id`
+  e removidos; `member_id` NOT NULL; escopo de listagem passa pelo workspace do
+  membro.
+- `migrations/versions/0016_identity_alignment.py` reconstrói as três tabelas,
+  normaliza convites inválidos e tem downgrade documentado (tokens plaintext não
+  são recuperáveis).
+- `tests/test_identity_alignment_migration.py` cobre backfill de identidade,
+  hash de token, revogação e derivação de `member_id`.
+- OpenAPI: `auth_provider_id`, `email` 254, `display_name` obrigatório, enums de
+  `type`/`role` nos convites e validação cruzada tipo×e-mail×`max_uses`.
+
+Relatório regenerado: **589 divergências** (728 no handoff), `column_missing`
+126, `column_extra` 98, `enum` 24, `index_missing` 84, `fk_ondelete` 25,
+`check_missing` 45, `check_extra` 30.
+
+Próximo passo: T25 (SHC-26) — brand, campanha e persona + backfill de
+`campaigns.brand_id`, seguida de T23 (SHC-24).
 
 ## Critérios de aceite
 

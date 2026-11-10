@@ -241,7 +241,7 @@ def job_record(*, attempt_count: int = 1, max_attempts: int = 3) -> GenerationJo
 def user_record() -> UserRecord:
     return UserRecord(
         id=uuid4(),
-        external_id="principal-123",
+        auth_provider_id="principal-123",
         email="principal@example.com",
         display_name="Principal Example",
         global_role="membro",

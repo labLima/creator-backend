@@ -98,7 +98,7 @@ def test_invalid_cookie_token_is_rejected() -> None:
 def test_current_user_requires_active_session() -> None:
     user = SimpleNamespace(
         id="00000000-0000-0000-0000-000000000001",
-        external_id="local:test",
+        auth_provider_id="local:test",
         email="person@example.com",
         display_name="Person",
         deleted_at=None,

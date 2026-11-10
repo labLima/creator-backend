@@ -691,7 +691,7 @@ class WorkerUow:
         self.agent_workflows = self.shared_repo
         self.outbox = self.shared_outbox
         self.users = SimpleNamespace(
-            get_by_id=lambda user_id: SimpleNamespace(id=USER_ID, external_id="principal")
+            get_by_id=lambda user_id: SimpleNamespace(id=USER_ID, auth_provider_id="principal")
         )
         self.workspaces = SimpleNamespace(user_has_workspace_role=lambda **kwargs: True)
         self.brands = SimpleNamespace(

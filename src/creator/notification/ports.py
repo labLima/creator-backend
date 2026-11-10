@@ -18,7 +18,6 @@ class UserDeviceRecord:
     last_seen_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class UserDeviceRepository(Protocol):
@@ -40,7 +39,6 @@ class NotificationPreferenceRecord:
     is_enabled: bool
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class NotificationPreferenceRepository(Protocol):
@@ -63,14 +61,13 @@ class NotificationRecord:
     workspace_id: UUID
     type: str
     title: str
-    body: str
-    payload: dict[str, object]
+    body: str | None
+    payload: dict[str, object] | None
     resource_type: str | None
     resource_id: UUID | None
     created_by: UUID | None
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class NotificationRepository(Protocol):
@@ -87,8 +84,8 @@ class NotificationRepository(Protocol):
         created_by: UUID,
         type: str,
         title: str,
-        body: str,
-        payload: dict[str, object],
+        body: str | None,
+        payload: dict[str, object] | None,
         resource_type: str | None,
         resource_id: UUID | None,
     ) -> NotificationRecord: ...
@@ -101,15 +98,15 @@ class NotificationRecipientRecord:
     id: UUID
     notification_id: UUID
     user_id: UUID
-    workspace_member_id: UUID | None
     channel: str
     status: str
+    external_message_id: str | None
+    error_message: str | None
     attempts: int
     sent_at: datetime | None
     read_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    deleted_at: datetime | None
 
 
 class NotificationRecipientRepository(Protocol):

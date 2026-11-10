@@ -49,7 +49,7 @@ def _workspace_membership_data(membership: WorkspaceMembershipRecord) -> dict[st
 def _user_data(user: UserRecord) -> dict[str, Any]:
     return {
         "id": str(user.id),
-        "external_id": user.external_id,
+        "auth_provider_id": user.auth_provider_id,
         "email": user.email,
         "display_name": user.display_name,
         "global_role": user.global_role,
@@ -212,7 +212,6 @@ def _user_device_data(device: Any) -> dict[str, Any]:
         "last_seen_at": device.last_seen_at.isoformat() if device.last_seen_at else None,
         "created_at": device.created_at.isoformat(),
         "updated_at": device.updated_at.isoformat(),
-        "deleted_at": device.deleted_at.isoformat() if device.deleted_at else None,
     }
 
 
@@ -225,7 +224,6 @@ def _notification_preference_data(preference: Any) -> dict[str, Any]:
         "is_enabled": preference.is_enabled,
         "created_at": preference.created_at.isoformat(),
         "updated_at": preference.updated_at.isoformat(),
-        "deleted_at": preference.deleted_at.isoformat() if preference.deleted_at else None,
     }
 
 
@@ -242,7 +240,6 @@ def _notification_data(notification: Any) -> dict[str, Any]:
         "created_by": str(notification.created_by) if notification.created_by else None,
         "created_at": notification.created_at.isoformat(),
         "updated_at": notification.updated_at.isoformat(),
-        "deleted_at": notification.deleted_at.isoformat() if notification.deleted_at else None,
     }
 
 
@@ -463,16 +460,13 @@ def _workspace_invite_data(item: Any) -> dict[str, Any]:
         "role": item.role,
         "email": item.email,
         "max_uses": item.max_uses,
-        "uses_count": item.uses_count,
         "status": item.status,
-        "is_active": item.is_active,
         "created_by": str(item.created_by),
         "expires_at": item.expires_at.isoformat() if item.expires_at else None,
         "last_used_at": item.last_used_at.isoformat() if item.last_used_at else None,
         "revoked_at": item.revoked_at.isoformat() if item.revoked_at else None,
         "created_at": item.created_at.isoformat(),
         "updated_at": item.updated_at.isoformat(),
-        "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
     }
 
 
@@ -631,15 +625,15 @@ def _notification_recipient_data(item: Any) -> dict[str, Any]:
         "id": str(item.id),
         "notification_id": str(item.notification_id),
         "user_id": str(item.user_id),
-        "workspace_member_id": str(item.workspace_member_id) if item.workspace_member_id else None,
         "channel": item.channel,
         "status": item.status,
+        "external_message_id": item.external_message_id,
+        "error_message": item.error_message,
         "attempts": item.attempts,
         "sent_at": item.sent_at.isoformat() if item.sent_at else None,
         "read_at": item.read_at.isoformat() if item.read_at else None,
         "created_at": item.created_at.isoformat(),
         "updated_at": item.updated_at.isoformat(),
-        "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
     }
 
 
@@ -647,13 +641,9 @@ def _workspace_invite_usage_data(item: Any) -> dict[str, Any]:
     return {
         "id": str(item.id),
         "invite_id": str(item.invite_id),
-        "user_id": str(item.user_id),
-        "workspace_id": str(item.workspace_id),
-        "member_id": str(item.member_id) if item.member_id else None,
+        "member_id": str(item.member_id),
         "used_at": item.used_at.isoformat(),
-        "created_at": item.created_at.isoformat(),
         "updated_at": item.updated_at.isoformat(),
-        "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
     }
 
 

@@ -39,7 +39,7 @@ def db() -> Session:
 
 
 def seed(session: Session) -> tuple[User, Workspace, Brand]:
-    user = User(id=uuid4(), external_id=str(uuid4()))
+    user = User(id=uuid4(), auth_provider_id=str(uuid4()), display_name="User")
     workspace = Workspace(id=uuid4(), name="Workspace")
     brand = Brand(id=uuid4(), workspace_id=workspace.id, name="Brand")
     session.add_all([user, workspace])

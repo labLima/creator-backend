@@ -68,7 +68,7 @@ def test_content_and_generation_type_enums_include_text() -> None:
 def test_settings_and_image_uniqueness_constraints_are_explicit() -> None:
     settings_columns = Base.metadata.tables["settings"].c
 
-    assert "uq_users_external_id" in constraint_names("users", UniqueConstraint)
+    assert "uq_users_email_active" in index_names("users")
     assert "uq_settings_user_id" in constraint_names("settings", UniqueConstraint)
     assert {
         "brand_name",

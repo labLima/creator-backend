@@ -32,7 +32,6 @@ def _device(row: notification_models.UserDevice) -> UserDeviceRecord:
         last_seen_at=row.last_seen_at,
         created_at=row.created_at,
         updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
     )
 
 
@@ -43,10 +42,7 @@ class SqlAlchemyUserDeviceRepository:
     def list_for_user(self, *, user_id: UUID) -> list[UserDeviceRecord]:
         rows = self._session.scalars(
             select(notification_models.UserDevice)
-            .where(
-                notification_models.UserDevice.user_id == user_id,
-                notification_models.UserDevice.deleted_at.is_(None),
-            )
+            .where(notification_models.UserDevice.user_id == user_id)
             .order_by(notification_models.UserDevice.created_at.desc())
         ).all()
         return [_device(row) for row in rows]
@@ -56,7 +52,6 @@ class SqlAlchemyUserDeviceRepository:
             select(notification_models.UserDevice).where(
                 notification_models.UserDevice.id == device_id,
                 notification_models.UserDevice.user_id == user_id,
-                notification_models.UserDevice.deleted_at.is_(None),
             )
         ).one_or_none()
         return _device(row) if row else None
@@ -81,9 +76,7 @@ class SqlAlchemyUserDeviceRepository:
 
     def soft_delete(self, *, user_id: UUID, device_id: UUID) -> None:
         row = self._get_row(user_id=user_id, device_id=device_id)
-        timestamp = now()
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
+        self._session.delete(row)
         self._session.flush()
 
     def _get_row(self, *, user_id: UUID, device_id: UUID) -> notification_models.UserDevice:
@@ -91,7 +84,6 @@ class SqlAlchemyUserDeviceRepository:
             select(notification_models.UserDevice).where(
                 notification_models.UserDevice.id == device_id,
                 notification_models.UserDevice.user_id == user_id,
-                notification_models.UserDevice.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
@@ -108,7 +100,6 @@ def _preference(row: notification_models.NotificationPreference) -> Notification
         is_enabled=row.is_enabled,
         created_at=row.created_at,
         updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
     )
 
 
@@ -119,10 +110,7 @@ class SqlAlchemyNotificationPreferenceRepository:
     def list_for_user(self, *, user_id: UUID) -> list[NotificationPreferenceRecord]:
         rows = self._session.scalars(
             select(notification_models.NotificationPreference)
-            .where(
-                notification_models.NotificationPreference.user_id == user_id,
-                notification_models.NotificationPreference.deleted_at.is_(None),
-            )
+            .where(notification_models.NotificationPreference.user_id == user_id)
             .order_by(notification_models.NotificationPreference.created_at.desc())
         ).all()
         return [_preference(row) for row in rows]
@@ -134,7 +122,6 @@ class SqlAlchemyNotificationPreferenceRepository:
             select(notification_models.NotificationPreference).where(
                 notification_models.NotificationPreference.id == preference_id,
                 notification_models.NotificationPreference.user_id == user_id,
-                notification_models.NotificationPreference.deleted_at.is_(None),
             )
         ).one_or_none()
         return _preference(row) if row else None
@@ -161,9 +148,7 @@ class SqlAlchemyNotificationPreferenceRepository:
 
     def soft_delete(self, *, user_id: UUID, preference_id: UUID) -> None:
         row = self._get_row(user_id=user_id, preference_id=preference_id)
-        timestamp = now()
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
+        self._session.delete(row)
         self._session.flush()
 
     def _get_row(
@@ -173,7 +158,6 @@ class SqlAlchemyNotificationPreferenceRepository:
             select(notification_models.NotificationPreference).where(
                 notification_models.NotificationPreference.id == preference_id,
                 notification_models.NotificationPreference.user_id == user_id,
-                notification_models.NotificationPreference.deleted_at.is_(None),
             )
         ).one_or_none()
         if row is None:
@@ -188,13 +172,12 @@ def _notification(row: notification_models.Notification) -> NotificationRecord:
         type=row.type,
         title=row.title,
         body=row.body,
-        payload=dict(row.payload or {}),
+        payload=dict(row.payload) if row.payload is not None else None,
         resource_type=row.resource_type,
         resource_id=row.resource_id,
         created_by=row.created_by,
         created_at=row.created_at,
         updated_at=row.updated_at,
-        deleted_at=row.deleted_at,
     )
 
 
@@ -212,10 +195,7 @@ class SqlAlchemyNotificationRepository:
                 workspace_models.WorkspaceMembership.workspace_id
                 == notification_models.Notification.workspace_id,
             )
-            .where(
-                workspace_models.WorkspaceMembership.user_id == user_id,
-                notification_models.Notification.deleted_at.is_(None),
-            )
+            .where(workspace_models.WorkspaceMembership.user_id == user_id)
         )
         if workspace_id is not None:
             statement = statement.where(
@@ -236,7 +216,6 @@ class SqlAlchemyNotificationRepository:
             )
             .where(
                 notification_models.Notification.id == notification_id,
-                notification_models.Notification.deleted_at.is_(None),
                 workspace_models.WorkspaceMembership.user_id == user_id,
             )
         ).one_or_none()
@@ -249,8 +228,8 @@ class SqlAlchemyNotificationRepository:
         created_by: UUID,
         type: str,
         title: str,
-        body: str,
-        payload: dict[str, object],
+        body: str | None,
+        payload: dict[str, object] | None,
         resource_type: str | None,
         resource_id: UUID | None,
     ) -> NotificationRecord:
@@ -270,7 +249,7 @@ class SqlAlchemyNotificationRepository:
 
     def update(self, *, notification_id: UUID, fields: dict[str, object]) -> NotificationRecord:
         row = self._session.get(notification_models.Notification, notification_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Notification not found")
         for name, value in fields.items():
             setattr(row, name, value)
@@ -280,11 +259,9 @@ class SqlAlchemyNotificationRepository:
 
     def soft_delete(self, *, notification_id: UUID) -> None:
         row = self._session.get(notification_models.Notification, notification_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Notification not found")
-        timestamp = now()
-        row.deleted_at = timestamp
-        row.updated_at = timestamp
+        self._session.delete(row)
         self._session.flush()
 
 
@@ -294,25 +271,24 @@ class SqlAlchemyNotificationRecipientRepository(NotificationRecipientRepository)
 
     def _r(self, x: notification_models.NotificationRecipient) -> NotificationRecipientRecord:
         return NotificationRecipientRecord(
-            x.id,
-            x.notification_id,
-            x.user_id,
-            x.workspace_member_id,
-            x.channel,
-            x.status,
-            x.attempts,
-            x.sent_at,
-            x.read_at,
-            x.created_at,
-            x.updated_at,
-            x.deleted_at,
+            id=x.id,
+            notification_id=x.notification_id,
+            user_id=x.user_id,
+            channel=x.channel,
+            status=x.status,
+            external_message_id=x.external_message_id,
+            error_message=x.error_message,
+            attempts=x.attempts,
+            sent_at=x.sent_at,
+            read_at=x.read_at,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
         )
 
     def list_for_user(self, *, user_id: UUID):
         rows = self._session.scalars(
             select(notification_models.NotificationRecipient).where(
                 notification_models.NotificationRecipient.user_id == user_id,
-                notification_models.NotificationRecipient.deleted_at.is_(None),
             )
         ).all()
         return [self._r(x) for x in rows]
@@ -322,7 +298,6 @@ class SqlAlchemyNotificationRecipientRepository(NotificationRecipientRepository)
             select(notification_models.NotificationRecipient).where(
                 notification_models.NotificationRecipient.id == recipient_id,
                 notification_models.NotificationRecipient.user_id == user_id,
-                notification_models.NotificationRecipient.deleted_at.is_(None),
             )
         )
         return self._r(x) if x else None
@@ -335,7 +310,7 @@ class SqlAlchemyNotificationRecipientRepository(NotificationRecipientRepository)
 
     def update(self, *, recipient_id, fields):
         x = self._session.get(notification_models.NotificationRecipient, recipient_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Notification recipient not found")
         for k, v in fields.items():
             setattr(x, k, v)
@@ -345,8 +320,7 @@ class SqlAlchemyNotificationRecipientRepository(NotificationRecipientRepository)
 
     def soft_delete(self, *, recipient_id):
         x = self._session.get(notification_models.NotificationRecipient, recipient_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Notification recipient not found")
-        x.deleted_at = now()
-        x.updated_at = x.deleted_at
+        self._session.delete(x)
         self._session.flush()

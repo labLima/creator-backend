@@ -2,7 +2,7 @@
 
 Fonte: `src/creator/infrastructure/database/schema_manifest.py`, `docs/migration/legacy-compatibility-matrix.md` e `docs/migration/legacy-inventory.md`.
 
-A matriz cobre as **53 tabelas** registradas no metadata: 38 do PDF, 11 legadas e 4 extensões de ADR (`auth_sessions`, `outbox_events`, `activity_events`, `content_text_versions`).
+A matriz cobre as **75 tabelas** registradas no metadata: 38 do PDF, 11 legadas e 4 extensões de ADR (`auth_sessions`, `outbox_events`, `activity_events`, `content_text_versions`).
 
 > **Decisão de 2026-11-04:** a migração de comportamento do Create Bloom foi
 > encerrada como não planejada (#134 / [0050](issues/0050-legacy-behavior-parity.md)).

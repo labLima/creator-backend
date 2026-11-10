@@ -791,7 +791,7 @@ def _execute_agent_step[OutputModel: BaseModel](
                 workspace_id=run.workspace_id,
                 brand_id=run.brand_id,
                 authorization=WorkspaceAuthorizationContext(
-                    principal=Principal(subject=principal_record.external_id),
+                    principal=Principal(subject=str(principal_record.id)),
                     workspace_id=run.workspace_id,
                     workspace_role=WorkspaceRole.EDITOR,
                 ),

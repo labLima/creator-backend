@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **728**
+- Divergências: **589**
 
 ## Divergências por categoria
 
@@ -24,22 +24,22 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 129 |
-| `column_extra` | 115 |
-| `nullability` | 11 |
-| `width` | 27 |
+| `column_missing` | 126 |
+| `column_extra` | 98 |
+| `nullability` | 9 |
+| `width` | 25 |
 | `kind` | 4 |
-| `enum` | 34 |
-| `unique_missing` | 4 |
-| `unique_extra` | 7 |
-| `index_missing` | 101 |
-| `index_extra` | 4 |
-| `index_name` | 29 |
+| `enum` | 24 |
+| `unique_missing` | 2 |
+| `unique_extra` | 4 |
+| `index_missing` | 84 |
+| `index_extra` | 3 |
+| `index_name` | 26 |
 | `fk_missing` | 21 |
-| `fk_extra` | 49 |
-| `fk_ondelete` | 35 |
-| `check_missing` | 80 |
-| `check_extra` | 51 |
+| `fk_extra` | 36 |
+| `fk_ondelete` | 25 |
+| `check_missing` | 45 |
+| `check_extra` | 30 |
 | `default_missing` | 6 |
 | `default_value` | 0 |
 
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **288**.
+Total: **264**.
 
-### `column_missing` (129)
+### `column_missing` (126)
 
 - `billing_accounts.document_hash`
 - `billing_accounts.external_code`
@@ -127,7 +127,6 @@ Total: **288**.
 - `credit_packages.credits_validity_days`
 - `invoices.external_id`
 - `invoices.provider`
-- `notification_recipients.external_message_id`
 - `orders.code`
 - `orders.external_id`
 - `orders.provider`
@@ -182,7 +181,6 @@ Total: **288**.
 - `subscriptions.payment_method_id`
 - `subscriptions.provider`
 - `subscriptions.status_reason`
-- `users.auth_provider_id`
 - `workspace_credit_transactions.balance_after`
 - `workspace_credit_transactions.created_by`
 - `workspace_credit_transactions.generated_image_id`
@@ -190,9 +188,8 @@ Total: **288**.
 - `workspace_credit_transactions.invoice_id`
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
-- `workspace_invites.token_hash`
 
-### `column_extra` (115)
+### `column_extra` (98)
 
 - `billing_accounts.deleted_at`
 - `billing_accounts.document_type`
@@ -246,11 +243,6 @@ Total: **288**.
 - `invoices.deleted_at`
 - `invoices.provider_charge_id`
 - `invoices.provider_invoice_id`
-- `notification_preferences.deleted_at`
-- `notification_recipients.deleted_at`
-- `notification_recipients.provider_message_id`
-- `notification_recipients.workspace_member_id`
-- `notifications.deleted_at`
 - `orders.closed`
 - `orders.deleted_at`
 - `orders.provider_order_id`
@@ -290,10 +282,6 @@ Total: **288**.
 - `subscriptions.provider_code`
 - `subscriptions.provider_subscription_id`
 - `subscriptions.start_at`
-- `user_devices.deleted_at`
-- `users.cnpj`
-- `users.cpf`
-- `users.external_id`
 - `users.global_role`
 - `users.password_hash`
 - `workspace_credit_transactions.deleted_at`
@@ -301,16 +289,8 @@ Total: **288**.
 - `workspace_credit_transactions.reference_type`
 - `workspace_credit_transactions.transaction_type`
 - `workspace_credit_transactions.updated_at`
-- `workspace_invite_usages.created_at`
-- `workspace_invite_usages.deleted_at`
-- `workspace_invite_usages.user_id`
-- `workspace_invite_usages.workspace_id`
-- `workspace_invites.deleted_at`
-- `workspace_invites.is_active`
-- `workspace_invites.token`
-- `workspace_invites.uses_count`
 
-### `nullability` (11)
+### `nullability` (9)
 
 - `billing_accounts.provider: final NOT NULL, model nullable`
 - `billing_addresses.city: final NOT NULL, model nullable`
@@ -321,10 +301,8 @@ Total: **288**.
 - `invoices.subscription_id: final NOT NULL, model nullable`
 - `plan_items.status: final NOT NULL, model nullable`
 - `subscriptions.installments: final NOT NULL, model nullable`
-- `users.display_name: final NOT NULL, model nullable`
-- `workspace_invite_usages.member_id: final NOT NULL, model nullable`
 
-### `width` (27)
+### `width` (25)
 
 - `billing_accounts.email: final varchar(254), model varchar(64)`
 - `billing_addresses.number: final varchar(20), model varchar(16)`
@@ -351,8 +329,6 @@ Total: **288**.
 - `plan_items.price_cents: final bigint, model integer`
 - `refunds.amount_cents: final bigint, model integer`
 - `subscriptions.minimum_price_cents: final bigint, model integer`
-- `users.email: final varchar(254), model varchar(320)`
-- `workspace_invites.email: final varchar(254), model varchar(255)`
 
 ### `default_missing` (6)
 
@@ -365,9 +341,9 @@ Total: **288**.
 
 ## 4. Enums
 
-Total: **34**.
+Total: **24**.
 
-### `enum` (34)
+### `enum` (24)
 
 - `billing_accounts.payer_type: model has no vocabulary (expected ['INDIVIDUAL', 'COMPANY'])`
 - `billing_accounts.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
@@ -377,12 +353,6 @@ Total: **34**.
 - `coupons.type: model has no vocabulary (expected ['DISCOUNT', 'CREDIT'])`
 - `invoices.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
 - `invoices.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'SCHEDULED', 'FAILED'])`
-- `notification_preferences.channel: model has no vocabulary (expected ['EMAIL', 'IN_APP', 'PUSH'])`
-- `notification_preferences.type: model has no vocabulary (expected ['CONTENT_GENERATION', 'CONTENT_APPROVAL', 'INVITE', 'BILLING', 'CREDITS', 'COUPON', 'SYSTEM'])`
-- `notification_recipients.channel: model has no vocabulary (expected ['EMAIL', 'IN_APP', 'PUSH'])`
-- `notification_recipients.status: model has no vocabulary (expected ['PENDING', 'SENT', 'FAILED'])`
-- `notifications.resource_type: model has no vocabulary (expected ['WORKSPACE_INVITE', 'WORKSPACE_MEMBER', 'POST', 'GENERATED_IMAGE', 'SUBSCRIPTION', 'ORDER', 'INVOICE', 'CHARGE', 'COUPON'])`
-- `notifications.type: model has no vocabulary (expected ['CONTENT_GENERATION', 'CONTENT_APPROVAL', 'INVITE', 'BILLING', 'CREDITS', 'COUPON', 'SYSTEM'])`
 - `orders.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'FAILED'])`
 - `personas.gender: model has no vocabulary (expected ['MALE', 'FEMALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'])`
 - `plan_items.pricing_scheme_type: model has no vocabulary (expected ['FLAT', 'TIERED', 'VOLUME', 'STAIRSTEP'])`
@@ -399,16 +369,12 @@ Total: **34**.
 - `subscriptions.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
 - `subscriptions.provider_status: model has no vocabulary (expected ['ACTIVE', 'CANCELED', 'FUTURE'])`
 - `subscriptions.status: model has no vocabulary (expected ['ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED', 'EXPIRED'])`
-- `user_devices.platform: model has no vocabulary (expected ['IOS', 'ANDROID', 'WEB'])`
-- `workspace_invites.role: model has no vocabulary (expected ['OWNER', 'MANAGER', 'EDITOR', 'VIEWER'])`
-- `workspace_invites.status: model has no vocabulary (expected ['PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED'])`
-- `workspace_invites.type: model has no vocabulary (expected ['EMAIL', 'LINK'])`
 
 ## 5. Índices
 
-Total: **134**.
+Total: **113**.
 
-### `index_missing` (101)
+### `index_missing` (84)
 
 - `billing_accounts: (document_hash)`
 - `billing_accounts: (user_id)`
@@ -452,15 +418,6 @@ Total: **134**.
 - `invoices: (status, due_at)`
 - `invoices: (subscription_id, due_at)`
 - `invoices: UNIQUE (provider, external_id)`
-- `notification_preferences: UNIQUE (user_id, type, channel)`
-- `notification_recipients: (user_id, channel)`
-- `notification_recipients: (user_id, created_at)`
-- `notification_recipients: (user_id, read_at)`
-- `notification_recipients: UNIQUE (notification_id, user_id, channel)`
-- `notifications: (created_at)`
-- `notifications: (created_by) WHERE created_by is not null`
-- `notifications: (type)`
-- `notifications: UNIQUE (workspace_id, dedupe_key)`
 - `orders: (billing_account_id)`
 - `orders: (credit_package_id) WHERE credit_package_id is not null`
 - `orders: (status)`
@@ -497,29 +454,20 @@ Total: **134**.
 - `subscriptions: UNIQUE (id, workspace_id)`
 - `subscriptions: UNIQUE (provider, external_id)`
 - `subscriptions: UNIQUE (workspace_id) WHERE status in ('active', 'trialing', 'past_due')`
-- `user_devices: (user_id)`
-- `users: UNIQUE (email) WHERE deleted_at is null`
 - `workspace_credit_transactions: (created_by) WHERE created_by is not null`
 - `workspace_credit_transactions: (workspace_id, created_at)`
 - `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
 - `workspace_credit_transactions: UNIQUE (image_resize_id, type)`
 - `workspace_credit_transactions: UNIQUE (invoice_id, type)`
 - `workspace_credit_transactions: UNIQUE (order_id, type)`
-- `workspace_invite_usages: (member_id)`
-- `workspace_invite_usages: UNIQUE (invite_id, member_id)`
-- `workspace_invites: (created_by)`
-- `workspace_invites: (email)`
-- `workspace_invites: (status)`
-- `workspace_invites: (workspace_id)`
 
-### `index_extra` (4)
+### `index_extra` (3)
 
 - `brands: (created_by_user_id)`
 - `brands: (workspace_id, deleted_at, created_at)`
 - `captions: UNIQUE (post_id) WHERE is_current`
-- `users: (deleted_at)`
 
-### `index_name` (29)
+### `index_name` (26)
 
 - `billing_addresses: missing index name uq_billing_addresses_default`
 - `billing_payment_methods: missing index name idx_m8_billing_payment_methods_billing_address_id`
@@ -534,7 +482,6 @@ Total: **134**.
 - `coupons: missing index name uq_coupons_code_active`
 - `image_resizes: missing index name idx_image_resizes_source_image`
 - `image_resizes: missing index name uq_image_resizes_storage`
-- `notifications: missing index name idx_m8_notifications_created_by`
 - `orders: missing index name idx_m8_orders_credit_package_id`
 - `personas: missing index name idx_m8_personas_created_by`
 - `plan_items: missing index name idx_m8_plan_items_plan_id`
@@ -546,14 +493,12 @@ Total: **134**.
 - `subscriptions: missing index name idx_m8_subscriptions_payment_method_id`
 - `subscriptions: missing index name idx_m8_subscriptions_plan_id`
 - `subscriptions: missing index name uq_subscriptions_workspace_current`
-- `users: missing index name uq_users_email_active`
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
-- `workspace_invites: missing index name idx_m8_workspace_invites_created_by`
 
 ## 6. Foreign keys
 
-Total: **105**.
+Total: **82**.
 
 ### `fk_missing` (21)
 
@@ -579,7 +524,7 @@ Total: **105**.
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (49)
+### `fk_extra` (36)
 
 - `billing_accounts['user_id']->users['id'] [CASCADE]`
 - `billing_addresses['billing_account_id']->billing_accounts['id'] [NO ACTION]`
@@ -601,12 +546,6 @@ Total: **105**.
 - `coupons['created_by']->users['id'] [NO ACTION]`
 - `invoices['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `invoices['subscription_id']->subscriptions['id'] [NO ACTION]`
-- `notification_preferences['user_id']->users['id'] [NO ACTION]`
-- `notification_recipients['notification_id']->notifications['id'] [NO ACTION]`
-- `notification_recipients['user_id']->users['id'] [NO ACTION]`
-- `notification_recipients['workspace_member_id']->workspace_members['id'] [NO ACTION]`
-- `notifications['created_by']->users['id'] [NO ACTION]`
-- `notifications['workspace_id']->workspaces['id'] [NO ACTION]`
 - `orders['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `orders['credit_package_id']->credit_packages['id'] [NO ACTION]`
 - `orders['workspace_id']->workspaces['id'] [NO ACTION]`
@@ -622,16 +561,9 @@ Total: **105**.
 - `subscriptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `subscriptions['plan_id']->plans['id'] [NO ACTION]`
 - `subscriptions['workspace_id']->workspaces['id'] [NO ACTION]`
-- `user_devices['user_id']->users['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
-- `workspace_invite_usages['invite_id']->workspace_invites['id'] [NO ACTION]`
-- `workspace_invite_usages['member_id']->workspace_members['id'] [NO ACTION]`
-- `workspace_invite_usages['user_id']->users['id'] [NO ACTION]`
-- `workspace_invite_usages['workspace_id']->workspaces['id'] [NO ACTION]`
-- `workspace_invites['created_by']->users['id'] [NO ACTION]`
-- `workspace_invites['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (35)
+### `fk_ondelete` (25)
 
 - `billing_accounts['user_id']->users['id']: final RESTRICT vs model ['CASCADE']`
 - `billing_addresses['billing_account_id']->billing_accounts['id']: final CASCADE vs model ['NO ACTION']`
@@ -646,11 +578,6 @@ Total: **105**.
 - `coupons['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
 - `invoices['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `invoices['subscription_id']->subscriptions['id']: final RESTRICT vs model ['NO ACTION']`
-- `notification_preferences['user_id']->users['id']: final CASCADE vs model ['NO ACTION']`
-- `notification_recipients['notification_id']->notifications['id']: final CASCADE vs model ['NO ACTION']`
-- `notification_recipients['user_id']->users['id']: final CASCADE vs model ['NO ACTION']`
-- `notifications['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
-- `notifications['workspace_id']->workspaces['id']: final CASCADE vs model ['NO ACTION']`
 - `orders['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `orders['credit_package_id']->credit_packages['id']: final SET NULL vs model ['NO ACTION']`
 - `orders['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
@@ -662,18 +589,13 @@ Total: **105**.
 - `subscriptions['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `subscriptions['plan_id']->plans['id']: final RESTRICT vs model ['NO ACTION']`
 - `subscriptions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
-- `user_devices['user_id']->users['id']: final CASCADE vs model ['NO ACTION']`
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
-- `workspace_invite_usages['invite_id']->workspace_invites['id']: final CASCADE vs model ['NO ACTION']`
-- `workspace_invite_usages['member_id']->workspace_members['id']: final CASCADE vs model ['NO ACTION']`
-- `workspace_invites['created_by']->users['id']: final RESTRICT vs model ['NO ACTION']`
-- `workspace_invites['workspace_id']->workspaces['id']: final CASCADE vs model ['NO ACTION']`
 
 ## 7. CHECK constraints
 
-Total: **131**.
+Total: **75**.
 
-### `check_missing` (80)
+### `check_missing` (45)
 
 - `unmapped:billing_accounts.chk_billing_accounts_company_name`
 - `unmapped:billing_accounts.chk_billing_accounts_document_pair`
@@ -682,13 +604,9 @@ Total: **131**.
 - `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_month`
 - `unmapped:billing_payment_methods.chk_billing_payment_methods_exp_year`
 - `unmapped:brand_colors.chk_brand_colors_hex`
-- `unmapped:captions.captions.version`
-- `unmapped:charge_transactions.chk_charge_transactions_amount_nonnegative`
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
 - `unmapped:charges.chk_charges_installments`
-- `unmapped:content_plan_items.content_plan_items.quantity`
-- `unmapped:content_plans.chk_content_plans_period_order`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_amount_nonnegative`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_currency_format`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_discount_percent`
@@ -700,42 +618,16 @@ Total: **131**.
 - `unmapped:coupons.chk_coupons_type_exclusive_fields`
 - `unmapped:credit_packages.chk_credit_packages_currency_format`
 - `unmapped:credit_packages.chk_credit_packages_price_nonnegative`
-- `unmapped:design_slides.design_slides.position`
-- `unmapped:fiscal_invoices.chk_fiscal_invoices_amount_nonnegative`
-- `unmapped:fiscal_invoices.chk_fiscal_invoices_currency_format`
-- `unmapped:fiscal_invoices.chk_fiscal_invoices_one_origin`
-- `unmapped:generated_images.chk_generated_images_approval_after_generation`
-- `unmapped:generated_images.chk_generated_images_approval_pair`
-- `unmapped:generated_images.chk_generated_images_approved_metadata`
-- `unmapped:generated_images.chk_generated_images_current_complete`
-- `unmapped:generated_images.chk_generated_images_dimensions`
-- `unmapped:generated_images.chk_generated_images_failed_message`
-- `unmapped:generated_images.chk_generated_images_file_by_status`
-- `unmapped:generated_images.chk_generated_images_rejected_reason`
-- `unmapped:generated_images.chk_generated_images_size_bytes`
-- `unmapped:image_resizes.chk_image_resizes_dimensions`
-- `unmapped:image_resizes.chk_image_resizes_failed`
-- `unmapped:image_resizes.chk_image_resizes_file`
-- `unmapped:image_resizes.chk_image_resizes_size`
 - `unmapped:invoices.chk_invoices_cents_nonnegative`
 - `unmapped:invoices.chk_invoices_currency_format`
 - `unmapped:invoices.chk_invoices_installments`
-- `unmapped:notifications.chk_notifications_resource_pair`
 - `unmapped:orders.chk_orders_amount_consistency`
 - `unmapped:orders.chk_orders_cents_nonnegative`
 - `unmapped:orders.chk_orders_currency_format`
 - `unmapped:plan_items.chk_plan_items_currency_format`
 - `unmapped:plan_items.chk_plan_items_price_nonnegative`
-- `unmapped:plan_payment_methods.plan_payment_methods.max_installments`
 - `unmapped:plans.chk_plans_cents_nonnegative`
 - `unmapped:plans.chk_plans_currency_format`
-- `unmapped:post_designs.chk_post_designs_stories_ratio`
-- `unmapped:posts.chk_posts_approval_pair`
-- `unmapped:posts.chk_posts_approved_metadata`
-- `unmapped:posts.chk_posts_publish_requires_approval`
-- `unmapped:posts.chk_posts_published_at`
-- `unmapped:posts.chk_posts_rejected_reason`
-- `unmapped:posts.chk_posts_scheduled_at`
 - `unmapped:provider_disputes.chk_provider_disputes_amount_nonnegative`
 - `unmapped:provider_disputes.chk_provider_disputes_currency_format`
 - `unmapped:provider_disputes.chk_provider_disputes_resolved_at`
@@ -746,67 +638,41 @@ Total: **131**.
 - `unmapped:subscriptions.chk_subscriptions_cents_nonnegative`
 - `unmapped:subscriptions.chk_subscriptions_currency_format`
 - `unmapped:subscriptions.chk_subscriptions_installments`
-- `unmapped:workspace_credit_lot_consumptions.workspace_credit_lot_consumptions.amount`
-- `unmapped:workspace_credit_lots.chk_credit_lots_amounts`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`
 - `unmapped:workspace_credit_transactions.workspace_credit_transactions.amount`
-- `unmapped:workspace_invites.chk_workspace_invites_email_by_type`
-- `unmapped:workspace_invites.chk_workspace_invites_max_uses_by_type`
-- `unmapped:workspace_invites.chk_workspace_invites_max_uses_positive`
 
-### `check_extra` (51)
+### `check_extra` (30)
 
 - `brands.ck_brands_deleted_after_created`
 - `campaign_voices.campaign_voice`
-- `captions.ck_captions_version`
-- `charge_transactions.chk_charge_transactions_amount_nonnegative`
 - `charge_transactions.payment_provider`
 - `charge_transactions.transaction_status`
-- `content_plan_items.ck_content_plan_items_quantity`
 - `content_plan_items.content_format`
-- `content_plans.chk_content_plans_period_order`
-- `design_slides.ck_design_slides_position`
-- `fiscal_invoices.chk_fiscal_invoices_amount_nonnegative`
-- `fiscal_invoices.chk_fiscal_invoices_currency_format`
-- `fiscal_invoices.chk_fiscal_invoices_one_origin`
 - `fiscal_invoices.fiscal_invoice_status`
 - `generated_images.approval_status`
-- `generated_images.chk_generated_images_approval_after_generation`
-- `generated_images.chk_generated_images_approval_pair`
-- `generated_images.chk_generated_images_approved_metadata`
-- `generated_images.chk_generated_images_current_complete`
-- `generated_images.chk_generated_images_dimensions`
-- `generated_images.chk_generated_images_failed_message`
-- `generated_images.chk_generated_images_file_by_status`
-- `generated_images.chk_generated_images_rejected_reason`
-- `generated_images.chk_generated_images_size_bytes`
 - `generated_images.generation_status`
 - `generated_images.image_feedback_type`
 - `image_resizes.art_ratio`
-- `image_resizes.chk_image_resizes_dimensions`
-- `image_resizes.chk_image_resizes_failed`
-- `image_resizes.chk_image_resizes_file`
-- `image_resizes.chk_image_resizes_size`
 - `image_resizes.resize_status`
-- `plan_payment_methods.chk_plan_payment_methods_max_installments`
+- `notification_preferences.notification_channel`
+- `notification_preferences.notification_type`
+- `notification_recipients.notification_channel`
+- `notification_recipients.notification_delivery_status`
+- `notifications.notification_resource_type`
+- `notifications.notification_type`
 - `plan_payment_methods.payment_method_type`
 - `post_designs.art_ratio`
-- `post_designs.chk_post_designs_stories_ratio`
 - `post_designs.content_format`
 - `posts.approval_status`
-- `posts.chk_posts_approval_pair`
-- `posts.chk_posts_approved_metadata`
-- `posts.chk_posts_publish_requires_approval`
-- `posts.chk_posts_published_at`
-- `posts.chk_posts_rejected_reason`
-- `posts.chk_posts_scheduled_at`
 - `posts.publication_status`
 - `user_consents.consent_type`
+- `user_devices.device_platform`
 - `users.global_role`
-- `workspace_credit_lot_consumptions.chk_lot_consumptions_amount`
-- `workspace_credit_lots.chk_credit_lots_amounts`
+- `workspace_invites.invite_status`
+- `workspace_invites.invite_type`
+- `workspace_invites.workspace_role`
 - `workspace_members.member_status`
 - `workspace_members.workspace_role`
 

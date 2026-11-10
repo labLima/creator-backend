@@ -29,7 +29,7 @@ from creator.user.ports import UserRecord
 NOW = datetime(2026, 11, 5, tzinfo=UTC)
 USER = UserRecord(
     id=UUID("10000000-0000-0000-0000-000000000001"),
-    external_id="principal-1",
+    auth_provider_id="principal-1",
     email=None,
     display_name="Test",
     global_role="membro",

@@ -90,18 +90,19 @@ class Settings(Base):
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
-        UniqueConstraint("external_id", name="uq_users_external_id"),
-        UniqueConstraint("email", name="uq_users_email"),
-        Index("ix_users_deleted_at", "deleted_at"),
+        Index(
+            "uq_users_email_active",
+            "email",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
-    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    email: Mapped[str | None] = mapped_column(String(320))
+    auth_provider_id: Mapped[str | None] = mapped_column(String)
+    email: Mapped[str | None] = mapped_column(String(254))
     password_hash: Mapped[str | None] = mapped_column(String(255))
-    display_name: Mapped[str | None] = mapped_column(String(50))
-    cpf: Mapped[str | None] = mapped_column(String(11))
-    cnpj: Mapped[str | None] = mapped_column(String(14))
+    display_name: Mapped[str] = mapped_column(String(50), nullable=False)
     bio: Mapped[str | None] = mapped_column(String(350))
     avatar_url: Mapped[str | None] = mapped_column(String)
     global_role: Mapped[GlobalRole] = mapped_column(

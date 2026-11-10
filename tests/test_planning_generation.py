@@ -33,7 +33,7 @@ JOB_ID = UUID("80000000-0000-0000-0000-000000000001")
 
 USER = UserRecord(
     id=USER_ID,
-    external_id="principal-1",
+    auth_provider_id="principal-1",
     email=None,
     display_name="Test",
     global_role="membro",

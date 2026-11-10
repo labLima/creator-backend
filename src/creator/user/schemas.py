@@ -24,13 +24,13 @@ class SettingsUpdateRequest(CreatorDTO):
 
 
 class UserCreateRequest(CreatorDTO):
-    external_id: str = Field(min_length=1, max_length=255)
-    email: str | None = Field(default=None, max_length=50)
-    display_name: str | None = Field(default=None, max_length=50)
+    auth_provider_id: str | None = Field(default=None, min_length=1, max_length=255)
+    email: str | None = Field(default=None, max_length=254)
+    display_name: str = Field(min_length=1, max_length=50)
     global_role: Literal["admin", "gestor", "membro"] = "membro"
 
 
 class UserUpdateRequest(CreatorDTO):
-    email: str | None = Field(default=None, max_length=50)
+    email: str | None = Field(default=None, max_length=254)
     display_name: str | None = Field(default=None, max_length=50)
     global_role: Literal["admin", "gestor", "membro"] | None = None

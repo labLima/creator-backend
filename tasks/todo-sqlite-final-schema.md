@@ -10,11 +10,11 @@
 
 ## Fase 0 — Contrato, paridade e portabilidade
 
-- [ ] **T1** (SHC-2, S) ADR-028, épico e tracker — depende de —
-- [ ] **T2** (SHC-3, L) Comparador único e teste de paridade com orçamento — depende de T1
-- [ ] **T3** (SHC-4, S) Helpers portáveis de enum e nome de índice — depende de T1
-- [ ] **T4** (SHC-5, M) Portabilidade das CHECK constraints e defaults — depende de T3
-- [ ] **T19** (SHC-20, M) Snapshot como gate, índices no fixture e teste de upgrade anterior — depende de T2
+- [x] **T1** (SHC-2, S) ADR-028, épico e tracker — depende de —
+- [x] **T2** (SHC-3, L) Comparador único e teste de paridade com orçamento — depende de T1
+- [x] **T3** (SHC-4, S) Helpers portáveis de enum e nome de índice — depende de T1
+- [x] **T4** (SHC-5, M) Portabilidade das CHECK constraints e defaults — depende de T3
+- [x] **T19** (SHC-20, M) Snapshot como gate, índices no fixture e teste de upgrade anterior — depende de T2
 
 ### Checkpoint — Fase 0 — Contrato, paridade e portabilidade
 
@@ -24,9 +24,9 @@
 
 ## Fase 1 — Criar tabelas
 
-- [ ] **T5** (SHC-6, S) Conformidade, consentimento e interesses — depende de T4
-- [ ] **T6** (SHC-7, M) Satélites de Brand e Campanha — depende de T4
-- [ ] **T7** (SHC-8, M) Satélites de Billing e Créditos — depende de T4
+- [x] **T5** (SHC-6, S) Conformidade, consentimento e interesses — depende de T4
+- [x] **T6** (SHC-7, M) Satélites de Brand e Campanha — depende de T4
+- [x] **T7** (SHC-8, M) Satélites de Billing e Créditos — depende de T4
 
 ### Checkpoint — Fase 1 — Criar tabelas
 
@@ -36,11 +36,11 @@
 
 ## Fase 2 — Renomear e redesenhar (expand)
 
-- [ ] **T8** (SHC-9, M) workspace_members: rename, status, invited_by e exclusão física — depende de T4
-- [ ] **T9** (SHC-10, M) planning para content_plans e satélites — depende de T4
-- [ ] **T10** (SHC-11, M) post_structure e design_structure para posts, captions, post_designs e design_slides — depende de T4
-- [ ] **T11** (SHC-12, M) generated_image para generated_images e image_resizes — depende de T4
-- [ ] **T21** (SHC-22, M) Vocabulário de workspace_role e autorização — depende de T8
+- [x] **T8** (SHC-9, M) workspace_members: rename, status, invited_by e exclusão física — depende de T4
+- [x] **T9** (SHC-10, M) planning para content_plans e satélites — depende de T4
+- [x] **T10** (SHC-11, M) post_structure e design_structure para posts, captions, post_designs e design_slides — depende de T4
+- [x] **T11** (SHC-12, M) generated_image para generated_images e image_resizes — depende de T4
+- [x] **T21** (SHC-22, M) Vocabulário de workspace_role e autorização — depende de T8
 
 ### Checkpoint — Fase 2 — Renomear e redesenhar (expand)
 
@@ -50,7 +50,7 @@
 
 ## Fase 3 — Backfill e contract
 
-- [ ] **T12** (SHC-13, M) Backfill dos 4 redesenhos — depende de T8, T9, T10, T11
+- [x] **T12** (SHC-13, M) Backfill dos 4 redesenhos — depende de T8, T9, T10, T11
 - [ ] **T13** (SHC-14, S) Contract: remover as tabelas antigas — depende de T12
 
 ### Checkpoint — Fase 3 — Backfill e contract

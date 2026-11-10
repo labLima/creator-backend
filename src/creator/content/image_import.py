@@ -70,7 +70,7 @@ def import_image(
     )
     assert mime_type is not None
     path = immutable_image_path(
-        user_external_id=user.external_id,
+        user_id=str(user.id),
         content_id=record.id,
         version_number=1,
         mime_type=mime_type,

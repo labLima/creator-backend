@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 from uuid import uuid4
 
@@ -137,7 +138,11 @@ def create_workspace_invite(
     payload: Any,
 ) -> Any:
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
-    item = uow.workspace.invites.add(**payload.model_dump(), created_by=actor.id, token=uuid4().hex)
+    item = uow.workspace.invites.add(
+        **payload.model_dump(),
+        created_by=actor.id,
+        token_hash=hashlib.sha256(uuid4().hex.encode("utf-8")).hexdigest(),
+    )
     uow.commit()
 
     return _workspace_invite_data(item)
