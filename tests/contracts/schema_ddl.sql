@@ -403,21 +403,38 @@ CREATE TABLE charge_transactions (
 )
 
 CREATE TABLE charges (
+	id CHAR(32) NOT NULL,
 	billing_account_id CHAR(32) NOT NULL,
 	invoice_id CHAR(32),
-	provider_charge_id VARCHAR(64),
-	provider_card_id VARCHAR(64),
-	amount_cents INTEGER NOT NULL,
-	currency VARCHAR(3) NOT NULL,
-	status VARCHAR(20) NOT NULL,
-	metadata JSON DEFAULT '{}' NOT NULL,
-	id CHAR(32) NOT NULL,
+	order_id CHAR(32),
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	payment_method VARCHAR(11) NOT NULL,
+	payment_method_id CHAR(32),
+	code VARCHAR(52),
+	amount_cents BIGINT NOT NULL,
+	paid_amount_cents BIGINT,
+	canceled_amount_cents BIGINT,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	installments INTEGER DEFAULT 1 NOT NULL,
+	funding_source VARCHAR(6),
+	status VARCHAR(11) NOT NULL,
+	gateway_id VARCHAR(128),
+	metadata JSON,
+	provider_payload JSON,
+	due_at DATETIME,
+	paid_at DATETIME,
+	canceled_at DATETIME,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id),
-	FOREIGN KEY(invoice_id) REFERENCES invoices (id)
+	CONSTRAINT chk_charges_cents_nonnegative CHECK (amount_cents >= 0 AND (paid_amount_cents IS NULL OR paid_amount_cents >= 0) AND (canceled_amount_cents IS NULL OR canceled_amount_cents >= 0)),
+	CONSTRAINT chk_charges_installments CHECK (installments IS NULL OR installments >= 1),
+	CONSTRAINT chk_charges_currency_format CHECK (currency IS NULL OR currency GLOB '[A-Z][A-Z][A-Z]'),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE RESTRICT,
+	FOREIGN KEY(invoice_id) REFERENCES invoices (id) ON DELETE SET NULL,
+	FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE SET NULL,
+	FOREIGN KEY(payment_method_id) REFERENCES billing_payment_methods (id) ON DELETE SET NULL
 )
 
 CREATE TABLE content_plan_items (
@@ -1537,6 +1554,22 @@ CREATE INDEX ix_charge_transactions_created_at ON charge_transactions (created_a
 CREATE INDEX ix_charge_transactions_status ON charge_transactions (status)
 
 CREATE UNIQUE INDEX uq_charge_transactions_charge_provider_external ON charge_transactions (charge_id, provider, external_id)
+
+CREATE INDEX idx_m8_charges_payment_method_id ON charges (payment_method_id) WHERE payment_method_id IS NOT NULL
+
+CREATE INDEX ix_charges_billing_account_status ON charges (billing_account_id, status)
+
+CREATE INDEX ix_charges_code ON charges (code)
+
+CREATE INDEX ix_charges_invoice_id ON charges (invoice_id)
+
+CREATE INDEX ix_charges_order_id ON charges (order_id)
+
+CREATE INDEX ix_charges_paid_at ON charges (paid_at)
+
+CREATE INDEX ix_charges_status ON charges (status)
+
+CREATE UNIQUE INDEX uq_charges_provider_external_id ON charges (provider, external_id)
 
 CREATE UNIQUE INDEX uq_content_plan_items_content_plan_id_format ON content_plan_items (content_plan_id, format)
 

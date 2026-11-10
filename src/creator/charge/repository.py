@@ -23,7 +23,7 @@ def _charge(row: charge_models.Charge) -> ChargeRecord:
         row.status,
         row.created_at,
         row.updated_at,
-        row.deleted_at,
+        None,
     )
 
 
@@ -41,7 +41,6 @@ class SqlAlchemyChargeRepository(ChargeRepository):
             .where(
                 charge_models.Charge.id == charge_id,
                 billing_account_models.BillingAccount.user_id == user_id,
-                charge_models.Charge.deleted_at.is_(None),
             )
         )
 
@@ -54,7 +53,6 @@ class SqlAlchemyChargeRepository(ChargeRepository):
             )
             .where(
                 billing_account_models.BillingAccount.user_id == user_id,
-                charge_models.Charge.deleted_at.is_(None),
             )
         ).all()
         return [_charge(row) for row in rows]
@@ -69,6 +67,7 @@ class SqlAlchemyChargeRepository(ChargeRepository):
         row = charge_models.Charge(
             billing_account_id=billing_account_id,
             invoice_id=invoice_id,
+            payment_method="CREDIT_CARD",
             amount_cents=amount_cents,
             currency=currency,
             status="pending",
@@ -79,7 +78,7 @@ class SqlAlchemyChargeRepository(ChargeRepository):
 
     def update(self, *, charge_id: UUID, fields: dict[str, object]) -> ChargeRecord:
         row = self._session.get(charge_models.Charge, charge_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Charge not found")
         for name, value in fields.items():
             setattr(row, name, value)
@@ -89,8 +88,7 @@ class SqlAlchemyChargeRepository(ChargeRepository):
 
     def soft_delete(self, *, charge_id: UUID) -> None:
         row = self._session.get(charge_models.Charge, charge_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Charge not found")
-        row.deleted_at = datetime.now(UTC)
-        row.updated_at = row.deleted_at
+        self._session.delete(row)
         self._session.flush()

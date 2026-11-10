@@ -16,13 +16,15 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     Index,
+    Integer,
     String,
     func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from creator.infrastructure.database.db import Base, SchemaRow
+from creator.infrastructure.database.constraints import currency_code_check
+from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.types import (
     enum_column,
     json_type,
@@ -34,19 +36,80 @@ from creator.infrastructure.database.types import (
 timestamp = timestamp_tz
 
 
-class Charge(SchemaRow, Base):
+class Charge(Base):
     __tablename__ = "charges"
-    billing_account_id: Mapped[UUID] = mapped_column(
-        ForeignKey("billing_accounts.id"), nullable=False
+    __table_args__ = (
+        CheckConstraint(
+            "amount_cents >= 0 AND (paid_amount_cents IS NULL OR paid_amount_cents >= 0) "
+            "AND (canceled_amount_cents IS NULL OR canceled_amount_cents >= 0)",
+            name="chk_charges_cents_nonnegative",
+        ),
+        CheckConstraint(
+            "installments IS NULL OR installments >= 1", name="chk_charges_installments"
+        ),
+        CheckConstraint(
+            "currency IS NULL OR " + currency_code_check("currency"),
+            name="chk_charges_currency_format",
+        ),
+        Index("uq_charges_provider_external_id", "provider", "external_id", unique=True),
+        Index("ix_charges_billing_account_status", "billing_account_id", "status"),
+        Index("ix_charges_code", "code"),
+        Index("ix_charges_invoice_id", "invoice_id"),
+        Index("ix_charges_order_id", "order_id"),
+        Index("ix_charges_paid_at", "paid_at"),
+        Index("ix_charges_status", "status"),
+        Index(
+            "idx_m8_charges_payment_method_id",
+            "payment_method_id",
+            sqlite_where=text("payment_method_id IS NOT NULL"),
+        ),
     )
-    invoice_id: Mapped[UUID | None] = mapped_column(ForeignKey("invoices.id"))
-    provider_charge_id: Mapped[str | None] = mapped_column(String(64))
-    provider_card_id: Mapped[str | None] = mapped_column(String(64))
-    amount_cents: Mapped[int] = mapped_column(nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
-    metadata_json: Mapped[dict[str, object]] = mapped_column(
-        "metadata", json_type, nullable=False, server_default=text("'{}'")
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    billing_account_id: Mapped[UUID] = mapped_column(
+        uuid_pk, ForeignKey("billing_accounts.id", ondelete="RESTRICT"), nullable=False
+    )
+    invoice_id: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("invoices.id", ondelete="SET NULL")
+    )
+    order_id: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("orders.id", ondelete="SET NULL")
+    )
+    provider: Mapped[str] = mapped_column(
+        enum_column("payment_provider", create_constraint=False),
+        nullable=False,
+        server_default=text("'PAGARME'"),
+    )
+    external_id: Mapped[str | None] = mapped_column(String(64))
+    payment_method: Mapped[str] = mapped_column(
+        enum_column("payment_method_type", create_constraint=False), nullable=False
+    )
+    payment_method_id: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("billing_payment_methods.id", ondelete="SET NULL")
+    )
+    code: Mapped[str | None] = mapped_column(String(52))
+    amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    paid_amount_cents: Mapped[int | None] = mapped_column(BigInteger)
+    canceled_amount_cents: Mapped[int | None] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'BRL'"))
+    installments: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    funding_source: Mapped[str | None] = mapped_column(
+        enum_column("funding_source", create_constraint=False)
+    )
+    status: Mapped[str] = mapped_column(
+        enum_column("charge_status", create_constraint=False), nullable=False
+    )
+    gateway_id: Mapped[str | None] = mapped_column(String(128))
+    metadata_json: Mapped[dict[str, object] | None] = mapped_column("metadata", json_type)
+    provider_payload: Mapped[dict[str, object] | None] = mapped_column(json_type)
+    due_at: Mapped[datetime | None] = mapped_column(timestamp)
+    paid_at: Mapped[datetime | None] = mapped_column(timestamp)
+    canceled_at: Mapped[datetime | None] = mapped_column(timestamp)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
 

@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **204**
+- Divergências: **166**
 
 ## Divergências por categoria
 
@@ -24,23 +24,23 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 38 |
-| `column_extra` | 18 |
+| `column_missing` | 23 |
+| `column_extra` | 15 |
 | `nullability` | 1 |
-| `width` | 6 |
-| `kind` | 3 |
+| `width` | 4 |
+| `kind` | 4 |
 | `enum` | 3 |
 | `unique_missing` | 0 |
 | `unique_extra` | 3 |
-| `index_missing` | 28 |
+| `index_missing` | 20 |
 | `index_extra` | 1 |
-| `index_name` | 10 |
-| `fk_missing` | 12 |
-| `fk_extra` | 8 |
-| `fk_ondelete` | 5 |
-| `check_missing` | 18 |
+| `index_name` | 9 |
+| `fk_missing` | 10 |
+| `fk_extra` | 6 |
+| `fk_ondelete` | 3 |
+| `check_missing` | 15 |
 | `check_extra` | 30 |
-| `default_missing` | 3 |
+| `default_missing` | 2 |
 | `default_value` | 0 |
 
 ## 1. Tabelas com nome divergente
@@ -58,25 +58,10 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **66**.
+Total: **45**.
 
-### `column_missing` (38)
+### `column_missing` (23)
 
-- `charges.canceled_amount_cents`
-- `charges.canceled_at`
-- `charges.code`
-- `charges.due_at`
-- `charges.external_id`
-- `charges.funding_source`
-- `charges.gateway_id`
-- `charges.installments`
-- `charges.order_id`
-- `charges.paid_amount_cents`
-- `charges.paid_at`
-- `charges.payment_method`
-- `charges.payment_method_id`
-- `charges.provider`
-- `charges.provider_payload`
 - `coupon_redemptions.canceled_at`
 - `coupon_redemptions.credit_transaction_id`
 - `coupon_redemptions.currency`
@@ -101,11 +86,8 @@ Total: **66**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (18)
+### `column_extra` (15)
 
-- `charges.deleted_at`
-- `charges.provider_card_id`
-- `charges.provider_charge_id`
 - `coupon_redemptions.billing_account_id`
 - `coupon_redemptions.deleted_at`
 - `coupon_redemptions.provider_discount_id`
@@ -126,18 +108,15 @@ Total: **66**.
 
 - `orders.discount_cents: final NOT NULL, model nullable`
 
-### `width` (6)
+### `width` (4)
 
-- `charges.amount_cents: final bigint, model integer`
-- `charges.status: final unbounded varchar, model varchar(20)`
 - `coupon_redemptions.discount_amount_cents: final bigint, model integer`
 - `coupons.min_purchase_cents: final bigint, model integer`
 - `credit_packages.name: final unbounded varchar, model varchar(64)`
 - `credit_packages.price_cents: final bigint, model integer`
 
-### `default_missing` (3)
+### `default_missing` (2)
 
-- `charges.currency: final default 'BRL'`
 - `credit_packages.currency: final default 'BRL'`
 - `orders.discount_cents: final default 0`
 
@@ -153,19 +132,11 @@ Total: **3**.
 
 ## 5. Índices
 
-Total: **39**.
+Total: **30**.
 
-### `index_missing` (28)
+### `index_missing` (20)
 
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
-- `charges: (billing_account_id, status)`
-- `charges: (code)`
-- `charges: (invoice_id)`
-- `charges: (order_id)`
-- `charges: (paid_at)`
-- `charges: (payment_method_id) WHERE payment_method_id is not null`
-- `charges: (status)`
-- `charges: UNIQUE (provider, external_id)`
 - `coupon_redemptions: (coupon_id, workspace_id)`
 - `coupon_redemptions: (credit_transaction_id) WHERE credit_transaction_id is not null`
 - `coupon_redemptions: (invoice_id) WHERE invoice_id is not null`
@@ -190,9 +161,8 @@ Total: **39**.
 
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (10)
+### `index_name` (9)
 
-- `charges: missing index name idx_m8_charges_payment_method_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_invoice_id`
 - `coupon_redemptions: missing index name uq_coupon_redemptions_once_per_workspace`
@@ -205,12 +175,10 @@ Total: **39**.
 
 ## 6. Foreign keys
 
-Total: **25**.
+Total: **19**.
 
-### `fk_missing` (12)
+### `fk_missing` (10)
 
-- `charges['order_id']->orders['id'] [SET NULL]`
-- `charges['payment_method_id']->billing_payment_methods['id'] [SET NULL]`
 - `coupon_redemptions['credit_transaction_id']->workspace_credit_transactions['id'] [SET NULL]`
 - `coupon_redemptions['invoice_id']->invoices['id'] [SET NULL]`
 - `coupon_redemptions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
@@ -222,10 +190,8 @@ Total: **25**.
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (8)
+### `fk_extra` (6)
 
-- `charges['billing_account_id']->billing_accounts['id'] [NO ACTION]`
-- `charges['invoice_id']->invoices['id'] [NO ACTION]`
 - `coupon_redemptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `coupon_redemptions['coupon_id']->coupons['id'] [NO ACTION]`
 - `coupon_redemptions['order_id']->orders['id'] [NO ACTION]`
@@ -233,23 +199,18 @@ Total: **25**.
 - `coupons['created_by']->users['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (5)
+### `fk_ondelete` (3)
 
-- `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
-- `charges['invoice_id']->invoices['id']: final SET NULL vs model ['NO ACTION']`
 - `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model ['NO ACTION']`
 - `coupons['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 
 ## 7. CHECK constraints
 
-Total: **48**.
+Total: **45**.
 
-### `check_missing` (18)
+### `check_missing` (15)
 
-- `unmapped:charges.chk_charges_cents_nonnegative`
-- `unmapped:charges.chk_charges_currency_format`
-- `unmapped:charges.chk_charges_installments`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_amount_nonnegative`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_currency_format`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_discount_percent`

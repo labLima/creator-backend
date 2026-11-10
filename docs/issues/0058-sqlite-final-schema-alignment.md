@@ -388,7 +388,18 @@ T15 (SHC-16), fatia B4f — orders:
   e downgrade funcional; CHECK_MAP +3.
 - Relatório: **204 divergências** (229 antes).
 
-Próximo passo: charges e fiscal_invoices, B5, T20, T16, T17 e T18.
+T15 (SHC-16), fatia B4g — charges:
+
+- `provider_charge_id` vira `external_id`; entram `provider`,
+  `payment_method(_id)`, `order_id`, `code`, valores pagos/cancelados,
+  `funding_source`, `gateway_id`, `provider_payload` e timestamps de
+  due/paid/canceled; saem `provider_card_id` e `deleted_at`.
+- Valores em bigint; `status` no enum `charge_status`; CHECKs de
+  centavos/parcelas/moeda, FKs RESTRICT/SET NULL e índices do dump.
+- `0029_charge_alignment` com backfill e downgrade funcional; CHECK_MAP +3.
+- Relatório: **166 divergências** (204 antes).
+
+Próximo passo: fiscal_invoices, B5, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 
