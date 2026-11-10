@@ -367,7 +367,18 @@ T15 (SHC-16), fatia B4d — refunds:
   `charge_id` e mantém `reason` no record.
 - Relatório: **253 divergências** (281 antes).
 
-Próximo passo: orders/invoices/charges, B5, T20, T16, T17 e T18.
+T15 (SHC-16), fatia B4e — invoices:
+
+- `provider_invoice_id` vira `external_id`; entra `provider`; saem
+  `provider_charge_id` e `deleted_at`; `subscription_id` NOT NULL;
+  `amount`/`total_*` em bigint, `url` sem limite e enums
+  `invoice_status`/`payment_method_type`.
+- CHECKs de centavos/parcelas/moeda, FKs RESTRICT e índices do dump.
+- `0027_invoice_alignment` com backfill (linhas sem subscription são
+  descartadas) e downgrade funcional; CHECK_MAP +3.
+- Relatório: **229 divergências** (253 antes).
+
+Próximo passo: orders e charges, B5, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

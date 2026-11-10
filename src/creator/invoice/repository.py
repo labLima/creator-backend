@@ -25,7 +25,7 @@ def _invoice(row: invoice_models.Invoice) -> InvoiceRecord:
         row.due_at,
         row.created_at,
         row.updated_at,
-        row.deleted_at,
+        None,
     )
 
 
@@ -44,7 +44,6 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             .where(
                 invoice_models.Invoice.id == invoice_id,
                 billing_account_models.BillingAccount.user_id == user_id,
-                invoice_models.Invoice.deleted_at.is_(None),
             )
         )
 
@@ -58,7 +57,6 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             )
             .where(
                 billing_account_models.BillingAccount.user_id == user_id,
-                invoice_models.Invoice.deleted_at.is_(None),
             )
         ).all()
         return [_invoice(row) for row in rows]
@@ -92,7 +90,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
 
     def update(self, *, invoice_id: UUID, fields: dict[str, object]) -> InvoiceRecord:
         row = self._session.get(invoice_models.Invoice, invoice_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Invoice not found")
         for name, value in fields.items():
             setattr(row, name, value)
@@ -102,8 +100,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
 
     def soft_delete(self, *, invoice_id: UUID) -> None:
         row = self._session.get(invoice_models.Invoice, invoice_id)
-        if row is None or row.deleted_at is not None:
+        if row is None:
             raise ValueError("Invoice not found")
-        row.deleted_at = datetime.now(UTC)
-        row.updated_at = row.deleted_at
+        self._session.delete(row)
         self._session.flush()

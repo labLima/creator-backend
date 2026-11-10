@@ -791,17 +791,18 @@ CREATE TABLE images (
 )
 
 CREATE TABLE invoices (
+	id CHAR(32) NOT NULL,
 	billing_account_id CHAR(32) NOT NULL,
-	subscription_id CHAR(32),
-	provider_invoice_id VARCHAR(64),
-	provider_charge_id VARCHAR(64),
-	url VARCHAR(2048),
-	amount_cents INTEGER NOT NULL,
-	total_discount_cents INTEGER DEFAULT 0 NOT NULL,
-	total_increment_cents INTEGER DEFAULT 0 NOT NULL,
-	currency VARCHAR(3) NOT NULL,
-	status VARCHAR(20) NOT NULL,
-	payment_method VARCHAR(20),
+	subscription_id CHAR(32) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	url VARCHAR,
+	amount_cents BIGINT NOT NULL,
+	total_discount_cents BIGINT,
+	total_increment_cents BIGINT,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	status VARCHAR(9) NOT NULL,
+	payment_method VARCHAR(11),
 	installments INTEGER,
 	billing_at DATETIME,
 	seen_at DATETIME,
@@ -809,14 +810,15 @@ CREATE TABLE invoices (
 	period_start DATETIME,
 	period_end DATETIME,
 	canceled_at DATETIME,
-	metadata JSON DEFAULT '{}' NOT NULL,
-	id CHAR(32) NOT NULL,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id),
-	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id)
+	CONSTRAINT chk_invoices_cents_nonnegative CHECK (amount_cents >= 0 AND (total_discount_cents IS NULL OR total_discount_cents >= 0) AND (total_increment_cents IS NULL OR total_increment_cents >= 0)),
+	CONSTRAINT chk_invoices_installments CHECK (installments IS NULL OR installments >= 1),
+	CONSTRAINT chk_invoices_currency_format CHECK (currency IS NULL OR currency GLOB '[A-Z][A-Z][A-Z]'),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE RESTRICT,
+	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id) ON DELETE RESTRICT
 )
 
 CREATE TABLE notification_preferences (
@@ -1612,6 +1614,14 @@ CREATE INDEX ix_images_content_version ON images (content_id, version_number)
 CREATE INDEX ix_images_workspace_filter ON images (workspace_id, deleted_at, created_at)
 
 CREATE UNIQUE INDEX uq_images_active_content_version ON images (content_id, version_number) WHERE deleted_at IS NULL
+
+CREATE INDEX ix_invoices_billing_account_id ON invoices (billing_account_id)
+
+CREATE INDEX ix_invoices_status_due_at ON invoices (status, due_at)
+
+CREATE INDEX ix_invoices_subscription_id_due_at ON invoices (subscription_id, due_at)
+
+CREATE UNIQUE INDEX uq_invoices_provider_external_id ON invoices (provider, external_id)
 
 CREATE UNIQUE INDEX uq_notification_preferences_user_type_channel ON notification_preferences (user_id, type, channel)
 
