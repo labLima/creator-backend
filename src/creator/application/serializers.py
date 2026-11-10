@@ -156,7 +156,7 @@ def _planning_data(planning: Any) -> dict[str, Any]:
         "brand_id": str(planning.brand_id),
         "campaign_id": str(planning.campaign_id),
         "persona_id": str(planning.persona_id),
-        "created_by": str(planning.created_by),
+        "created_by": str(planning.created_by) if planning.created_by else None,
         "info": planning.info,
         "static_amount": planning.static_amount,
         "carousel_amount": planning.carousel_amount,

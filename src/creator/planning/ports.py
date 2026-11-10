@@ -16,7 +16,7 @@ class PlanningRecord:
     brand_id: UUID
     campaign_id: UUID
     persona_id: UUID
-    created_by: UUID
+    created_by: UUID | None
     info: str | None
     static_amount: int | None
     carousel_amount: int | None
@@ -30,7 +30,7 @@ class PlanningRecord:
 
 
 class PlanningRepository(Protocol):
-    def add(self, *, created_by: UUID, **fields: object) -> PlanningRecord: ...
+    def add(self, *, created_by: UUID | None, **fields: object) -> PlanningRecord: ...
     def get_for_user(self, *, user_id: UUID, planning_id: UUID) -> PlanningRecord | None: ...
     def update(self, *, planning_id: UUID, fields: dict[str, object]) -> PlanningRecord: ...
     def soft_delete(self, *, planning_id: UUID) -> None: ...

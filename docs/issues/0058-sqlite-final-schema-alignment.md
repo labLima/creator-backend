@@ -230,8 +230,22 @@ Relatório regenerado: **505 divergências** (589 após T24), `column_missing`
 110, `column_extra` 70, `enum` 22, `index_missing` 76, `check_extra` 30,
 `unique_extra` 4.
 
-Próximo passo: T23 (SHC-24) — migrar os consumidores legados; depois T13,
-T15, T20, T16, T17 e T18.
+T23 (SHC-24), fatia 1 — planning:
+
+- `SqlAlchemyPlanningRepository` passou a ler/escrever `content_plans`,
+  `content_plan_items` e `content_plan_special_dates`; `planning` não é mais
+  escrito pelo router (a tabela só será dropada em T13).
+- Contrato HTTP preservado: `info`↔`briefing`, quantidades↔itens por formato,
+  `start_period`/`end_period`↔`start_date`/`end_date`, `special_dates`↔label
+  (data ISO quando possível, senão data de início).
+- `tests/test_planning_content_plans.py` prova que a API grava nas tabelas
+  finais e que `planning` fica vazia.
+- Dados legados aparecem após rodar `python scripts/backfill_redesigns.py`
+  (T12); T18 deve exigir o backfill antes do fechamento.
+
+Próximo passo: T23 fatia 2 — `post_structure` para `posts`/`captions`/
+`post_designs`/`design_slides`; depois `design_structure` e `generated_image`,
+e então T13, T15, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 
