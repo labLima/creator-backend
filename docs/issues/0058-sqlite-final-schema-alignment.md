@@ -399,7 +399,16 @@ T15 (SHC-16), fatia B4g — charges:
 - `0029_charge_alignment` com backfill e downgrade funcional; CHECK_MAP +3.
 - Relatório: **166 divergências** (204 antes).
 
-Próximo passo: fiscal_invoices, B5, T20, T16, T17 e T18.
+T15 (SHC-16), fatia B5a — credit_packages:
+
+- `credits_amount` vira `credits`; `code`/`deleted_at` saem (delete físico);
+  entram `credits_validity_days` (default 30), `name` sem limite,
+  `price_cents` bigint e `currency` com default BRL; CHECKs de preço/moeda.
+- `0030_credit_package` com backfill e downgrade funcional; CHECK_MAP +2.
+- Relatório: **155 divergências** (166 antes).
+
+Próximo passo: fiscal_invoices (B4), coupons/coupon_redemptions e
+workspace_credit_transactions (B5), T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **166**
+- Divergências: **155**
 
 ## Divergências por categoria
 
@@ -24,23 +24,23 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 23 |
-| `column_extra` | 15 |
+| `column_missing` | 21 |
+| `column_extra` | 12 |
 | `nullability` | 1 |
-| `width` | 4 |
+| `width` | 2 |
 | `kind` | 4 |
 | `enum` | 3 |
 | `unique_missing` | 0 |
-| `unique_extra` | 3 |
+| `unique_extra` | 2 |
 | `index_missing` | 20 |
 | `index_extra` | 1 |
 | `index_name` | 9 |
 | `fk_missing` | 10 |
 | `fk_extra` | 6 |
 | `fk_ondelete` | 3 |
-| `check_missing` | 15 |
+| `check_missing` | 13 |
 | `check_extra` | 30 |
-| `default_missing` | 2 |
+| `default_missing` | 1 |
 | `default_value` | 0 |
 
 ## 1. Tabelas com nome divergente
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **45**.
+Total: **37**.
 
-### `column_missing` (23)
+### `column_missing` (21)
 
 - `coupon_redemptions.canceled_at`
 - `coupon_redemptions.credit_transaction_id`
@@ -75,8 +75,6 @@ Total: **45**.
 - `coupons.credits`
 - `coupons.credits_validity_days`
 - `coupons.currency`
-- `credit_packages.credits`
-- `credit_packages.credits_validity_days`
 - `provider_webhook_events.updated_at`
 - `workspace_credit_transactions.balance_after`
 - `workspace_credit_transactions.created_by`
@@ -86,16 +84,13 @@ Total: **45**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (15)
+### `column_extra` (12)
 
 - `coupon_redemptions.billing_account_id`
 - `coupon_redemptions.deleted_at`
 - `coupon_redemptions.provider_discount_id`
 - `coupons.credits_amount`
 - `coupons.redemptions_count`
-- `credit_packages.code`
-- `credit_packages.credits_amount`
-- `credit_packages.deleted_at`
 - `users.global_role`
 - `users.password_hash`
 - `workspace_credit_transactions.deleted_at`
@@ -108,16 +103,13 @@ Total: **45**.
 
 - `orders.discount_cents: final NOT NULL, model nullable`
 
-### `width` (4)
+### `width` (2)
 
 - `coupon_redemptions.discount_amount_cents: final bigint, model integer`
 - `coupons.min_purchase_cents: final bigint, model integer`
-- `credit_packages.name: final unbounded varchar, model varchar(64)`
-- `credit_packages.price_cents: final bigint, model integer`
 
-### `default_missing` (2)
+### `default_missing` (1)
 
-- `credit_packages.currency: final default 'BRL'`
 - `orders.discount_cents: final default 0`
 
 ## 4. Enums
@@ -207,9 +199,9 @@ Total: **19**.
 
 ## 7. CHECK constraints
 
-Total: **45**.
+Total: **43**.
 
-### `check_missing` (15)
+### `check_missing` (13)
 
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_amount_nonnegative`
 - `unmapped:coupon_redemptions.chk_coupon_redemptions_currency_format`
@@ -220,8 +212,6 @@ Total: **45**.
 - `unmapped:coupons.chk_coupons_discount_percent`
 - `unmapped:coupons.chk_coupons_min_purchase_nonnegative`
 - `unmapped:coupons.chk_coupons_type_exclusive_fields`
-- `unmapped:credit_packages.chk_credit_packages_currency_format`
-- `unmapped:credit_packages.chk_credit_packages_price_nonnegative`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`

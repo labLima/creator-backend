@@ -21,33 +21,27 @@ class SqlAlchemyCreditPackageRepository(CreditPackageRepository):
 
     def _r(self, x: credit_package_models.CreditPackage) -> CreditPackageRecord:
         return CreditPackageRecord(
-            x.id,
-            x.code,
-            x.name,
-            x.credits_amount,
-            x.price_cents,
-            x.currency,
-            x.is_active,
-            x.created_at,
-            x.updated_at,
-            x.deleted_at,
+            id=x.id,
+            code=x.name or "",
+            name=x.name or "",
+            credits_amount=x.credits,
+            price_cents=x.price_cents,
+            currency=x.currency,
+            is_active=x.is_active,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
+            deleted_at=None,
         )
 
     def list(self):
         return [
-            self._r(x)
-            for x in self.s.scalars(
-                select(credit_package_models.CreditPackage).where(
-                    credit_package_models.CreditPackage.deleted_at.is_(None)
-                )
-            ).all()
+            self._r(x) for x in self.s.scalars(select(credit_package_models.CreditPackage)).all()
         ]
 
     def get(self, *, package_id: UUID):
         x = self.s.scalar(
             select(credit_package_models.CreditPackage).where(
                 credit_package_models.CreditPackage.id == package_id,
-                credit_package_models.CreditPackage.deleted_at.is_(None),
             )
         )
         return self._r(x) if x else None
@@ -60,7 +54,7 @@ class SqlAlchemyCreditPackageRepository(CreditPackageRepository):
 
     def update(self, *, package_id: UUID, fields):
         x = self.s.get(credit_package_models.CreditPackage, package_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Credit package not found")
         for k, v in fields.items():
             setattr(x, k, v)
@@ -70,8 +64,7 @@ class SqlAlchemyCreditPackageRepository(CreditPackageRepository):
 
     def soft_delete(self, *, package_id: UUID):
         x = self.s.get(credit_package_models.CreditPackage, package_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Credit package not found")
-        x.deleted_at = datetime.now(UTC)
-        x.updated_at = x.deleted_at
+        self.s.delete(x)
         self.s.flush()

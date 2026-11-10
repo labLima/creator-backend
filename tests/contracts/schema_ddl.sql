@@ -568,18 +568,18 @@ CREATE TABLE coupons (
 )
 
 CREATE TABLE credit_packages (
-	code VARCHAR(32) NOT NULL,
-	name VARCHAR(64) NOT NULL,
-	credits_amount INTEGER NOT NULL,
-	price_cents INTEGER NOT NULL,
-	currency VARCHAR(3) NOT NULL,
-	is_active BOOLEAN DEFAULT true NOT NULL,
 	id CHAR(32) NOT NULL,
+	name VARCHAR,
+	credits INTEGER NOT NULL,
+	price_cents BIGINT NOT NULL,
+	credits_validity_days INTEGER DEFAULT 30 NOT NULL,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	is_active BOOLEAN DEFAULT true NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	UNIQUE (code)
+	CONSTRAINT chk_credit_packages_price_nonnegative CHECK (price_cents >= 0),
+	CONSTRAINT chk_credit_packages_currency_format CHECK (currency IS NULL OR currency GLOB '[A-Z][A-Z][A-Z]')
 )
 
 CREATE TABLE design_slides (
