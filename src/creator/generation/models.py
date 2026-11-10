@@ -24,7 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.domain.generation import GenerationJobStatus
-from creator.infrastructure.database.db import Base, SchemaRow
+from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.enums import (
     GenerationType,
     generation_job_status_enum,
@@ -33,19 +33,6 @@ from creator.infrastructure.database.enums import (
 from creator.infrastructure.database.types import json_type, timestamp_tz, uuid_default, uuid_pk
 
 timestamp = timestamp_tz
-
-
-class GeneratedImage(SchemaRow, Base):
-    __tablename__ = "generated_image"
-    workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
-    design_structure_id: Mapped[UUID] = mapped_column(
-        ForeignKey("design_structure.id"), nullable=False
-    )
-    signed_url: Mapped[str | None] = mapped_column(String(2048))
-    size: Mapped[str | None] = mapped_column(String(10))
-    resolution: Mapped[str | None] = mapped_column(String(30))
-    image_ratio: Mapped[str | None] = mapped_column(String(20))
-    image_status: Mapped[str | None] = mapped_column(String(20))
 
 
 class Generation(Base):

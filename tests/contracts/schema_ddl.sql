@@ -566,16 +566,6 @@ CREATE TABLE design_slides (
 	FOREIGN KEY(post_design_id) REFERENCES post_designs (id) ON DELETE CASCADE
 )
 
-CREATE TABLE design_structure (
-	post_structure_id CHAR(32) NOT NULL,
-	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
-	PRIMARY KEY (id),
-	FOREIGN KEY(post_structure_id) REFERENCES post_structure (id)
-)
-
 CREATE TABLE fiscal_invoices (
 	id CHAR(32) NOT NULL,
 	billing_account_id CHAR(32) NOT NULL,
@@ -607,23 +597,6 @@ CREATE TABLE fiscal_invoices (
 	FOREIGN KEY(invoice_id) REFERENCES invoices (id) ON DELETE RESTRICT,
 	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id) ON DELETE RESTRICT,
 	CONSTRAINT fiscal_invoice_status CHECK (status IN ('PENDING', 'PROCESSING', 'ISSUED', 'CANCELED', 'FAILED'))
-)
-
-CREATE TABLE generated_image (
-	workspace_id CHAR(32) NOT NULL,
-	design_structure_id CHAR(32) NOT NULL,
-	signed_url VARCHAR(2048),
-	size VARCHAR(10),
-	resolution VARCHAR(30),
-	image_ratio VARCHAR(20),
-	image_status VARCHAR(20),
-	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
-	PRIMARY KEY (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(design_structure_id) REFERENCES design_structure (id)
 )
 
 CREATE TABLE generated_images (
@@ -1001,38 +974,6 @@ CREATE TABLE plan_payment_methods (
 	CONSTRAINT payment_method_type CHECK (method IN ('CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'))
 )
 
-CREATE TABLE planning (
-	brand_id CHAR(32) NOT NULL,
-	campaign_id CHAR(32) NOT NULL,
-	persona_id CHAR(32) NOT NULL,
-	created_by CHAR(32) NOT NULL,
-	persona_name VARCHAR(30),
-	persona_age INTEGER,
-	persona_gender VARCHAR(10),
-	persona_main_goal VARCHAR(60),
-	persona_challenge VARCHAR(50),
-	persona_interest VARCHAR(200),
-	persona_routine VARCHAR(300),
-	persona_journey VARCHAR(250),
-	persona_trigger VARCHAR(200),
-	planning_info VARCHAR(400),
-	planning_static_amount INTEGER,
-	planning_carousel_amount INTEGER,
-	planning_stories_amount INTEGER,
-	planning_special_dates VARCHAR(50),
-	planning_start_period DATETIME,
-	planning_end_period DATETIME,
-	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
-	PRIMARY KEY (id),
-	FOREIGN KEY(brand_id) REFERENCES brands (id),
-	FOREIGN KEY(campaign_id) REFERENCES campaigns (id),
-	FOREIGN KEY(persona_id) REFERENCES personas (id),
-	FOREIGN KEY(created_by) REFERENCES users (id)
-)
-
 CREATE TABLE plans (
 	code VARCHAR(32) NOT NULL,
 	type VARCHAR(20) NOT NULL,
@@ -1060,31 +1001,6 @@ CREATE TABLE post_designs (
 	FOREIGN KEY(post_id) REFERENCES posts (id) ON DELETE CASCADE,
 	CONSTRAINT content_format CHECK (format IN ('IMAGE', 'CAROUSEL', 'STORIES')),
 	CONSTRAINT art_ratio CHECK (ratio IN ('RATIO_4_5', 'RATIO_1_1', 'RATIO_9_16', 'RATIO_16_9'))
-)
-
-CREATE TABLE post_structure (
-	workspace_id CHAR(32) NOT NULL,
-	planning_id CHAR(32) NOT NULL,
-	created_by CHAR(32) NOT NULL,
-	post_title VARCHAR(100),
-	post_objective VARCHAR(300),
-	post_big_idea VARCHAR(150),
-	post_main_message VARCHAR(150),
-	post_headline VARCHAR(50),
-	image_cta VARCHAR(30),
-	art_guiding VARCHAR(1000),
-	post_status VARCHAR(20),
-	content_format VARCHAR(20),
-	art_ratio VARCHAR(20),
-	art_resolution VARCHAR(30),
-	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
-	PRIMARY KEY (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(planning_id) REFERENCES planning (id),
-	FOREIGN KEY(created_by) REFERENCES users (id)
 )
 
 CREATE TABLE posts (

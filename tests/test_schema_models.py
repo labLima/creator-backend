@@ -25,10 +25,6 @@ EXPECTED_DIAGRAM_TABLES = {
     "provider_disputes",
     "campaigns",
     "personas",
-    "planning",
-    "post_structure",
-    "design_structure",
-    "generated_image",
     "notifications",
     "notification_recipients",
     "user_devices",
@@ -57,28 +53,6 @@ def test_core_columns_match_pdf_lengths() -> None:
     assert users.c.email.type.length == 254
     assert users.c.display_name.type.length == 50
     assert workspaces.c.name.type.length == 50
-
-
-def test_marketing_columns_match_pdf_names() -> None:
-    planning = Base.metadata.tables["planning"]
-    post_structure = Base.metadata.tables["post_structure"]
-    brand_colors = Base.metadata.tables["brand_colors"]
-    assert {"persona_name", "planning_info", "planning_start_period"} <= set(planning.c.keys())
-    assert {
-        "post_title",
-        "post_objective",
-        "content_format",
-        "art_ratio",
-        "art_resolution",
-    } <= set(post_structure.c.keys())
-    assert "title" not in post_structure.c
-    assert "format" not in post_structure.c
-    generated_image = Base.metadata.tables["generated_image"]
-    assert "image_status" in generated_image.c
-    assert "status" not in generated_image.c
-    assert {"name", "hex", "position"} <= set(brand_colors.c.keys())
-    assert "hex_code" not in brand_colors.c
-    assert "workspace_id" not in brand_colors.c
 
 
 def test_new_dtos_reject_unknown_fields() -> None:

@@ -53,7 +53,7 @@ def _prepare(path: Path) -> None:
     engine.dispose()
 
 
-def test_migration_creates_the_planning_tables_and_keeps_the_legacy_one(
+def test_migration_creates_the_planning_tables_and_retires_the_legacy_one(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "plans.db"
@@ -89,8 +89,7 @@ def test_migration_creates_the_planning_tables_and_keeps_the_legacy_one(
             )
         }
         assert {"content_plans", "content_plan_items", "content_plan_special_dates"} <= created
-        legacy = connection.execute(sa.text("SELECT COUNT(*) FROM planning")).scalar_one()
-        assert legacy == 1
+        assert "planning" not in created
         diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
     engine.dispose()
     assert diff == []
@@ -108,4 +107,5 @@ def test_migration_creates_the_planning_tables_and_keeps_the_legacy_one(
         legacy = connection.execute(sa.text("SELECT COUNT(*) FROM planning")).scalar_one()
     engine.dispose()
     assert not {"content_plans", "content_plan_items", "content_plan_special_dates"} & remaining
-    assert legacy == 1
+    assert "planning" in remaining
+    assert legacy == 0

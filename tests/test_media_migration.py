@@ -1,4 +1,4 @@
-"""Prove migration 0014 runs and keeps the legacy image table (T11)."""
+"""Prove migration 0014 and the T13 contract retire the legacy image table."""
 
 from __future__ import annotations
 
@@ -68,10 +68,9 @@ def test_media_tables_come_from_the_migration(tmp_path: Path) -> None:
             )
         }
         assert {"generated_images", "image_resizes"} <= created
-        legacy = connection.execute(sa.text("SELECT COUNT(*) FROM generated_image")).scalar_one()
+        assert "generated_image" not in created
         diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
     engine.dispose()
-    assert legacy == 1
     assert diff == []
 
     command.downgrade(config, "0013_posts_captions_designs")
@@ -87,4 +86,5 @@ def test_media_tables_come_from_the_migration(tmp_path: Path) -> None:
         legacy = connection.execute(sa.text("SELECT COUNT(*) FROM generated_image")).scalar_one()
     engine.dispose()
     assert not {"generated_images", "image_resizes"} & remaining
-    assert legacy == 1
+    assert "generated_image" in remaining
+    assert legacy == 0

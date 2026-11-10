@@ -8,19 +8,19 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **75**
+- Tabelas no metadata atual: **71**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **505**
+- Divergências: **501**
 
 ## Divergências por categoria
 
 | Categoria | Ocorrências |
 | --- | --- |
 | `table_missing` | 0 |
-| `table_extra` | 4 |
+| `table_extra` | 0 |
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |

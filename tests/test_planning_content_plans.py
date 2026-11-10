@@ -19,7 +19,6 @@ from creator.infrastructure.database import metadata as _models  # noqa: F401
 from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.enums import WorkspaceRole
 from creator.persona.models import Persona
-from creator.planning.models import Planning
 from creator.planning.repository import SqlAlchemyPlanningRepository
 from creator.user.models import User
 from creator.workspace.models import Workspace, WorkspaceMembership
@@ -80,7 +79,7 @@ def test_planning_add_reads_and_writes_content_plans() -> None:
         )
         session.flush()
 
-        assert session.scalar(sa.select(sa.func.count()).select_from(Planning)) == 0
+        assert "planning" not in Base.metadata.tables
         assert session.scalar(sa.select(sa.func.count()).select_from(ContentPlan)) == 1
         plan = session.scalars(sa.select(ContentPlan)).one()
         assert plan.id == created.id

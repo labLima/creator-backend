@@ -19,7 +19,6 @@ from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.enums import WorkspaceRole
 from creator.persona.models import Persona
 from creator.post.models import DesignSlide, Post, PostDesign
-from creator.post_structure.models import PostStructure
 from creator.post_structure.repository import SqlAlchemyPostStructureRepository
 from creator.user.models import User
 from creator.workspace.models import Workspace, WorkspaceMembership
@@ -82,7 +81,7 @@ def test_post_structure_add_reads_and_writes_editorial_tables() -> None:
         )
         session.flush()
 
-        assert session.scalar(sa.select(sa.func.count()).select_from(PostStructure)) == 0
+        assert "post_structure" not in Base.metadata.tables
         assert session.scalar(sa.select(sa.func.count()).select_from(Post)) == 1
         assert session.scalar(sa.select(sa.func.count()).select_from(PostDesign)) == 1
         slide = session.scalars(sa.select(DesignSlide)).one()

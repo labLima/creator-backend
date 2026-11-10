@@ -1,4 +1,4 @@
-"""Prove migration 0013 runs and keeps the legacy editorial tables (T10)."""
+"""Prove migration 0013 and the T13 contract retire the legacy editorial tables."""
 
 from __future__ import annotations
 
@@ -73,10 +73,9 @@ def test_editorial_tables_come_from_the_migration(tmp_path: Path) -> None:
             )
         }
         assert {"posts", "captions", "post_designs", "design_slides"} <= created
-        legacy = connection.execute(sa.text("SELECT COUNT(*) FROM post_structure")).scalar_one()
+        assert "post_structure" not in created
         diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
     engine.dispose()
-    assert legacy == 1
     assert diff == []
 
     command.downgrade(config, "0012_content_plans")
@@ -92,4 +91,5 @@ def test_editorial_tables_come_from_the_migration(tmp_path: Path) -> None:
         legacy = connection.execute(sa.text("SELECT COUNT(*) FROM post_structure")).scalar_one()
     engine.dispose()
     assert not {"posts", "captions", "post_designs", "design_slides"} & remaining
-    assert legacy == 1
+    assert "post_structure" in remaining
+    assert legacy == 0

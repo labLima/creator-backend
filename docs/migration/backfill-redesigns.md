@@ -1,3 +1,7 @@
+> **Obsoleto desde a T13 (2026-11-10).** O script `scripts/backfill_redesigns.py`
+> foi removido junto com as tabelas legadas. O conteúdo fica como registro
+> histórico da migração de dados executada antes do contract `0019`.
+
 # Backfill dos redesenhos (T12)
 
 Script: [`scripts/backfill_redesigns.py`](../../scripts/backfill_redesigns.py)

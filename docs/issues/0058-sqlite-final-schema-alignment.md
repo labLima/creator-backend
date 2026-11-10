@@ -145,7 +145,6 @@ XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python
 XDG_DATA_HOME=$PWD/.local/xdg make security PYTHON=.venv/bin/python
 XDG_DATA_HOME=$PWD/.local/xdg make e2e PYTHON=.venv/bin/python
 python scripts/schema_parity_report.py          # regenera o relatório
-python scripts/backfill_redesigns.py --dry-run  # backfill dos redesenhos
 ```
 
 Notas de execução: `migrations/env.py` desliga `foreign_keys` na conexão DBAPI do
@@ -255,8 +254,26 @@ T23 (SHC-24), fatia 2 — post_structure:
 - `tests/test_post_structure_content_models.py` cobre add/update/list/delete
   e prova que `post_structure` permanece vazia.
 
-Próximo passo: T23 fatia 3 — `design_structure` e `generated_image`; depois
-T13, T15, T20, T16, T17 e T18.
+T23 (SHC-24) concluída — fatia 3 e fim dos consumidores legados:
+
+- `SqlAlchemyDesignStructureRepository` lê/escreve `post_designs`;
+  `SqlAlchemyGeneratedImageRepository` lê `generated_images`, derivando
+  workspace do brand, design do slide, URL de bucket/key e resolution de
+  width×height.
+- Nenhum repositório referencia `planning`, `post_structure`,
+  `design_structure` ou `generated_image`.
+
+T13 (SHC-14) concluída — contract:
+
+- `0019_legacy_contract` dropa as 4 tabelas; downgrade recria vazias.
+- Models legados removidos, `scripts/backfill_redesigns.py` e seu teste
+  removidos, manifesto atualizado (71 tabelas; `table_extra` 0).
+- Relatório: **501 divergências**; `table_extra` 4→0.
+- Ordem de deploy: rodar o backfill antes de aplicar 0019 em banco com dados
+  legados (o downgrade não devolve dados).
+
+Próximo passo: T15 (SHC-16) — lote B de billing/créditos/cupons; depois T20,
+T16, T17 e T18.
 
 ## Critérios de aceite
 

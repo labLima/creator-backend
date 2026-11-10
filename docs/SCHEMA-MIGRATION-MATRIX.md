@@ -2,7 +2,7 @@
 
 Fonte: `src/creator/infrastructure/database/schema_manifest.py`, `docs/migration/legacy-compatibility-matrix.md` e `docs/migration/legacy-inventory.md`.
 
-A matriz cobre as **75 tabelas** registradas no metadata: 38 do PDF, 11 legadas e 4 extensões de ADR (`auth_sessions`, `outbox_events`, `activity_events`, `content_text_versions`).
+A matriz cobre as **71 tabelas** registradas no metadata: 38 do PDF, 11 legadas e 4 extensões de ADR (`auth_sessions`, `outbox_events`, `activity_events`, `content_text_versions`).
 
 > **Decisão de 2026-11-04:** a migração de comportamento do Create Bloom foi
 > encerrada como não planejada (#134 / [0050](issues/0050-legacy-behavior-parity.md)).
@@ -45,8 +45,6 @@ Estas tabelas já correspondem ao alvo do PDF e não têm migração de schema p
 - `coupon_redemptions`
 - `coupons`
 - `credit_packages`
-- `design_structure`
-- `generated_image`
 - `invoices`
 - `notification_preferences`
 - `notification_recipients`
@@ -54,9 +52,7 @@ Estas tabelas já correspondem ao alvo do PDF e não têm migração de schema p
 - `orders`
 - `personas`
 - `plan_items`
-- `planning`
 - `plans`
-- `post_structure`
 - `provider_customers`
 - `provider_disputes`
 - `provider_idempotency_keys`
@@ -72,6 +68,19 @@ Estas tabelas já correspondem ao alvo do PDF e não têm migração de schema p
 - `workspace_invites`
 - `workspace_members`
 - `workspaces`
+
+## Tabelas retiradas pelo contract da ADR-028
+
+Estas tabelas legadas foram substituídas pelo modelo final e dropadas pela
+revisão `0019_legacy_contract` (T13). O downgrade recria apenas a estrutura,
+sem dados.
+
+| Tabela retirada | Substituta |
+| --- | --- |
+| `planning` | `content_plans`, `content_plan_items`, `content_plan_special_dates` |
+| `post_structure` | `posts`, `captions`, `post_designs`, `design_slides` |
+| `design_structure` | `post_designs`, `design_slides` |
+| `generated_image` | `generated_images`, `image_resizes` |
 
 ## Tabelas do modelo final adicionadas por ADR-028
 

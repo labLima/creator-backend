@@ -32,10 +32,6 @@ PDF_TABLES = frozenset(
         "workspace_credit_transactions",
         "campaigns",
         "personas",
-        "planning",
-        "post_structure",
-        "design_structure",
-        "generated_image",
         "notifications",
         "notification_recipients",
         "user_devices",
@@ -45,7 +41,7 @@ PDF_TABLES = frozenset(
 
 # These tables are still required by the current generation repositories. They
 # must not be silently dropped until those repositories are migrated to the
-# post_structure/design_structure/generated_image workflow.
+# content/post/media workflow.
 LEGACY_TABLES = frozenset(
     {
         "settings",

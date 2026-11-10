@@ -3,7 +3,7 @@
   "fixture_sha256": "619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583",
   "counts": {
     "table_missing": 0,
-    "table_extra": 4,
+    "table_extra": 0,
     "allowlisted": 17,
     "rename_collision": 0,
     "pk_mismatch": 0,
@@ -26,5 +26,5 @@
     "default_missing": 6,
     "default_value": 0
   },
-  "gap_digest": "18044e4272ced16befc322cbdf182be1354895dc5c8382a67d71a030615dc230"
+  "gap_digest": "5e8e6b735f725d0762424cdb0ec4ca213a1061e2b12f423f2c963a963fdbdaba"
 }

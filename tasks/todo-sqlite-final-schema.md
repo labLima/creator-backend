@@ -51,7 +51,7 @@
 ## Fase 3 — Backfill e contract
 
 - [x] **T12** (SHC-13, M) Backfill dos 4 redesenhos — depende de T8, T9, T10, T11
-- [ ] **T13** (SHC-14, S) Contract: remover as tabelas antigas — depende de T12
+- [x] **T13** (SHC-14, S) Contract: remover as tabelas antigas — depende de T12
 
 ### Checkpoint — Fase 3 — Backfill e contract
 
