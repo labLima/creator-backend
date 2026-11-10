@@ -1151,8 +1151,9 @@ CREATE TABLE provider_subscriptions (
 )
 
 CREATE TABLE provider_webhook_events (
-	provider VARCHAR(20) NOT NULL,
-	provider_event_id VARCHAR(64) NOT NULL,
+	id CHAR(32) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64) NOT NULL,
 	dedupe_key VARCHAR(128) NOT NULL,
 	event_type VARCHAR(60) NOT NULL,
 	account_id VARCHAR(64),
@@ -1160,16 +1161,13 @@ CREATE TABLE provider_webhook_events (
 	resource_id VARCHAR(64),
 	payload JSON NOT NULL,
 	signature_verified BOOLEAN DEFAULT false NOT NULL,
-	status VARCHAR(20) NOT NULL,
+	status VARCHAR(10) NOT NULL,
 	attempts INTEGER DEFAULT 0 NOT NULL,
 	last_error TEXT,
 	received_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	processed_at DATETIME,
-	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
-	PRIMARY KEY (id)
+	PRIMARY KEY (id),
+	CONSTRAINT uq_provider_webhook_events_dedupe_key UNIQUE (dedupe_key)
 )
 
 CREATE TABLE refunds (
@@ -1684,6 +1682,14 @@ CREATE UNIQUE INDEX uq_provider_disputes_provider_external_id ON provider_disput
 CREATE INDEX ix_provider_idempotency_keys_expires_at ON provider_idempotency_keys (expires_at)
 
 CREATE UNIQUE INDEX uq_provider_idempotency_keys_provider_key ON provider_idempotency_keys (provider, idempotency_key)
+
+CREATE INDEX ix_provider_webhook_events_event_type ON provider_webhook_events (event_type)
+
+CREATE INDEX ix_provider_webhook_events_resource_id ON provider_webhook_events (resource_id)
+
+CREATE INDEX ix_provider_webhook_events_status_received_at ON provider_webhook_events (status, received_at)
+
+CREATE UNIQUE INDEX uq_provider_webhook_events_provider_external_id ON provider_webhook_events (provider, external_id)
 
 CREATE INDEX ix_settings_user_id ON settings (user_id)
 

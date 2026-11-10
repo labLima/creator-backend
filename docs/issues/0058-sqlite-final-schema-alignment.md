@@ -348,8 +348,16 @@ T15 (SHC-16), fatia B4b iniciada — provider_idempotency_keys:
 - `0024_provider_idempotency` com backfill e downgrade funcional.
 - Relatório: **291 divergências** (297 antes).
 
-Próximo passo: `provider_webhook_events`, depois orders/invoices/charges/
-refunds, B5, T20, T16, T17 e T18.
+T15 (SHC-16), fatia B4c — provider_webhook_events:
+
+- `provider_event_id` vira `external_id`; `provider`/`status` em enums;
+  `created_at`/`deleted_at` saem (retention usa `received_at`); UNIQUE de
+  `dedupe_key` e `(provider, external_id)`; índices de event_type,
+  resource_id e (status, received_at).
+- `0025_provider_webhook` com backfill/dedupe e downgrade funcional.
+- Relatório: **281 divergências** (291 antes).
+
+Próximo passo: orders/invoices/charges/refunds, B5, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

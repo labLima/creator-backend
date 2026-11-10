@@ -178,7 +178,7 @@ class SqlAlchemyProviderWebhookEventRepository(ProviderWebhookEventRepository):
         return ProviderWebhookEventRecord(
             x.id,
             x.provider,
-            x.provider_event_id,
+            x.external_id,
             x.dedupe_key,
             x.event_type,
             x.account_id,

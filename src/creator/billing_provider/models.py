@@ -19,6 +19,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -61,10 +62,32 @@ class ProviderSubscription(SchemaRow, Base):
     )
 
 
-class ProviderWebhookEvent(SchemaRow, Base):
+class ProviderWebhookEvent(Base):
     __tablename__ = "provider_webhook_events"
-    provider: Mapped[str] = mapped_column(String(20), nullable=False)
-    provider_event_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    __table_args__ = (
+        UniqueConstraint("dedupe_key", name="uq_provider_webhook_events_dedupe_key"),
+        Index(
+            "uq_provider_webhook_events_provider_external_id",
+            "provider",
+            "external_id",
+            unique=True,
+        ),
+        Index("ix_provider_webhook_events_event_type", "event_type"),
+        Index("ix_provider_webhook_events_resource_id", "resource_id"),
+        Index(
+            "ix_provider_webhook_events_status_received_at",
+            "status",
+            "received_at",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    provider: Mapped[str] = mapped_column(
+        enum_column("payment_provider", create_constraint=False),
+        nullable=False,
+        server_default=text("'PAGARME'"),
+    )
+    external_id: Mapped[str] = mapped_column(String(64), nullable=False)
     dedupe_key: Mapped[str] = mapped_column(String(128), nullable=False)
     event_type: Mapped[str] = mapped_column(String(60), nullable=False)
     account_id: Mapped[str | None] = mapped_column(String(64))
@@ -72,7 +95,9 @@ class ProviderWebhookEvent(SchemaRow, Base):
     resource_id: Mapped[str | None] = mapped_column(String(64))
     payload: Mapped[dict[str, object]] = mapped_column(json_type, nullable=False)
     signature_verified: Mapped[bool] = mapped_column(nullable=False, server_default=text("false"))
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(
+        enum_column("webhook_processing_status", create_constraint=False), nullable=False
+    )
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     last_error: Mapped[str | None] = mapped_column(Text)
     received_at: Mapped[datetime] = mapped_column(
