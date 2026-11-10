@@ -511,11 +511,30 @@ class SqlAlchemyAgentWorkflowRepository:
         ).one_or_none()
         if row is None:
             raise EntityNotFoundError("Agent workflow not found")
-        if not can_transition_agent_workflow(row.status, target):
+        same_running_state = (
+            row.status == AgentWorkflowStatus.RUNNING and target == AgentWorkflowStatus.RUNNING
+        )
+        if not same_running_state and not can_transition_agent_workflow(row.status, target):
             raise InvalidStateTransitionError(f"Cannot transition {row.status} to {target}")
         row.status = target
         if current_step is not None:
-            row.current_step = current_step
+            stage_order = {
+                "BUSINESS": 0,
+                "PLANNER": 1,
+                "WRITER": 2,
+                "ARTIST": 3,
+                "REVIEWER": 4,
+                "DELIVERY": 5,
+            }
+            current_order = stage_order.get(row.current_step or "")
+            requested_order = stage_order.get(current_step)
+            if not (
+                same_running_state
+                and current_order is not None
+                and requested_order is not None
+                and requested_order < current_order
+            ):
+                row.current_step = current_step
         if refinement_count is not None:
             row.refinement_count = refinement_count
         if final_image_ids is not None:
