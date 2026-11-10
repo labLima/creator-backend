@@ -30,6 +30,7 @@ from creator.asset.schemas import (
     AssetUpdateRequest,
 )
 from creator.config import Settings, get_settings
+from creator.core.image_validation import validate_image_dimensions
 from creator.services.storage.provider import StorageProvider, UploadObjectRequest
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
@@ -62,8 +63,10 @@ async def upload_reference_image(
             status_code=404, detail={"code": "BRAND_NOT_FOUND", "message": "Brand not found"}
         )
     require_workspace_write(unit_of_work, user_id=current_user.id, workspace_id=workspace_id)
-    content = await file.read(min(settings.storage_max_object_bytes, 10 * 1024 * 1024) + 1)
-    await file.close()
+    try:
+        content = await file.read(min(settings.storage_max_object_bytes, 10 * 1024 * 1024) + 1)
+    finally:
+        await file.close()
     if len(content) > min(settings.storage_max_object_bytes, 10 * 1024 * 1024):
         raise HTTPException(
             status_code=413,
@@ -73,11 +76,12 @@ async def upload_reference_image(
         with Image.open(BytesIO(content)) as image:
             detected = Image.MIME.get(image.format or "")
             width, height = image.size
+            validate_image_dimensions(width, height)
             image.verify()
         expected = {"image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WEBP"}
         if detected not in expected or file.content_type != detected or width < 1 or height < 1:
             raise ValueError("invalid image")
-    except (UnidentifiedImageError, OSError, ValueError) as error:
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as error:
         raise HTTPException(
             status_code=422,
             detail={"code": "INVALID_REFERENCE_IMAGE", "message": "Reference image is invalid"},

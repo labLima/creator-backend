@@ -12,6 +12,8 @@ from PIL import Image
 from creator.asset.repository import SqlAlchemyAssetRepository
 from creator.content.models import Image as ImageRow
 from creator.content.repository import SqlAlchemyContentRepository
+from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from creator.infrastructure.runtime import reference_images as reference_image_runtime
 from creator.services.agents.contracts import AgentExecutionResult, ArtistOutput
 from creator.services.ai.image_provider import ImageGenerationRequest, ImageGenerationResult
 from creator.services.storage.provider import StorageUploadError
@@ -61,6 +63,22 @@ async def test_reference_image_upload_checks_brand_format_and_size(
             files={"file": ("reference.png", b"not an image", "image/png")},
         )
         assert invalid.status_code == 422
+        oversized_dimensions = bytearray(data.getvalue())
+        oversized_dimensions[16:20] = (8_001).to_bytes(4, "big")
+        oversized_dimensions[20:24] = (5_000).to_bytes(4, "big")
+        pixel_bomb = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=owner,
+            data={"workspace_id": workspace, "brand_id": brand_id},
+            files={
+                "file": (
+                    "pixel-bomb.png",
+                    bytes(oversized_dimensions),
+                    "image/png",
+                )
+            },
+        )
+        assert pixel_bomb.status_code == 422
         oversized = await client.post(
             "/api/v1/assets/reference-images",
             headers=owner,
@@ -124,6 +142,16 @@ async def test_upload_is_an_authorized_source_for_transform(
 ) -> None:
     application, _ = e2e
     _patch_worker_to_test_database(monkeypatch, application)
+    monkeypatch.setattr(
+        reference_image_runtime,
+        "SqlAlchemyUnitOfWork",
+        lambda: SqlAlchemyUnitOfWork(application.state.e2e_factory),
+    )
+    monkeypatch.setattr(
+        reference_image_runtime,
+        "create_storage_provider",
+        lambda _settings: application.state.e2e_storage,
+    )
     data = BytesIO()
     Image.new("RGB", (32, 24), "red").save(data, format="PNG")
 
@@ -142,10 +170,13 @@ async def test_upload_is_an_authorized_source_for_transform(
                 model="test",
             )
 
+    reference_ids: list[str] = []
+
     class Generator:
         def generate(self, request: ImageGenerationRequest) -> ImageGenerationResult:
             assert request.source_image == data.getvalue()
             assert request.size == "1080x1350"
+            assert [item.asset_id for item in request.reference_images] == reference_ids
             output = BytesIO()
             Image.new("RGB", (1080, 1350), "red").save(output, format="PNG")
             return ImageGenerationResult(
@@ -166,6 +197,14 @@ async def test_upload_is_an_authorized_source_for_transform(
         )
         assert brand_response.status_code == 201
         brand = brand_response.json()["data"]["id"]
+        reference = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=owner,
+            data={"workspace_id": workspace, "brand_id": brand},
+            files={"file": ("reference.png", data.getvalue(), "image/png")},
+        )
+        assert reference.status_code == 201, reference.text
+        reference_ids.append(reference.json()["data"]["id"])
         imported = await client.post(
             "/api/v1/contents/import-image",
             headers=owner,
@@ -227,13 +266,14 @@ async def test_upload_is_an_authorized_source_for_transform(
                 "source_content_id": content["id"],
                 "source_image_id": image["id"],
                 "destination_preset": "1080x1350",
+                "reference_asset_ids": reference_ids,
             },
         )
         assert transform.status_code == 202, transform.text
         job_id = transform.json()["data"]["id"]
         worker.run_image_generation(job_id)
         pending = await client.get(f"/api/v1/generation-jobs/{job_id}", headers=owner)
-        assert pending.json()["data"]["scene_review"]["status"] == "PENDING"
+        assert pending.json()["data"]["scene_review"]["status"] == "PENDING", pending.text
         approved = await client.post(
             f"/api/v1/generation-jobs/{job_id}/scene-decision",
             headers=owner,

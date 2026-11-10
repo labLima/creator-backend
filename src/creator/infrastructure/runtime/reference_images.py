@@ -7,6 +7,7 @@ from uuid import UUID
 from PIL import Image, UnidentifiedImageError
 
 from creator.config import Settings
+from creator.core.image_validation import validate_image_dimensions
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from creator.infrastructure.runtime.storage import create_storage_provider
 from creator.services.ai.image_provider import ImageInput, ImageProviderInvalidResponseError
@@ -56,6 +57,7 @@ def resolve_reference_images(
                 image.verify()
             with Image.open(BytesIO(content)) as image:
                 actual_mime = Image.MIME.get(image.format or "")
+                validate_image_dimensions(*image.size)
                 if actual_mime != asset.mime_type or image.size != (
                     asset.metadata.get("width"),
                     asset.metadata.get("height"),

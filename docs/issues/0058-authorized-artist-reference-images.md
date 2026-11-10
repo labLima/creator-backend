@@ -11,7 +11,7 @@ providers de imagem nos Generation Jobs IMAGE e Agent Workflows.
 
 ## Critérios de aceite
 
-- [x] Upload privado valida formato, tamanho, dimensões e checksum; rollback limpa storage.
+- [x] Upload privado valida formato, tamanho, dimensões (máximo 40 milhões de pixels) e checksum; rollback limpa storage.
 - [x] Só Assets do Workspace e Brand autorizados e de origem segura são aceitos.
 - [x] Até quatro IDs ordenados persistem no input e no fingerprint de idempotência.
 - [x] Workers revalidam lifecycle e bytes antes de chamar providers.
@@ -21,6 +21,6 @@ providers de imagem nos Generation Jobs IMAGE e Agent Workflows.
 
 ## Evidência local
 
-- `make check`: 653 testes passaram; lint, formatação, mypy e migrações passaram.
+- `make check`: 654 testes passaram; lint, formatação, mypy e migrações passaram.
 - `make security`: pip-audit sem vulnerabilidades conhecidas (4 ignoradas pela configuração) e Gitleaks sem achados.
-- `make e2e`: 28 passaram e 1 foi ignorado, incluindo formato inválido, limite e rollback do upload.
+- `make e2e`: 28 passaram e 1 foi ignorado, incluindo propagação aos providers nos dois fluxos, formato inválido, limite e rollback do upload.

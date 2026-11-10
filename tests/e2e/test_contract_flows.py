@@ -13,6 +13,7 @@ from creator.api.dependencies import get_rate_limiter
 from creator.domain.agent_workflow import AgentWorkflowStatus
 from creator.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from creator.infrastructure.runtime import image_composition
+from creator.infrastructure.runtime import reference_images as reference_image_runtime
 from creator.infrastructure.runtime.metrics import MetricsRegistry
 from creator.infrastructure.runtime.rate_limit import InMemoryRateLimitBackend, RateLimiter
 from creator.services.agents.contracts import AgentExecutionResult, ArtistOutput, WriterOutput
@@ -125,6 +126,14 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
     async with AsyncClient(
         transport=ASGITransport(app=application), base_url="http://test"
     ) as client:
+        reference_upload = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=token,
+            data={"workspace_id": workspace_id, "brand_id": brand["id"]},
+            files={"file": ("reference.png", scene_buffer.getvalue(), "image/png")},
+        )
+        assert reference_upload.status_code == 201, reference_upload.text
+        reference_id = reference_upload.json()["data"]["id"]
         workflow_response = await client.post(
             "/api/v1/generations/image-workflows",
             headers={**token, "Idempotency-Key": "integrated-scene-review"},
@@ -134,6 +143,7 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
                 "persona": "Adults",
                 "compose_text": True,
                 "headline": "Pão quentinho",
+                "reference_asset_ids": [reference_id],
             },
         )
         assert workflow_response.status_code == 202, workflow_response.text
@@ -147,6 +157,7 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
     class Generator:
         def generate(self, request: object) -> ImageGenerationResult:
             generated_calls.append("generated")
+            assert [item.asset_id for item in request.reference_images] == [reference_id]
             return ImageGenerationResult(
                 scene_buffer.getvalue(),
                 "image/png",
@@ -161,6 +172,16 @@ async def test_composition_resolves_real_brand_assets_and_local_storage(
         workflow_worker,
         "SqlAlchemyUnitOfWork",
         lambda: SqlAlchemyUnitOfWork(state.e2e_factory),
+    )
+    monkeypatch.setattr(
+        reference_image_runtime,
+        "SqlAlchemyUnitOfWork",
+        lambda: SqlAlchemyUnitOfWork(state.e2e_factory),
+    )
+    monkeypatch.setattr(
+        reference_image_runtime,
+        "create_storage_provider",
+        lambda _settings: state.e2e_storage,
     )
     monkeypatch.setattr(workflow_worker, "create_image_generator", lambda settings: Generator())
     monkeypatch.setattr(workflow_worker, "_persist_artist_step", lambda *args, **kwargs: None)

@@ -15,8 +15,9 @@ bytes e URLs fornecidos pelo cliente não demonstram propriedade ou autorizaçã
 
 Referências são Assets privados vinculados ao Workspace e à Brand autorizada.
 Um endpoint autenticado valida PNG, JPEG ou WebP, tamanho máximo de 10 MiB,
-dimensões e assinatura real do conteúdo; gera o caminho de storage e persiste
-checksum SHA-256 e marca de origem controlada pelo servidor. A API aceita uma
+dimensões até 40 milhões de pixels e assinatura real do conteúdo; gera o caminho
+de storage e persiste checksum SHA-256 e marca de origem controlada pelo servidor.
+A API aceita uma
 lista ordenada de até quatro IDs nos Generation Jobs IMAGE e Agent Workflows.
 
 O boundary de aplicação valida Workspace, Brand, lifecycle e origem segura ao

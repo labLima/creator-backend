@@ -11,8 +11,17 @@ import pytest
 from PIL import Image
 
 from creator.config import Settings
+from creator.core.image_validation import MAX_IMAGE_PIXELS, validate_image_dimensions
 from creator.infrastructure.runtime import reference_images
 from creator.services.ai.image_provider import ImageProviderInvalidResponseError
+
+
+def test_image_dimensions_enforce_shared_pixel_limit() -> None:
+    validate_image_dimensions(8000, 5000)
+    with pytest.raises(ValueError):
+        validate_image_dimensions(8001, 5000)
+    with pytest.raises(ValueError):
+        validate_image_dimensions(0, MAX_IMAGE_PIXELS)
 
 
 def png_bytes() -> bytes:
