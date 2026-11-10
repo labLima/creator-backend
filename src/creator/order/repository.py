@@ -31,10 +31,10 @@ class SqlAlchemyOrderRepository(OrderRepository):
             x.amount_cents,
             x.currency,
             x.status,
-            x.closed,
+            False,
             x.created_at,
             x.updated_at,
-            x.deleted_at,
+            None,
         )
 
     def _owned(self, uid, oid):
@@ -44,7 +44,6 @@ class SqlAlchemyOrderRepository(OrderRepository):
             .where(
                 order_models.Order.id == oid,
                 billing_account_models.BillingAccount.user_id == uid,
-                order_models.Order.deleted_at.is_(None),
             )
         )
 
@@ -56,7 +55,6 @@ class SqlAlchemyOrderRepository(OrderRepository):
                 .join(billing_account_models.BillingAccount)
                 .where(
                     billing_account_models.BillingAccount.user_id == user_id,
-                    order_models.Order.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -73,7 +71,7 @@ class SqlAlchemyOrderRepository(OrderRepository):
 
     def update(self, *, order_id, fields):
         x = self.s.get(order_models.Order, order_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Order not found")
         for k, v in fields.items():
             setattr(x, k, v)
@@ -83,8 +81,7 @@ class SqlAlchemyOrderRepository(OrderRepository):
 
     def soft_delete(self, *, order_id):
         x = self.s.get(order_models.Order, order_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Order not found")
-        x.deleted_at = datetime.now(UTC)
-        x.updated_at = x.deleted_at
+        self.s.delete(x)
         self.s.flush()

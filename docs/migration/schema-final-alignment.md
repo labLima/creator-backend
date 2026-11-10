@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **229**
+- Divergências: **204**
 
 ## Divergências por categoria
 
@@ -24,21 +24,21 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 41 |
-| `column_extra` | 21 |
-| `nullability` | 0 |
-| `width` | 9 |
+| `column_missing` | 38 |
+| `column_extra` | 18 |
+| `nullability` | 1 |
+| `width` | 6 |
 | `kind` | 3 |
-| `enum` | 4 |
+| `enum` | 3 |
 | `unique_missing` | 0 |
 | `unique_extra` | 3 |
-| `index_missing` | 34 |
+| `index_missing` | 28 |
 | `index_extra` | 1 |
-| `index_name` | 11 |
+| `index_name` | 10 |
 | `fk_missing` | 12 |
-| `fk_extra` | 11 |
-| `fk_ondelete` | 8 |
-| `check_missing` | 21 |
+| `fk_extra` | 8 |
+| `fk_ondelete` | 5 |
+| `check_missing` | 18 |
 | `check_extra` | 30 |
 | `default_missing` | 3 |
 | `default_value` | 0 |
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **74**.
+Total: **66**.
 
-### `column_missing` (41)
+### `column_missing` (38)
 
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
@@ -92,9 +92,6 @@ Total: **74**.
 - `coupons.currency`
 - `credit_packages.credits`
 - `credit_packages.credits_validity_days`
-- `orders.code`
-- `orders.external_id`
-- `orders.provider`
 - `provider_webhook_events.updated_at`
 - `workspace_credit_transactions.balance_after`
 - `workspace_credit_transactions.created_by`
@@ -104,7 +101,7 @@ Total: **74**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (21)
+### `column_extra` (18)
 
 - `charges.deleted_at`
 - `charges.provider_card_id`
@@ -117,9 +114,6 @@ Total: **74**.
 - `credit_packages.code`
 - `credit_packages.credits_amount`
 - `credit_packages.deleted_at`
-- `orders.closed`
-- `orders.deleted_at`
-- `orders.provider_order_id`
 - `users.global_role`
 - `users.password_hash`
 - `workspace_credit_transactions.deleted_at`
@@ -128,7 +122,11 @@ Total: **74**.
 - `workspace_credit_transactions.transaction_type`
 - `workspace_credit_transactions.updated_at`
 
-### `width` (9)
+### `nullability` (1)
+
+- `orders.discount_cents: final NOT NULL, model nullable`
+
+### `width` (6)
 
 - `charges.amount_cents: final bigint, model integer`
 - `charges.status: final unbounded varchar, model varchar(20)`
@@ -136,32 +134,28 @@ Total: **74**.
 - `coupons.min_purchase_cents: final bigint, model integer`
 - `credit_packages.name: final unbounded varchar, model varchar(64)`
 - `credit_packages.price_cents: final bigint, model integer`
-- `orders.amount_cents: final bigint, model integer`
-- `orders.discount_cents: final bigint, model integer`
-- `orders.subtotal_cents: final bigint, model integer`
 
 ### `default_missing` (3)
 
 - `charges.currency: final default 'BRL'`
 - `credit_packages.currency: final default 'BRL'`
-- `orders.currency: final default 'BRL'`
+- `orders.discount_cents: final default 0`
 
 ## 4. Enums
 
-Total: **4**.
+Total: **3**.
 
-### `enum` (4)
+### `enum` (3)
 
 - `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
 - `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
 - `coupons.type: model has no vocabulary (expected ['DISCOUNT', 'CREDIT'])`
-- `orders.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'FAILED'])`
 
 ## 5. Índices
 
-Total: **46**.
+Total: **39**.
 
-### `index_missing` (34)
+### `index_missing` (28)
 
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
 - `charges: (billing_account_id, status)`
@@ -185,12 +179,6 @@ Total: **46**.
 - `coupons: (is_active)`
 - `coupons: (type)`
 - `coupons: UNIQUE (code) WHERE deleted_at is null`
-- `orders: (billing_account_id)`
-- `orders: (credit_package_id) WHERE credit_package_id is not null`
-- `orders: (status)`
-- `orders: (workspace_id)`
-- `orders: UNIQUE (id, workspace_id)`
-- `orders: UNIQUE (provider, external_id)`
 - `workspace_credit_transactions: (created_by) WHERE created_by is not null`
 - `workspace_credit_transactions: (workspace_id, created_at)`
 - `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
@@ -202,7 +190,7 @@ Total: **46**.
 
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (11)
+### `index_name` (10)
 
 - `charges: missing index name idx_m8_charges_payment_method_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
@@ -212,13 +200,12 @@ Total: **46**.
 - `coupons: missing index name uq_coupons_code_active`
 - `image_resizes: missing index name idx_image_resizes_source_image`
 - `image_resizes: missing index name uq_image_resizes_storage`
-- `orders: missing index name idx_m8_orders_credit_package_id`
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
 
 ## 6. Foreign keys
 
-Total: **31**.
+Total: **25**.
 
 ### `fk_missing` (12)
 
@@ -235,7 +222,7 @@ Total: **31**.
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (11)
+### `fk_extra` (8)
 
 - `charges['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `charges['invoice_id']->invoices['id'] [NO ACTION]`
@@ -244,27 +231,21 @@ Total: **31**.
 - `coupon_redemptions['order_id']->orders['id'] [NO ACTION]`
 - `coupon_redemptions['subscription_id']->subscriptions['id'] [NO ACTION]`
 - `coupons['created_by']->users['id'] [NO ACTION]`
-- `orders['billing_account_id']->billing_accounts['id'] [NO ACTION]`
-- `orders['credit_package_id']->credit_packages['id'] [NO ACTION]`
-- `orders['workspace_id']->workspaces['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (8)
+### `fk_ondelete` (5)
 
 - `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `charges['invoice_id']->invoices['id']: final SET NULL vs model ['NO ACTION']`
 - `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model ['NO ACTION']`
 - `coupons['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
-- `orders['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
-- `orders['credit_package_id']->credit_packages['id']: final SET NULL vs model ['NO ACTION']`
-- `orders['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 
 ## 7. CHECK constraints
 
-Total: **51**.
+Total: **48**.
 
-### `check_missing` (21)
+### `check_missing` (18)
 
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
@@ -280,9 +261,6 @@ Total: **51**.
 - `unmapped:coupons.chk_coupons_type_exclusive_fields`
 - `unmapped:credit_packages.chk_credit_packages_currency_format`
 - `unmapped:credit_packages.chk_credit_packages_price_nonnegative`
-- `unmapped:orders.chk_orders_amount_consistency`
-- `unmapped:orders.chk_orders_cents_nonnegative`
-- `unmapped:orders.chk_orders_currency_format`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`

@@ -378,7 +378,17 @@ T15 (SHC-16), fatia B4e — invoices:
   descartadas) e downgrade funcional; CHECK_MAP +3.
 - Relatório: **229 divergências** (253 antes).
 
-Próximo passo: orders e charges, B5, T20, T16, T17 e T18.
+T15 (SHC-16), fatia B4f — orders:
+
+- `provider_order_id` vira `external_id`; entram `provider` e `code`; saem
+  `closed` e `deleted_at`; valores em bigint; `status` no enum `order_status`.
+- CHECKs de consistência/centavos/moeda, FKs RESTRICT/SET NULL e índices do
+  dump (incluindo UNIQUE `(id, workspace_id)` para as FKs compostas).
+- `0028_order_alignment` com backfill (recalcula `amount = subtotal - discount`)
+  e downgrade funcional; CHECK_MAP +3.
+- Relatório: **204 divergências** (229 antes).
+
+Próximo passo: charges e fiscal_invoices, B5, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

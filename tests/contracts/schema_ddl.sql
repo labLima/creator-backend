@@ -877,25 +877,28 @@ CREATE TABLE notifications (
 )
 
 CREATE TABLE orders (
+	id CHAR(32) NOT NULL,
 	billing_account_id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
 	credit_package_id CHAR(32),
-	provider_order_id VARCHAR(64),
-	subtotal_cents INTEGER NOT NULL,
-	discount_cents INTEGER DEFAULT 0 NOT NULL,
-	amount_cents INTEGER NOT NULL,
-	currency VARCHAR(3) NOT NULL,
-	status VARCHAR(20) NOT NULL,
-	closed BOOLEAN DEFAULT false NOT NULL,
-	metadata JSON DEFAULT '{}' NOT NULL,
-	id CHAR(32) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	code VARCHAR(52),
+	subtotal_cents BIGINT NOT NULL,
+	discount_cents BIGINT,
+	amount_cents BIGINT NOT NULL,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	status VARCHAR(8) NOT NULL,
+	metadata JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id),
-	FOREIGN KEY(credit_package_id) REFERENCES credit_packages (id)
+	CONSTRAINT chk_orders_amount_consistency CHECK (amount_cents = subtotal_cents - discount_cents),
+	CONSTRAINT chk_orders_cents_nonnegative CHECK (subtotal_cents >= 0 AND amount_cents >= 0 AND (discount_cents IS NULL OR discount_cents >= 0)),
+	CONSTRAINT chk_orders_currency_format CHECK (currency IS NULL OR currency GLOB '[A-Z][A-Z][A-Z]'),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE RESTRICT,
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
+	FOREIGN KEY(credit_package_id) REFERENCES credit_packages (id) ON DELETE SET NULL
 )
 
 CREATE TABLE outbox_events (
@@ -1640,6 +1643,18 @@ CREATE INDEX ix_notifications_created_at ON notifications (created_at)
 CREATE INDEX ix_notifications_type ON notifications (type)
 
 CREATE UNIQUE INDEX uq_notifications_workspace_dedupe ON notifications (workspace_id, dedupe_key)
+
+CREATE INDEX idx_m8_orders_credit_package_id ON orders (credit_package_id) WHERE credit_package_id IS NOT NULL
+
+CREATE INDEX ix_orders_billing_account_id ON orders (billing_account_id)
+
+CREATE INDEX ix_orders_status ON orders (status)
+
+CREATE INDEX ix_orders_workspace_id ON orders (workspace_id)
+
+CREATE UNIQUE INDEX uq_orders_id_workspace_id ON orders (id, workspace_id)
+
+CREATE UNIQUE INDEX uq_orders_provider_external_id ON orders (provider, external_id)
 
 CREATE INDEX ix_outbox_events_consume ON outbox_events (consumed_at, consumer_available_at, dead_lettered_at)
 
