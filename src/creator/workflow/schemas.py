@@ -28,9 +28,12 @@ class ImageWorkflowRequest(CreatorDTO):
     headline: str | None = Field(default=None, max_length=500)
     supporting_text: str | None = Field(default=None, max_length=2_000)
     call_to_action: str | None = Field(default=None, max_length=300)
+    reference_asset_ids: list[UUID] = Field(default_factory=list, max_length=4)
 
     @model_validator(mode="after")
     def validate_composition(self) -> ImageWorkflowRequest:
+        if len(set(self.reference_asset_ids)) != len(self.reference_asset_ids):
+            raise ValueError("reference_asset_ids must not contain duplicates")
         planning_mode = self.planning_id is not None or self.post_structure_id is not None
         if planning_mode and (self.planning_id is None or self.post_structure_id is None):
             raise ValueError("planning_id and post_structure_id must be provided together")

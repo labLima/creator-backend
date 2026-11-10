@@ -73,6 +73,7 @@ def create_image_workflow(
                 persona=payload.persona,
                 planning_id=payload.planning_id,
                 post_structure_id=payload.post_structure_id,
+                reference_asset_ids=tuple(payload.reference_asset_ids),
                 quantity=payload.quantity,
                 extra_instructions=payload.extra_instructions,
                 human_review=payload.human_review,

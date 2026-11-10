@@ -9,6 +9,7 @@ from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from PIL import Image
 
+from creator.asset.repository import SqlAlchemyAssetRepository
 from creator.content.models import Image as ImageRow
 from creator.content.repository import SqlAlchemyContentRepository
 from creator.services.agents.contracts import AgentExecutionResult, ArtistOutput
@@ -20,6 +21,101 @@ from tests.e2e.test_content_flow import _signup
 from tests.e2e.test_contract_flows import _patch_worker_to_test_database
 
 pytestmark = pytest.mark.e2e
+
+
+@pytest.mark.anyio
+async def test_reference_image_upload_checks_brand_format_and_size(
+    e2e: tuple[object, object],
+) -> None:
+    application, _ = e2e
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        owner, workspace = await _signup(client, "reference-owner@example.com")
+        outsider, _ = await _signup(client, "reference-outsider@example.com")
+        brand_response = await client.post(
+            "/api/v1/brands",
+            headers=owner,
+            json={"workspace_id": workspace, "name": "Reference Brand"},
+        )
+        assert brand_response.status_code == 201, brand_response.text
+        brand_id = brand_response.json()["data"]["id"]
+        data = BytesIO()
+        Image.new("RGB", (16, 12), "blue").save(data, format="PNG")
+        uploaded = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=owner,
+            data={"workspace_id": workspace, "brand_id": brand_id},
+            files={"file": ("reference.png", data.getvalue(), "image/png")},
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        asset = uploaded.json()["data"]
+        assert asset["asset_type"] == "REFERENCE_IMAGE"
+        assert asset["workspace_id"] == workspace and asset["brand_id"] == brand_id
+        assert asset["byte_size"] == len(data.getvalue())
+        assert asset["checksum"]
+        invalid = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=owner,
+            data={"workspace_id": workspace, "brand_id": brand_id},
+            files={"file": ("reference.png", b"not an image", "image/png")},
+        )
+        assert invalid.status_code == 422
+        oversized = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=owner,
+            data={"workspace_id": workspace, "brand_id": brand_id},
+            files={
+                "file": (
+                    "large.png",
+                    b"x" * (10 * 1024 * 1024 + 1),
+                    "image/png",
+                )
+            },
+        )
+        assert oversized.status_code == 413
+        denied = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=outsider,
+            data={"workspace_id": workspace, "brand_id": brand_id},
+            files={"file": ("reference.png", data.getvalue(), "image/png")},
+        )
+        assert denied.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_reference_upload_deletes_object_when_asset_persistence_fails(
+    e2e: tuple[object, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    application, _ = e2e
+    storage = application.state.e2e_storage
+    data = BytesIO()
+    Image.new("RGB", (12, 12), "green").save(data, format="PNG")
+    async with AsyncClient(
+        transport=ASGITransport(app=application, raise_app_exceptions=False),
+        base_url="http://test",
+    ) as client:
+        owner, workspace = await _signup(client, "reference-cleanup@example.com")
+        brand = (
+            await client.post(
+                "/api/v1/brands",
+                headers=owner,
+                json={"workspace_id": workspace, "name": "Reference Brand"},
+            )
+        ).json()["data"]["id"]
+
+        def fail(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("database failure")
+
+        monkeypatch.setattr(SqlAlchemyAssetRepository, "add", fail)
+        result = await client.post(
+            "/api/v1/assets/reference-images",
+            headers=owner,
+            data={"workspace_id": workspace, "brand_id": brand},
+            files={"file": ("reference.png", data.getvalue(), "image/png")},
+        )
+        assert result.status_code == 503
+        assert not storage.objects
 
 
 @pytest.mark.anyio

@@ -55,6 +55,15 @@ class ImageGenerationRequest:
     resolution: str | None = None
     source_image: bytes | None = None
     source_image_mime_type: str | None = None
+    reference_images: tuple[ImageInput, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ImageInput:
+    content: bytes
+    mime_type: str
+    asset_id: str | None = None
+    checksum_sha256: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +93,7 @@ class ImageEditRequest:
     output_mime_type: str = "image/png"
     model: str | None = None
     metadata: dict[str, object] = field(default_factory=dict)
+    reference_images: tuple[ImageInput, ...] = ()
 
 
 class ImageEditor(Protocol):
@@ -114,6 +124,7 @@ class ImageGenerationEditor:
                 size=request.destination_size,
                 source_image=request.source_image,
                 source_image_mime_type=request.source_mime_type,
+                reference_images=request.reference_images,
             )
         )
 
