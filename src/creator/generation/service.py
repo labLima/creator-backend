@@ -383,6 +383,18 @@ def submit_independent_generation(
         user_id=user.id, workspace_id=brand.workspace_id
     ):
         raise EntityNotFoundError("Brand not found")
+    # Resolve ownership at the application boundary; workers repeat byte and lifecycle checks.
+    for reference_id in payload.reference_asset_ids:
+        reference = unit_of_work.assets.get_for_user(user_id=user.id, asset_id=reference_id)
+        if (
+            reference is None
+            or reference.deleted_at is not None
+            or reference.workspace_id != brand.workspace_id
+            or reference.brand_id != brand.id
+            or reference.asset_type != "REFERENCE_IMAGE"
+            or reference.metadata.get("reference_image_upload") is not True
+        ):
+            raise EntityNotFoundError("Authorized reference image not found")
 
     content = source
     if content is None:

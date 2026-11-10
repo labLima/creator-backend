@@ -46,6 +46,8 @@ def create_asset(
     payload: Any,
 ) -> Any:
     require_workspace_write(uow, user_id=actor.id, workspace_id=payload.workspace_id)
+    safe_metadata = dict(payload.metadata)
+    safe_metadata.pop("reference_image_upload", None)
     asset = uow.assets.add(
         workspace_id=payload.workspace_id,
         brand_id=payload.brand_id,
@@ -58,7 +60,7 @@ def create_asset(
         mime_type=payload.mime_type,
         byte_size=payload.byte_size,
         checksum=payload.checksum,
-        metadata=payload.metadata,
+        metadata=safe_metadata,
     )
     uow.commit()
 
@@ -95,13 +97,16 @@ def update_asset(
     asset_id: Any,
     payload: Any,
 ) -> Any:
+    safe_metadata = dict(payload.metadata) if payload.metadata is not None else None
+    if safe_metadata is not None:
+        safe_metadata.pop("reference_image_upload", None)
     try:
         asset = uow.assets.update(
             user_id=actor.id,
             asset_id=asset_id,
             asset_type=payload.asset_type,
             public_url=payload.public_url,
-            metadata=payload.metadata,
+            metadata=safe_metadata,
         )
     except EntityNotFoundError as error:
         raise not_found("Asset") from error

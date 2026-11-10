@@ -24,6 +24,7 @@ from creator.infrastructure.runtime.image_composition import (
     compose_generated_image,
 )
 from creator.infrastructure.runtime.observability import correlation_context
+from creator.infrastructure.runtime.reference_images import resolve_reference_images
 from creator.infrastructure.runtime.storage import create_storage_provider
 from creator.integrations.gemini.exceptions import (
     GeminiAuthenticationError,
@@ -48,6 +49,7 @@ from creator.services.ai.image_provider import (
     ImageGenerationEditor,
     ImageGenerationRequest,
     ImageGenerationResult,
+    ImageInput,
     ImageProviderAuthenticationError,
     ImageProviderBlockedError,
     ImageProviderError,
@@ -209,6 +211,29 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                 {"scene_review_source_path": path},
             )
         else:
+            request_input = work_item.parameters.get("request_input")
+            reference_ids = (
+                request_input.get("reference_asset_ids", [])
+                if isinstance(request_input, dict)
+                else []
+            )
+            if reference_ids and work_item.brand_id is None:
+                raise ImageProviderInvalidResponseError(
+                    "Reference images require an authorized Brand"
+                )
+            reference_images: tuple[ImageInput, ...] = ()
+            if reference_ids:
+                if work_item.brand_id is None:
+                    raise ImageProviderInvalidResponseError(
+                        "Reference images require an authorized Brand"
+                    )
+                reference_images = resolve_reference_images(
+                    asset_ids=reference_ids,
+                    user_id=work_item.requested_by_user.id,
+                    workspace_id=work_item.job.workspace_id,
+                    brand_id=work_item.brand_id,
+                    settings=settings,
+                )
             source_image_bytes = None
             source_image_mime_type = None
             source_image = work_item.parameters.get("source_image")
@@ -273,7 +298,14 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                             if safe_brand_context.get(key)
                         },
                         model=model,
-                        metadata=_image_request_metadata(work_item),
+                        metadata={
+                            **_image_request_metadata(work_item),
+                            "reference_assets": [
+                                {"id": item.asset_id, "sha256": item.checksum_sha256}
+                                for item in reference_images
+                            ],
+                        },
+                        reference_images=reference_images,
                     )
                 )
             else:
@@ -281,10 +313,17 @@ def _run_image_generation(parsed_job_id: UUID, parsed_request_id: UUID | None) -
                     ImageGenerationRequest(
                         prompt=prompt,
                         model=model,
-                        metadata=_image_request_metadata(work_item),
+                        metadata={
+                            **_image_request_metadata(work_item),
+                            "reference_assets": [
+                                {"id": item.asset_id, "sha256": item.checksum_sha256}
+                                for item in reference_images
+                            ],
+                        },
                         size=_image_request_size(work_item),
                         aspect_ratio=_image_request_option(work_item, "aspect_ratio"),
                         resolution=_image_request_option(work_item, "resolution"),
+                        reference_images=reference_images,
                     )
                 )
             if source_image_bytes is not None and isinstance(destination_preset, str):

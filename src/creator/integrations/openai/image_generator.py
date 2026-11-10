@@ -102,10 +102,22 @@ class OpenAIImageGenerator:
                 )
                 if extension is None:
                     raise ImageProviderInvalidResponseError("Unsupported source image MIME type")
+                inputs = [(f"source.{extension}", request.source_image)]
+                for reference in request.reference_images:
+                    reference_extension = {
+                        "image/png": "png",
+                        "image/jpeg": "jpg",
+                        "image/webp": "webp",
+                    }.get(reference.mime_type)
+                    if reference_extension is None:
+                        raise ImageProviderInvalidResponseError(
+                            "Unsupported reference image MIME type"
+                        )
+                    inputs.append((f"reference.{reference_extension}", reference.content))
                 edit_options: dict[str, Any] = {
                     "model": model,
                     "prompt": request.prompt,
-                    "image": (f"source.{extension}", request.source_image),
+                    "image": inputs[0] if len(inputs) == 1 else inputs,
                     "size": provider_size,
                     "quality": "auto",
                     "output_format": output_format,
@@ -113,6 +125,27 @@ class OpenAIImageGenerator:
                 if not model.lower().startswith("gpt-image-2"):
                     edit_options["input_fidelity"] = "high"
                 response = self._client.images.edit(**edit_options)
+            elif request.reference_images:
+                inputs = []
+                for reference in request.reference_images:
+                    reference_extension = {
+                        "image/png": "png",
+                        "image/jpeg": "jpg",
+                        "image/webp": "webp",
+                    }.get(reference.mime_type)
+                    if reference_extension is None:
+                        raise ImageProviderInvalidResponseError(
+                            "Unsupported reference image MIME type"
+                        )
+                    inputs.append((f"reference.{reference_extension}", reference.content))
+                response = self._client.images.edit(
+                    model=model,
+                    prompt=request.prompt,
+                    image=inputs,
+                    size=size,
+                    quality="auto",
+                    output_format=output_format,
+                )
             else:
                 response = self._client.images.generate(
                     model=model,
