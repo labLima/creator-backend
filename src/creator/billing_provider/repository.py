@@ -234,22 +234,18 @@ class SqlAlchemyProviderIdempotencyKeyRepository(ProviderIdempotencyKeyRepositor
             x.status,
             x.created_at,
             x.updated_at,
-            x.deleted_at,
+            None,
         )
 
     def list(self):
         return [
             self._r(x)
-            for x in self.s.scalars(
-                select(billing_provider_models.ProviderIdempotencyKey).where(
-                    billing_provider_models.ProviderIdempotencyKey.deleted_at.is_(None)
-                )
-            ).all()
+            for x in self.s.scalars(select(billing_provider_models.ProviderIdempotencyKey)).all()
         ]
 
     def get(self, *, key_id):
         x = self.s.get(billing_provider_models.ProviderIdempotencyKey, key_id)
-        return self._r(x) if x and x.deleted_at is None else None
+        return self._r(x) if x else None
 
     def add(self, *, fields):
         x = billing_provider_models.ProviderIdempotencyKey(**fields)
@@ -259,7 +255,7 @@ class SqlAlchemyProviderIdempotencyKeyRepository(ProviderIdempotencyKeyRepositor
 
     def update(self, *, key_id, fields):
         x = self.s.get(billing_provider_models.ProviderIdempotencyKey, key_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Provider idempotency key not found")
         for k, v in fields.items():
             setattr(x, k, v)

@@ -81,14 +81,36 @@ class ProviderWebhookEvent(SchemaRow, Base):
     processed_at: Mapped[datetime | None] = mapped_column(timestamp)
 
 
-class ProviderIdempotencyKey(SchemaRow, Base):
+class ProviderIdempotencyKey(Base):
     __tablename__ = "provider_idempotency_keys"
-    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    __table_args__ = (
+        Index(
+            "uq_provider_idempotency_keys_provider_key",
+            "provider",
+            "idempotency_key",
+            unique=True,
+        ),
+        Index("ix_provider_idempotency_keys_expires_at", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    provider: Mapped[str] = mapped_column(
+        enum_column("payment_provider", create_constraint=False), nullable=False
+    )
     idempotency_key: Mapped[str] = mapped_column(String(100), nullable=False)
     request_hash: Mapped[str | None] = mapped_column(String(64))
     resource_type: Mapped[str | None] = mapped_column(String(40))
     resource_id: Mapped[str | None] = mapped_column(String(64))
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(
+        enum_column("idempotency_status", create_constraint=False), nullable=False
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(timestamp)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class ProviderDispute(Base):

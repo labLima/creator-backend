@@ -1123,16 +1123,16 @@ CREATE TABLE provider_disputes (
 )
 
 CREATE TABLE provider_idempotency_keys (
-	provider VARCHAR(20) NOT NULL,
+	id CHAR(32) NOT NULL,
+	provider VARCHAR(7) NOT NULL,
 	idempotency_key VARCHAR(100) NOT NULL,
 	request_hash VARCHAR(64),
 	resource_type VARCHAR(40),
 	resource_id VARCHAR(64),
-	status VARCHAR(20) NOT NULL,
-	id CHAR(32) NOT NULL,
+	status VARCHAR(9) NOT NULL,
+	expires_at DATETIME,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id)
 )
 
@@ -1680,6 +1680,10 @@ CREATE INDEX ix_provider_disputes_charge_id ON provider_disputes (charge_id)
 CREATE INDEX ix_provider_disputes_status_resolved_at ON provider_disputes (status, resolved_at)
 
 CREATE UNIQUE INDEX uq_provider_disputes_provider_external_id ON provider_disputes (provider, external_id)
+
+CREATE INDEX ix_provider_idempotency_keys_expires_at ON provider_idempotency_keys (expires_at)
+
+CREATE UNIQUE INDEX uq_provider_idempotency_keys_provider_key ON provider_idempotency_keys (provider, idempotency_key)
 
 CREATE INDEX ix_settings_user_id ON settings (user_id)
 

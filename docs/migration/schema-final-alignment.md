@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **297**
+- Divergências: **291**
 
 ## Divergências por categoria
 
@@ -24,15 +24,15 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 51 |
-| `column_extra` | 34 |
+| `column_missing` | 50 |
+| `column_extra` | 33 |
 | `nullability` | 1 |
 | `width` | 14 |
 | `kind` | 3 |
-| `enum` | 11 |
+| `enum` | 9 |
 | `unique_missing` | 1 |
 | `unique_extra` | 3 |
-| `index_missing` | 48 |
+| `index_missing` | 46 |
 | `index_extra` | 1 |
 | `index_name` | 12 |
 | `fk_missing` | 14 |
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **105**.
+Total: **103**.
 
-### `column_missing` (51)
+### `column_missing` (50)
 
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
@@ -97,7 +97,6 @@ Total: **105**.
 - `orders.code`
 - `orders.external_id`
 - `orders.provider`
-- `provider_idempotency_keys.expires_at`
 - `provider_webhook_events.external_id`
 - `refunds.charge_id`
 - `refunds.external_id`
@@ -114,7 +113,7 @@ Total: **105**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (34)
+### `column_extra` (33)
 
 - `charges.deleted_at`
 - `charges.provider_card_id`
@@ -133,7 +132,6 @@ Total: **105**.
 - `orders.closed`
 - `orders.deleted_at`
 - `orders.provider_order_id`
-- `provider_idempotency_keys.deleted_at`
 - `provider_webhook_events.created_at`
 - `provider_webhook_events.deleted_at`
 - `provider_webhook_events.provider_event_id`
@@ -182,9 +180,9 @@ Total: **105**.
 
 ## 4. Enums
 
-Total: **11**.
+Total: **9**.
 
-### `enum` (11)
+### `enum` (9)
 
 - `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
 - `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
@@ -192,17 +190,15 @@ Total: **11**.
 - `invoices.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
 - `invoices.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'SCHEDULED', 'FAILED'])`
 - `orders.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'FAILED'])`
-- `provider_idempotency_keys.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
-- `provider_idempotency_keys.status: model has no vocabulary (expected ['STARTED', 'COMPLETED', 'FAILED'])`
 - `provider_webhook_events.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
 - `provider_webhook_events.status: model has no vocabulary (expected ['RECEIVED', 'PROCESSING', 'PROCESSED', 'FAILED', 'IGNORED'])`
 - `refunds.status: model has no vocabulary (expected ['PENDING', 'SUCCEEDED', 'FAILED'])`
 
 ## 5. Índices
 
-Total: **61**.
+Total: **59**.
 
-### `index_missing` (48)
+### `index_missing` (46)
 
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
 - `charges: (billing_account_id, status)`
@@ -236,8 +232,6 @@ Total: **61**.
 - `orders: (workspace_id)`
 - `orders: UNIQUE (id, workspace_id)`
 - `orders: UNIQUE (provider, external_id)`
-- `provider_idempotency_keys: (expires_at)`
-- `provider_idempotency_keys: UNIQUE (provider, idempotency_key)`
 - `provider_webhook_events: (event_type)`
 - `provider_webhook_events: (resource_id)`
 - `provider_webhook_events: (status, received_at)`

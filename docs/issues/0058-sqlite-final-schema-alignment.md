@@ -340,8 +340,16 @@ T15 (SHC-16), fatia B4a concluída — disputas de provider:
 - CHECK_MAP ganha os 4 CHECKs; `check_extra` segue em 30.
 - Relatório: **297 divergências** (320 antes da B4a).
 
-Próximo passo: B4b (orders/invoices/charges/refunds/provider webhooks),
-depois B5, T20, T16, T17 e T18.
+T15 (SHC-16), fatia B4b iniciada — provider_idempotency_keys:
+
+- `expires_at` adicionado; `deleted_at` removido (delete físico); `provider`
+  e `status` viram enums; UNIQUE `(provider, idempotency_key)` e índice de
+  `expires_at`.
+- `0024_provider_idempotency` com backfill e downgrade funcional.
+- Relatório: **291 divergências** (297 antes).
+
+Próximo passo: `provider_webhook_events`, depois orders/invoices/charges/
+refunds, B5, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 
