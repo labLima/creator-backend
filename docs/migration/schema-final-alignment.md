@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **155**
+- Divergências: **94**
 
 ## Divergências por categoria
 
@@ -24,21 +24,21 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 21 |
-| `column_extra` | 12 |
+| `column_missing` | 8 |
+| `column_extra` | 7 |
 | `nullability` | 1 |
-| `width` | 2 |
+| `width` | 0 |
 | `kind` | 4 |
-| `enum` | 3 |
+| `enum` | 0 |
 | `unique_missing` | 0 |
-| `unique_extra` | 2 |
-| `index_missing` | 20 |
+| `unique_extra` | 1 |
+| `index_missing` | 7 |
 | `index_extra` | 1 |
-| `index_name` | 9 |
-| `fk_missing` | 10 |
-| `fk_extra` | 6 |
-| `fk_ondelete` | 3 |
-| `check_missing` | 13 |
+| `index_name` | 4 |
+| `fk_missing` | 6 |
+| `fk_extra` | 2 |
+| `fk_ondelete` | 1 |
+| `check_missing` | 4 |
 | `check_extra` | 30 |
 | `default_missing` | 1 |
 | `default_value` | 0 |
@@ -58,23 +58,10 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **37**.
+Total: **17**.
 
-### `column_missing` (21)
+### `column_missing` (8)
 
-- `coupon_redemptions.canceled_at`
-- `coupon_redemptions.credit_transaction_id`
-- `coupon_redemptions.currency`
-- `coupon_redemptions.external_id`
-- `coupon_redemptions.invoice_id`
-- `coupon_redemptions.once_per_workspace`
-- `coupon_redemptions.provider`
-- `coupon_redemptions.redeemed_at`
-- `coupon_redemptions.user_id`
-- `coupon_redemptions.workspace_id`
-- `coupons.credits`
-- `coupons.credits_validity_days`
-- `coupons.currency`
 - `provider_webhook_events.updated_at`
 - `workspace_credit_transactions.balance_after`
 - `workspace_credit_transactions.created_by`
@@ -84,13 +71,8 @@ Total: **37**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (12)
+### `column_extra` (7)
 
-- `coupon_redemptions.billing_account_id`
-- `coupon_redemptions.deleted_at`
-- `coupon_redemptions.provider_discount_id`
-- `coupons.credits_amount`
-- `coupons.redemptions_count`
 - `users.global_role`
 - `users.password_hash`
 - `workspace_credit_transactions.deleted_at`
@@ -103,45 +85,23 @@ Total: **37**.
 
 - `orders.discount_cents: final NOT NULL, model nullable`
 
-### `width` (2)
-
-- `coupon_redemptions.discount_amount_cents: final bigint, model integer`
-- `coupons.min_purchase_cents: final bigint, model integer`
-
 ### `default_missing` (1)
 
 - `orders.discount_cents: final default 0`
 
 ## 4. Enums
 
-Total: **3**.
+Total: **0**.
 
-### `enum` (3)
-
-- `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
-- `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
-- `coupons.type: model has no vocabulary (expected ['DISCOUNT', 'CREDIT'])`
+Sem divergência.
 
 ## 5. Índices
 
-Total: **30**.
+Total: **12**.
 
-### `index_missing` (20)
+### `index_missing` (7)
 
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
-- `coupon_redemptions: (coupon_id, workspace_id)`
-- `coupon_redemptions: (credit_transaction_id) WHERE credit_transaction_id is not null`
-- `coupon_redemptions: (invoice_id) WHERE invoice_id is not null`
-- `coupon_redemptions: (order_id, workspace_id)`
-- `coupon_redemptions: (subscription_id, workspace_id)`
-- `coupon_redemptions: (user_id)`
-- `coupon_redemptions: (workspace_id)`
-- `coupon_redemptions: UNIQUE (coupon_id, workspace_id) WHERE once_per_workspace and status = 'applied'`
-- `coupon_redemptions: UNIQUE (provider, external_id)`
-- `coupons: (created_by) WHERE created_by is not null`
-- `coupons: (is_active)`
-- `coupons: (type)`
-- `coupons: UNIQUE (code) WHERE deleted_at is null`
 - `workspace_credit_transactions: (created_by) WHERE created_by is not null`
 - `workspace_credit_transactions: (workspace_id, created_at)`
 - `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
@@ -153,13 +113,8 @@ Total: **30**.
 
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (9)
+### `index_name` (4)
 
-- `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
-- `coupon_redemptions: missing index name idx_m8_coupon_redemptions_invoice_id`
-- `coupon_redemptions: missing index name uq_coupon_redemptions_once_per_workspace`
-- `coupons: missing index name idx_m8_coupons_created_by`
-- `coupons: missing index name uq_coupons_code_active`
 - `image_resizes: missing index name idx_image_resizes_source_image`
 - `image_resizes: missing index name uq_image_resizes_storage`
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
@@ -167,51 +122,32 @@ Total: **30**.
 
 ## 6. Foreign keys
 
-Total: **19**.
+Total: **9**.
 
-### `fk_missing` (10)
+### `fk_missing` (6)
 
 - `coupon_redemptions['credit_transaction_id']->workspace_credit_transactions['id'] [SET NULL]`
-- `coupon_redemptions['invoice_id']->invoices['id'] [SET NULL]`
-- `coupon_redemptions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
-- `coupon_redemptions['subscription_id', 'workspace_id']->subscriptions['id', 'workspace_id'] [RESTRICT]`
-- `coupon_redemptions['user_id']->users['id'] [RESTRICT]`
 - `workspace_credit_transactions['created_by']->users['id'] [SET NULL]`
 - `workspace_credit_transactions['generated_image_id']->generated_images['id'] [RESTRICT]`
 - `workspace_credit_transactions['image_resize_id']->image_resizes['id'] [RESTRICT]`
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (6)
+### `fk_extra` (2)
 
-- `coupon_redemptions['billing_account_id']->billing_accounts['id'] [NO ACTION]`
-- `coupon_redemptions['coupon_id']->coupons['id'] [NO ACTION]`
-- `coupon_redemptions['order_id']->orders['id'] [NO ACTION]`
-- `coupon_redemptions['subscription_id']->subscriptions['id'] [NO ACTION]`
-- `coupons['created_by']->users['id'] [NO ACTION]`
+- `coupon_redemptions['workspace_id']->workspaces['id'] [RESTRICT]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (3)
+### `fk_ondelete` (1)
 
-- `coupon_redemptions['coupon_id']->coupons['id']: final RESTRICT vs model ['NO ACTION']`
-- `coupons['created_by']->users['id']: final SET NULL vs model ['NO ACTION']`
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 
 ## 7. CHECK constraints
 
-Total: **43**.
+Total: **34**.
 
-### `check_missing` (13)
+### `check_missing` (4)
 
-- `unmapped:coupon_redemptions.chk_coupon_redemptions_amount_nonnegative`
-- `unmapped:coupon_redemptions.chk_coupon_redemptions_currency_format`
-- `unmapped:coupon_redemptions.chk_coupon_redemptions_discount_percent`
-- `unmapped:coupon_redemptions.chk_coupon_redemptions_single_target`
-- `unmapped:coupons.chk_coupons_code_upper`
-- `unmapped:coupons.chk_coupons_currency_format`
-- `unmapped:coupons.chk_coupons_discount_percent`
-- `unmapped:coupons.chk_coupons_min_purchase_nonnegative`
-- `unmapped:coupons.chk_coupons_type_exclusive_fields`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
 - `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`

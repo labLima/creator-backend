@@ -407,8 +407,30 @@ T15 (SHC-16), fatia B5a — credit_packages:
 - `0030_credit_package` com backfill e downgrade funcional; CHECK_MAP +2.
 - Relatório: **155 divergências** (166 antes).
 
-Próximo passo: fiscal_invoices (B4), coupons/coupon_redemptions e
-workspace_credit_transactions (B5), T20, T16, T17 e T18.
+T15 (SHC-16), fatia B5b — coupons:
+
+- `credits_amount` vira `credits`; entram `credits_validity_days` e `currency`;
+  `redemptions_count` sai e é derivado; `min_purchase_cents` em bigint;
+  `type`/`applies_to` em enums; `code` sempre maiúsculo.
+- CHECKs de tipo/campos exclusivos, desconto, compra mínima, moeda e code
+  upper; índices e UNIQUE parcial do código ativo.
+- `0031_coupon_alignment` com backfill e downgrade; CHECK_MAP +5.
+- Relatório: **133 divergências** (155 antes).
+
+T15 (SHC-16), fatia B5c — coupon_redemptions:
+
+- `user_id`/`workspace_id`/`invoice_id`/`credit_transaction_id`, `provider`,
+  `external_id`, `currency`, `once_per_workspace`, `redeemed_at` e
+  `canceled_at`; saem `billing_account_id`, `provider_discount_id` e
+  `deleted_at`; `status` no enum `coupon_redemption_status`.
+- FKs compostas para orders/subscriptions, FKs RESTRICT/SET NULL, índices e
+  UNIQUE parciais (`once_per_workspace`, `provider+external_id`).
+- `0032_coupon_redemption`, com derivação de usuário/workspace a partir de
+  order/subscription, backfill e downgrade; CHECK_MAP +4.
+- Relatório: **94 divergências** (133 antes).
+
+Próximo passo: `workspace_credit_transactions` e `fiscal_invoices` (restante de
+T15), depois T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

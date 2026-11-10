@@ -524,24 +524,37 @@ CREATE TABLE contents (
 )
 
 CREATE TABLE coupon_redemptions (
+	id CHAR(32) NOT NULL,
 	coupon_id CHAR(32) NOT NULL,
-	billing_account_id CHAR(32) NOT NULL,
+	user_id CHAR(32) NOT NULL,
+	workspace_id CHAR(32) NOT NULL,
 	order_id CHAR(32),
 	subscription_id CHAR(32),
-	provider_discount_id VARCHAR(64),
+	invoice_id CHAR(32),
+	credit_transaction_id CHAR(32),
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
 	discount_percent_applied NUMERIC(5, 2),
-	discount_amount_cents INTEGER,
+	discount_amount_cents BIGINT,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
 	credits_applied INTEGER,
-	status VARCHAR(20) NOT NULL,
-	id CHAR(32) NOT NULL,
+	status VARCHAR(8) DEFAULT 'APPLIED' NOT NULL,
+	once_per_workspace BOOLEAN DEFAULT false NOT NULL,
+	redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	canceled_at DATETIME,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(coupon_id) REFERENCES coupons (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id),
-	FOREIGN KEY(order_id) REFERENCES orders (id),
-	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id)
+	CONSTRAINT chk_coupon_redemptions_single_target CHECK ((order_id IS NULL) <> (subscription_id IS NULL)),
+	CONSTRAINT chk_coupon_redemptions_discount_percent CHECK (discount_percent_applied IS NULL OR (discount_percent_applied > 0 AND discount_percent_applied <= 100)),
+	CONSTRAINT chk_coupon_redemptions_amount_nonnegative CHECK (discount_amount_cents IS NULL OR discount_amount_cents >= 0),
+	CONSTRAINT chk_coupon_redemptions_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
+	CONSTRAINT fk_coupon_redemptions_order FOREIGN KEY(order_id, workspace_id) REFERENCES orders (id, workspace_id) ON DELETE RESTRICT,
+	CONSTRAINT fk_coupon_redemptions_subscription FOREIGN KEY(subscription_id, workspace_id) REFERENCES subscriptions (id, workspace_id) ON DELETE RESTRICT,
+	FOREIGN KEY(coupon_id) REFERENCES coupons (id) ON DELETE RESTRICT,
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT,
+	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
+	FOREIGN KEY(invoice_id) REFERENCES invoices (id) ON DELETE SET NULL
 )
 
 CREATE TABLE coupons (
@@ -1599,6 +1612,24 @@ CREATE INDEX ix_contents_created_by_user_id ON contents (created_by_user_id)
 CREATE INDEX ix_contents_workspace_created_id ON contents (workspace_id, deleted_at, created_at, id)
 
 CREATE INDEX ix_contents_workspace_filter ON contents (workspace_id, type, deleted_at, created_at)
+
+CREATE INDEX idx_m8_coupon_redemptions_credit_transaction_id ON coupon_redemptions (credit_transaction_id) WHERE credit_transaction_id IS NOT NULL
+
+CREATE INDEX idx_m8_coupon_redemptions_invoice_id ON coupon_redemptions (invoice_id) WHERE invoice_id IS NOT NULL
+
+CREATE INDEX ix_coupon_redemptions_coupon_workspace ON coupon_redemptions (coupon_id, workspace_id)
+
+CREATE INDEX ix_coupon_redemptions_order_workspace ON coupon_redemptions (order_id, workspace_id)
+
+CREATE INDEX ix_coupon_redemptions_subscription_workspace ON coupon_redemptions (subscription_id, workspace_id)
+
+CREATE INDEX ix_coupon_redemptions_user_id ON coupon_redemptions (user_id)
+
+CREATE INDEX ix_coupon_redemptions_workspace_id ON coupon_redemptions (workspace_id)
+
+CREATE UNIQUE INDEX uq_coupon_redemptions_once_per_workspace ON coupon_redemptions (coupon_id, workspace_id) WHERE once_per_workspace AND status = 'APPLIED'
+
+CREATE UNIQUE INDEX uq_coupon_redemptions_provider_external_id ON coupon_redemptions (provider, external_id)
 
 CREATE INDEX idx_m8_coupons_created_by ON coupons (created_by) WHERE created_by IS NOT NULL
 

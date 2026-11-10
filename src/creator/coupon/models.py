@@ -15,6 +15,7 @@ from sqlalchemy import (
     BigInteger,
     CheckConstraint,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -25,7 +26,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.constraints import currency_code_check
-from creator.infrastructure.database.db import Base, SchemaRow
+from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.types import (
     enum_column,
     timestamp_tz,
@@ -103,16 +104,111 @@ class Coupon(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(timestamp)
 
 
-class CouponRedemption(SchemaRow, Base):
+class CouponRedemption(Base):
     __tablename__ = "coupon_redemptions"
-    coupon_id: Mapped[UUID] = mapped_column(ForeignKey("coupons.id"), nullable=False)
-    billing_account_id: Mapped[UUID] = mapped_column(
-        ForeignKey("billing_accounts.id"), nullable=False
+    __table_args__ = (
+        CheckConstraint(
+            "(order_id IS NULL) <> (subscription_id IS NULL)",
+            name="chk_coupon_redemptions_single_target",
+        ),
+        CheckConstraint(
+            "discount_percent_applied IS NULL OR "
+            "(discount_percent_applied > 0 AND discount_percent_applied <= 100)",
+            name="chk_coupon_redemptions_discount_percent",
+        ),
+        CheckConstraint(
+            "discount_amount_cents IS NULL OR discount_amount_cents >= 0",
+            name="chk_coupon_redemptions_amount_nonnegative",
+        ),
+        CheckConstraint(
+            currency_code_check("currency"),
+            name="chk_coupon_redemptions_currency_format",
+        ),
+        ForeignKeyConstraint(
+            ["order_id", "workspace_id"],
+            ["orders.id", "orders.workspace_id"],
+            name="fk_coupon_redemptions_order",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["subscription_id", "workspace_id"],
+            ["subscriptions.id", "subscriptions.workspace_id"],
+            name="fk_coupon_redemptions_subscription",
+            ondelete="RESTRICT",
+        ),
+        Index("ix_coupon_redemptions_coupon_workspace", "coupon_id", "workspace_id"),
+        Index("ix_coupon_redemptions_user_id", "user_id"),
+        Index("ix_coupon_redemptions_workspace_id", "workspace_id"),
+        Index("ix_coupon_redemptions_order_workspace", "order_id", "workspace_id"),
+        Index(
+            "ix_coupon_redemptions_subscription_workspace",
+            "subscription_id",
+            "workspace_id",
+        ),
+        Index(
+            "uq_coupon_redemptions_provider_external_id",
+            "provider",
+            "external_id",
+            unique=True,
+        ),
+        Index(
+            "uq_coupon_redemptions_once_per_workspace",
+            "coupon_id",
+            "workspace_id",
+            unique=True,
+            sqlite_where=text("once_per_workspace AND status = 'APPLIED'"),
+        ),
+        Index(
+            "idx_m8_coupon_redemptions_invoice_id",
+            "invoice_id",
+            sqlite_where=text("invoice_id IS NOT NULL"),
+        ),
+        Index(
+            "idx_m8_coupon_redemptions_credit_transaction_id",
+            "credit_transaction_id",
+            sqlite_where=text("credit_transaction_id IS NOT NULL"),
+        ),
     )
-    order_id: Mapped[UUID | None] = mapped_column(ForeignKey("orders.id"))
-    subscription_id: Mapped[UUID | None] = mapped_column(ForeignKey("subscriptions.id"))
-    provider_discount_id: Mapped[str | None] = mapped_column(String(64))
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    coupon_id: Mapped[UUID] = mapped_column(
+        uuid_pk, ForeignKey("coupons.id", ondelete="RESTRICT"), nullable=False
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        uuid_pk, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        uuid_pk, ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    order_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    subscription_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    invoice_id: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("invoices.id", ondelete="SET NULL")
+    )
+    credit_transaction_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    provider: Mapped[str] = mapped_column(
+        enum_column("payment_provider", create_constraint=False),
+        nullable=False,
+        server_default=text("'PAGARME'"),
+    )
+    external_id: Mapped[str | None] = mapped_column(String(64))
     discount_percent_applied: Mapped[float | None] = mapped_column(Numeric(5, 2))
-    discount_amount_cents: Mapped[int | None] = mapped_column()
+    discount_amount_cents: Mapped[int | None] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'BRL'"))
     credits_applied: Mapped[int | None] = mapped_column(Integer)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(
+        enum_column("coupon_redemption_status", create_constraint=False),
+        nullable=False,
+        server_default=text("'APPLIED'"),
+    )
+    once_per_workspace: Mapped[bool] = mapped_column(nullable=False, server_default=text("false"))
+    redeemed_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    canceled_at: Mapped[datetime | None] = mapped_column(timestamp)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
