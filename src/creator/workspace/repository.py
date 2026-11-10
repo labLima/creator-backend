@@ -368,10 +368,10 @@ class SqlAlchemyWorkspaceInviteUsageRepository(WorkspaceInviteUsageRepository):
             updated_at=x.updated_at,
         )
 
-    def _scoped(self, user_id: UUID):
+    def _scoped(self, user_id: UUID, workspace_id: UUID | None = None):
         target_member = aliased(workspace_models.WorkspaceMembership)
         current_member = aliased(workspace_models.WorkspaceMembership)
-        return (
+        query = (
             select(workspace_models.WorkspaceInviteUsage)
             .join(
                 target_member,
@@ -391,6 +391,9 @@ class SqlAlchemyWorkspaceInviteUsageRepository(WorkspaceInviteUsageRepository):
                 workspace_models.Workspace.deleted_at.is_(None),
             )
         )
+        if workspace_id is not None:
+            query = query.where(target_member.workspace_id == workspace_id)
+        return query
 
     def _owned(self, uid: UUID, usage_id: UUID):
         return self.s.scalar(
@@ -398,10 +401,7 @@ class SqlAlchemyWorkspaceInviteUsageRepository(WorkspaceInviteUsageRepository):
         )
 
     def list_for_user(self, *, user_id: UUID, workspace_id: UUID | None = None):
-        q = self._scoped(user_id)
-        if workspace_id is not None:
-            target_member = aliased(workspace_models.WorkspaceMembership)
-            q = q.where(target_member.workspace_id == workspace_id)
+        q = self._scoped(user_id, workspace_id)
         return [self._r(x) for x in self.s.scalars(q).all()]
 
     def get_for_user(self, *, user_id: UUID, usage_id: UUID):
