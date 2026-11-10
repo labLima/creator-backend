@@ -12,7 +12,10 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -21,8 +24,15 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from creator.infrastructure.database.constraints import currency_code_check
 from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import json_type, timestamp_tz
+from creator.infrastructure.database.types import (
+    enum_column,
+    json_type,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
@@ -81,18 +91,71 @@ class ProviderIdempotencyKey(SchemaRow, Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
 
 
-class ProviderDispute(SchemaRow, Base):
+class ProviderDispute(Base):
     __tablename__ = "provider_disputes"
-    billing_account_id: Mapped[UUID] = mapped_column(
-        ForeignKey("billing_accounts.id"), nullable=False
+    __table_args__ = (
+        CheckConstraint(
+            "amount_cents IS NULL OR amount_cents >= 0",
+            name="chk_provider_disputes_amount_nonnegative",
+        ),
+        CheckConstraint(
+            currency_code_check("currency"),
+            name="chk_provider_disputes_currency_format",
+        ),
+        CheckConstraint(
+            "(status = 'RESOLVED') = (result IS NOT NULL)",
+            name="chk_provider_disputes_result",
+        ),
+        CheckConstraint(
+            "(status = 'RESOLVED') = (resolved_at IS NOT NULL)",
+            name="chk_provider_disputes_resolved_at",
+        ),
+        Index(
+            "uq_provider_disputes_provider_external_id",
+            "provider",
+            "external_id",
+            unique=True,
+        ),
+        Index("ix_provider_disputes_charge_id", "charge_id"),
+        Index("ix_provider_disputes_status_resolved_at", "status", "resolved_at"),
+        Index(
+            "idx_m8_provider_disputes_billing_account_id",
+            "billing_account_id",
+            sqlite_where=text("billing_account_id IS NOT NULL"),
+        ),
     )
-    charge_id: Mapped[UUID | None] = mapped_column(ForeignKey("charges.id"))
-    provider_dispute_id: Mapped[str | None] = mapped_column(String(64))
-    code: Mapped[str | None] = mapped_column(String(52))
-    reason: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    billing_account_id: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("billing_accounts.id", ondelete="RESTRICT"), nullable=True
+    )
+    charge_id: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("charges.id", ondelete="RESTRICT"), nullable=True
+    )
+    provider: Mapped[str] = mapped_column(
+        enum_column("payment_provider", create_constraint=False),
+        nullable=False,
+        server_default=text("'PAGARME'"),
+    )
+    external_id: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(
+        enum_column("dispute_status", create_constraint=False),
+        nullable=False,
+        server_default=text("'OPEN'"),
+    )
+    result: Mapped[str | None] = mapped_column(
+        enum_column("dispute_result", create_constraint=False)
+    )
+    amount_cents: Mapped[int | None] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'BRL'"))
+    reason: Mapped[str | None] = mapped_column(String)
     opened_at: Mapped[datetime | None] = mapped_column(timestamp)
     deadline_at: Mapped[datetime | None] = mapped_column(timestamp)
-    payload: Mapped[dict[str, object]] = mapped_column(
-        json_type, nullable=False, server_default=text("'{}'")
+    resolved_at: Mapped[datetime | None] = mapped_column(timestamp)
+    payload: Mapped[dict[str, object] | None] = mapped_column(json_type)
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
     )

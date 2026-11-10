@@ -328,8 +328,20 @@ T15 (SHC-16), fatia B3 concluída — assinaturas e histórico:
 - CHECK_MAP +3; CHECKs de enum adiados.
 - Relatório: **320 divergências** (395 antes da B3).
 
-Próximo passo: B4 (orders/invoices/charges/refunds/provider_*), depois B5,
-T20, T16, T17 e T18.
+T15 (SHC-16), fatia B4a concluída — disputas de provider:
+
+- `provider_disputes`: `provider_dispute_id`/`code` viram `external_id`; entram
+  `provider`, `amount_cents`, `currency`, `result`, `resolved_at`; `status`
+  vira enum `dispute_status`; `deleted_at` sai (delete físico) e
+  `billing_account_id` passa a nullable.
+- CHECKs de centavos/moeda/result/resolved_at e índices do dump (unique
+  provider+external, charge, status+resolved_at e parcial por billing account).
+- `0023_provider_dispute_alignment` com backfill e downgrade funcional.
+- CHECK_MAP ganha os 4 CHECKs; `check_extra` segue em 30.
+- Relatório: **297 divergências** (320 antes da B4a).
+
+Próximo passo: B4b (orders/invoices/charges/refunds/provider webhooks),
+depois B5, T20, T16, T17 e T18.
 
 ## Critérios de aceite
 

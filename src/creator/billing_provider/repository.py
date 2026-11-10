@@ -268,24 +268,37 @@ class SqlAlchemyProviderIdempotencyKeyRepository(ProviderIdempotencyKeyRepositor
         return self._r(x)
 
 
+def _dispute_fields(fields: dict[str, object]) -> dict[str, object]:
+    mapping = {"provider_dispute_id": "external_id", "code": "external_id"}
+    values: dict[str, object] = {}
+    for key, value in fields.items():
+        target = mapping.get(key, key)
+        if target == "status" and value is not None:
+            value = str(value).upper()
+        values[target] = value
+    if values.get("external_id") is None and "external_id" in values:
+        values.pop("external_id")
+    return values
+
+
 class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
     def __init__(self, session: Session) -> None:
         self.s = session
 
     def _r(self, x):
         return ProviderDisputeRecord(
-            x.id,
-            x.billing_account_id,
-            x.charge_id,
-            x.code,
-            x.reason,
-            x.status,
-            x.opened_at,
-            x.deadline_at,
-            x.payload,
-            x.created_at,
-            x.updated_at,
-            x.deleted_at,
+            id=x.id,
+            billing_account_id=x.billing_account_id,
+            charge_id=x.charge_id,
+            code=x.external_id,
+            reason=x.reason,
+            status=x.status,
+            opened_at=x.opened_at,
+            deadline_at=x.deadline_at,
+            payload=dict(x.payload or {}),
+            created_at=x.created_at,
+            updated_at=x.updated_at,
+            deleted_at=None,
         )
 
     def _owned(self, uid, did):
@@ -295,7 +308,6 @@ class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
             .where(
                 billing_provider_models.ProviderDispute.id == did,
                 billing_account_models.BillingAccount.user_id == uid,
-                billing_provider_models.ProviderDispute.deleted_at.is_(None),
             )
         )
 
@@ -307,7 +319,6 @@ class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
                 .join(billing_account_models.BillingAccount)
                 .where(
                     billing_account_models.BillingAccount.user_id == user_id,
-                    billing_provider_models.ProviderDispute.deleted_at.is_(None),
                 )
             ).all()
         ]
@@ -317,25 +328,36 @@ class SqlAlchemyProviderDisputeRepository(ProviderDisputeRepository):
         return self._r(x) if x else None
 
     def add(self, *, fields):
-        x = billing_provider_models.ProviderDispute(**fields)
+        values = _dispute_fields(fields)
+        values.setdefault("provider", "PAGARME")
+        values.setdefault("currency", "BRL")
+        values.setdefault("status", "OPEN")
+        x = billing_provider_models.ProviderDispute(**values)
         self.s.add(x)
         self.s.flush()
         return self._r(x)
 
     def update(self, *, dispute_id, fields):
         x = self.s.get(billing_provider_models.ProviderDispute, dispute_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Provider dispute not found")
-        for k, v in fields.items():
-            setattr(x, k, v)
+        for key, value in _dispute_fields(fields).items():
+            if hasattr(x, key):
+                setattr(x, key, value)
+        status = str(x.status)
+        if status == "RESOLVED":
+            x.result = x.result or "WON"
+            x.resolved_at = x.resolved_at or datetime.now(UTC)
+        else:
+            x.result = None
+            x.resolved_at = None
         x.updated_at = datetime.now(UTC)
         self.s.flush()
         return self._r(x)
 
     def soft_delete(self, *, dispute_id):
         x = self.s.get(billing_provider_models.ProviderDispute, dispute_id)
-        if x is None or x.deleted_at is not None:
+        if x is None:
             raise ValueError("Provider dispute not found")
-        x.deleted_at = datetime.now(UTC)
-        x.updated_at = x.deleted_at
+        self.s.delete(x)
         self.s.flush()

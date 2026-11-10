@@ -1097,22 +1097,29 @@ CREATE TABLE provider_customers (
 )
 
 CREATE TABLE provider_disputes (
-	billing_account_id CHAR(32) NOT NULL,
+	id CHAR(32) NOT NULL,
+	billing_account_id CHAR(32),
 	charge_id CHAR(32),
-	provider_dispute_id VARCHAR(64),
-	code VARCHAR(52),
-	reason TEXT,
-	status VARCHAR(20) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
+	external_id VARCHAR(64),
+	status VARCHAR(12) DEFAULT 'OPEN' NOT NULL,
+	result VARCHAR(8),
+	amount_cents BIGINT,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
+	reason VARCHAR,
 	opened_at DATETIME,
 	deadline_at DATETIME,
-	payload JSON DEFAULT '{}' NOT NULL,
-	id CHAR(32) NOT NULL,
+	resolved_at DATETIME,
+	payload JSON,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id),
-	FOREIGN KEY(charge_id) REFERENCES charges (id)
+	CONSTRAINT chk_provider_disputes_amount_nonnegative CHECK (amount_cents IS NULL OR amount_cents >= 0),
+	CONSTRAINT chk_provider_disputes_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
+	CONSTRAINT chk_provider_disputes_result CHECK ((status = 'RESOLVED') = (result IS NOT NULL)),
+	CONSTRAINT chk_provider_disputes_resolved_at CHECK ((status = 'RESOLVED') = (resolved_at IS NOT NULL)),
+	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id) ON DELETE RESTRICT,
+	FOREIGN KEY(charge_id) REFERENCES charges (id) ON DELETE RESTRICT
 )
 
 CREATE TABLE provider_idempotency_keys (
@@ -1665,6 +1672,14 @@ CREATE INDEX ix_projects_brand_id ON projects (brand_id)
 CREATE INDEX ix_projects_created_by_user_id ON projects (created_by_user_id)
 
 CREATE INDEX ix_projects_workspace_filter ON projects (workspace_id, deleted_at, created_at)
+
+CREATE INDEX idx_m8_provider_disputes_billing_account_id ON provider_disputes (billing_account_id) WHERE billing_account_id IS NOT NULL
+
+CREATE INDEX ix_provider_disputes_charge_id ON provider_disputes (charge_id)
+
+CREATE INDEX ix_provider_disputes_status_resolved_at ON provider_disputes (status, resolved_at)
+
+CREATE UNIQUE INDEX uq_provider_disputes_provider_external_id ON provider_disputes (provider, external_id)
 
 CREATE INDEX ix_settings_user_id ON settings (user_id)
 

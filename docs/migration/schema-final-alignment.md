@@ -13,7 +13,7 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **320**
+- Divergências: **297**
 
 ## Divergências por categoria
 
@@ -24,21 +24,21 @@
 | `allowlisted` | 17 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 57 |
-| `column_extra` | 37 |
+| `column_missing` | 51 |
+| `column_extra` | 34 |
 | `nullability` | 1 |
 | `width` | 14 |
 | `kind` | 3 |
-| `enum` | 12 |
+| `enum` | 11 |
 | `unique_missing` | 1 |
 | `unique_extra` | 3 |
-| `index_missing` | 52 |
+| `index_missing` | 48 |
 | `index_extra` | 1 |
-| `index_name` | 13 |
+| `index_name` | 12 |
 | `fk_missing` | 14 |
-| `fk_extra` | 17 |
-| `fk_ondelete` | 12 |
-| `check_missing` | 31 |
+| `fk_extra` | 15 |
+| `fk_ondelete` | 10 |
+| `check_missing` | 27 |
 | `check_extra` | 30 |
 | `default_missing` | 5 |
 | `default_value` | 0 |
@@ -58,9 +58,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos e nullability
 
-Total: **114**.
+Total: **105**.
 
-### `column_missing` (57)
+### `column_missing` (51)
 
 - `charges.canceled_amount_cents`
 - `charges.canceled_at`
@@ -97,12 +97,6 @@ Total: **114**.
 - `orders.code`
 - `orders.external_id`
 - `orders.provider`
-- `provider_disputes.amount_cents`
-- `provider_disputes.currency`
-- `provider_disputes.external_id`
-- `provider_disputes.provider`
-- `provider_disputes.resolved_at`
-- `provider_disputes.result`
 - `provider_idempotency_keys.expires_at`
 - `provider_webhook_events.external_id`
 - `refunds.charge_id`
@@ -120,7 +114,7 @@ Total: **114**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (37)
+### `column_extra` (34)
 
 - `charges.deleted_at`
 - `charges.provider_card_id`
@@ -139,9 +133,6 @@ Total: **114**.
 - `orders.closed`
 - `orders.deleted_at`
 - `orders.provider_order_id`
-- `provider_disputes.code`
-- `provider_disputes.deleted_at`
-- `provider_disputes.provider_dispute_id`
 - `provider_idempotency_keys.deleted_at`
 - `provider_webhook_events.created_at`
 - `provider_webhook_events.deleted_at`
@@ -191,9 +182,9 @@ Total: **114**.
 
 ## 4. Enums
 
-Total: **12**.
+Total: **11**.
 
-### `enum` (12)
+### `enum` (11)
 
 - `coupon_redemptions.status: model has no vocabulary (expected ['APPLIED', 'CANCELED'])`
 - `coupons.applies_to: model has no vocabulary (expected ['SUBSCRIPTION_AND_CREDITS', 'SUBSCRIPTION_ONLY', 'CREDITS_ONLY'])`
@@ -201,7 +192,6 @@ Total: **12**.
 - `invoices.payment_method: model has no vocabulary (expected ['CREDIT_CARD', 'DEBIT_CARD', 'BOLETO', 'PIX'])`
 - `invoices.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'SCHEDULED', 'FAILED'])`
 - `orders.status: model has no vocabulary (expected ['PENDING', 'PAID', 'CANCELED', 'FAILED'])`
-- `provider_disputes.status: model has no vocabulary (expected ['OPEN', 'UNDER_REVIEW', 'RESOLVED'])`
 - `provider_idempotency_keys.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
 - `provider_idempotency_keys.status: model has no vocabulary (expected ['STARTED', 'COMPLETED', 'FAILED'])`
 - `provider_webhook_events.provider: model has no vocabulary (expected ['PAGARME', 'STRIPE'])`
@@ -210,9 +200,9 @@ Total: **12**.
 
 ## 5. Índices
 
-Total: **66**.
+Total: **61**.
 
-### `index_missing` (52)
+### `index_missing` (48)
 
 - `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
 - `charges: (billing_account_id, status)`
@@ -246,10 +236,6 @@ Total: **66**.
 - `orders: (workspace_id)`
 - `orders: UNIQUE (id, workspace_id)`
 - `orders: UNIQUE (provider, external_id)`
-- `provider_disputes: (billing_account_id) WHERE billing_account_id is not null`
-- `provider_disputes: (charge_id)`
-- `provider_disputes: (status, resolved_at)`
-- `provider_disputes: UNIQUE (provider, external_id)`
 - `provider_idempotency_keys: (expires_at)`
 - `provider_idempotency_keys: UNIQUE (provider, idempotency_key)`
 - `provider_webhook_events: (event_type)`
@@ -271,7 +257,7 @@ Total: **66**.
 
 - `captions: UNIQUE (post_id) WHERE is_current`
 
-### `index_name` (13)
+### `index_name` (12)
 
 - `charges: missing index name idx_m8_charges_payment_method_id`
 - `coupon_redemptions: missing index name idx_m8_coupon_redemptions_credit_transaction_id`
@@ -282,14 +268,13 @@ Total: **66**.
 - `image_resizes: missing index name idx_image_resizes_source_image`
 - `image_resizes: missing index name uq_image_resizes_storage`
 - `orders: missing index name idx_m8_orders_credit_package_id`
-- `provider_disputes: missing index name idx_m8_provider_disputes_billing_account_id`
 - `refunds: missing index name idx_m8_refunds_requested_by`
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
 
 ## 6. Foreign keys
 
-Total: **43**.
+Total: **39**.
 
 ### `fk_missing` (14)
 
@@ -308,7 +293,7 @@ Total: **43**.
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (17)
+### `fk_extra` (15)
 
 - `charges['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `charges['invoice_id']->invoices['id'] [NO ACTION]`
@@ -322,13 +307,11 @@ Total: **43**.
 - `orders['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `orders['credit_package_id']->credit_packages['id'] [NO ACTION]`
 - `orders['workspace_id']->workspaces['id'] [NO ACTION]`
-- `provider_disputes['billing_account_id']->billing_accounts['id'] [NO ACTION]`
-- `provider_disputes['charge_id']->charges['id'] [NO ACTION]`
 - `refunds['billing_account_id']->billing_accounts['id'] [NO ACTION]`
 - `refunds['invoice_id']->invoices['id'] [NO ACTION]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
-### `fk_ondelete` (12)
+### `fk_ondelete` (10)
 
 - `charges['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `charges['invoice_id']->invoices['id']: final SET NULL vs model ['NO ACTION']`
@@ -339,15 +322,13 @@ Total: **43**.
 - `orders['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
 - `orders['credit_package_id']->credit_packages['id']: final SET NULL vs model ['NO ACTION']`
 - `orders['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
-- `provider_disputes['billing_account_id']->billing_accounts['id']: final RESTRICT vs model ['NO ACTION']`
-- `provider_disputes['charge_id']->charges['id']: final RESTRICT vs model ['NO ACTION']`
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 
 ## 7. CHECK constraints
 
-Total: **61**.
+Total: **57**.
 
-### `check_missing` (31)
+### `check_missing` (27)
 
 - `unmapped:charges.chk_charges_cents_nonnegative`
 - `unmapped:charges.chk_charges_currency_format`
@@ -369,10 +350,6 @@ Total: **61**.
 - `unmapped:orders.chk_orders_amount_consistency`
 - `unmapped:orders.chk_orders_cents_nonnegative`
 - `unmapped:orders.chk_orders_currency_format`
-- `unmapped:provider_disputes.chk_provider_disputes_amount_nonnegative`
-- `unmapped:provider_disputes.chk_provider_disputes_currency_format`
-- `unmapped:provider_disputes.chk_provider_disputes_resolved_at`
-- `unmapped:provider_disputes.chk_provider_disputes_result`
 - `unmapped:refunds.chk_refunds_amount_nonnegative`
 - `unmapped:refunds.chk_refunds_currency_format`
 - `unmapped:refunds.chk_refunds_processed_by_status`
