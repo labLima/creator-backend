@@ -272,8 +272,10 @@ T13 (SHC-14) concluída — contract:
 - Ordem de deploy: rodar o backfill antes de aplicar 0019 em banco com dados
   legados (o downgrade não devolve dados).
 
-Próximo passo: T15 (SHC-16) — lote B de billing/créditos/cupons; depois T20,
-T16, T17 e T18.
+Próximo passo: T15 (SHC-16) — lote B de billing/créditos/cupons. O escopo
+medido e as fatias B1–B5 estão em
+[`tasks/t15-billing-workplan.md`](../../tasks/t15-billing-workplan.md); depois
+T20, T16, T17 e T18.
 
 ## Critérios de aceite
 
