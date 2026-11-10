@@ -220,6 +220,27 @@ CHECK_MAP: Final[dict[str, tuple[str, str]]] = {
         "billing_payment_methods.chk_billing_payment_methods_exp_month",
         "exp_month is null or exp_month between 1 and 12",
     ),
+    "coupons.chk_coupons_type_exclusive_fields": (
+        "coupons.chk_coupons_type_exclusive_fields",
+        "(type = 'discount' and discount_percent is not null and credits is null) "
+        "or (type = 'credit' and credits is not null and discount_percent is null)",
+    ),
+    "coupons.chk_coupons_discount_percent": (
+        "coupons.chk_coupons_discount_percent",
+        "discount_percent is null or (discount_percent > 0 and discount_percent <= 100)",
+    ),
+    "coupons.chk_coupons_min_purchase_nonnegative": (
+        "coupons.chk_coupons_min_purchase_nonnegative",
+        "min_purchase_cents is null or min_purchase_cents >= 0",
+    ),
+    "coupons.chk_coupons_currency_format": (
+        "coupons.chk_coupons_currency_format",
+        "currency glob '[a-z][a-z][a-z]'",
+    ),
+    "coupons.chk_coupons_code_upper": (
+        "coupons.chk_coupons_code_upper",
+        "code = upper(code)",
+    ),
     "credit_packages.chk_credit_packages_price_nonnegative": (
         "credit_packages.chk_credit_packages_price_nonnegative",
         "price_cents >= 0",

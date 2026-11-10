@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 import creator.billing_account.models as billing_account_models
@@ -32,12 +32,17 @@ class SqlAlchemyCouponRepository(CouponRepository):
             x.code,
             x.type,
             float(x.discount_percent) if x.discount_percent is not None else None,
-            x.credits_amount,
+            x.credits,
             x.applies_to,
             x.min_purchase_cents,
             x.max_redemptions,
             x.once_per_workspace,
-            x.redemptions_count,
+            self.s.scalar(
+                select(func.count())
+                .select_from(coupon_models.CouponRedemption)
+                .where(coupon_models.CouponRedemption.coupon_id == x.id)
+            )
+            or 0,
             x.expires_at,
             x.is_active,
             x.internal_note,

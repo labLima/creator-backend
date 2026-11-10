@@ -12,37 +12,95 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from creator.infrastructure.database.constraints import currency_code_check
 from creator.infrastructure.database.db import Base, SchemaRow
-from creator.infrastructure.database.types import timestamp_tz
+from creator.infrastructure.database.types import (
+    enum_column,
+    timestamp_tz,
+    uuid_default,
+    uuid_pk,
+)
 
 timestamp = timestamp_tz
 
 
-class Coupon(SchemaRow, Base):
+class Coupon(Base):
     __tablename__ = "coupons"
-    code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
-    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    __table_args__ = (
+        CheckConstraint(
+            "(type = 'DISCOUNT' AND discount_percent IS NOT NULL AND credits IS NULL) "
+            "OR (type = 'CREDIT' AND credits IS NOT NULL AND discount_percent IS NULL)",
+            name="chk_coupons_type_exclusive_fields",
+        ),
+        CheckConstraint(
+            "discount_percent IS NULL OR (discount_percent > 0 AND discount_percent <= 100)",
+            name="chk_coupons_discount_percent",
+        ),
+        CheckConstraint(
+            "min_purchase_cents IS NULL OR min_purchase_cents >= 0",
+            name="chk_coupons_min_purchase_nonnegative",
+        ),
+        CheckConstraint(currency_code_check("currency"), name="chk_coupons_currency_format"),
+        CheckConstraint("code = upper(code)", name="chk_coupons_code_upper"),
+        Index("ix_coupons_type", "type"),
+        Index("ix_coupons_is_active", "is_active"),
+        Index(
+            "idx_m8_coupons_created_by",
+            "created_by",
+            sqlite_where=text("created_by IS NOT NULL"),
+        ),
+        Index(
+            "uq_coupons_code_active",
+            "code",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
+    code: Mapped[str] = mapped_column(String(32), nullable=False)
+    type: Mapped[str] = mapped_column(
+        enum_column("coupon_type", create_constraint=False), nullable=False
+    )
     discount_percent: Mapped[float | None] = mapped_column(Numeric(5, 2))
-    credits_amount: Mapped[int | None] = mapped_column(Integer)
-    applies_to: Mapped[str] = mapped_column(String(30), nullable=False)
-    min_purchase_cents: Mapped[int | None] = mapped_column()
+    credits: Mapped[int | None] = mapped_column(Integer)
+    credits_validity_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("30")
+    )
+    applies_to: Mapped[str] = mapped_column(
+        enum_column("coupon_applies_to", create_constraint=False),
+        nullable=False,
+        server_default=text("'SUBSCRIPTION_AND_CREDITS'"),
+    )
+    min_purchase_cents: Mapped[int | None] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'BRL'"))
     max_redemptions: Mapped[int | None] = mapped_column(Integer)
     once_per_workspace: Mapped[bool] = mapped_column(nullable=False, server_default=text("false"))
-    redemptions_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
     expires_at: Mapped[datetime | None] = mapped_column(timestamp)
     is_active: Mapped[bool] = mapped_column(nullable=False, server_default=text("true"))
     internal_note: Mapped[str | None] = mapped_column(String(255))
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp)
 
 
 class CouponRedemption(SchemaRow, Base):

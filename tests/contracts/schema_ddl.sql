@@ -545,26 +545,31 @@ CREATE TABLE coupon_redemptions (
 )
 
 CREATE TABLE coupons (
+	id CHAR(32) NOT NULL,
 	code VARCHAR(32) NOT NULL,
-	type VARCHAR(20) NOT NULL,
+	type VARCHAR(8) NOT NULL,
 	discount_percent NUMERIC(5, 2),
-	credits_amount INTEGER,
-	applies_to VARCHAR(30) NOT NULL,
-	min_purchase_cents INTEGER,
+	credits INTEGER,
+	credits_validity_days INTEGER DEFAULT 30 NOT NULL,
+	applies_to VARCHAR(24) DEFAULT 'SUBSCRIPTION_AND_CREDITS' NOT NULL,
+	min_purchase_cents BIGINT,
+	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
 	max_redemptions INTEGER,
 	once_per_workspace BOOLEAN DEFAULT false NOT NULL,
-	redemptions_count INTEGER DEFAULT 0 NOT NULL,
 	expires_at DATETIME,
 	is_active BOOLEAN DEFAULT true NOT NULL,
 	internal_note VARCHAR(255),
 	created_by CHAR(32),
-	id CHAR(32) NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	UNIQUE (code),
-	FOREIGN KEY(created_by) REFERENCES users (id)
+	CONSTRAINT chk_coupons_type_exclusive_fields CHECK ((type = 'DISCOUNT' AND discount_percent IS NOT NULL AND credits IS NULL) OR (type = 'CREDIT' AND credits IS NOT NULL AND discount_percent IS NULL)),
+	CONSTRAINT chk_coupons_discount_percent CHECK (discount_percent IS NULL OR (discount_percent > 0 AND discount_percent <= 100)),
+	CONSTRAINT chk_coupons_min_purchase_nonnegative CHECK (min_purchase_cents IS NULL OR min_purchase_cents >= 0),
+	CONSTRAINT chk_coupons_currency_format CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
+	CONSTRAINT chk_coupons_code_upper CHECK (code = upper(code)),
+	FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL
 )
 
 CREATE TABLE credit_packages (
@@ -1594,6 +1599,14 @@ CREATE INDEX ix_contents_created_by_user_id ON contents (created_by_user_id)
 CREATE INDEX ix_contents_workspace_created_id ON contents (workspace_id, deleted_at, created_at, id)
 
 CREATE INDEX ix_contents_workspace_filter ON contents (workspace_id, type, deleted_at, created_at)
+
+CREATE INDEX idx_m8_coupons_created_by ON coupons (created_by) WHERE created_by IS NOT NULL
+
+CREATE INDEX ix_coupons_is_active ON coupons (is_active)
+
+CREATE INDEX ix_coupons_type ON coupons (type)
+
+CREATE UNIQUE INDEX uq_coupons_code_active ON coupons (code) WHERE deleted_at IS NULL
 
 CREATE UNIQUE INDEX uq_design_slides_post_design_id_position ON design_slides (post_design_id, position)
 
