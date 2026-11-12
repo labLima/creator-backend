@@ -54,6 +54,26 @@ LEGACY_RETENTION: Final[tuple[str, ...]] = (
 # Tables that exist only in the metadata and are not covered by an ADR yet.
 NO_TARGET: Final[tuple[str, ...]] = ("provider_customers", "provider_subscriptions")
 
+# Columns the metadata carries because ADR-020 requires local credentials, but the
+# final modeling does not declare. They are decisions, not schema debt.
+ADR_020_COLUMNS: Final[frozenset[tuple[str, str]]] = frozenset(
+    {
+        ("users", "password_hash"),
+        ("users", "global_role"),
+    }
+)
+
+# Indexes the dump declares that the metadata cannot reproduce literally, keyed by
+# (metadata table, index name). This is an explicit allowlist, not a predicate
+# heuristic: only these names are declared, so a new partial predicate still counts
+# as index debt until it is reviewed here and in ADR-029.
+DUMP_INDEX_INCONSISTENCIES: Final[dict[tuple[str, str], str]] = {
+    ("captions", "uq_captions_current"): (
+        "the dump filters deleted_at, a column captions does not declare; "
+        "the model index keeps only is_current so the predicate stays portable"
+    ),
+}
+
 # Final (table, constraint) -> (metadata table.constraint, expected portable SQL).
 # Filled as CHECKs are ported; an entry missing here counts as unmapped debt, and a
 # mapped entry also asserts the portable expression, not just the constraint name.
@@ -375,6 +395,7 @@ GAP_CATEGORIES: Final[tuple[str, ...]] = (
     "table_missing",
     "table_extra",
     "allowlisted",
+    "declared_exception",
     "rename_collision",
     "pk_mismatch",
     "column_missing",
@@ -486,6 +507,10 @@ class ModelTable:
     foreign_keys: tuple[ForeignKey, ...]
     checks: tuple[tuple[str | None, str], ...]
     uniques: tuple[tuple[str, ...], ...]
+    # CHECK name -> expected enum-vocabulary SQL for constraints SQLAlchemy
+    # generated for enum columns (`create_constraint=True`). The value is the
+    # normalized SQL, so the comparison verifies the expression, not just the name.
+    enum_checks: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -499,6 +524,15 @@ class Gap:
 
     def total(self) -> int:
         return sum(self.counts().values())
+
+    def unexpected_total(self) -> int:
+        """Divergences left after both decisions: allowlist and declared exceptions.
+
+        This is the number the ``--check`` gate compares against zero: a declared
+        exception is reviewed once, in the budget, not on every run.
+        """
+        counts = self.counts()
+        return self.total() - counts["allowlisted"] - counts["declared_exception"]
 
 
 def _split_top_level(text: str) -> list[str]:
@@ -618,6 +652,10 @@ def split_statements(sql: str) -> list[str]:
 def normalize_kind(raw: str, enum_names: frozenset[str]) -> str:
     """Collapse a PostgreSQL type into a comparable category."""
     text = raw.strip().lower()
+    # The enum vocabulary wins over the textual prefix: `charge_status` starts with
+    # "char" but is a named type of the dump, not a character column.
+    if text in enum_names:
+        return "enum"
     if text == "uuid":
         return "uuid"
     if text.startswith("varchar") or text.startswith("char"):
@@ -912,6 +950,8 @@ def model_kind(
         return "varchar", column_type.length, None
     if isinstance(column_type, sa.DateTime):
         return "timestamp", None, None
+    if isinstance(column_type, sa.Date):
+        return "date", None, None
     if isinstance(column_type, sa.Numeric):
         return "numeric", None, None
     if isinstance(column_type, sa.LargeBinary):
@@ -977,6 +1017,13 @@ def parse_models(metadata: MetaData) -> dict[str, ModelTable]:
             )
 
         checks: list[tuple[str | None, str]] = []
+        enum_columns = {
+            column.type.name: column
+            for column in table.columns
+            if isinstance(column.type, sa.Enum)
+            and column.type.create_constraint
+            and column.type.name
+        }
         for check_constraint in table.constraints:
             if (
                 not isinstance(check_constraint, sa.CheckConstraint)
@@ -984,7 +1031,17 @@ def parse_models(metadata: MetaData) -> dict[str, ModelTable]:
             ):
                 continue
             name = check_constraint.name if isinstance(check_constraint.name, str) else None
-            checks.append((name, _normalize_sql(str(check_constraint.sqltext))))
+            # `checks` always carries the real constraint SQL. A hand-written CHECK
+            # may reuse an enum's name, so it must not be rewritten into vocabulary.
+            checks.append((name, _model_check_sql(check_constraint.sqltext)))
+
+        # Derived from the enum columns only: reading the expectation back from the
+        # CHECK list would let a colliding hand-written rule become the vocabulary.
+        enum_checks = tuple(
+            sorted(
+                (name, _expected_enum_check_sql(column)) for name, column in enum_columns.items()
+            )
+        )
 
         result[table.name] = ModelTable(
             name=table.name,
@@ -993,9 +1050,38 @@ def parse_models(metadata: MetaData) -> dict[str, ModelTable]:
             foreign_keys=tuple(foreign_keys),
             checks=tuple(checks),
             uniques=tuple(sorted(unique_columns)),
+            enum_checks=enum_checks,
         )
 
     return result
+
+
+def _expected_enum_check_sql(column: sa.Column[Any]) -> str:
+    """Canonical SQL for the vocabulary of an enum column.
+
+    SQLAlchemy renders the generated constraint as ``column IN (__[POSTCOMPILE])``
+    and only the dialect expands the values. Compiling the plain ``IN`` list with
+    bound literals produces the same ``demo.status IN ('a', 'b')`` text that the
+    generated constraint expands to, so both sides stay comparable as plain SQL.
+    """
+    expression = column.in_(list(column.type.enums))  # type: ignore[attr-defined]
+    return _compile_sql(expression)
+
+
+def _model_check_sql(sqltext: sa.sql.ClauseElement) -> str:
+    """Normalize a model CHECK expression, expanding enum postcompile parameters."""
+    return _compile_sql(sqltext)
+
+
+def _compile_sql(expression: sa.sql.ClauseElement) -> str:
+    try:
+        compiled = expression.compile(
+            dialect=sqlite_dialect.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    except (TypeError, ValueError):
+        return _normalize_sql(str(expression))
+    return _normalize_sql(str(compiled))
 
 
 def _model_default_text(column: sa.Column[Any]) -> str | None:
@@ -1105,6 +1191,9 @@ def _compare_table(
     for name in sorted(set(final_columns) - set(model_columns)):
         details["column_missing"].append(f"{final_name}.{name}")
     for name in sorted(set(model_columns) - set(final_columns)):
+        if (final_name, name) in ADR_020_COLUMNS:
+            details["declared_exception"].append(f"adr-020:{final_name}.{name}")
+            continue
         details["column_extra"].append(f"{final_name}.{name}")
 
     final_pk = tuple(sorted(name for name, column in final_columns.items() if column.primary_key))
@@ -1132,32 +1221,36 @@ def _compare_table(
                 missing = sorted(set(expected_values) - set(actual.enum_values))
                 extra = sorted(set(actual.enum_values) - set(expected_values))
                 details["enum"].append(f"{final_name}.{name}: missing={missing} extra={extra}")
-            continue
-
-        if _kind_family(expected.kind) != _kind_family(actual.kind):
-            details["kind"].append(
-                f"{final_name}.{name}: final {expected.kind}, model {actual.kind}"
-            )
-            continue
-
-        if expected.kind == "bigint" and actual.kind == "int":
-            details["width"].append(f"{final_name}.{name}: final bigint, model integer")
-        elif expected.kind == "int" and actual.kind == "bigint":
-            details["width"].append(f"{final_name}.{name}: final integer, model bigint")
-        elif expected.kind.startswith("varchar(") and actual.kind.startswith("varchar"):
-            size = int(expected.kind.removeprefix("varchar(").rstrip(")"))
-            if actual.length != size:
-                details["width"].append(
-                    f"{final_name}.{name}: final varchar({size}), model varchar({actual.length})"
+        else:
+            if _kind_family(expected.kind) != _kind_family(actual.kind):
+                details["kind"].append(
+                    f"{final_name}.{name}: final {expected.kind}, model {actual.kind}"
                 )
-        elif expected.kind == "text" and actual.kind.startswith("varchar"):
-            details["width"].append(
-                f"{final_name}.{name}: final text, model varchar({actual.length})"
-            )
-        elif expected.kind == "varchar" and actual.kind == "varchar" and actual.length is not None:
-            details["width"].append(
-                f"{final_name}.{name}: final unbounded varchar, model varchar({actual.length})"
-            )
+                continue
+
+            if expected.kind == "bigint" and actual.kind == "int":
+                details["width"].append(f"{final_name}.{name}: final bigint, model integer")
+            elif expected.kind == "int" and actual.kind == "bigint":
+                details["width"].append(f"{final_name}.{name}: final integer, model bigint")
+            elif expected.kind.startswith("varchar(") and actual.kind.startswith("varchar"):
+                size = int(expected.kind.removeprefix("varchar(").rstrip(")"))
+                if actual.length != size:
+                    details["width"].append(
+                        f"{final_name}.{name}: final varchar({size}), "
+                        f"model varchar({actual.length})"
+                    )
+            elif expected.kind == "text" and actual.kind.startswith("varchar"):
+                details["width"].append(
+                    f"{final_name}.{name}: final text, model varchar({actual.length})"
+                )
+            elif (
+                expected.kind == "varchar"
+                and actual.kind == "varchar"
+                and actual.length is not None
+            ):
+                details["width"].append(
+                    f"{final_name}.{name}: final unbounded varchar, model varchar({actual.length})"
+                )
 
         if expected.default is not None:
             if not actual.has_default:
@@ -1208,8 +1301,41 @@ def _compare_indexes(
         model = models.get(model_name)
         if model is None:
             continue
-        expected_counter = Counter(_index_signature(index) for index in expected_indexes)
+
+        # Only the explicit allowlist may become a declared exception. The dump
+        # inconsistency is a reviewed decision recorded in ADR-029; a predicate
+        # shape (functions, unknown identifiers) is not enough to earn an exemption.
+        declared: list[tuple[IndexSignature, str]] = []
+        for index in expected_indexes:
+            if index.name is None:
+                continue
+            reason = DUMP_INDEX_INCONSISTENCIES.get((model_name, index.name))
+            if reason is not None:
+                declared.append((index, reason))
+        declared_ids = {id(index) for index, _reason in declared}
+        expected_counter = Counter(
+            _index_signature(index) for index in expected_indexes if id(index) not in declared_ids
+        )
         actual_counter = Counter(_index_signature(index) for index in model.indexes)
+        for index, reason in declared:
+            details["declared_exception"].append(
+                f"dump-inconsistency:{model_name}: dump index "
+                f"{_describe_signature(_index_signature(index))} ({reason})"
+            )
+            # The model index that replaces the inconsistent one is declared too:
+            # it cannot match a predicate the table itself cannot support.
+            for candidate in model.indexes:
+                if candidate.columns != index.columns or candidate.unique != index.unique:
+                    continue
+                signature = _index_signature(candidate)
+                if actual_counter[signature] <= 0:
+                    continue
+                actual_counter[signature] -= 1
+                details["declared_exception"].append(
+                    f"dump-inconsistency:{model_name}: model index "
+                    f"{_describe_signature(signature)} kept; the dump predicate is not portable"
+                )
+                break
         for signature, count in sorted(
             (expected_counter - actual_counter).items(),
             key=lambda item: _signature_sort_key(item[0]),
@@ -1332,9 +1458,18 @@ def _compare_checks(
             for final_key, (target, _sql) in CHECK_MAP.items()
             if final_key.startswith(f"{final_name}.")
         }
-        for name, _sqltext in model.checks:
-            if name and name not in mapped_names:
-                details["check_extra"].append(f"{model_name}.{name}")
+        enum_checks = dict(model.enum_checks)
+        for name, sqltext in model.checks:
+            if not name or name in mapped_names:
+                continue
+            enum_sql = enum_checks.get(name)
+            if enum_sql is not None:
+                if _normalize_sql(sqltext) == _normalize_sql(enum_sql):
+                    details["declared_exception"].append(f"enum-check:{model_name}.{name}")
+                else:
+                    details["check_extra"].append(f"{model_name}.{name}")
+                continue
+            details["check_extra"].append(f"{model_name}.{name}")
 
 
 def gap_counts(gap: Gap) -> dict[str, int]:
@@ -1379,6 +1514,7 @@ def _strip_trailing_whitespace(statement: str) -> str:
 __all__ = [
     "ADR_EXTENSIONS",
     "CHECK_MAP",
+    "DUMP_INDEX_INCONSISTENCIES",
     "GAP_CATEGORIES",
     "LEGACY_RETENTION",
     "NO_TARGET",

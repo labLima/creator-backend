@@ -132,6 +132,31 @@ CHECKs não são comparáveis por texto entre PostgreSQL e SQLite. O módulo dec
 `CHECK_MAP`, mapeando cada CHECK do dump ao CHECK portável equivalente, e o teste falha se
 algum CHECK do dump ficar sem entrada ou se a entrada apontar para uma coluna inexistente.
 
+`declared_exception` é um **ledger transversal**, não uma nona dimensão de comparação: ele
+agrega decisões de famílias diferentes para que o gate, o orçamento e o relatório enxerguem o
+mesmo número. A conta do gate é:
+
+```
+unexpected_total = total - allowlisted - declared_exception
+```
+
+`--check` só passa quando `unexpected_total == 0` **e** o relatório em
+`docs/migration/schema-final-alignment.md` é reproduzível a partir do dump e do metadata; um
+relatório desatualizado também falha. O ledger é enumerável e ratcheado pela contagem do
+orçamento, nunca uma supressão genérica. As três famílias declaradas são:
+
+- **30 CHECKs gerados por enum** (`Enum(native_enum=False, create_constraint=True)`): o SQLite
+  não tem enum nativo, então o CHECK que carrega o vocabulário é a materialização equivalente.
+  A declaração verifica o SQL normalizado da expressão, não apenas o nome da constraint; um
+  CHECK com o mesmo nome e vocabulário diferente continua em `check_extra`.
+- **2 colunas da ADR-020** (`users.password_hash`, `users.global_role`), exigidas pela
+  autenticação própria e ausentes do dump.
+- **2 entradas do índice de `captions`**: o índice `uq_captions_current` do dump filtra
+  `deleted_at`, coluna que `captions` não declara. A lista explícita
+  `DUMP_INDEX_INCONSISTENCIES`, chaveada por `(tabela, nome_do_índice)`, declara tanto o índice
+  do dump quanto o índice do model que mantém apenas `is_current`; qualquer outro predicado
+  parcial volta a contar como dívida de índice.
+
 ### 6. Snapshot passa a ser gate e a incluir índices
 
 `scripts/snapshot_contract.py` ganha `--check` (não escreve, falha se divergir) e
@@ -178,6 +203,11 @@ helper `exactly_one_of`/`at_most_one_of`. `gen_random_uuid()` vira default Pytho
 Os 52 tipos viram `Enum(native_enum=False, create_constraint=True)` ou `String` + `CHECK`, num
 módulo único de constantes (`creator/infrastructure/database/enums.py`) importado pelas models.
 O vocabulário é idêntico ao do dump, inclusive valores sem uso previsto.
+
+A equivalência declarada entre o CHECK gerado por `Enum(create_constraint=True)` e o enum nativo
+do dump é a política desta ADR: o vocabulário SQL da constraint é comparado com o esperado, não
+apenas o nome. Colunas de dinheiro/status que usam `create_constraint=False` ficam fora dessa
+equivalência e continuam como item de auditoria da T15/T18.
 
 ### 11. Triggers, funções e view precisam de decisão própria
 

@@ -64,6 +64,8 @@ def render(final: FinalSchema, gap: Gap, dump_hash: str, model_count: int) -> st
         f"({sum(1 for fk in final.foreign_keys if len(fk.columns) > 1)} compostas)",
         f"- Funções/triggers/views: **{len(final.storage_objects)}**",
         f"- Divergências: **{gap.total()}**",
+        f"- Divergências não declaradas: **{gap.unexpected_total()}** "
+        "(exclui `allowlisted` e `declared_exception`)",
         "",
         "## Divergências por categoria",
         "",
@@ -102,20 +104,27 @@ def render(final: FinalSchema, gap: Gap, dump_hash: str, model_count: int) -> st
 
     sections = [
         (
-            "3. Colunas, tipos e nullability",
+            "3. Colunas, tipos, nullability e defaults",
             (
                 "column_missing",
                 "column_extra",
                 "pk_mismatch",
                 "nullability",
                 "width",
+                "kind",
                 "default_missing",
+                "default_value",
             ),
         ),
         ("4. Enums", ("enum",)),
-        ("5. Índices", ("index_missing", "index_extra", "index_name")),
-        ("6. Foreign keys", ("fk_missing", "fk_extra", "fk_ondelete")),
-        ("7. CHECK constraints", ("check_missing", "check_extra")),
+        ("5. UNIQUEs", ("unique_missing", "unique_extra")),
+        ("6. Índices", ("index_missing", "index_extra", "index_name")),
+        ("7. Foreign keys", ("fk_missing", "fk_extra", "fk_ondelete")),
+        ("8. CHECK constraints", ("check_missing", "check_extra")),
+        (
+            "9. Exceções declaradas",
+            ("declared_exception",),
+        ),
     ]
     for title, categories in sections:
         total = sum(counts.get(category, 0) for category in categories)
@@ -132,7 +141,7 @@ def render(final: FinalSchema, gap: Gap, dump_hash: str, model_count: int) -> st
             lines.append("")
 
     lines += [
-        "## 8. Funções, triggers e views",
+        "## 10. Funções, triggers e views",
         "",
         "Objetos com regra de negócio no banco. A decisão é objeto a objeto na tarefa",
         "T20 (`SHC-21`), que classifica cada um em trigger SQLite, guarda de aplicação",
@@ -146,7 +155,7 @@ def render(final: FinalSchema, gap: Gap, dump_hash: str, model_count: int) -> st
     lines.append("")
 
     lines += [
-        "## 9. Tabelas fora do modelo final",
+        "## 11. Tabelas fora do modelo final",
         "",
         "| Tabela | Categoria |",
         "| --- | --- |",
@@ -172,8 +181,37 @@ def main() -> int:
     models = parse_models(Base.metadata)
     gap = compare(final, models)
     dump_hash = sha256_file(args.sql)
-    REPORT.write_text(render(final, gap, dump_hash, len(models)), encoding="utf-8")
-    print(f"wrote {REPORT.relative_to(ROOT)} — {gap.total()} divergences")
+    rendered = render(final, gap, dump_hash, len(models))
+
+    if args.check:
+        # Read-only gate: a report that cannot be reproduced is stale even when
+        # the gap itself has no unexpected divergence.
+        current: str | None = None
+        if REPORT.exists():
+            current = REPORT.read_text(encoding="utf-8").replace("\r\n", "\n")
+        if current != rendered:
+            print(
+                f"schema parity report is stale: {_display_path(REPORT)} differs from a "
+                "fresh render; regenerate it with scripts/schema_parity_report.py",
+                file=sys.stderr,
+            )
+            return 1
+        if gap.unexpected_total() > 0:
+            print(
+                f"schema drift detected: {gap.unexpected_total()} unexpected divergences",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"schema parity report is current — {gap.unexpected_total()} unexpected divergences")
+        return 0
+
+    # Force LF: the repository has no .gitattributes and Windows text mode would
+    # otherwise rewrite the whole report as CRLF.
+    REPORT.write_text(rendered, encoding="utf-8", newline="\n")
+    print(
+        f"wrote {_display_path(REPORT)} — {gap.total()} divergences "
+        f"({gap.unexpected_total()} unexpected)"
+    )
     if args.json:
         payload = {
             "counts": gap_counts(gap),
@@ -183,10 +221,15 @@ def main() -> int:
         args.json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"wrote {args.json}")
 
-    if args.check and gap.total():
-        print("schema drift detected", file=sys.stderr)
-        return 1
     return 0
+
+
+def _display_path(path: Path) -> Path:
+    """Relative path for logging, absolute when the file lives outside the repo."""
+    try:
+        return path.relative_to(ROOT)
+    except ValueError:
+        return path
 
 
 if __name__ == "__main__":

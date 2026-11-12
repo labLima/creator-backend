@@ -13,7 +13,8 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **94**
+- Divergências: **92**
+- Divergências não declaradas: **41** (exclui `allowlisted` e `declared_exception`)
 
 ## Divergências por categoria
 
@@ -22,25 +23,26 @@
 | `table_missing` | 0 |
 | `table_extra` | 0 |
 | `allowlisted` | 17 |
+| `declared_exception` | 34 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
 | `column_missing` | 8 |
-| `column_extra` | 7 |
+| `column_extra` | 5 |
 | `nullability` | 1 |
 | `width` | 0 |
-| `kind` | 4 |
+| `kind` | 0 |
 | `enum` | 0 |
 | `unique_missing` | 0 |
 | `unique_extra` | 1 |
-| `index_missing` | 7 |
-| `index_extra` | 1 |
+| `index_missing` | 6 |
+| `index_extra` | 0 |
 | `index_name` | 4 |
 | `fk_missing` | 6 |
 | `fk_extra` | 2 |
 | `fk_ondelete` | 1 |
 | `check_missing` | 4 |
-| `check_extra` | 30 |
-| `default_missing` | 1 |
+| `check_extra` | 0 |
+| `default_missing` | 3 |
 | `default_value` | 0 |
 
 ## 1. Tabelas com nome divergente
@@ -56,7 +58,7 @@ como ausente nem excedente. Nenhum caso é `ALTER TABLE ... RENAME` puro:
 
 Nenhuma.
 
-## 3. Colunas, tipos e nullability
+## 3. Colunas, tipos, nullability e defaults
 
 Total: **17**.
 
@@ -71,10 +73,8 @@ Total: **17**.
 - `workspace_credit_transactions.order_id`
 - `workspace_credit_transactions.type`
 
-### `column_extra` (7)
+### `column_extra` (5)
 
-- `users.global_role`
-- `users.password_hash`
 - `workspace_credit_transactions.deleted_at`
 - `workspace_credit_transactions.reference_id`
 - `workspace_credit_transactions.reference_type`
@@ -85,9 +85,11 @@ Total: **17**.
 
 - `orders.discount_cents: final NOT NULL, model nullable`
 
-### `default_missing` (1)
+### `default_missing` (3)
 
 - `orders.discount_cents: final default 0`
+- `provider_idempotency_keys.provider: final default 'PAGARME'`
+- `provider_webhook_events.status: final default 'RECEIVED'`
 
 ## 4. Enums
 
@@ -95,23 +97,26 @@ Total: **0**.
 
 Sem divergência.
 
-## 5. Índices
+## 5. UNIQUEs
 
-Total: **12**.
+Total: **1**.
 
-### `index_missing` (7)
+### `unique_extra` (1)
 
-- `captions: UNIQUE (post_id) WHERE is_current and deleted_at is null`
+- `brands['id', 'workspace_id']`
+
+## 6. Índices
+
+Total: **10**.
+
+### `index_missing` (6)
+
 - `workspace_credit_transactions: (created_by) WHERE created_by is not null`
 - `workspace_credit_transactions: (workspace_id, created_at)`
 - `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
 - `workspace_credit_transactions: UNIQUE (image_resize_id, type)`
 - `workspace_credit_transactions: UNIQUE (invoice_id, type)`
 - `workspace_credit_transactions: UNIQUE (order_id, type)`
-
-### `index_extra` (1)
-
-- `captions: UNIQUE (post_id) WHERE is_current`
 
 ### `index_name` (4)
 
@@ -120,7 +125,7 @@ Total: **12**.
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
 
-## 6. Foreign keys
+## 7. Foreign keys
 
 Total: **9**.
 
@@ -142,9 +147,9 @@ Total: **9**.
 
 - `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
 
-## 7. CHECK constraints
+## 8. CHECK constraints
 
-Total: **34**.
+Total: **4**.
 
 ### `check_missing` (4)
 
@@ -153,40 +158,48 @@ Total: **34**.
 - `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`
 - `unmapped:workspace_credit_transactions.workspace_credit_transactions.amount`
 
-### `check_extra` (30)
+## 9. Exceções declaradas
 
-- `brand_assets.brand_asset_type`
-- `campaign_voices.campaign_voice`
-- `content_plan_items.content_format`
-- `fiscal_invoices.fiscal_invoice_status`
-- `generated_images.approval_status`
-- `generated_images.generation_status`
-- `generated_images.image_feedback_type`
-- `image_resizes.art_ratio`
-- `image_resizes.resize_status`
-- `notification_preferences.notification_channel`
-- `notification_preferences.notification_type`
-- `notification_recipients.notification_channel`
-- `notification_recipients.notification_delivery_status`
-- `notifications.notification_resource_type`
-- `notifications.notification_type`
-- `personas.age_range`
-- `personas.persona_gender`
-- `plan_payment_methods.payment_method_type`
-- `post_designs.art_ratio`
-- `post_designs.content_format`
-- `posts.approval_status`
-- `posts.publication_status`
-- `user_consents.consent_type`
-- `user_devices.device_platform`
-- `users.global_role`
-- `workspace_invites.invite_status`
-- `workspace_invites.invite_type`
-- `workspace_invites.workspace_role`
-- `workspace_members.member_status`
-- `workspace_members.workspace_role`
+Total: **34**.
 
-## 8. Funções, triggers e views
+### `declared_exception` (34)
+
+- `adr-020:users.global_role`
+- `adr-020:users.password_hash`
+- `dump-inconsistency:captions: dump index UNIQUE (post_id) WHERE is_current and deleted_at is null (the dump filters deleted_at, a column captions does not declare; the model index keeps only is_current so the predicate stays portable)`
+- `dump-inconsistency:captions: model index UNIQUE (post_id) WHERE is_current kept; the dump predicate is not portable`
+- `enum-check:brand_assets.brand_asset_type`
+- `enum-check:campaign_voices.campaign_voice`
+- `enum-check:content_plan_items.content_format`
+- `enum-check:fiscal_invoices.fiscal_invoice_status`
+- `enum-check:generated_images.approval_status`
+- `enum-check:generated_images.generation_status`
+- `enum-check:generated_images.image_feedback_type`
+- `enum-check:image_resizes.art_ratio`
+- `enum-check:image_resizes.resize_status`
+- `enum-check:notification_preferences.notification_channel`
+- `enum-check:notification_preferences.notification_type`
+- `enum-check:notification_recipients.notification_channel`
+- `enum-check:notification_recipients.notification_delivery_status`
+- `enum-check:notifications.notification_resource_type`
+- `enum-check:notifications.notification_type`
+- `enum-check:personas.age_range`
+- `enum-check:personas.persona_gender`
+- `enum-check:plan_payment_methods.payment_method_type`
+- `enum-check:post_designs.art_ratio`
+- `enum-check:post_designs.content_format`
+- `enum-check:posts.approval_status`
+- `enum-check:posts.publication_status`
+- `enum-check:user_consents.consent_type`
+- `enum-check:user_devices.device_platform`
+- `enum-check:users.global_role`
+- `enum-check:workspace_invites.invite_status`
+- `enum-check:workspace_invites.invite_type`
+- `enum-check:workspace_invites.workspace_role`
+- `enum-check:workspace_members.member_status`
+- `enum-check:workspace_members.workspace_role`
+
+## 10. Funções, triggers e views
 
 Objetos com regra de negócio no banco. A decisão é objeto a objeto na tarefa
 T20 (`SHC-21`), que classifica cada um em trigger SQLite, guarda de aplicação
@@ -265,7 +278,7 @@ com teste, ou fora de escopo justificado.
 | TRIGGER | `trg_updated_at_fiscal_invoices` |
 | TRIGGER | `trg_updated_at_image_resizes` |
 
-## 9. Tabelas fora do modelo final
+## 11. Tabelas fora do modelo final
 
 | Tabela | Categoria |
 | --- | --- |
