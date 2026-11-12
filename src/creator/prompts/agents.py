@@ -11,6 +11,7 @@ Version composition is explicit:
 - independent Artist prompt v7 = v6 plus photographic composition and realism guidance.
 - Reviewer prompt v4 = v3 with explicit checks for material visual-direction conflicts.
 - Reviewer prompt v5 = v4 with limits on claims about unavailable visual references.
+- Reviewer prompt v6 = v5 with a visual-quality checklist and actionable refinements.
 
 Prompt text must not change without bumping the corresponding version and updating the
 golden hashes in ``tests/test_specialist_specs.py``.
@@ -50,10 +51,14 @@ def build_agent_prompt(
             specialist_role == AgentWorkflowStepRole.ARTIST and "visual_direction" in inputs
         )
         reviewer_v4 = (
-            selected_version in {"4.0", "5.0"} and specialist_role == AgentWorkflowStepRole.REVIEWER
+            selected_version in {"4.0", "5.0", "6.0"}
+            and specialist_role == AgentWorkflowStepRole.REVIEWER
+        )
+        reviewer_v6 = (
+            selected_version == "6.0" and specialist_role == AgentWorkflowStepRole.REVIEWER
         )
         if selected_version in {"4.0", "5.0", "6.0", "7.0"} and not (
-            independent_artist or reviewer_v4
+            independent_artist or reviewer_v4 or reviewer_v6
         ):
             raise ValueError("This prompt version is reserved for IMAGE direction or review")
         design = AGENT_DESIGNS[specialist_role]
@@ -161,7 +166,17 @@ def build_agent_prompt(
                 "Do not treat subjective taste or requirements absent from the brief and "
                 "direction as a failure."
             )
-        if reviewer_v4 and selected_version == "5.0":
+        if reviewer_v6:
+            specialist_instructions += (
+                " Assess the requested aspect ratio and framing, whether important objects "
+                "are cropped or cut off, spatial consistency including perspective, scale "
+                "and lighting, unexpected visible text, and adherence to the briefing and "
+                "Brand Context. For REFINE, feedback must give a concrete visual correction "
+                "for one next attempt and preserve the approved Creative Concept and "
+                "direction. Do not treat subjective taste or requirements absent from the "
+                "brief and direction as a failure."
+            )
+        if reviewer_v6 or (reviewer_v4 and selected_version == "5.0"):
             specialist_instructions += (
                 " You are given one candidate image, not a visual reference asset. Textual "
                 "Brand information can support assessment against its explicit description, "
@@ -197,7 +212,7 @@ def build_agent_prompt(
 
 
 def build_reviewer_prompt(inputs: Mapping[str, object]) -> RenderedPrompt:
-    return build_agent_prompt("Reviewer", inputs, version="5.0")
+    return build_agent_prompt("Reviewer", inputs, version="6.0")
 
 
 def json_output_instructions(model: type[BaseModel]) -> dict[str, object]:

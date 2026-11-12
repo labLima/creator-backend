@@ -26,6 +26,7 @@ def test_review_uses_creative_critic_instructions_with_existing_contract() -> No
             prompt="prompt",
             briefing="brief",
             brand_context={"voice": "clear"},
+            metadata={"target_aspect_ratio": "4:5"},
         )
     )
     prompt = calls[0]["contents"][0]
@@ -33,5 +34,7 @@ def test_review_uses_creative_critic_instructions_with_existing_contract() -> No
     assert AGENT_DESIGNS[AgentWorkflowStepRole.REVIEWER].task in prompt
     assert "untrusted data" in prompt
     assert "cannot prove exact fidelity" in prompt
+    assert '"target_aspect_ratio"' in prompt
+    assert "u003a5" in prompt
     assert result.decision == "REFINE"
     assert result.feedback == ("Fix crop",)
