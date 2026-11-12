@@ -96,7 +96,9 @@ class ProviderWebhookEvent(Base):
     payload: Mapped[dict[str, object]] = mapped_column(json_type, nullable=False)
     signature_verified: Mapped[bool] = mapped_column(nullable=False, server_default=text("false"))
     status: Mapped[str] = mapped_column(
-        enum_column("webhook_processing_status", create_constraint=False), nullable=False
+        enum_column("webhook_processing_status", create_constraint=False),
+        nullable=False,
+        server_default=text("'RECEIVED'"),
     )
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     last_error: Mapped[str | None] = mapped_column(Text)
@@ -104,6 +106,9 @@ class ProviderWebhookEvent(Base):
         timestamp, nullable=False, server_default=func.now()
     )
     processed_at: Mapped[datetime | None] = mapped_column(timestamp)
+    updated_at: Mapped[datetime] = mapped_column(
+        timestamp, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class ProviderIdempotencyKey(Base):
@@ -120,7 +125,9 @@ class ProviderIdempotencyKey(Base):
 
     id: Mapped[UUID] = mapped_column(uuid_pk, primary_key=True, default=uuid_default)
     provider: Mapped[str] = mapped_column(
-        enum_column("payment_provider", create_constraint=False), nullable=False
+        enum_column("payment_provider", create_constraint=False),
+        nullable=False,
+        server_default=text("'PAGARME'"),
     )
     idempotency_key: Mapped[str] = mapped_column(String(100), nullable=False)
     request_hash: Mapped[str | None] = mapped_column(String(64))

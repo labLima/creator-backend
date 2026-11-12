@@ -177,15 +177,15 @@ class CouponRedemption(Base):
     user_id: Mapped[UUID] = mapped_column(
         uuid_pk, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    workspace_id: Mapped[UUID] = mapped_column(
-        uuid_pk, ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
-    )
+    workspace_id: Mapped[UUID] = mapped_column(uuid_pk, nullable=False)
     order_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     subscription_id: Mapped[UUID | None] = mapped_column(uuid_pk)
     invoice_id: Mapped[UUID | None] = mapped_column(
         uuid_pk, ForeignKey("invoices.id", ondelete="SET NULL")
     )
-    credit_transaction_id: Mapped[UUID | None] = mapped_column(uuid_pk)
+    credit_transaction_id: Mapped[UUID | None] = mapped_column(
+        uuid_pk, ForeignKey("workspace_credit_transactions.id", ondelete="SET NULL")
+    )
     provider: Mapped[str] = mapped_column(
         enum_column("payment_provider", create_constraint=False),
         nullable=False,

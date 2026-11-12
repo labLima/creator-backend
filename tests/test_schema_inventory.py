@@ -882,3 +882,43 @@ def test_enum_column_with_matching_default_is_not_reported() -> None:
 
     assert not gap.details.get("default_missing"), gap.details
     assert not gap.details.get("default_value"), gap.details
+
+
+# --- T27: the nine micro-divergences of issue #170 ---------------------------
+#
+# The counts in `schema_parity_budget.json` pin the whole gap; this test names the
+# nine items so a regression points at the table instead of at a number. It is
+# deliberately item-shaped: a different table may move the totals without making
+# these five regress.
+
+
+def test_t27_micro_divergences_are_absent_from_the_gap() -> None:
+    """The nine T27 items must not reappear in any gap category."""
+    details = _gap().details
+
+    assert "provider_webhook_events.updated_at" not in details.get("column_missing", [])
+
+    assert not [
+        item for item in details.get("nullability", []) if item.startswith("orders.discount_cents")
+    ], details.get("nullability")
+
+    missing_defaults = {item.split(":", 1)[0] for item in details.get("default_missing", [])}
+    assert not missing_defaults & {
+        "orders.discount_cents",
+        "provider_idempotency_keys.provider",
+        "provider_webhook_events.status",
+    }, details.get("default_missing")
+
+    assert not [
+        item for item in details.get("index_name", []) if item.startswith("image_resizes:")
+    ], details.get("index_name")
+
+    assert not [item for item in details.get("fk_missing", []) if "coupon_redemptions" in item], (
+        details.get("fk_missing")
+    )
+    assert not [item for item in details.get("fk_extra", []) if "coupon_redemptions" in item], (
+        details.get("fk_extra")
+    )
+    assert not [item for item in details.get("fk_ondelete", []) if "coupon_redemptions" in item], (
+        "the coupon_redemptions credit_transaction_id foreign key must use ON DELETE SET NULL"
+    )

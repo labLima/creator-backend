@@ -553,8 +553,8 @@ CREATE TABLE coupon_redemptions (
 	CONSTRAINT fk_coupon_redemptions_subscription FOREIGN KEY(subscription_id, workspace_id) REFERENCES subscriptions (id, workspace_id) ON DELETE RESTRICT,
 	FOREIGN KEY(coupon_id) REFERENCES coupons (id) ON DELETE RESTRICT,
 	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT,
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
-	FOREIGN KEY(invoice_id) REFERENCES invoices (id) ON DELETE SET NULL
+	FOREIGN KEY(invoice_id) REFERENCES invoices (id) ON DELETE SET NULL,
+	FOREIGN KEY(credit_transaction_id) REFERENCES workspace_credit_transactions (id) ON DELETE SET NULL
 )
 
 CREATE TABLE coupons (
@@ -920,7 +920,7 @@ CREATE TABLE orders (
 	external_id VARCHAR(64),
 	code VARCHAR(52),
 	subtotal_cents BIGINT NOT NULL,
-	discount_cents BIGINT,
+	discount_cents BIGINT DEFAULT 0 NOT NULL,
 	amount_cents BIGINT NOT NULL,
 	currency VARCHAR(3) DEFAULT 'BRL' NOT NULL,
 	status VARCHAR(8) NOT NULL,
@@ -1164,7 +1164,7 @@ CREATE TABLE provider_disputes (
 
 CREATE TABLE provider_idempotency_keys (
 	id CHAR(32) NOT NULL,
-	provider VARCHAR(7) NOT NULL,
+	provider VARCHAR(7) DEFAULT 'PAGARME' NOT NULL,
 	idempotency_key VARCHAR(100) NOT NULL,
 	request_hash VARCHAR(64),
 	resource_type VARCHAR(40),
@@ -1201,11 +1201,12 @@ CREATE TABLE provider_webhook_events (
 	resource_id VARCHAR(64),
 	payload JSON NOT NULL,
 	signature_verified BOOLEAN DEFAULT false NOT NULL,
-	status VARCHAR(10) NOT NULL,
+	status VARCHAR(10) DEFAULT 'RECEIVED' NOT NULL,
 	attempts INTEGER DEFAULT 0 NOT NULL,
 	last_error TEXT,
 	received_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	processed_at DATETIME,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT uq_provider_webhook_events_dedupe_key UNIQUE (dedupe_key)
 )
@@ -1685,9 +1686,9 @@ CREATE INDEX ix_generations_workspace_filter ON generations (workspace_id, type,
 
 CREATE INDEX idx_image_resizes_created_by ON image_resizes (created_by) WHERE created_by IS NOT NULL
 
-CREATE INDEX ix_image_resizes_source_image_id ON image_resizes (source_image_id)
+CREATE INDEX idx_image_resizes_source_image ON image_resizes (source_image_id)
 
-CREATE UNIQUE INDEX uq_image_resizes_storage_bucket_storage_key ON image_resizes (storage_bucket, storage_key)
+CREATE UNIQUE INDEX uq_image_resizes_storage ON image_resizes (storage_bucket, storage_key)
 
 CREATE INDEX ix_images_content_version ON images (content_id, version_number)
 

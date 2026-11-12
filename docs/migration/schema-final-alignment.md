@@ -13,8 +13,8 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **92**
-- Divergências não declaradas: **41** (exclui `allowlisted` e `declared_exception`)
+- Divergências: **83**
+- Divergências não declaradas: **32** (exclui `allowlisted` e `declared_exception`)
 
 ## Divergências por categoria
 
@@ -26,9 +26,9 @@
 | `declared_exception` | 34 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 8 |
+| `column_missing` | 7 |
 | `column_extra` | 5 |
-| `nullability` | 1 |
+| `nullability` | 0 |
 | `width` | 0 |
 | `kind` | 0 |
 | `enum` | 0 |
@@ -36,13 +36,13 @@
 | `unique_extra` | 1 |
 | `index_missing` | 6 |
 | `index_extra` | 0 |
-| `index_name` | 4 |
-| `fk_missing` | 6 |
-| `fk_extra` | 2 |
+| `index_name` | 2 |
+| `fk_missing` | 5 |
+| `fk_extra` | 1 |
 | `fk_ondelete` | 1 |
 | `check_missing` | 4 |
 | `check_extra` | 0 |
-| `default_missing` | 3 |
+| `default_missing` | 0 |
 | `default_value` | 0 |
 
 ## 1. Tabelas com nome divergente
@@ -60,11 +60,10 @@ Nenhuma.
 
 ## 3. Colunas, tipos, nullability e defaults
 
-Total: **17**.
+Total: **12**.
 
-### `column_missing` (8)
+### `column_missing` (7)
 
-- `provider_webhook_events.updated_at`
 - `workspace_credit_transactions.balance_after`
 - `workspace_credit_transactions.created_by`
 - `workspace_credit_transactions.generated_image_id`
@@ -80,16 +79,6 @@ Total: **17**.
 - `workspace_credit_transactions.reference_type`
 - `workspace_credit_transactions.transaction_type`
 - `workspace_credit_transactions.updated_at`
-
-### `nullability` (1)
-
-- `orders.discount_cents: final NOT NULL, model nullable`
-
-### `default_missing` (3)
-
-- `orders.discount_cents: final default 0`
-- `provider_idempotency_keys.provider: final default 'PAGARME'`
-- `provider_webhook_events.status: final default 'RECEIVED'`
 
 ## 4. Enums
 
@@ -107,7 +96,7 @@ Total: **1**.
 
 ## 6. Índices
 
-Total: **10**.
+Total: **8**.
 
 ### `index_missing` (6)
 
@@ -118,29 +107,25 @@ Total: **10**.
 - `workspace_credit_transactions: UNIQUE (invoice_id, type)`
 - `workspace_credit_transactions: UNIQUE (order_id, type)`
 
-### `index_name` (4)
+### `index_name` (2)
 
-- `image_resizes: missing index name idx_image_resizes_source_image`
-- `image_resizes: missing index name uq_image_resizes_storage`
 - `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
 - `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
 
 ## 7. Foreign keys
 
-Total: **9**.
+Total: **7**.
 
-### `fk_missing` (6)
+### `fk_missing` (5)
 
-- `coupon_redemptions['credit_transaction_id']->workspace_credit_transactions['id'] [SET NULL]`
 - `workspace_credit_transactions['created_by']->users['id'] [SET NULL]`
 - `workspace_credit_transactions['generated_image_id']->generated_images['id'] [RESTRICT]`
 - `workspace_credit_transactions['image_resize_id']->image_resizes['id'] [RESTRICT]`
 - `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
 - `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
 
-### `fk_extra` (2)
+### `fk_extra` (1)
 
-- `coupon_redemptions['workspace_id']->workspaces['id'] [RESTRICT]`
 - `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
 
 ### `fk_ondelete` (1)

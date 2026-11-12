@@ -62,7 +62,9 @@ class Order(Base):
     external_id: Mapped[str | None] = mapped_column(String(64))
     code: Mapped[str | None] = mapped_column(String(52))
     subtotal_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    discount_cents: Mapped[int | None] = mapped_column(BigInteger)
+    discount_cents: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, server_default=text("0")
+    )
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'BRL'"))
     status: Mapped[str] = mapped_column(

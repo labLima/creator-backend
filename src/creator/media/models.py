@@ -144,9 +144,9 @@ class GeneratedImage(Base):
 class ImageResize(Base):
     __tablename__ = "image_resizes"
     __table_args__ = (
-        Index("ix_image_resizes_source_image_id", "source_image_id"),
+        Index("idx_image_resizes_source_image", "source_image_id"),
         Index(
-            "uq_image_resizes_storage_bucket_storage_key",
+            "uq_image_resizes_storage",
             "storage_bucket",
             "storage_key",
             unique=True,
