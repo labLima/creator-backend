@@ -1,6 +1,6 @@
 """SQLAlchemy tables owned by the notification capability.
 
-Aligned to ``Creator_DB_final.sql`` (ADR-028, T24): the four tables have no
+Aligned to ``Creator_DB_final.sql`` (ADR-029, T24): the four tables have no
 ``deleted_at`` because the final modeling does not define soft delete for
 notifications; deletes are physical. Enum columns render as VARCHAR plus CHECK
 through the portable vocabulary.

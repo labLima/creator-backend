@@ -17,7 +17,7 @@ concluída** (ADR-021, `0001_sqlite_baseline.py`, `migrations/legacy_postgres/`,
 `sqlite+pysqlite:////data/creator.db`) e não é reescopada aqui.
 
 O conjunto-alvo durante a execução é de **71 tabelas** (54 do dump + 4 extensões de ADR + 13
-legadas/sem alvo), não 58: as 13 só saem com a ADR-029. `users.password_hash` e
+legadas/sem alvo), não 58: as 13 só saem com a ADR-030. `users.password_hash` e
 `users.global_role` permanecem como extensão da ADR-020, mesmo ausentes no dump.
 
 A execução é incremental: revisões Alembic encadeadas a partir da head atual
@@ -31,7 +31,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
    revisão Alembic a partir de `0005_content_text_versions`. A fase 6 regenera
    `0001_sqlite_baseline` do metadata final e remove as revisões intermediárias — proibido
    enquanto existir banco com dados a preservar. A decisão e a condição que a inverte vão para
-   a **ADR-028**, porque é irreversível para quem já tem volume.
+   a **ADR-029**, porque é irreversível para quem já tem volume.
 2. **`create_all` define o schema; Alembic cobre bancos existentes.** A baseline é
    `Base.metadata.create_all()`, então uma mudança só nas models cria a tabela em banco novo mas
    deixa banco antigo defasado, e `alembic check` acusa. Regra: **model + revisão no mesmo PR**.
@@ -92,11 +92,11 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
     vocabulário de `role` (`owner/admin/editor/viewer` → `OWNER/MANAGER/EDITOR/VIEWER`), adiciona
     `status` e remove `deleted_at` (hoje filtrado nas consultas). Segue expand → backfill →
     contract como as demais, com mapa de valores explícito.
-14. **Aposentadoria do legado em ADR-029**, com mapeamento tabela→alvo, ordem de remoção e
+14. **Aposentadoria do legado em ADR-030**, com mapeamento tabela→alvo, ordem de remoção e
    verificação de consumidores. Tabela retida precisa de justificativa e prazo escritos.
-15. **Rastreabilidade**: ADR-028 e ADR-029 em `docs/adr/`, indexadas em
+15. **Rastreabilidade**: ADR-029 e ADR-030 em `docs/adr/`, indexadas em
     `docs/ADR-ISSUE-TRACKER.md`; épico local
-    [0058](/../docs/issues/0058-sqlite-final-schema-alignment.md) e issue
+    [0059](/../docs/issues/0059-sqlite-final-schema-alignment.md) e issue
     [#159](https://github.com/labLima/creator-backend/issues/159); issues filhas no board `SHC`
     do Shared Context, uma por tarefa (cada uma declara o workspace
     `/home/emanueljtrodrigues/Documents/LeFil/creator-backend`). `docs/openapi.yaml` é
@@ -130,14 +130,14 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ## Fase 0 — Contrato, paridade e portabilidade
 
-### T1 — ADR-028, épico e tracker
+### T1 — ADR-029, épico e tracker
 
-**Descrição:** Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade em `tests/test_schema_inventory.py`, convenção de nomes de índice, gate `make snapshot-contract`, política de enums e de constraints portáveis) e amarrar a rastreabilidade do épico 0058 / #159 às ADR-021 e ADR-015.
+**Descrição:** Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade em `tests/test_schema_inventory.py`, convenção de nomes de índice, gate `make snapshot-contract`, política de enums e de constraints portáveis) e amarrar a rastreabilidade do épico 0059 / #159 às ADR-021 e ADR-015.
 
 **Critérios de aceite:**
-- [ ] `docs/adr/0028-sqlite-final-schema-alignment.md` aceita, cobrindo as decisões 1–15.
-- [ ] `docs/ADR-ISSUE-TRACKER.md` lista ADR-028 com tracker e issues de implementação.
-- [ ] Épico [0058](/../docs/issues/0058-sqlite-final-schema-alignment.md) aponta para o plano e para as issues filhas.
+- [ ] `docs/adr/0029-sqlite-final-schema-alignment.md` aceita, cobrindo as decisões 1–15.
+- [ ] `docs/ADR-ISSUE-TRACKER.md` lista ADR-029 com tracker e issues de implementação.
+- [ ] Épico [0059](/../docs/issues/0059-sqlite-final-schema-alignment.md) aponta para o plano e para as issues filhas.
 - [ ] `tasks/plan.md` e `tasks/todo.md` (históricos) permanecem intocados.
 
 **Verificação:**
@@ -145,7 +145,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `git diff --exit-code tests/contracts/` (fase sem mudança de schema).
 
 **Dependências:** Nenhuma
-**Arquivos prováveis:** `docs/adr/0028-sqlite-final-schema-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0058-sqlite-final-schema-alignment.md`
+**Arquivos prováveis:** `docs/adr/0029-sqlite-final-schema-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0059-sqlite-final-schema-alignment.md`
 **Tamanho:** S
 
 ### T2 — Comparador único e teste de paridade com orçamento
@@ -228,13 +228,13 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Tamanho:** M
 
 ### Checkpoint — Fase 0
-- [ ] ADR-028 aceita e tracker consistente; épico 0058 alinhado.
+- [ ] ADR-029 aceita e tracker consistente; épico 0059 alinhado.
 - [ ] Comparador único em `final_schema.py`, usado pelo script e pelos testes.
 - [ ] Orçamento de paridade com as oito dimensões, em igualdade com o estado atual.
 - [ ] `snapshot-contract --check` no `make check`, com índices no fixture.
 - [ ] Teste de upgrade anterior provando que revisão esquecida é detectada.
 - [ ] Helpers de enum, nome e constraint com teste de equivalência.
-- [ ] Revisão humana da ADR-028 e do orçamento antes da fase seguinte.
+- [ ] Revisão humana da ADR-029 e do orçamento antes da fase seguinte.
 
 ## Fase 1 — Criar tabelas sem dependência de redesenho
 
@@ -559,12 +559,12 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 
 ## Fase 5 — Aposentadoria do legado
 
-### T16 — ADR-029, 11 legadas e 2 tabelas sem alvo
+### T16 — ADR-030, 11 legadas e 2 tabelas sem alvo
 
 **Descrição:** Mapear cada tabela legada ao alvo final ou justificar retenção com prazo; remover as aprovadas, ajustar consumidores (settings, workers, repositórios) e decidir `provider_customers` e `provider_subscriptions`.
 
 **Critérios de aceite:**
-- [ ] ADR-029 com tabela→alvo, ordem de remoção e verificação de consumidores por tabela.
+- [ ] ADR-030 com tabela→alvo, ordem de remoção e verificação de consumidores por tabela.
 - [ ] Remoções em revisão única com downgrade; retenções registradas com prazo.
 - [ ] `provider_customers`/`provider_subscriptions`: decisão explícita e, se retidas, exceção declarada no teste de paridade.
 - [ ] Entrypoints `creator.workers.*` não renomeados.
@@ -574,7 +574,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `make e2e` verde e `python scripts/check_migrations.py`.
 
 **Dependências:** T15
-**Arquivos prováveis:** `docs/adr/0029-legacy-table-retirement.md`, `migrations/versions/0017_*.py`, `src/creator/settings/**`, `workers/**`
+**Arquivos prováveis:** `docs/adr/0030-legacy-table-retirement.md`, `migrations/versions/0017_*.py`, `src/creator/settings/**`, `workers/**`
 **Tamanho:** M
 
 ### T20 — Triggers, funções e view do dump
@@ -610,7 +610,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 **Critérios de aceite:**
 - [ ] Baseline regenerada e revisada à mão (enums com CHECK, índices nomeados, FKs inline, `downgrade base` funcional).
 - [ ] `scripts/check_migrations.py` vê uma única head, sem operação inesperada.
-- [ ] Procedimento de reset do banco de dev documentado na ADR-028.
+- [ ] Procedimento de reset do banco de dev documentado na ADR-029.
 - [ ] `migrations/legacy_postgres/` e ADR-021 intocados.
 
 **Verificação:**
@@ -619,18 +619,18 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `pytest tests/test_schema_inventory.py tests/test_module_boundaries.py -q`.
 
 **Dependências:** T13, T15, T16
-**Arquivos prováveis:** `migrations/versions/0001_sqlite_baseline.py`, `docs/adr/0028-sqlite-final-schema-alignment.md`
+**Arquivos prováveis:** `migrations/versions/0001_sqlite_baseline.py`, `docs/adr/0029-sqlite-final-schema-alignment.md`
 **Tamanho:** M
 
 ### T18 — Fechamento do épico
 
-**Descrição:** Regenerar relatório de paridade e `docs/openapi.yaml`, atualizar tracker, épico 0058 e issue #159 com evidência de CI, e rodar os três gates finais.
+**Descrição:** Regenerar relatório de paridade e `docs/openapi.yaml`, atualizar tracker, épico 0059 e issue #159 com evidência de CI, e rodar os três gates finais.
 
 **Critérios de aceite:**
 - [ ] `docs/openapi.yaml` em paridade com `app.openapi()`.
 - [ ] Relatório de paridade mostrando 54/54 + 4 extensões e zero divergência não declarada.
 - [ ] Tracker, épico e #159 com critérios marcados e evidência.
-- [ ] Critérios de aceite de `docs/issues/0058` revisados um a um.
+- [ ] Critérios de aceite de `docs/issues/0059` revisados um a um.
 
 **Verificação:**
 - [ ] `XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python`.
@@ -638,7 +638,7 @@ as revisões são consolidadas numa baseline única regenerada, já que o banco 
 - [ ] `XDG_DATA_HOME=$PWD/.local/xdg make e2e PYTHON=.venv/bin/python`.
 
 **Dependências:** T17
-**Arquivos prováveis:** `docs/openapi.yaml`, `docs/migration/schema-final-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0058-sqlite-final-schema-alignment.md`
+**Arquivos prováveis:** `docs/openapi.yaml`, `docs/migration/schema-final-alignment.md`, `docs/ADR-ISSUE-TRACKER.md`, `docs/issues/0059-sqlite-final-schema-alignment.md`
 **Tamanho:** S
 
 ### Checkpoint — Fase 6 (final)
@@ -789,7 +789,7 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 | --- | --- | --- |
 | PR muda schema sem regenerar `schema_tables.json`/`schema_ddl.sql` | Alto | `make snapshot-contract` é critério de aceite de toda tarefa de schema, na mesma PR |
 | Teste de paridade divergente do snapshot congelado | Médio | paridade dentro de `tests/test_schema_inventory.py`, dono único das fixtures |
-| Índices anônimos quebram asserção por nome | Alto | convenção `ix_/uq_` na ADR-028; mapeamento explícito dos 123 anônimos |
+| Índices anônimos quebram asserção por nome | Alto | convenção `ix_/uq_` na ADR-029; mapeamento explícito dos 123 anônimos |
 | Squash da baseline destrói banco de dev | Alto | só depois de T13–T16; reset documentado; `make snapshot-contract` sem diff como prova |
 | `ALTER TABLE` limitado no SQLite | Médio | `render_as_batch` obrigatório em T14/T15; `downgrade` testado por revisão |
 | Perda de dados nos 4 redesenhos | Alto | expand antes de contract; backfill idempotente testado (T12); contract isolado (T13) |
@@ -798,14 +798,14 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 | Drift dos 52 enums | Médio | inventário único (T3) + `test_final_enum_vocabulary` |
 | `test_module_boundaries` quebrado por models novos | Médio | tabela nova nasce em `<entity>/models.py` + `repository.py` |
 | `docs/openapi.yaml` dessincronizado | Médio | contrato antes do código em T10, T14 e T15 |
-| Remoção de legado quebra worker/settings | Alto | ADR-029 com mapeamento e `grep` de consumidores; `make e2e` antes do merge |
+| Remoção de legado quebra worker/settings | Alto | ADR-030 com mapeamento e `grep` de consumidores; `make e2e` antes do merge |
 | Volume de PRs e conflito de revisões | Médio | uma revisão por tarefa, cadeia linear, rebase diário, PR por fase |
 | Orçamento de paridade ficar stale ou crescer sem revisão | Alto | igualdade obrigatória: crescer falha, ficar stale falha; cada PR reduz na mesma diff |
 | Snapshot sem índices esconder mudança de índice | Alto | `schema_ddl.sql` passa a incluir `CREATE INDEX`; `--check` no `make check` |
 | `alembic check` vacuous pela baseline `create_all` | Alto | teste de upgrade a partir de `schema_prev_ddl.sql` + `compare_type`/`render_as_batch` |
 | Triggers do ledger e do histórico de assinatura não serem portados | Alto | T20 obriga classificação e teste; imutabilidade não pode depender só de disciplina |
 | `test_schema_migration_matrix` e `test_schema_models` quebrarem | Médio | atualizar matriz e o assert de `users.email` na mesma PR que muda schema |
-| Extensão de auth (`password_hash`/`global_role`) ser removida por engano | Alto | exceção declarada na ADR-028 e no teste de paridade; T14 verifica consumidores |
+| Extensão de auth (`password_hash`/`global_role`) ser removida por engano | Alto | exceção declarada na ADR-029 e no teste de paridade; T14 verifica consumidores |
 
 ## Questões abertas
 
@@ -822,8 +822,8 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
    A decisão é por objeto, em T20, e imutabilidade de ledger/histórico não pode ficar só na
    aplicação.
 
-> Resolvidas na revisão da ADR-028: `users.password_hash`/`global_role` permanecem como extensão
-> da ADR-020; o conjunto-alvo é de 71 tabelas até a ADR-029; `workspace_role` migra
+> Resolvidas na revisão da ADR-029: `users.password_hash`/`global_role` permanecem como extensão
+> da ADR-020; o conjunto-alvo é de 71 tabelas até a ADR-030; `workspace_role` migra
 > `admin→MANAGER`; nomes de índice explícitos do dump são preservados.
 
 ## Task list for tracker
@@ -832,15 +832,15 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
 [
   {
     "id": "T1",
-    "title": "ADR-028, épico e tracker",
-    "description": "Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade, convenção de índices, gate de snapshot, enums e constraints portáveis) e amarrar épico 0058 e #159 às ADR-021/015.",
+    "title": "ADR-029, épico e tracker",
+    "description": "Registrar a estratégia de alinhamento (incrementais + squash final, expand→backfill→contract, teste de paridade, convenção de índices, gate de snapshot, enums e constraints portáveis) e amarrar épico 0059 e #159 às ADR-021/015.",
     "priority": "high",
     "depends_on": [],
     "phase": "Fase 0 — Contrato, paridade e portabilidade",
     "files": [
-      "docs/adr/0028-sqlite-final-schema-alignment.md",
+      "docs/adr/0029-sqlite-final-schema-alignment.md",
       "docs/ADR-ISSUE-TRACKER.md",
-      "docs/issues/0058-sqlite-final-schema-alignment.md"
+      "docs/issues/0059-sqlite-final-schema-alignment.md"
     ],
     "size": "S"
   },
@@ -1085,7 +1085,7 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
   },
   {
     "id": "T16",
-    "title": "ADR-029, 11 legadas e 2 tabelas sem alvo",
+    "title": "ADR-030, 11 legadas e 2 tabelas sem alvo",
     "description": "Mapear cada tabela legada ao alvo final ou justificar retenção com prazo, remover as aprovadas, ajustar consumidores e decidir provider_customers e provider_subscriptions.",
     "priority": "medium",
     "depends_on": [
@@ -1093,7 +1093,7 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
     ],
     "phase": "Fase 5 — Aposentadoria do legado",
     "files": [
-      "docs/adr/0029-legacy-table-retirement.md",
+      "docs/adr/0030-legacy-table-retirement.md",
       "migrations/versions/0017_*.py"
     ],
     "size": "M"
@@ -1111,14 +1111,14 @@ Cada linha indica a ação e a tarefa que a executa. A ação repete o delta do 
     "phase": "Fase 6 — Consolidação e fechamento",
     "files": [
       "migrations/versions/0001_sqlite_baseline.py",
-      "docs/adr/0028-sqlite-final-schema-alignment.md"
+      "docs/adr/0029-sqlite-final-schema-alignment.md"
     ],
     "size": "M"
   },
   {
     "id": "T18",
     "title": "Fechamento do épico",
-    "description": "Regenerar relatório de paridade e OpenAPI, atualizar tracker, épico 0058 e #159 com evidência de CI e rodar os três gates finais.",
+    "description": "Regenerar relatório de paridade e OpenAPI, atualizar tracker, épico 0059 e #159 com evidência de CI e rodar os três gates finais.",
     "priority": "high",
     "depends_on": [
       "T17"

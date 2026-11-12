@@ -1,4 +1,4 @@
-"""Behaviour of the media expand slice (ADR-028, T11).
+"""Behaviour of the media expand slice (ADR-029, T11).
 
 ``generated_images`` only becomes current when the generation succeeded and the
 row is not deleted; approval is only possible after a successful generation;

@@ -1,1 +1,1 @@
-"""Media capability: generated images and resizes (ADR-028, T11)."""
+"""Media capability: generated images and resizes (ADR-029, T11)."""

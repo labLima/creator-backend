@@ -1,8 +1,8 @@
-# ADR-028: Alinhamento do schema SQLite ao Creator_DB_final.sql
+# ADR-029: Alinhamento do schema SQLite ao Creator_DB_final.sql
 
 - Status: accepted
 - Fonte: decisão da Fase 2 (schema), 2026-11-09
-- Tracker: [docs/issues/0058](../issues/0058-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159)
+- Tracker: [docs/issues/0059](../issues/0059-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159)
 - ADRs relacionadas: [ADR-020](0020-self-hosted-authentication.md) (autenticação própria), [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão), [ADR-015](0015-database-diagram-alignment.md) (alinhamento ao diagrama)
 - Issues de implementação: `SHC-2` a `SHC-26` no board `SHC` do Shared Context; plano em [`tasks/plan-sqlite-final-schema.md`](../../tasks/plan-sqlite-final-schema.md)
 
@@ -66,7 +66,7 @@ tabelas alinhadas.
 ### 2. A modelagem final é a referência, com exceções declaradas
 
 O conjunto-alvo **não é 54 tabelas**: é `54 do dump` + `4 extensões de ADR` + `13 tabelas ainda
-sem alvo` = **71 tabelas** durante a execução, caindo para 58 quando a ADR-029 decidir as 13. As
+sem alvo` = **71 tabelas** durante a execução, caindo para 58 quando a ADR-030 decidir as 13. As
 exceções são constantes declaradas no teste de paridade, nunca condições espalhadas:
 
 - **Extensões de ADR preservadas:** `auth_sessions`, `outbox_events`, `activity_events`,
@@ -75,7 +75,7 @@ exceções são constantes declaradas no teste de paridade, nunca condições es
   permanecem; são a única fonte de credencial local. `users.external_id` é absorvido por
   `users.auth_provider_id` na migração, e `users.cnpj`/`users.cpf` são removidos se não tiverem
   consumidor (verificado em T14).
-- **Tabelas sem alvo:** `provider_customers` e `provider_subscriptions`, decididas na ADR-029.
+- **Tabelas sem alvo:** `provider_customers` e `provider_subscriptions`, decididas na ADR-030.
 
 Colunas exigidas pelo dump e ausentes por decisão de produto (por exemplo `users.email`
 `varchar(254)`) são migradas; o `String(320)` atual deixa de valer e o teste
@@ -191,8 +191,8 @@ cobertos por (a) ou (b).
 
 ### 12. Rastreabilidade
 
-ADR-028 é a decisão primária desta frente; ADR-015 e ADR-021 são relacionadas. `docs/issues/0058`
-e o tracker passam a apontar ADR-028 como primária. A ADR-029 (aposentadoria do legado) é criada
+ADR-029 é a decisão primária desta frente; ADR-015 e ADR-021 são relacionadas. `docs/issues/0059`
+e o tracker passam a apontar ADR-029 como primária. A ADR-030 (aposentadoria do legado) é criada
 em T16, não antes, e o conjunto de 71 tabelas só reduz depois dela.
 
 ## Consequências

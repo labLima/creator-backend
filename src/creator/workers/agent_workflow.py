@@ -29,6 +29,7 @@ from creator.infrastructure.runtime.image_composition import (
     compose_generated_image,
 )
 from creator.infrastructure.runtime.observability import correlation_context, current_context
+from creator.infrastructure.runtime.reference_images import resolve_reference_images
 from creator.infrastructure.runtime.storage import create_storage_provider
 from creator.services.agents.contracts import (
     AgentExecutionContext,
@@ -1109,11 +1110,31 @@ def _generate_workflow_image(
             metadata={"scene_review_source_image_id": approved_scene_id},
         )
     else:
+        reference_ids = run.input.get("reference_asset_ids", [])
+        reference_images = (
+            resolve_reference_images(
+                asset_ids=reference_ids,
+                user_id=user.id,
+                workspace_id=run.workspace_id,
+                brand_id=run.brand_id,
+                settings=typed_settings,
+            )
+            if reference_ids
+            else ()
+        )
         generated = create_image_generator(typed_settings).generate(
             ImageGenerationRequest(
                 prompt=image_prompt,
                 model=typed_settings.openai_image_model,
-                metadata={"agent_workflow_run_id": str(run.id), "item": index},
+                metadata={
+                    "agent_workflow_run_id": str(run.id),
+                    "item": index,
+                    "reference_assets": [
+                        {"id": item.asset_id, "sha256": item.checksum_sha256}
+                        for item in reference_images
+                    ],
+                },
+                reference_images=reference_images,
             )
         )
     if compose_text and isinstance(composition, dict):

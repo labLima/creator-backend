@@ -1,4 +1,4 @@
-"""Behaviour of the ``content_plans`` expand slice (ADR-028, T9).
+"""Behaviour of the ``content_plans`` expand slice (ADR-029, T9).
 
 The plan is tenant-scoped through composite foreign keys to the campaign and the
 persona, and its items/dates follow the plan on delete.

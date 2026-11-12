@@ -18,6 +18,7 @@ from creator.integrations.openai.image_generator import OpenAIImageGenerator
 from creator.integrations.openai.image_reviewer import OpenAIMultimodalImageReviewer
 from creator.services.ai.image_provider import (
     ImageGenerationRequest,
+    ImageInput,
     ImageProviderAuthenticationError,
     ImageProviderBlockedError,
     ImageProviderError,
@@ -149,6 +150,52 @@ def test_generate_image_returns_decoded_png_with_dimensions_and_metadata() -> No
     assert client.images.calls[0]["prompt"] == "A red rectangle"
     assert client.images.calls[0]["size"] == "1024x1024"
     assert client.images.calls[0]["output_format"] == "png"
+
+
+def test_image_references_are_sent_in_order_to_edit_endpoint() -> None:
+    image = png_bytes((4, 5))
+    client = FakeOpenAIClient(images=[image_response(image)])
+    generator = OpenAIImageGenerator(image_settings(), client=client)
+
+    generator.generate(
+        ImageGenerationRequest(
+            prompt="Use these references",
+            reference_images=(
+                ImageInput(content=b"first", mime_type="image/png", asset_id="a"),
+                ImageInput(content=b"second", mime_type="image/jpeg", asset_id="b"),
+            ),
+        )
+    )
+
+    call = client.images.calls[0]
+    assert call["operation"] == "edit"
+    assert call["image"] == [("reference.png", b"first"), ("reference.jpg", b"second")]
+
+
+def test_transform_places_source_before_ordered_reference_images() -> None:
+    image = png_bytes((1088, 1344))
+    source = png_bytes((5, 4))
+    client = FakeOpenAIClient(images=[image_response(image)])
+    generator = OpenAIImageGenerator(image_settings(), client=client)
+
+    generator.generate(
+        ImageGenerationRequest(
+            prompt="Keep source first",
+            size="1080x1350",
+            source_image=source,
+            source_image_mime_type="image/png",
+            reference_images=(
+                ImageInput(content=b"first", mime_type="image/png", asset_id="a"),
+                ImageInput(content=b"second", mime_type="image/jpeg", asset_id="b"),
+            ),
+        )
+    )
+
+    assert client.images.calls[0]["image"] == [
+        ("source.png", source),
+        ("reference.png", b"first"),
+        ("reference.jpg", b"second"),
+    ]
 
 
 @pytest.mark.parametrize(

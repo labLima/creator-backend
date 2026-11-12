@@ -1,4 +1,4 @@
-"""Behaviour of the editorial expand slice (ADR-028, T10).
+"""Behaviour of the editorial expand slice (ADR-029, T10).
 
 ``posts`` owns publication/approval, ``captions`` are versioned per post,
 ``post_designs`` split the art format and ``design_slides`` order the copy.

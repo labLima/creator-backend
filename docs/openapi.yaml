@@ -1847,6 +1847,29 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
+  /api/v1/assets/reference-images:
+    post:
+      operationId: uploadReferenceImage
+      tags: [Assets]
+      security:
+      - CreatorSessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [workspace_id, brand_id, file]
+              properties:
+                workspace_id: {type: string, format: uuid}
+                brand_id: {type: string, format: uuid}
+                file: {type: string, format: binary}
+      responses:
+        '201': {description: Private reference image Asset created.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '413': {description: Image exceeds the configured upload limit.}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '503': {description: Reference image storage or registration is unavailable.}
   /api/v1/assets/{id}:
     get:
       operationId: getAsset
@@ -6937,6 +6960,11 @@ components:
           minimum: 1
           maximum: 20
           default: 1
+        reference_asset_ids:
+          type: array
+          maxItems: 4
+          uniqueItems: true
+          items: {type: string, format: uuid}
         extra_instructions:
           type:
           - string
@@ -7271,6 +7299,11 @@ components:
         title:
           type: string
           maxLength: 255
+        reference_asset_ids:
+          type: array
+          maxItems: 4
+          uniqueItems: true
+          items: {type: string, format: uuid}
       allOf:
       - if:
           required: [planning_id]

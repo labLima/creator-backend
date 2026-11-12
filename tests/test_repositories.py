@@ -16,6 +16,7 @@ from creator.content import models as content_tables
 from creator.content.ports import ContentFilters, ImageMetadata
 from creator.content.repository import SqlAlchemyContentRepository
 from creator.core.pagination import PageRequest
+from creator.domain.agent_workflow import AgentWorkflowStatus, HumanReviewMode
 from creator.domain.exceptions import (
     ConflictError,
     EntityNotFoundError,
@@ -34,6 +35,8 @@ from creator.project import models as project_tables
 from creator.project.repository import SqlAlchemyProjectRepository
 from creator.user import models as user_tables
 from creator.user.repository import SqlAlchemySettingsRepository, SqlAlchemyUserRepository
+from creator.workflow import models as workflow_tables
+from creator.workflow.repository import SqlAlchemyAgentWorkflowRepository
 from creator.workspace import models as workspace_tables
 from creator.workspace.repository import SqlAlchemyWorkspaceRepository
 
@@ -886,6 +889,40 @@ def test_image_generation_repository_get_image_for_user_scopes_by_membership() -
     assert stored is not None
     assert stored.id == image.id
     assert stored.metadata == {"source": "test"}
+
+
+def test_workflow_same_status_transition_is_idempotent_and_does_not_regress_stage() -> None:
+    session = FakeSession()
+    repository = SqlAlchemyAgentWorkflowRepository(fake_session(session))
+    run = workflow_tables.AgentWorkflowRun(
+        id=uuid4(),
+        workspace_id=uuid4(),
+        content_id=uuid4(),
+        brand_id=uuid4(),
+        requested_by_user_id=uuid4(),
+        idempotency_key="workflow-key",
+        request_fingerprint="f" * 64,
+        status=AgentWorkflowStatus.RUNNING,
+        human_review=HumanReviewMode.AUTO,
+        max_refinements=1,
+        refinement_count=0,
+        current_step="WRITER",
+        input_json={},
+        final_image_ids=[],
+        created_at=NOW,
+        updated_at=NOW,
+    )
+    session.scalars_results.append(ScalarResult(run))
+
+    result = repository.transition(run.id, AgentWorkflowStatus.RUNNING, current_step="ARTIST")
+
+    assert result.status == AgentWorkflowStatus.RUNNING
+    assert result.current_step == "ARTIST"
+
+    session.scalars_results.append(ScalarResult(run))
+    result = repository.transition(run.id, AgentWorkflowStatus.RUNNING, current_step="BUSINESS")
+
+    assert result.current_step == "ARTIST"
 
 
 def test_invalid_generation_job_transition_is_rejected() -> None:

@@ -1,4 +1,4 @@
-"""Data-safety test for the ``workspace_members`` migration (ADR-028, T8).
+"""Data-safety test for the ``workspace_members`` migration (ADR-029, T8).
 
 The upgrade must keep active memberships, drop the soft-deleted ones and leave
 the child foreign keys pointing at the renamed table.

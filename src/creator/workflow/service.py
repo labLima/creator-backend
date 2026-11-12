@@ -117,6 +117,7 @@ class StartImageWorkflowCommand:
     composition: Mapping[str, object] = field(default_factory=dict)
     planning_id: UUID | None = None
     post_structure_id: UUID | None = None
+    reference_asset_ids: tuple[UUID, ...] = ()
 
 
 def start_image_workflow(
@@ -205,6 +206,17 @@ def start_image_workflow(
         brand = unit_of_work.brand.brands.get_for_user(user_id=user.id, brand_id=command.brand_id)
     if brand is None:
         raise EntityNotFoundError("Brand not found")
+    for reference_id in command.reference_asset_ids:
+        reference = unit_of_work.assets.get_for_user(user_id=user.id, asset_id=reference_id)
+        if (
+            reference is None
+            or reference.deleted_at is not None
+            or reference.workspace_id != brand.workspace_id
+            or reference.brand_id != brand.id
+            or reference.asset_type != "REFERENCE_IMAGE"
+            or reference.metadata.get("reference_image_upload") is not True
+        ):
+            raise EntityNotFoundError("Authorized reference image not found")
     existing = unit_of_work.agent_workflow.workflows.get_by_idempotency(
         user_id=user.id,
         workspace_id=brand.workspace_id,
@@ -225,6 +237,7 @@ def start_image_workflow(
             "max_refinements": command.max_refinements,
             "extensions": dict(command.extensions),
             "composition": dict(command.composition),
+            "reference_asset_ids": [str(value) for value in command.reference_asset_ids],
         }
     )
     fingerprint = _fingerprint(request_payload)

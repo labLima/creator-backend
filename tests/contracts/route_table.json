@@ -16,6 +16,14 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/api/v1/assets/reference-images",
+    "operation_id": "uploadReferenceImage",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/assets/{id}",
     "operation_id": "deleteAsset",

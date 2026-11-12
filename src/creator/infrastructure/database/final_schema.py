@@ -36,7 +36,7 @@ ADR_EXTENSIONS: Final[tuple[str, ...]] = (
 )
 
 # Tables still required by live consumers and absent from the final modeling.
-# ADR-029 decides their retirement; until then they are part of the target set.
+# ADR-030 decides their retirement; until then they are part of the target set.
 LEGACY_RETENTION: Final[tuple[str, ...]] = (
     "agent_workflow_runs",
     "agent_workflow_steps",

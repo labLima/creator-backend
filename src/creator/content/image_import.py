@@ -11,6 +11,7 @@ from PIL import Image, UnidentifiedImageError
 
 from creator.application.errors import ApplicationError, require_workspace_write
 from creator.content.ports import ContentDetailRecord, ImportedImageMetadata
+from creator.core.image_validation import validate_image_dimensions
 from creator.services.storage.provider import (
     StorageError,
     StorageProvider,
@@ -21,7 +22,6 @@ from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
 _FORMATS = {"image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WEBP"}
-_MAX_PIXELS = 40_000_000
 logger = logging.getLogger(__name__)
 
 
@@ -49,13 +49,17 @@ def import_image(
         if not expected_format:
             raise ValueError("Unsupported image type")
         with Image.open(BytesIO(content)) as decoded:
-            if decoded.format != expected_format or decoded.width * decoded.height > _MAX_PIXELS:
+            if decoded.format != expected_format:
                 raise ValueError("Invalid image")
             width, height = decoded.size
+            validate_image_dimensions(width, height)
             decoded.verify()
-        if width <= 0 or height <= 0:
-            raise ValueError("Invalid image dimensions")
-    except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
+    except (
+        ValueError,
+        OSError,
+        UnidentifiedImageError,
+        Image.DecompressionBombError,
+    ) as error:
         raise ApplicationError(
             422, {"code": "IMAGE_INVALID", "message": "Invalid or unsupported image"}
         ) from error

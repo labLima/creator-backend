@@ -314,23 +314,23 @@ def test_allowlisted_tables_are_counted() -> None:
 
 def test_allowlists_are_documented() -> None:
     """Adding a name to an allowlist must also touch its decision record."""
-    adr = (PROJECT_ROOT / "docs" / "adr" / "0028-sqlite-final-schema-alignment.md").read_text(
+    adr = (PROJECT_ROOT / "docs" / "adr" / "0029-sqlite-final-schema-alignment.md").read_text(
         encoding="utf-8"
     )
     matrix = (PROJECT_ROOT / "docs" / "SCHEMA-MIGRATION-MATRIX.md").read_text(encoding="utf-8")
     for name in ADR_EXTENSIONS:
-        assert name in adr, f"{name} is allowlisted but absent from ADR-028"
+        assert name in adr, f"{name} is allowlisted but absent from ADR-029"
     for name in LEGACY_RETENTION + NO_TARGET:
         assert name in matrix, f"{name} is allowlisted but absent from the schema matrix"
 
 
 def test_dump_hash_matches_the_decision_record() -> None:
-    """Relaxing the vendored dump must also update ADR-028, never silently."""
-    adr = (PROJECT_ROOT / "docs" / "adr" / "0028-sqlite-final-schema-alignment.md").read_text(
+    """Relaxing the vendored dump must also update ADR-029, never silently."""
+    adr = (PROJECT_ROOT / "docs" / "adr" / "0029-sqlite-final-schema-alignment.md").read_text(
         encoding="utf-8"
     )
     dump_hash = sha256_file(FINAL_DUMP)
     assert dump_hash in adr, (
-        f"{dump_hash} is not recorded in ADR-028; a change to the final modeling "
+        f"{dump_hash} is not recorded in ADR-029; a change to the final modeling "
         "needs an explicit decision update"
     )
