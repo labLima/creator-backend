@@ -1520,33 +1520,9 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/api/v1/subscription-history",
-    "operation_id": "create_subscription_history_api_v1_subscription_history_post",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/api/v1/subscription-history/{id}",
-    "operation_id": "delete_subscription_history_api_v1_subscription_history__id__delete",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/api/v1/subscription-history/{id}",
     "operation_id": "get_subscription_history_api_v1_subscription_history__id__get",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "PUT",
-    "path": "/api/v1/subscription-history/{id}",
-    "operation_id": "update_subscription_history_api_v1_subscription_history__id__put",
     "tags": [
       "Billing"
     ]

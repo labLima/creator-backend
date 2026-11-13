@@ -24,28 +24,6 @@ def list_subscription_history(
     }
 
 
-def create_subscription_history(
-    *,
-    uow: UnitOfWork,
-    actor: UserRecord,
-    request: Any,
-    payload: Any,
-) -> Any:
-    subscription_id = payload.get("subscription_id")
-    if (
-        subscription_id is None
-        or uow.subscription.subscriptions.get_for_user(
-            user_id=actor.id, subscription_id=subscription_id
-        )
-        is None
-    ):
-        raise not_found("Subscription")
-    item = uow.subscription.history.add(fields=payload)
-    uow.commit()
-
-    return _subscription_history_data(item)
-
-
 def get_subscription_history(
     *,
     uow: UnitOfWork,
@@ -58,37 +36,6 @@ def get_subscription_history(
         raise not_found("Subscription history")
 
     return _subscription_history_data(item)
-
-
-def update_subscription_history(
-    *,
-    uow: UnitOfWork,
-    actor: UserRecord,
-    request: Any,
-    history_id: Any,
-    payload: Any,
-) -> Any:
-    if uow.subscription.history.get_for_user(user_id=actor.id, history_id=history_id) is None:
-        raise not_found("Subscription history")
-    item = uow.subscription.history.update(history_id=history_id, fields=payload)
-    uow.commit()
-
-    return _subscription_history_data(item)
-
-
-def delete_subscription_history(
-    *,
-    uow: UnitOfWork,
-    actor: UserRecord,
-    request: Any,
-    history_id: Any,
-) -> Any:
-    if uow.subscription.history.get_for_user(user_id=actor.id, history_id=history_id) is None:
-        raise not_found("Subscription history")
-    uow.subscription.history.soft_delete(history_id=history_id)
-    uow.commit()
-
-    return {"deleted": True}
 
 
 def list_subscriptions(

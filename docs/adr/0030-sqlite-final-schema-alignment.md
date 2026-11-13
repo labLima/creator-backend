@@ -213,11 +213,11 @@ equivalência e continuam como item de auditoria da T15/T18.
 
 As 69 funções/triggers e a view não entram na paridade tabela-coluna, mas também não
 podem desaparecer silenciosamente: eles hoje sustentam imutabilidade do ledger, validação de
-lote, `updated_at`, snapshot de cupom e histórico append-only. A tarefa T19 inventaria objeto a
-objeto e classifica em (a) portar como trigger SQLite, (b) mover para a aplicação com teste
-equivalente, ou (c) declarar fora de escopo com justificativa. Nenhum objeto fica sem
-classificação; os invariantes do ledger e do histórico de assinatura são obrigatoriamente
-cobertos por (a) ou (b).
+lote, `updated_at`, snapshot de cupom e histórico append-only. A T20 inventariou objeto a objeto e classificou em (a) trigger SQLite, (b) guarda de
+aplicação com teste, (c) consulta/repositório, ou (d) fora de escopo com justificativa. Nenhum
+objeto fica sem classificação; os invariantes do ledger, lote, consumo, cupom e histórico de
+assinatura são obrigatoriamente cobertos por (a) ou (b). O inventário vive em
+`docs/migration/storage-objects-matrix.md`.
 
 ### 12. Rastreabilidade
 

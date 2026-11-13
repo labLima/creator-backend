@@ -6,9 +6,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 import creator.credit.models as credit_models
@@ -87,3 +88,44 @@ class SqlAlchemyWorkspaceCreditTransactionRepository(WorkspaceCreditTransactionR
             )
         )
         return self._r(x) if x else None
+
+    def workspace_balance(self, workspace_id: UUID) -> int:
+        """Available credit: expired Credit Lots stop counting (ADR-019).
+
+        Ports the dump's ``workspace_credit_balance`` function, which cannot be a
+        trigger: it is a derived read. ``expires_at IS NULL`` is a lot that never
+        expires; ``expires_at = now`` is already expired, matching the dump's
+        strict ``>`` comparison.
+        """
+        lot = credit_models.WorkspaceCreditLot
+        total = self.s.scalar(
+            select(func.coalesce(func.sum(lot.remaining_amount), 0)).where(
+                lot.workspace_id == workspace_id,
+                or_(lot.expires_at.is_(None), lot.expires_at > datetime.now(UTC)),
+            )
+        )
+        return int(total or 0)
+
+    def lot_available(self, workspace_id: UUID, lot_id: UUID) -> int:
+        """Availability of one Credit Lot, ``0`` when expired, unknown or foreign.
+
+        Ports the dump's ``workspace_credit_lot_available`` function. The expiry
+        is resolved in the query, not by filtering the row out, so a missing lot
+        and an expired lot stay indistinguishable to the caller: both report no
+        spendable credit. ``workspace_id`` is part of the filter because a Credit
+        Lot is tenant scoped: the identifier alone is not authority.
+        """
+        lot = credit_models.WorkspaceCreditLot
+        now = datetime.now(UTC)
+        available = self.s.scalar(
+            select(
+                case(
+                    (
+                        lot.expires_at.is_not(None) & (lot.expires_at <= now),
+                        0,
+                    ),
+                    else_=lot.remaining_amount,
+                )
+            ).where(lot.id == lot_id, lot.workspace_id == workspace_id)
+        )
+        return int(available or 0)

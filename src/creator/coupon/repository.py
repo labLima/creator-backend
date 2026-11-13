@@ -189,6 +189,18 @@ class SqlAlchemyCouponRedemptionRepository(CouponRedemptionRepository):
             raise ValueError("Coupon redemption requires user and workspace")
         values["user_id"] = user_id
         values["workspace_id"] = workspace_id
+        # `coupon_redemptions_set_once` snapshots ``coupons.once_per_workspace`` into
+        # the redemption. SQLite cannot assign ``NEW`` inside a trigger, so the port
+        # refuses a divergent row instead; the value therefore has to be derived here.
+        # `CouponRedemptionCreateRequest` deliberately has no such field: a client
+        # must not be able to defeat the snapshot.
+        values["once_per_workspace"] = bool(
+            self.s.scalar(
+                select(coupon_models.Coupon.once_per_workspace).where(
+                    coupon_models.Coupon.id == values.get("coupon_id")
+                )
+            )
+        )
         values["status"] = str(values.get("status") or "APPLIED").upper()
         values.setdefault("redeemed_at", datetime.now(UTC))
         x = coupon_models.CouponRedemption(**values)

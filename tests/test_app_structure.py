@@ -153,10 +153,12 @@ def test_business_routes_require_authenticated_principal() -> None:
         if route.path_format not in public and not dependency_names(route) & principal_resolvers
     ]
 
-    # 228 `/api/v1` operations: the two credit-ledger write operations were removed
+    # 225 `/api/v1` operations: the two credit-ledger write operations were removed
     # in T15 (issue #162) because a Credit Transaction belongs to an append-only
-    # ledger. The count stays frozen so this walk cannot pass on a truncated tree.
-    assert len(routes) == 228, f"expected 228 /api/v1 operations, found {len(routes)}"
+    # ledger, and the three subscription-history writes were removed in T20
+    # (issue #163) because `subscription_history` is append-only too. The count stays
+    # frozen so this walk cannot pass on a truncated tree.
+    assert len(routes) == 225, f"expected 225 /api/v1 operations, found {len(routes)}"
     assert not unauthenticated, f"routes without a Principal dependency: {unauthenticated}"
 
 

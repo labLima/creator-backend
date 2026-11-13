@@ -138,30 +138,29 @@ def test_documented_paths_are_served() -> None:
     assert documented_paths <= route_paths | _nested_route_paths()
 
 
-def _nested_route_paths() -> set[str]:
-    """Collect paths from routers FastAPI keeps wrapped (0.162 `_IncludedRouter`).
+def _api_routes() -> list[APIRoute]:
+    """Every ``APIRoute``, walking routers FastAPI keeps wrapped (0.162 ``_IncludedRouter``).
 
     Routers nest: app -> api_router -> module router. Walk recursively.
     """
-    paths: set[str] = set()
+    routes: list[APIRoute] = []
 
     def walk(router: object) -> None:
         for route in getattr(router, "routes", []):
             if isinstance(route, APIRoute):
-                paths.add(route.path_format)
+                routes.append(route)
                 continue
             nested = getattr(route, "original_router", None)
             if nested is not None:
                 walk(nested)
 
-    for route in app.routes:
-        if isinstance(route, APIRoute):
-            paths.add(route.path_format)
-            continue
-        nested = getattr(route, "original_router", None)
-        if nested is not None:
-            walk(nested)
-    return paths
+    walk(app)
+    return routes
+
+
+def _nested_route_paths() -> set[str]:
+    """Collect paths from routers FastAPI keeps wrapped (0.162 `_IncludedRouter`)."""
+    return {route.path_format for route in _api_routes()}
 
 
 @pytest.mark.parametrize(
@@ -232,4 +231,102 @@ def test_credit_ledger_operation_ids_are_the_two_reads() -> None:
     )
     assert KEPT_CREDIT_OPERATION_IDS <= published, (
         f"the read operations must stay published: {sorted(KEPT_CREDIT_OPERATION_IDS - published)}"
+    )
+
+
+# --- T20: subscription history is append-only (issue #163) -------------------
+#
+# ADR-019 makes `subscription_history` append-only: a plan or status change is a
+# new event, never a rewrite. T20 ported that as a SQLite trigger, so the
+# POST/PUT/DELETE handlers that still exist today cannot succeed — they reach the
+# trigger and answer 500. The HTTP surface has to publish only the two reads,
+# exactly like the credit ledger after T15. `EXPECTED_OPERATION_COUNT` in
+# tests/test_openapi_operation_id_parity.py drops by the same three operations.
+
+SUBSCRIPTION_HISTORY_PATH = "/api/v1/subscription-history"
+SUBSCRIPTION_HISTORY_ITEM_PATH = "/api/v1/subscription-history/{id}"
+REMOVED_SUBSCRIPTION_HISTORY_OPERATIONS = {
+    ("POST", SUBSCRIPTION_HISTORY_PATH),
+    ("PUT", SUBSCRIPTION_HISTORY_ITEM_PATH),
+    ("DELETE", SUBSCRIPTION_HISTORY_ITEM_PATH),
+}
+KEPT_SUBSCRIPTION_HISTORY_OPERATIONS = {
+    ("GET", SUBSCRIPTION_HISTORY_PATH),
+    ("GET", SUBSCRIPTION_HISTORY_ITEM_PATH),
+}
+REMOVED_SUBSCRIPTION_HISTORY_OPERATION_IDS = {
+    "create_subscription_history_api_v1_subscription_history_post",
+    "update_subscription_history_api_v1_subscription_history__id__put",
+    "delete_subscription_history_api_v1_subscription_history__id__delete",
+}
+KEPT_SUBSCRIPTION_HISTORY_OPERATION_IDS = {
+    "list_subscription_history_api_v1_subscription_history_get",
+    "get_subscription_history_api_v1_subscription_history__id__get",
+}
+
+
+def _served_operations() -> set[tuple[str, str]]:
+    """`(method, path)` of every operation the application actually serves."""
+    served: set[tuple[str, str]] = set()
+    for route in _api_routes():
+        for method in route.methods or ():
+            served.add((method.upper(), route.path_format))
+    return served
+
+
+def test_subscription_history_exposes_no_write_operations() -> None:
+    """Only GET list and GET by id survive on the append-only history."""
+    document = app.openapi()["paths"]
+    collection = document.get(SUBSCRIPTION_HISTORY_PATH, {})
+    item = document.get(SUBSCRIPTION_HISTORY_ITEM_PATH, {})
+
+    assert set(collection) == {"get"}, (
+        "POST must be removed from /api/v1/subscription-history: subscription_history is "
+        "append-only (ADR-019) and the T20 trigger refuses the INSERT the handler performs "
+        f"after its read; got {sorted(collection)}"
+    )
+    assert set(item) == {"get"}, (
+        "PUT and DELETE must be removed from /api/v1/subscription-history/{id}: a plan or "
+        "status change is a new event, and the append-only trigger refuses both. Got "
+        f"{sorted(item)}"
+    )
+
+
+def test_subscription_history_write_routes_are_not_served() -> None:
+    """The schema and the served routes must agree; a hidden write route is still a write."""
+    served = _served_operations()
+
+    still_served = sorted(REMOVED_SUBSCRIPTION_HISTORY_OPERATIONS & served)
+    assert not still_served, (
+        "these write operations are still served by the application, so they answer 500 when "
+        f"the append-only trigger fires: {still_served}"
+    )
+    missing = sorted(KEPT_SUBSCRIPTION_HISTORY_OPERATIONS - served)
+    assert not missing, f"the read operations must stay served: {missing}"
+
+
+def test_subscription_history_write_operations_are_absent_from_the_frozen_snapshot() -> None:
+    """`tests/contracts/route_table.json` must lose the same three operations."""
+    frozen = {(str(row["method"]), str(row["path"])) for row in _snapshot()}
+
+    still_frozen = sorted(REMOVED_SUBSCRIPTION_HISTORY_OPERATIONS & frozen)
+    assert not still_frozen, (
+        "the frozen route table still publishes write operations on the append-only "
+        f"subscription history: {still_frozen}"
+    )
+    missing = sorted(KEPT_SUBSCRIPTION_HISTORY_OPERATIONS - frozen)
+    assert not missing, f"the frozen route table dropped the read operations: {missing}"
+
+
+def test_subscription_history_operation_ids_are_the_two_reads() -> None:
+    """Generated clients must lose the write identifiers, not keep orphan stubs."""
+    published = {str(row["operation_id"]) for row in _route_table()}
+
+    assert not (published & REMOVED_SUBSCRIPTION_HISTORY_OPERATION_IDS), (
+        "these operationIds belong to removed write operations: "
+        f"{sorted(published & REMOVED_SUBSCRIPTION_HISTORY_OPERATION_IDS)}"
+    )
+    assert KEPT_SUBSCRIPTION_HISTORY_OPERATION_IDS <= published, (
+        "the read operations must stay published: "
+        f"{sorted(KEPT_SUBSCRIPTION_HISTORY_OPERATION_IDS - published)}"
     )

@@ -51,6 +51,12 @@ def _configure_sqlite(engine: Engine) -> None:
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA busy_timeout=5000")
             cursor.execute("PRAGMA synchronous=NORMAL")
+            # An ``INSERT OR REPLACE`` deletes the conflicting row implicitly. SQLite
+            # only fires the table's BEFORE DELETE trigger for that implicit delete
+            # when recursive triggers are on; with the default (off) every
+            # append-only guard would be bypassable through the very constraint that
+            # is supposed to protect the row.
+            cursor.execute("PRAGMA recursive_triggers=ON")
         finally:
             cursor.close()
 

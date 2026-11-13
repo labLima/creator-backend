@@ -197,22 +197,3 @@ class SqlAlchemySubscriptionHistoryRepository(SubscriptionHistoryRepository):
         self.s.add(x)
         self.s.flush()
         return self._r(x)
-
-    def update(self, *, history_id, fields):
-        x = self.s.get(subscription_models.SubscriptionHistory, history_id)
-        if x is None:
-            raise ValueError("Subscription history not found")
-        mapping = {"reason": "reason_text"}
-        for key, value in fields.items():
-            target = mapping.get(key, key)
-            if hasattr(x, target):
-                setattr(x, target, value)
-        self.s.flush()
-        return self._r(x)
-
-    def soft_delete(self, *, history_id):
-        x = self.s.get(subscription_models.SubscriptionHistory, history_id)
-        if x is None:
-            raise ValueError("Subscription history not found")
-        self.s.delete(x)
-        self.s.flush()
