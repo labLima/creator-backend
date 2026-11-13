@@ -1,4 +1,4 @@
-"""Behaviour of ``workspace_members`` after the rename (ADR-029, slice T8).
+"""Behaviour of ``workspace_members`` after the rename (ADR-030, slice T8).
 
 Membership removal is physical: the final modeling has no ``deleted_at`` and the
 unique key is ``(workspace_id, user_id)``. The ``status`` column carries the

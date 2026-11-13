@@ -3,14 +3,14 @@
 > Checklist de execução de [`plan-sqlite-final-schema.md`](plan-sqlite-final-schema.md).
 > Issues filhas no board `SHC` (Shared Context): `SHC-2` em diante, filhas de `SHC-1`.
 > Issue global: [#159](https://github.com/labLima/creator-backend/issues/159).
-> Rastreabilidade local: [docs/issues/0059](../docs/issues/0059-sqlite-final-schema-alignment.md).
+> Rastreabilidade local: [docs/issues/0060](../docs/issues/0060-sqlite-final-schema-alignment.md).
 >
 > Gates por tarefa: `XDG_DATA_HOME=$PWD/.local/xdg make check PYTHON=.venv/bin/python`,
 > `... make security ...`, `... make e2e ...`. PRs contra `dev`.
 
 ## Fase 0 — Contrato, paridade e portabilidade
 
-- [x] **T1** (SHC-2, S) ADR-029, épico e tracker — depende de —
+- [x] **T1** (SHC-2, S) ADR-030, épico e tracker — depende de —
 - [x] **T2** (SHC-3, L) Comparador único e teste de paridade com orçamento — depende de T1
 - [x] **T3** (SHC-4, S) Helpers portáveis de enum e nome de índice — depende de T1
 - [x] **T4** (SHC-5, M) Portabilidade das CHECK constraints e defaults — depende de T3
@@ -72,7 +72,7 @@
 
 ## Fase 5 — Aposentadoria do legado
 
-- [ ] **T16** (SHC-17, M) ADR-030, 11 legadas e 2 tabelas sem alvo — depende de T15
+- [ ] **T16** (SHC-17, M) ADR-031, 11 legadas e 2 tabelas sem alvo — depende de T15
 - [ ] **T20** (SHC-21, M) Triggers, funções e view do dump — depende de T15
 
 ### Checkpoint — Fase 5 — Aposentadoria do legado

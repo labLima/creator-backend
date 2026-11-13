@@ -169,21 +169,34 @@ def test_artist_v6_and_reviewer_v4_check_specific_visual_constraints() -> None:
     assert current.template_id == "agent.artist.v6"
     assert "rounded rectangles, translucent panels, pills" in current.text
     assert "rounded rectangles, translucent panels, pills" not in previous.text
-    assert review.template_id == "agent.reviewer.v5"
-    assert "return REFINE" in review.text
+    assert review.template_id == "agent.reviewer.v6"
+    assert "REFINE" in review.text
     assert "requirements absent from the brief" in review.text
 
 
 def test_reviewer_v5_distinguishes_textual_description_from_visual_verification() -> None:
     inputs = {"briefing": "Preserve the official logo", "image_prompt": "Use the Brand"}
     previous = build_agent_prompt("REVIEWER", inputs, version="4.0")
-    current = build_reviewer_prompt(inputs)
+    current = build_agent_prompt("REVIEWER", inputs, version="5.0")
 
     assert current.version == "5.0"
     assert "cannot prove exact fidelity" in current.text
     assert "Do not claim that such fidelity was visually verified" in current.text
     assert "do not reject solely because no reference was supplied" in current.text
     assert "cannot prove exact fidelity" not in previous.text
+
+
+def test_reviewer_v6_checks_visual_criteria_and_requires_actionable_refinement() -> None:
+    current = build_reviewer_prompt({"briefing": "Launch visual", "image_prompt": "No text"})
+
+    assert current.version == "6.0"
+    assert "aspect ratio and framing" in current.text
+    assert "cropped or cut off" in current.text
+    assert "unexpected visible text" in current.text
+    assert "material, visible requirement" in current.text
+    assert "cannot prove exact fidelity" in current.text
+    assert "concrete visual correction" in current.text
+    assert "preserve the approved Creative Concept" in current.text
 
 
 def test_independent_artist_v7_guides_photography_without_imposing_it() -> None:
@@ -219,6 +232,7 @@ def test_versioned_artist_prompts_remain_reproducible(version: str, expected_has
     [
         ("4.0", "aa784ebc56dd0ecfd021490badd79bc1735a1b3407a459d2828b44d1d9d38519"),
         ("5.0", "92193db0b99ead2f7289556b9162bc0b29fed15b5d0453f8e32ce2e8dde5124f"),
+        ("6.0", "1ebf8945d389b7b73e03a91638c97397dd4e8b5b908bbadf46a81c738a002111"),
     ],
 )
 def test_versioned_reviewer_prompts_remain_reproducible(version: str, expected_hash: str) -> None:

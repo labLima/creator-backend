@@ -1,1 +1,1 @@
-"""Content plan capability: final-modeling planning tables (ADR-029, T9)."""
+"""Content plan capability: final-modeling planning tables (ADR-030, T9)."""

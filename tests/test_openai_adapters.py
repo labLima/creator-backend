@@ -563,6 +563,10 @@ def review_request() -> ImageReviewRequest:
         prompt="A red rectangle",
         briefing="Launch the summer collection",
         brand_context={"voice": "clear"},
+        metadata={
+            "target_aspect_ratio": "4:5",
+            "criteria": ["cropped or cut-off objects"],
+        },
     )
 
 
@@ -593,6 +597,9 @@ def test_reviewer_parses_valid_json_decision_and_feedback(fenced: bool) -> None:
     inputs = client.responses.calls[0]["input"][0]["content"]
     assert len([part for part in inputs if part["type"] == "input_image"]) == 1
     assert "cannot prove exact fidelity" in inputs[0]["text"]
+    assert '"target_aspect_ratio"' in inputs[0]["text"]
+    assert "u003a5" in inputs[0]["text"]
+    assert "cropped or cut-off objects" in inputs[0]["text"]
 
 
 @pytest.mark.parametrize(

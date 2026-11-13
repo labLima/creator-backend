@@ -69,7 +69,7 @@ Estas tabelas já correspondem ao alvo do PDF e não têm migração de schema p
 - `workspace_members`
 - `workspaces`
 
-## Tabelas retiradas pelo contract da ADR-029
+## Tabelas retiradas pelo contract da ADR-030
 
 Estas tabelas legadas foram substituídas pelo modelo final e dropadas pela
 revisão `0019_legacy_contract` (T13). O downgrade recria apenas a estrutura,
@@ -82,10 +82,10 @@ sem dados.
 | `design_structure` | `post_designs`, `design_slides` |
 | `generated_image` | `generated_images`, `image_resizes` |
 
-## Tabelas do modelo final adicionadas por ADR-029
+## Tabelas do modelo final adicionadas por ADR-030
 
 Estas tabelas vêm de `docs/migration/Creator_DB_final.sql` e entram por fases
-(ADR-029), antes de qualquer rota consumi-las.
+(ADR-030), antes de qualquer rota consumi-las.
 
 | Tabela | Fase | Situação | Consumidor |
 | --- | --- | --- | --- |

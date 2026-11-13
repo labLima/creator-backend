@@ -225,17 +225,17 @@ com teste, ou fora de escopo justificado.
 | `outbox_events` | extensão de ADR (preservada) |
 | `activity_events` | extensão de ADR (preservada) |
 | `content_text_versions` | extensão de ADR (preservada) |
-| `agent_workflow_runs` | legado com consumidores (ADR-030 decide) |
-| `agent_workflow_steps` | legado com consumidores (ADR-030 decide) |
-| `assets` | legado com consumidores (ADR-030 decide) |
-| `brand_settings` | legado com consumidores (ADR-030 decide) |
-| `contents` | legado com consumidores (ADR-030 decide) |
-| `generation_job_status_events` | legado com consumidores (ADR-030 decide) |
-| `generation_jobs` | legado com consumidores (ADR-030 decide) |
-| `generations` | legado com consumidores (ADR-030 decide) |
-| `images` | legado com consumidores (ADR-030 decide) |
-| `projects` | legado com consumidores (ADR-030 decide) |
-| `settings` | legado com consumidores (ADR-030 decide) |
-| `provider_customers` | sem alvo no modelo final (ADR-030 decide) |
-| `provider_subscriptions` | sem alvo no modelo final (ADR-030 decide) |
+| `agent_workflow_runs` | legado com consumidores (ADR-031 decide) |
+| `agent_workflow_steps` | legado com consumidores (ADR-031 decide) |
+| `assets` | legado com consumidores (ADR-031 decide) |
+| `brand_settings` | legado com consumidores (ADR-031 decide) |
+| `contents` | legado com consumidores (ADR-031 decide) |
+| `generation_job_status_events` | legado com consumidores (ADR-031 decide) |
+| `generation_jobs` | legado com consumidores (ADR-031 decide) |
+| `generations` | legado com consumidores (ADR-031 decide) |
+| `images` | legado com consumidores (ADR-031 decide) |
+| `projects` | legado com consumidores (ADR-031 decide) |
+| `settings` | legado com consumidores (ADR-031 decide) |
+| `provider_customers` | sem alvo no modelo final (ADR-031 decide) |
+| `provider_subscriptions` | sem alvo no modelo final (ADR-031 decide) |
 

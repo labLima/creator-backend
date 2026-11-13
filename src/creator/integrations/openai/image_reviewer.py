@@ -23,9 +23,12 @@ class OpenAIMultimodalImageReviewer:
                 "briefing": request.briefing,
                 "brand_context": dict(request.brand_context),
                 "image_prompt": request.prompt,
+                "review_criteria": dict(request.metadata),
                 "output_instructions": (
                     "Return JSON only with decision (APPROVED, REFINE, or REJECTED), "
-                    "score from 0 to 1, feedback (array), and safety_issues (array)."
+                    "score from 0 to 1, feedback (array), and safety_issues (array). "
+                    "For REFINE, feedback must contain a concrete correction for the next "
+                    "attempt and preserve the original Creative Concept."
                 ),
             }
         )

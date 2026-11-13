@@ -1,4 +1,4 @@
-"""Behaviour of the billing and credit satellites (ADR-029, slice T7).
+"""Behaviour of the billing and credit satellites (ADR-030, slice T7).
 
 The CHECK and UNIQUE assertions run without foreign-key enforcement (SQLite's
 default) so a failure can only come from the constraint under test; SQLite names

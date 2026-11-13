@@ -1,6 +1,6 @@
 """Request payloads for the notification capability.
 
-Vocabulary follows ``Creator_DB_final.sql`` (ADR-029, T24). Response bodies are
+Vocabulary follows ``Creator_DB_final.sql`` (ADR-030, T24). Response bodies are
 serialised by ``creator.application.serializers``; only requests are typed here.
 """
 

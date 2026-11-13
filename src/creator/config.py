@@ -108,6 +108,9 @@ class Settings(BaseSettings):
     image_generation_job_max_attempts: int = 3
     image_generation_retry_interval_seconds: list[int] = [60, 120, 240]
     image_generation_stale_processing_seconds: int = 900
+    image_review_max_attempts: int = Field(default=3, ge=1, le=10)
+    image_generation_cost_estimate_usd: float | None = Field(default=None, ge=0)
+    image_review_cost_estimate_usd: float | None = Field(default=None, ge=0)
     agent_workflow_max_refinements: int = Field(default=3, ge=0, le=10)
     agent_workflow_job_timeout_seconds: int = 900
     pipeline_event_max_attempts: int = 5

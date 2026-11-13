@@ -36,7 +36,7 @@ ADR_EXTENSIONS: Final[tuple[str, ...]] = (
 )
 
 # Tables still required by live consumers and absent from the final modeling.
-# ADR-030 decides their retirement; until then they are part of the target set.
+# ADR-031 decides their retirement; until then they are part of the target set.
 LEGACY_RETENTION: Final[tuple[str, ...]] = (
     "agent_workflow_runs",
     "agent_workflow_steps",
@@ -66,7 +66,7 @@ ADR_020_COLUMNS: Final[frozenset[tuple[str, str]]] = frozenset(
 # Indexes the dump declares that the metadata cannot reproduce literally, keyed by
 # (metadata table, index name). This is an explicit allowlist, not a predicate
 # heuristic: only these names are declared, so a new partial predicate still counts
-# as index debt until it is reviewed here and in ADR-029.
+# as index debt until it is reviewed here and in ADR-030.
 DUMP_INDEX_INCONSISTENCIES: Final[dict[tuple[str, str], str]] = {
     ("captions", "uq_captions_current"): (
         "the dump filters deleted_at, a column captions does not declare; "
@@ -1327,7 +1327,7 @@ def _compare_indexes(
             continue
 
         # Only the explicit allowlist may become a declared exception. The dump
-        # inconsistency is a reviewed decision recorded in ADR-029; a predicate
+        # inconsistency is a reviewed decision recorded in ADR-030; a predicate
         # shape (functions, unknown identifiers) is not enough to earn an exemption.
         declared: list[tuple[IndexSignature, str]] = []
         for index in expected_indexes:

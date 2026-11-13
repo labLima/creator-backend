@@ -328,24 +328,24 @@ def test_allowlisted_tables_are_counted() -> None:
 
 def test_allowlists_are_documented() -> None:
     """Adding a name to an allowlist must also touch its decision record."""
-    adr = (PROJECT_ROOT / "docs" / "adr" / "0029-sqlite-final-schema-alignment.md").read_text(
+    adr = (PROJECT_ROOT / "docs" / "adr" / "0030-sqlite-final-schema-alignment.md").read_text(
         encoding="utf-8"
     )
     matrix = (PROJECT_ROOT / "docs" / "SCHEMA-MIGRATION-MATRIX.md").read_text(encoding="utf-8")
     for name in ADR_EXTENSIONS:
-        assert name in adr, f"{name} is allowlisted but absent from ADR-029"
+        assert name in adr, f"{name} is allowlisted but absent from ADR-030"
     for name in LEGACY_RETENTION + NO_TARGET:
         assert name in matrix, f"{name} is allowlisted but absent from the schema matrix"
 
 
 def test_dump_hash_matches_the_decision_record() -> None:
-    """Relaxing the vendored dump must also update ADR-029, never silently."""
-    adr = (PROJECT_ROOT / "docs" / "adr" / "0029-sqlite-final-schema-alignment.md").read_text(
+    """Relaxing the vendored dump must also update ADR-030, never silently."""
+    adr = (PROJECT_ROOT / "docs" / "adr" / "0030-sqlite-final-schema-alignment.md").read_text(
         encoding="utf-8"
     )
     dump_hash = sha256_file(FINAL_DUMP)
     assert dump_hash in adr, (
-        f"{dump_hash} is not recorded in ADR-029; a change to the final modeling "
+        f"{dump_hash} is not recorded in ADR-030; a change to the final modeling "
         "needs an explicit decision update"
     )
 
@@ -354,7 +354,7 @@ def test_dump_hash_matches_the_decision_record() -> None:
 #
 # Three families of divergence are decisions, not debt: the CHECK constraints that
 # SQLAlchemy generates for enum columns, the ADR-020 authentication columns that the
-# final modeling does not carry, and the one dump inconsistency recorded in ADR-029
+# final modeling does not carry, and the one dump inconsistency recorded in ADR-030
 # (`uq_captions_current` filters `deleted_at`, a column `captions` does not have).
 # They move to a `declared_exception` category so `Gap.unexpected_total()` — the
 # number the `--check` gate uses — stops counting them as drift.
@@ -487,7 +487,7 @@ def test_adr_020_columns_are_declared_exceptions() -> None:
 
 
 def test_captions_partial_index_is_a_declared_dump_inconsistency() -> None:
-    """ADR-029 records that the dump filters a column `captions` does not have.
+    """ADR-030 records that the dump filters a column `captions` does not have.
 
     Both halves of the predicate mismatch are declared: the dump index is missing
     and the metadata index is extra. Neither is retried as ordinary index debt.

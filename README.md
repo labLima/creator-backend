@@ -98,6 +98,12 @@ Os providers de geração de texto e imagem usam OpenAI:
 - imagem: configurado por `OPENAI_IMAGE_MODEL` (padrão `gpt-image-2.5-sunburst`);
 - revisão multimodal: configurada por `OPENAI_REVIEWER_MODEL` (padrão `gpt-5.5`).
 
+Para IMAGE independente com `review_image=true`, `IMAGE_REVIEW_MAX_ATTEMPTS`
+limita as avaliações (padrão 3, entre 1 e 10). `IMAGE_GENERATION_COST_ESTIMATE_USD`
+e `IMAGE_REVIEW_COST_ESTIMATE_USD` podem definir estimativas unitárias para a
+telemetria por tentativa; sem valores configurados, o custo fica `null` quando o
+Provider não fornece uma estimativa.
+
 Configure `OPENAI_API_KEY` no `.env`. Sem a chave, as chamadas de geração
 retornam erro estruturado de provider não configurado; a API continua
 disponível. Os adapters Gemini antigos permanecem no código de compatibilidade:

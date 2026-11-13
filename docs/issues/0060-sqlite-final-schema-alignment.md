@@ -1,7 +1,7 @@
-# 0059 — Alinhamento do schema SQLite ao Creator_DB_final.sql
+# 0060 — Alinhamento do schema SQLite ao Creator_DB_final.sql
 
 - Status: em execução (T24 concluída; T25/T23 e fechamento pendentes)
-- ADR primária: [ADR-029](../adr/0029-sqlite-final-schema-alignment.md) (alinhamento ao modelo final), [ADR-021](../adr/0021-sqlite-default-database.md) (SQLite como banco padrão) e [ADR-015](../adr/0015-database-diagram-alignment.md) (alinhamento ao diagrama)
+- ADR primária: [ADR-030](../adr/0030-sqlite-final-schema-alignment.md) (alinhamento ao modelo final), [ADR-021](../adr/0021-sqlite-default-database.md) (SQLite como banco padrão) e [ADR-015](../adr/0015-database-diagram-alignment.md) (alinhamento ao diagrama)
 - Issue tracker: [#159](https://github.com/labLima/creator-backend/issues/159)
 - Relacionadas: [#106](https://github.com/labLima/creator-backend/issues/106), [#97](https://github.com/labLima/creator-backend/issues/97)–[#102](https://github.com/labLima/creator-backend/issues/102)
 - Plano: [tasks/plan-sqlite-final-schema.md](../../tasks/plan-sqlite-final-schema.md)
@@ -94,7 +94,7 @@ cuida do vocabulário de papel), cada uma declarando o workspace
 
 | Tarefa | Issue | Título |
 | --- | --- | --- |
-| T1 | `SHC-2` | [T1] ADR-029, épico e tracker |
+| T1 | `SHC-2` | [T1] ADR-030, épico e tracker |
 | T2 | `SHC-3` | [T2] Teste de paridade contra o DDL final |
 | T3 | `SHC-4` | [T3] Helpers portáveis de coluna, enum e índice |
 | T4 | `SHC-5` | [T4] Portabilidade das CHECK constraints e defaults |
@@ -109,7 +109,7 @@ cuida do vocabulário de papel), cada uma declarando o workspace
 | T13 | `SHC-14` | [T13] Contract: remover as tabelas antigas |
 | T14 | `SHC-15` | [T14] Lote A: identidade, notificações, brand, campanha e persona |
 | T15 | `SHC-16` | [T15] Lote B: billing, créditos e cupons |
-| T16 | `SHC-17` | [T16] ADR-030, 11 legadas e 2 tabelas sem alvo |
+| T16 | `SHC-17` | [T16] ADR-031, 11 legadas e 2 tabelas sem alvo |
 | T17 | `SHC-18` | [T17] Consolidar a baseline |
 | T18 | `SHC-19` | [T18] Fechamento do épico |
 | T19 | `SHC-20` | [T19] Snapshot como gate, índices no fixture e teste de upgrade anterior |
@@ -156,7 +156,7 @@ migrado, `PRAGMA foreign_key_check`, idempotência).
 ## Progresso (2026-11-10)
 
 `origin/dev` integrada na branch (`92c7950`): a feature de importação de imagens
-foi preservada e a issue local renumerada para `0058` (hoje `0059`) porque a `dev` publicou
+foi preservada e a issue local renumerada para `0058` (hoje `0060`) porque a `dev` publicou
 `0057-image-import`. A revisão `0006_imported_image_versions` entrou na cadeia
 antes de `0006_audit_consent_persona`, com head única em `0014_generated_images`.
 
@@ -486,7 +486,7 @@ As tarefas restantes foram abertas no repositório e agrupadas na milestone
 | --- | --- | --- |
 | T15 (restante: credit ledger e fiscal_invoices) | [#162](https://github.com/labLima/creator-backend/issues/162) | `SHC-16` |
 | T20 (triggers, funções e view) | [#163](https://github.com/labLima/creator-backend/issues/163) | `SHC-21` |
-| T16 (ADR-030 e legadas) | [#164](https://github.com/labLima/creator-backend/issues/164) | `SHC-17` |
+| T16 (ADR-031 e legadas) | [#164](https://github.com/labLima/creator-backend/issues/164) | `SHC-17` |
 | T17 (consolidar baseline) | [#165](https://github.com/labLima/creator-backend/issues/165) | `SHC-18` |
 | T18 (fechamento do épico) | [#166](https://github.com/labLima/creator-backend/issues/166) | `SHC-19` |
 

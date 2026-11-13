@@ -163,9 +163,9 @@ def render(final: FinalSchema, gap: Gap, dump_hash: str, model_count: int) -> st
     for name in ADR_EXTENSIONS:
         lines.append(f"| `{name}` | extensão de ADR (preservada) |")
     for name in LEGACY_RETENTION:
-        lines.append(f"| `{name}` | legado com consumidores (ADR-030 decide) |")
+        lines.append(f"| `{name}` | legado com consumidores (ADR-031 decide) |")
     for name in NO_TARGET:
-        lines.append(f"| `{name}` | sem alvo no modelo final (ADR-030 decide) |")
+        lines.append(f"| `{name}` | sem alvo no modelo final (ADR-031 decide) |")
     lines.append("")
     return "\n".join(lines) + "\n"
 

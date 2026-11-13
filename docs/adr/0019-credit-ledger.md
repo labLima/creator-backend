@@ -3,7 +3,7 @@
 - Status: accepted (amended 2026-11-13)
 - Tracker: [#38](https://github.com/labLima/creator-backend/issues/38)
 - Issue: [0031-credits](../issues/0031-credits.md)
-- Relacionadas: [ADR-029](0029-sqlite-final-schema-alignment.md) (paridade com o modelo final), [ADR-020](0020-self-hosted-authentication.md) (autenticação própria), [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão)
+- Relacionadas: [ADR-030](0030-sqlite-final-schema-alignment.md) (paridade com o modelo final), [ADR-020](0020-self-hosted-authentication.md) (autenticação própria), [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão)
 - Implementação: [#162](https://github.com/labLima/creator-backend/issues/162), revisão `0035_credit_ledger_alignment`
 
 ## Histórico
@@ -140,7 +140,7 @@ escrita interna deve derivar o Workspace do recurso que a origina e validar que
 as referências pertencem a ele (a FK composta cobre `order_id`; a procedência de
 imagem/resize é validação de aplicação até a T20).
 
-A emenda da ADR-029 que preserva `users.password_hash`/`users.global_role` não
+A emenda da ADR-030 que preserva `users.password_hash`/`users.global_role` não
 altera o ledger: `created_by` referencia `users(id)` com `SET NULL`, então a
 remoção de um usuário não apaga nem reescreve o histórico.
 
