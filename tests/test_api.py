@@ -2521,8 +2521,6 @@ def test_swagger_operations_are_grouped_by_domain() -> None:
         "/api/v1/coupon-redemptions": "Billing",
         "/api/v1/refunds": "Billing",
         "/api/v1/provider-disputes": "Billing",
-        "/api/v1/provider-customers": "Billing",
-        "/api/v1/provider-subscriptions": "Billing",
         "/api/v1/provider-webhook-events": "Billing",
         "/api/v1/provider-idempotency-keys": "Billing",
     }

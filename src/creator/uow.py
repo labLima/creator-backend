@@ -7,10 +7,8 @@ from creator.asset.ports import AssetRepository
 from creator.auth.ports import AuthSessionRepository
 from creator.billing_account.ports import BillingAccountRepository, BillingAddressRepository
 from creator.billing_provider.ports import (
-    ProviderCustomerRepository,
     ProviderDisputeRepository,
     ProviderIdempotencyKeyRepository,
-    ProviderSubscriptionRepository,
     ProviderWebhookEventRepository,
 )
 from creator.brand.ports import (
@@ -106,10 +104,8 @@ class BillingAccountRepositories:
 
 @dataclass(frozen=True, slots=True)
 class BillingProviderRepositories:
-    customers: ProviderCustomerRepository
     disputes: ProviderDisputeRepository
     idempotency_keys: ProviderIdempotencyKeyRepository
-    subscriptions: ProviderSubscriptionRepository
     webhook_events: ProviderWebhookEventRepository
 
 

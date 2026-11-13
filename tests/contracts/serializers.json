@@ -95,17 +95,11 @@
   "_project_data": {
     "full": "{\"brand_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"created_by_user_id\": \"11111111-1111-1111-1111-111111111111\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"description\": \"fixture-description\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"name\": \"fixture-name\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\", \"workspace_id\": \"11111111-1111-1111-1111-111111111111\"}"
   },
-  "_provider_customer_data": {
-    "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"metadata\": {\"fixture\": true}, \"provider\": \"fixture\", \"provider_code\": \"fixture-provider_code\", \"provider_customer_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
-  },
   "_provider_dispute_data": {
     "full": "{\"billing_account_id\": \"11111111-1111-1111-1111-111111111111\", \"charge_id\": \"11111111-1111-1111-1111-111111111111\", \"code\": \"fixture-code\", \"created_at\": \"2026-01-01T12:30:00+00:00\", \"deadline_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"opened_at\": \"2026-01-01T12:30:00+00:00\", \"payload\": {\"fixture\": true}, \"reason\": \"fixture-reason\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
   },
   "_provider_idempotency_key_data": {
     "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"idempotency_key\": \"fixture-idempotency_key\", \"provider\": \"fixture\", \"request_hash\": \"fixture-request_hash\", \"resource_id\": \"11111111-1111-1111-1111-111111111111\", \"resource_type\": \"fixture-resource_type\", \"status\": \"fixture\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
-  },
-  "_provider_subscription_data": {
-    "full": "{\"created_at\": \"2026-01-01T12:30:00+00:00\", \"deleted_at\": \"2026-01-01T12:30:00+00:00\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"payload\": {\"fixture\": true}, \"provider\": \"fixture\", \"provider_status\": \"fixture-provider_status\", \"provider_subscription_id\": \"11111111-1111-1111-1111-111111111111\", \"subscription_id\": \"11111111-1111-1111-1111-111111111111\", \"updated_at\": \"2026-01-01T12:30:00+00:00\"}"
   },
   "_provider_webhook_event_data": {
     "full": "{\"account_id\": \"11111111-1111-1111-1111-111111111111\", \"attempts\": 1, \"dedupe_key\": \"fixture-dedupe_key\", \"event_type\": \"fixture-event_type\", \"id\": \"11111111-1111-1111-1111-111111111111\", \"last_error\": \"fixture-last_error\", \"payload\": {\"fixture\": true}, \"processed_at\": \"2026-01-01T12:30:00+00:00\", \"provider\": \"fixture\", \"provider_event_id\": \"11111111-1111-1111-1111-111111111111\", \"received_at\": \"2026-01-01T12:30:00+00:00\", \"resource_id\": \"11111111-1111-1111-1111-111111111111\", \"resource_type\": \"fixture-resource_type\", \"signature_verified\": true, \"status\": \"fixture\"}"

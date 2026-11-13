@@ -11,14 +11,6 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-class ProviderCustomerCreateRequest(BaseModel):
-    billing_account_id: UUID
-    provider: str
-    provider_customer_id: str
-    provider_code: str | None = None
-    metadata: dict[str, object] = {}
-
-
 class ProviderDisputeCreateRequest(BaseModel):
     billing_account_id: UUID
     charge_id: UUID | None = None
@@ -31,11 +23,3 @@ class ProviderDisputeCreateRequest(BaseModel):
 class ProviderDisputeUpdateRequest(BaseModel):
     reason: str | None = None
     status: str | None = None
-
-
-class ProviderSubscriptionCreateRequest(BaseModel):
-    subscription_id: UUID
-    provider: str
-    provider_subscription_id: str
-    provider_status: str | None = None
-    payload: dict[str, object] = {}

@@ -19,10 +19,8 @@ from creator.billing_account.repository import (
     SqlAlchemyBillingAddressRepository,
 )
 from creator.billing_provider.repository import (
-    SqlAlchemyProviderCustomerRepository,
     SqlAlchemyProviderDisputeRepository,
     SqlAlchemyProviderIdempotencyKeyRepository,
-    SqlAlchemyProviderSubscriptionRepository,
     SqlAlchemyProviderWebhookEventRepository,
 )
 from creator.brand.repository import (
@@ -193,8 +191,6 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.workspace_credit_transactions = SqlAlchemyWorkspaceCreditTransactionRepository(session)
         self.refunds = SqlAlchemyRefundRepository(session)
         provider_disputes = SqlAlchemyProviderDisputeRepository(session)
-        provider_customers = SqlAlchemyProviderCustomerRepository(session)
-        provider_subscriptions = SqlAlchemyProviderSubscriptionRepository(session)
         provider_webhook_events = SqlAlchemyProviderWebhookEventRepository(session)
         provider_idempotency_keys = SqlAlchemyProviderIdempotencyKeyRepository(session)
         self.design_structures = SqlAlchemyDesignStructureRepository(session)
@@ -226,10 +222,8 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             accounts=billing_accounts, addresses=billing_addresses
         )
         self.billing_provider = BillingProviderRepositories(
-            customers=provider_customers,
             disputes=provider_disputes,
             idempotency_keys=provider_idempotency_keys,
-            subscriptions=provider_subscriptions,
             webhook_events=provider_webhook_events,
         )
         self.coupon = CouponRepositories(coupons=coupons, redemptions=coupon_redemptions)

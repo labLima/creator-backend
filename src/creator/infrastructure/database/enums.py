@@ -143,12 +143,6 @@ class SubscriptionStatus(StrEnum):
     EXPIRED = "EXPIRED"
 
 
-class ProviderSubscriptionStatus(StrEnum):
-    ACTIVE = "ACTIVE"
-    CANCELED = "CANCELED"
-    FUTURE = "FUTURE"
-
-
 class PaymentMethodType(StrEnum):
     CREDIT_CARD = "CREDIT_CARD"
     DEBIT_CARD = "DEBIT_CARD"
@@ -217,7 +211,6 @@ __all__ = [
     "CampaignVoice",
     "PlanType",
     "PaymentMethodType",
-    "ProviderSubscriptionStatus",
     "SubscriptionStatus",
     "InviteStatus",
     "InviteType",

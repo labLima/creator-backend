@@ -8,12 +8,12 @@
 
 - Dump: `sha256 619512b778e1f03a315efe5d7d8710a5a540442b5df66ddc144b78e915bbb583`
 - Tabelas no modelo final: **54**
-- Tabelas no metadata atual: **71**
+- Tabelas no metadata atual: **69**
 - Tipos ENUM: **52**
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **53**
+- Divergências: **51**
 - Divergências não declaradas: **1** (exclui `allowlisted` e `declared_exception`)
 
 ## Divergências por categoria
@@ -22,7 +22,7 @@
 | --- | --- |
 | `table_missing` | 0 |
 | `table_extra` | 0 |
-| `allowlisted` | 17 |
+| `allowlisted` | 15 |
 | `declared_exception` | 35 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
@@ -225,17 +225,15 @@ com teste, ou fora de escopo justificado.
 | `outbox_events` | extensão de ADR (preservada) |
 | `activity_events` | extensão de ADR (preservada) |
 | `content_text_versions` | extensão de ADR (preservada) |
-| `agent_workflow_runs` | legado com consumidores (ADR-031 decide) |
-| `agent_workflow_steps` | legado com consumidores (ADR-031 decide) |
-| `assets` | legado com consumidores (ADR-031 decide) |
-| `brand_settings` | legado com consumidores (ADR-031 decide) |
-| `contents` | legado com consumidores (ADR-031 decide) |
-| `generation_job_status_events` | legado com consumidores (ADR-031 decide) |
-| `generation_jobs` | legado com consumidores (ADR-031 decide) |
-| `generations` | legado com consumidores (ADR-031 decide) |
-| `images` | legado com consumidores (ADR-031 decide) |
-| `projects` | legado com consumidores (ADR-031 decide) |
-| `settings` | legado com consumidores (ADR-031 decide) |
-| `provider_customers` | sem alvo no modelo final (ADR-031 decide) |
-| `provider_subscriptions` | sem alvo no modelo final (ADR-031 decide) |
+| `agent_workflow_runs` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `agent_workflow_steps` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `assets` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `brand_settings` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `contents` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `generation_job_status_events` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `generation_jobs` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `generations` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `images` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `projects` | legado retido pela ADR-031 (prazo 2027-06-30) |
+| `settings` | legado retido pela ADR-031 (prazo 2027-06-30) |
 

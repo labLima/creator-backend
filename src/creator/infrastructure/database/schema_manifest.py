@@ -20,8 +20,6 @@ PDF_TABLES = frozenset(
         "invoices",
         "charges",
         "refunds",
-        "provider_customers",
-        "provider_subscriptions",
         "provider_webhook_events",
         "provider_idempotency_keys",
         "provider_disputes",

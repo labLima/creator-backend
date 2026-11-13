@@ -1,6 +1,6 @@
 # 0060 — Alinhamento do schema SQLite ao Creator_DB_final.sql
 
-- Status: em execução (T24 concluída; T25/T23 e fechamento pendentes)
+- Status: em execução (T24, T25, T23, T15, T20 e T16 concluídas; T17/T18 pendentes)
 - ADR primária: [ADR-030](../adr/0030-sqlite-final-schema-alignment.md) (alinhamento ao modelo final), [ADR-021](../adr/0021-sqlite-default-database.md) (SQLite como banco padrão) e [ADR-015](../adr/0015-database-diagram-alignment.md) (alinhamento ao diagrama)
 - Issue tracker: [#159](https://github.com/labLima/creator-backend/issues/159)
 - Relacionadas: [#106](https://github.com/labLima/creator-backend/issues/106), [#97](https://github.com/labLima/creator-backend/issues/97)–[#102](https://github.com/labLima/creator-backend/issues/102)
@@ -222,8 +222,9 @@ T25 (SHC-26) concluída — brand, campanha e persona:
 - Contrato: novas colunas de brand, `brand_id` obrigatório em campanha,
   enums de cor/asset/persona e `expected_action`.
 - Exceção de transição: `brands(id, workspace_id)` UNIQUE permanece porque
-  cinco tabelas legadas ainda usam FK composta; T16 remove as tabelas e a
-  constraint. Dois CHECKs de enum de `charge_transactions` ficam para T15.
+  cinco tabelas legadas ainda usam FK composta. T16 a declara **extensão
+  permanente** (ADR-031), não dívida transitória. Dois CHECKs de enum de
+  `charge_transactions` ficam para T15.
 
 Relatório regenerado: **505 divergências** (589 após T24), `column_missing`
 110, `column_extra` 70, `enum` 22, `index_missing` 76, `check_extra` 30,
@@ -476,6 +477,33 @@ Próximo passo: T15 encerrada; seguir para T20, T16, T17 e T18.
   `balance_after` e da validação de procedência de imagem/resize; nada disso
   está implementado nesta entrega.
 - A issue **não** está concluída: restam T16, T17, T18 e T20.
+
+### Progresso T16 (2026-11-13)
+
+- [ADR-031](../adr/0031-legacy-table-retirement.md) registrada e aceita: as 13
+  tabelas da T16 estão classificadas. As **11 legadas** ficam retidas com prazo de
+  revisão **2027-06-30** (reavaliado na T18); as **2 sem alvo**
+  (`provider_customers`, `provider_subscriptions`) foram **removidas**.
+- `migrations/versions/0037_retire_provider_tables.py` (down_revision
+  `0036_storage_objects`) dropa as duas tabelas com guarda de inspector e tem
+  downgrade que recria a forma exata de `0036` **sem dados** (perda documentada; a
+  recuperação depende de backup). `PRAGMA foreign_key_check` fica limpo: nenhuma
+  outra tabela referencia as duas.
+- Models, ports, repositórios, service, schemas, router, `uow` e serializers perdem
+  `ProviderCustomer`/`ProviderSubscription`. `ProviderWebhookEvent`,
+  `ProviderIdempotencyKey` e `ProviderDispute` continuam com as 15 operações.
+- Contrato: 10 operações CRUD removidas — **218 operações** no total (215
+  `/api/v1` + 3 de System). `route_table.json`, `docs/openapi.yaml`,
+  `schema_tables.json` (69 tabelas) e `schema_ddl.sql` regenerados.
+- Manifesto e paridade: as duas saíram de `PDF_TABLES`, `NO_TARGET` ficou `()`;
+  orçamento **51 divergências** (15 `allowlisted` = 4 extensões + 11 legadas,
+  35 `declared_exception`, 1 `unique_extra` de `brands`), `gap_digest`
+  `4c6a7d87594c2acc5da02ffc582008cc3961b44a62c5093eebc7a38f68bc857b`.
+- `brands(id, workspace_id)` deixa de ser exceção de transição: ADR-031 a declara
+  **extensão permanente** (chave de tenant), mantendo `unexpected_total` em 1.
+- Entrypoints `creator.workers.*` inalterados.
+
+Próximo passo: T17 (consolidar a baseline) e T18 (fechamento).
 
 ## Rastreabilidade GitHub (2026-11-10)
 

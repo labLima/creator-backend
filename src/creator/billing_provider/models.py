@@ -26,7 +26,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from creator.infrastructure.database.constraints import currency_code_check
-from creator.infrastructure.database.db import Base, SchemaRow
+from creator.infrastructure.database.db import Base
 from creator.infrastructure.database.types import (
     enum_column,
     json_type,
@@ -36,30 +36,6 @@ from creator.infrastructure.database.types import (
 )
 
 timestamp = timestamp_tz
-
-
-class ProviderCustomer(SchemaRow, Base):
-    __tablename__ = "provider_customers"
-    billing_account_id: Mapped[UUID] = mapped_column(
-        ForeignKey("billing_accounts.id"), nullable=False
-    )
-    provider: Mapped[str] = mapped_column(String(20), nullable=False)
-    provider_customer_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    provider_code: Mapped[str | None] = mapped_column(String(52))
-    metadata_json: Mapped[dict[str, object]] = mapped_column(
-        "metadata", json_type, nullable=False, server_default=text("'{}'")
-    )
-
-
-class ProviderSubscription(SchemaRow, Base):
-    __tablename__ = "provider_subscriptions"
-    subscription_id: Mapped[UUID] = mapped_column(ForeignKey("subscriptions.id"), nullable=False)
-    provider: Mapped[str] = mapped_column(String(20), nullable=False)
-    provider_subscription_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    provider_status: Mapped[str | None] = mapped_column(String(20))
-    payload: Mapped[dict[str, object]] = mapped_column(
-        json_type, nullable=False, server_default=text("'{}'")
-    )
 
 
 class ProviderWebhookEvent(Base):

@@ -1122,20 +1122,6 @@ CREATE TABLE projects (
 	FOREIGN KEY(created_by_user_id) REFERENCES users (id) ON DELETE SET NULL
 )
 
-CREATE TABLE provider_customers (
-	billing_account_id CHAR(32) NOT NULL,
-	provider VARCHAR(20) NOT NULL,
-	provider_customer_id VARCHAR(64) NOT NULL,
-	provider_code VARCHAR(52),
-	metadata JSON DEFAULT '{}' NOT NULL,
-	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
-	PRIMARY KEY (id),
-	FOREIGN KEY(billing_account_id) REFERENCES billing_accounts (id)
-)
-
 CREATE TABLE provider_disputes (
 	id CHAR(32) NOT NULL,
 	billing_account_id CHAR(32),
@@ -1174,20 +1160,6 @@ CREATE TABLE provider_idempotency_keys (
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	PRIMARY KEY (id)
-)
-
-CREATE TABLE provider_subscriptions (
-	subscription_id CHAR(32) NOT NULL,
-	provider VARCHAR(20) NOT NULL,
-	provider_subscription_id VARCHAR(64) NOT NULL,
-	provider_status VARCHAR(20),
-	payload JSON DEFAULT '{}' NOT NULL,
-	id CHAR(32) NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
-	PRIMARY KEY (id),
-	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id)
 )
 
 CREATE TABLE provider_webhook_events (

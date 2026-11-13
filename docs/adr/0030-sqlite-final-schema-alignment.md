@@ -3,7 +3,7 @@
 - Status: accepted
 - Fonte: decisão da Fase 2 (schema), 2026-11-09
 - Tracker: [docs/issues/0060](../issues/0060-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159)
-- ADRs relacionadas: [ADR-020](0020-self-hosted-authentication.md) (autenticação própria), [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão), [ADR-015](0015-database-diagram-alignment.md) (alinhamento ao diagrama)
+- ADRs relacionadas: [ADR-020](0020-self-hosted-authentication.md) (autenticação própria), [ADR-021](0021-sqlite-default-database.md) (SQLite como banco padrão), [ADR-015](0015-database-diagram-alignment.md) (alinhamento ao diagrama), [ADR-031](0031-legacy-table-retirement.md) (aposentadoria do legado)
 - Issues de implementação: `SHC-2` a `SHC-26` no board `SHC` do Shared Context; plano em [`tasks/plan-sqlite-final-schema.md`](../../tasks/plan-sqlite-final-schema.md)
 
 ## Contexto
@@ -65,9 +65,11 @@ tabelas alinhadas.
 
 ### 2. A modelagem final é a referência, com exceções declaradas
 
-O conjunto-alvo **não é 54 tabelas**: é `54 do dump` + `4 extensões de ADR` + `13 tabelas ainda
-sem alvo` = **71 tabelas** durante a execução, caindo para 58 quando a ADR-031 decidir as 13. As
-exceções são constantes declaradas no teste de paridade, nunca condições espalhadas:
+O conjunto-alvo **não é 54 tabelas**: é `54 do dump` + `4 extensões de ADR` + `11 legadas
+retidas` = **69 tabelas**. Durante a execução o alvo transitório foi de 71 tabelas
+(54 + 4 + 13); a [ADR-031](0031-legacy-table-retirement.md) retirou as 2 tabelas sem
+alvo e reteve as 11 legadas com prazo. As exceções são constantes declaradas no teste
+de paridade, nunca condições espalhadas:
 
 - **Extensões de ADR preservadas:** `auth_sessions`, `outbox_events`, `activity_events`,
   `content_text_versions`.
@@ -75,7 +77,11 @@ exceções são constantes declaradas no teste de paridade, nunca condições es
   permanecem; são a única fonte de credencial local. `users.external_id` é absorvido por
   `users.auth_provider_id` na migração, e `users.cnpj`/`users.cpf` são removidos se não tiverem
   consumidor (verificado em T14).
-- **Tabelas sem alvo:** `provider_customers` e `provider_subscriptions`, decididas na ADR-031.
+- **Tabelas sem alvo:** nenhuma. `provider_customers` e `provider_subscriptions` foram
+  removidas pela revisão `0037_retire_provider_tables`, conforme
+  [ADR-031](0031-legacy-table-retirement.md).
+- **Tabelas legadas retidas:** as 11 de `final_schema.LEGACY_RETENTION`, com prazo de
+  revisão de 2027-06-30 registrado na [ADR-031](0031-legacy-table-retirement.md).
 
 Colunas exigidas pelo dump e ausentes por decisão de produto (por exemplo `users.email`
 `varchar(254)`) são migradas; o `String(320)` atual deixa de valer e o teste
@@ -127,6 +133,12 @@ Assim cada PR que corrige uma tabela reduz uma contagem e o digest na mesma diff
 de progresso é o próprio diff. `xfail`, skip e allowlist por tabela são rejeitados porque não
 forçam a limpeza. Ao final, todas as contagens são zero e o arquivo de orçamento fica só com os
 hashes.
+
+Estado após a T16 (ADR-031): **51 itens** — `allowlisted` 15 (4 extensões de ADR + 11 legadas
+retidas), `declared_exception` 35 e `unique_extra` 1. Esse 1 é o UNIQUE
+`brands(id, workspace_id)`, que a [ADR-031](0031-legacy-table-retirement.md) declara extensão
+permanente, então `unexpected_total` fica em 1 por decisão. Todas as outras categorias estão em
+zero e a família `no_target` do ledger deixou de existir.
 
 CHECKs não são comparáveis por texto entre PostgreSQL e SQLite. O módulo declara
 `CHECK_MAP`, mapeando cada CHECK do dump ao CHECK portável equivalente, e o teste falha se
@@ -222,8 +234,9 @@ assinatura são obrigatoriamente cobertos por (a) ou (b). O inventário vive em
 ### 12. Rastreabilidade
 
 ADR-030 é a decisão primária desta frente; ADR-015 e ADR-021 são relacionadas. `docs/issues/0060`
-e o tracker passam a apontar ADR-030 como primária. A ADR-031 (aposentadoria do legado) é criada
-em T16, não antes, e o conjunto de 71 tabelas só reduz depois dela.
+e o tracker passam a apontar ADR-030 como primária. A [ADR-031](0031-legacy-table-retirement.md)
+foi criada na T16 e decide as 13 tabelas: 11 legadas retidas com prazo e 2 de provider removidas.
+O conjunto de tabelas só reduz depois dela.
 
 ## Consequências
 
@@ -250,8 +263,10 @@ Duas exceções ficam registradas até as tarefas que as encerram:
 
 - `brands(id, workspace_id)` mantém o UNIQUE do modelo anterior porque cinco
   tabelas legadas (`contents`, `assets`, `projects`, `generations`,
-  `agent_workflow_runs`) ainda declaram FK composta para `brands`. A T16
-  aposenta essas tabelas e remove o UNIQUE; o dump não o declara.
+  `agent_workflow_runs`) ainda declaram FK composta para `brands`. O dump não o
+  declara. A [ADR-031](0031-legacy-table-retirement.md) encerra a transição
+  declarando a chave **extensão permanente** por ser a chave de tenant das tabelas
+  satélites de Brand; ela permanece como `unique_extra` declarado no orçamento.
 - Os CHECKs de `charge_transactions.provider`/`status` ficam adiados para a
   T15, que reescreve a tabela de billing; até lá o vocabulário continua no
   `Enum` (validado pela aplicação) sem crescer o orçamento de `check_extra`.

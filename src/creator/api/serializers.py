@@ -520,34 +520,6 @@ def _provider_dispute_data(item: Any) -> dict[str, Any]:
     }
 
 
-def _provider_customer_data(item: Any) -> dict[str, Any]:
-    return {
-        "id": str(item.id),
-        "billing_account_id": str(item.billing_account_id),
-        "provider": item.provider,
-        "provider_customer_id": item.provider_customer_id,
-        "provider_code": item.provider_code,
-        "metadata": item.metadata,
-        "created_at": item.created_at.isoformat(),
-        "updated_at": item.updated_at.isoformat(),
-        "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
-    }
-
-
-def _provider_subscription_data(item: Any) -> dict[str, Any]:
-    return {
-        "id": str(item.id),
-        "subscription_id": str(item.subscription_id),
-        "provider": item.provider,
-        "provider_subscription_id": item.provider_subscription_id,
-        "provider_status": item.provider_status,
-        "payload": item.payload,
-        "created_at": item.created_at.isoformat(),
-        "updated_at": item.updated_at.isoformat(),
-        "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
-    }
-
-
 def _provider_webhook_event_data(item: Any) -> dict[str, Any]:
     return {
         "id": str(item.id),

@@ -36,13 +36,15 @@ from creator.main import app
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_PATH = PROJECT_ROOT / "docs" / "openapi.yaml"
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
-# 225 `/api/v1` operations plus the three System operations (/health,
+# 215 `/api/v1` operations plus the three System operations (/health,
 # /health/live, /metrics). The original 227 figure in issue 0051 predates Activity
 # Events; the two credit-ledger write operations were removed in T15 (issue #162)
-# because a Credit Transaction belongs to an append-only ledger, and the three
+# because a Credit Transaction belongs to an append-only ledger, the three
 # subscription-history writes were removed in T20 (issue #163) because
-# `subscription_history` is append-only too: 231 - 3 = 228.
-EXPECTED_OPERATION_COUNT = 228
+# `subscription_history` is append-only too, and T16 (issue #164) retired the two
+# provider cache collections -- 5 CRUD operations each -- because ADR-031 drops
+# their tables: 231 - 3 - 10 = 218.
+EXPECTED_OPERATION_COUNT = 218
 
 NOTIFICATION_PREFERENCE_PATH = "/api/v1/notification-preferences/{id}"
 RESOURCE_ID_REF = {"$ref": "#/components/parameters/ResourceId"}

@@ -61,6 +61,7 @@ de implementação vinculada antes do fechamento do tracker.
 | [ADR-028](adr/0028-authorized-artist-reference-images.md) | [#148](https://github.com/labLima/creator-backend/issues/148) | [0058](issues/0058-authorized-artist-reference-images.md); relacionada a #78 |
 | [ADR-029](adr/0029-limited-image-review-refinement.md) | [#167](https://github.com/labLima/creator-backend/issues/167) | [#168](https://github.com/labLima/creator-backend/issues/168), [0059](issues/0059-limited-image-review-refinement.md); relacionada a #78 |
 | [ADR-030](adr/0030-sqlite-final-schema-alignment.md) | [0060](issues/0060-sqlite-final-schema-alignment.md) / [#159](https://github.com/labLima/creator-backend/issues/159) | [0060](issues/0060-sqlite-final-schema-alignment.md); board `SHC` (`SHC-2`-`SHC-26`); relacionada a [ADR-015](adr/0015-database-diagram-alignment.md) e [ADR-021](adr/0021-sqlite-default-database.md) |
+| [ADR-031](adr/0031-legacy-table-retirement.md) | [0060](issues/0060-sqlite-final-schema-alignment.md) / [#164](https://github.com/labLima/creator-backend/issues/164) | [0060](issues/0060-sqlite-final-schema-alignment.md) (T16); 11 legadas retidas com prazo, `provider_customers`/`provider_subscriptions` removidas; relacionada a [ADR-030](adr/0030-sqlite-final-schema-alignment.md) |
 
 A [0049](issues/0049-flat-layout-consolidation.md) é o tracker local da
 consolidação da estrutura plana; a issue remota é

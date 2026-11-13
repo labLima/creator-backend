@@ -36,7 +36,8 @@ ADR_EXTENSIONS: Final[tuple[str, ...]] = (
 )
 
 # Tables still required by live consumers and absent from the final modeling.
-# ADR-031 decides their retirement; until then they are part of the target set.
+# ADR-031 retains them as DOMAIN_EXTENSIONS with a 2027-06-30 reassessment;
+# until then they are part of the target set.
 LEGACY_RETENTION: Final[tuple[str, ...]] = (
     "agent_workflow_runs",
     "agent_workflow_steps",
@@ -52,7 +53,9 @@ LEGACY_RETENTION: Final[tuple[str, ...]] = (
 )
 
 # Tables that exist only in the metadata and are not covered by an ADR yet.
-NO_TARGET: Final[tuple[str, ...]] = ("provider_customers", "provider_subscriptions")
+# ADR-031 decided the last two (`provider_customers`/`provider_subscriptions`) and
+# both were retired by `0037_retire_provider_tables`, so the family is now empty.
+NO_TARGET: Final[tuple[str, ...]] = ()
 
 # Columns the metadata carries because ADR-020 requires local credentials, but the
 # final modeling does not declare. They are decisions, not schema debt.

@@ -72,7 +72,7 @@
 
 ## Fase 5 — Aposentadoria do legado
 
-- [ ] **T16** (SHC-17, M) ADR-031, 11 legadas e 2 tabelas sem alvo — depende de T15
+- [x] **T16** (SHC-17, M) ADR-031, 11 legadas e 2 tabelas sem alvo — depende de T15
 - [ ] **T20** (SHC-21, M) Triggers, funções e view do dump — depende de T15
 
 ### Checkpoint — Fase 5 — Aposentadoria do legado

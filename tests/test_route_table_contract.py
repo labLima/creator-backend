@@ -330,3 +330,127 @@ def test_subscription_history_operation_ids_are_the_two_reads() -> None:
         "the read operations must stay published: "
         f"{sorted(KEPT_SUBSCRIPTION_HISTORY_OPERATION_IDS - published)}"
     )
+
+
+# --- T16: the provider cache tables are retired (issue #164) ------------------
+#
+# ADR-031 drops `provider_customers` and `provider_subscriptions`: the final
+# modeling has no table for a provider-side customer/subscription cache, and
+# `billing_accounts`/`subscriptions` already own the provider identifiers. A route
+# whose table is gone cannot answer, so the ten CRUD operations over the two
+# collections leave the contract with the schema. `EXPECTED_OPERATION_COUNT` in
+# tests/test_openapi_operation_id_parity.py drops by the same ten operations.
+
+PROVIDER_CUSTOMER_PATH = "/api/v1/provider-customers"
+PROVIDER_CUSTOMER_ITEM_PATH = "/api/v1/provider-customers/{id}"
+PROVIDER_SUBSCRIPTION_PATH = "/api/v1/provider-subscriptions"
+PROVIDER_SUBSCRIPTION_ITEM_PATH = "/api/v1/provider-subscriptions/{id}"
+RETIRED_PROVIDER_PATHS = {
+    PROVIDER_CUSTOMER_PATH,
+    PROVIDER_CUSTOMER_ITEM_PATH,
+    PROVIDER_SUBSCRIPTION_PATH,
+    PROVIDER_SUBSCRIPTION_ITEM_PATH,
+}
+REMOVED_PROVIDER_OPERATIONS = {
+    ("GET", PROVIDER_CUSTOMER_PATH),
+    ("POST", PROVIDER_CUSTOMER_PATH),
+    ("GET", PROVIDER_CUSTOMER_ITEM_PATH),
+    ("PUT", PROVIDER_CUSTOMER_ITEM_PATH),
+    ("DELETE", PROVIDER_CUSTOMER_ITEM_PATH),
+    ("GET", PROVIDER_SUBSCRIPTION_PATH),
+    ("POST", PROVIDER_SUBSCRIPTION_PATH),
+    ("GET", PROVIDER_SUBSCRIPTION_ITEM_PATH),
+    ("PUT", PROVIDER_SUBSCRIPTION_ITEM_PATH),
+    ("DELETE", PROVIDER_SUBSCRIPTION_ITEM_PATH),
+}
+REMOVED_PROVIDER_OPERATION_IDS = {
+    "list_provider_customers_api_v1_provider_customers_get",
+    "create_provider_customer_api_v1_provider_customers_post",
+    "get_provider_customer_api_v1_provider_customers__id__get",
+    "update_provider_customer_api_v1_provider_customers__id__put",
+    "delete_provider_customer_api_v1_provider_customers__id__delete",
+    "list_provider_subscriptions_api_v1_provider_subscriptions_get",
+    "create_provider_subscription_api_v1_provider_subscriptions_post",
+    "get_provider_subscription_api_v1_provider_subscriptions__id__get",
+    "update_provider_subscription_api_v1_provider_subscriptions__id__put",
+    "delete_provider_subscription_api_v1_provider_subscriptions__id__delete",
+}
+# The rest of the provider surface is unrelated to the retirement and must keep
+# every operation it publishes today.
+KEPT_PROVIDER_OPERATIONS = {
+    ("GET", "/api/v1/provider-webhook-events"),
+    ("POST", "/api/v1/provider-webhook-events"),
+    ("GET", "/api/v1/provider-webhook-events/{id}"),
+    ("PUT", "/api/v1/provider-webhook-events/{id}"),
+    ("DELETE", "/api/v1/provider-webhook-events/{id}"),
+    ("GET", "/api/v1/provider-idempotency-keys"),
+    ("POST", "/api/v1/provider-idempotency-keys"),
+    ("GET", "/api/v1/provider-idempotency-keys/{id}"),
+    ("PUT", "/api/v1/provider-idempotency-keys/{id}"),
+    ("DELETE", "/api/v1/provider-idempotency-keys/{id}"),
+    ("GET", "/api/v1/provider-disputes"),
+    ("POST", "/api/v1/provider-disputes"),
+    ("GET", "/api/v1/provider-disputes/{id}"),
+    ("PUT", "/api/v1/provider-disputes/{id}"),
+    ("DELETE", "/api/v1/provider-disputes/{id}"),
+}
+
+
+def test_provider_customer_and_subscription_paths_are_gone_from_the_contract() -> None:
+    """The retired collections must not survive in either document."""
+    generated = set(app.openapi()["paths"])
+    documented = set(_static_document()["paths"])
+
+    assert not (RETIRED_PROVIDER_PATHS & generated), (
+        "app.openapi() still publishes the retired provider cache collections: "
+        f"{sorted(RETIRED_PROVIDER_PATHS & generated)}"
+    )
+    assert not (RETIRED_PROVIDER_PATHS & documented), (
+        "docs/openapi.yaml still documents the retired provider cache collections: "
+        f"{sorted(RETIRED_PROVIDER_PATHS & documented)}"
+    )
+
+
+def test_provider_customer_and_subscription_routes_are_not_served() -> None:
+    """A route left in the router would answer even with the path undocumented."""
+    served = _served_operations()
+
+    still_served = sorted(REMOVED_PROVIDER_OPERATIONS & served)
+    assert not still_served, (
+        "these operations are still served by the application although ADR-031 retired "
+        f"their tables: {still_served}"
+    )
+
+
+def test_provider_customer_and_subscription_operations_left_the_frozen_snapshot() -> None:
+    """`tests/contracts/route_table.json` must lose exactly the ten operations."""
+    frozen = {(str(row["method"]), str(row["path"])) for row in _snapshot()}
+
+    still_frozen = sorted(REMOVED_PROVIDER_OPERATIONS & frozen)
+    assert not still_frozen, (
+        f"the frozen route table still publishes the retired collections: {still_frozen}"
+    )
+    assert KEPT_PROVIDER_OPERATIONS <= frozen, (
+        "the retirement must not touch the rest of the provider surface; missing from the "
+        f"snapshot: {sorted(KEPT_PROVIDER_OPERATIONS - frozen)}"
+    )
+
+
+def test_provider_customer_and_subscription_operation_ids_are_not_published() -> None:
+    """Generated clients must lose the identifiers, not keep orphan stubs."""
+    published = {str(row["operation_id"]) for row in _route_table()}
+
+    assert not (published & REMOVED_PROVIDER_OPERATION_IDS), (
+        f"these operationIds belong to retired operations: "
+        f"{sorted(published & REMOVED_PROVIDER_OPERATION_IDS)}"
+    )
+
+
+def test_retirement_removes_no_unrelated_provider_operation() -> None:
+    """The delta is exactly the two collections, not a broader provider cleanup."""
+    removed = REMOVED_PROVIDER_OPERATIONS
+    assert len(removed) == 10, (
+        f"the two retired collections carry 5 CRUD operations each; got {sorted(removed)}"
+    )
+    assert {path for _, path in removed} == RETIRED_PROVIDER_PATHS
+    assert not (removed & KEPT_PROVIDER_OPERATIONS), sorted(removed & KEPT_PROVIDER_OPERATIONS)

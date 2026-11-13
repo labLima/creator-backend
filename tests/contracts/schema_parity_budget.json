@@ -4,7 +4,7 @@
   "counts": {
     "table_missing": 0,
     "table_extra": 0,
-    "allowlisted": 17,
+    "allowlisted": 15,
     "declared_exception": 35,
     "rename_collision": 0,
     "pk_mismatch": 0,
@@ -27,5 +27,5 @@
     "default_missing": 0,
     "default_value": 0
   },
-  "gap_digest": "c8e4803edd2c9092d5a8386c9b568cc030425605bca3f69e044388647fbd7e64"
+  "gap_digest": "4c6a7d87594c2acc5da02ffc582008cc3961b44a62c5093eebc7a38f68bc857b"
 }

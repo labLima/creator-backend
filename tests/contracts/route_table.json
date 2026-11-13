@@ -1257,46 +1257,6 @@
   },
   {
     "method": "GET",
-    "path": "/api/v1/provider-customers",
-    "operation_id": "list_provider_customers_api_v1_provider_customers_get",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/provider-customers",
-    "operation_id": "create_provider_customer_api_v1_provider_customers_post",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/api/v1/provider-customers/{id}",
-    "operation_id": "delete_provider_customer_api_v1_provider_customers__id__delete",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/api/v1/provider-customers/{id}",
-    "operation_id": "get_provider_customer_api_v1_provider_customers__id__get",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "PUT",
-    "path": "/api/v1/provider-customers/{id}",
-    "operation_id": "update_provider_customer_api_v1_provider_customers__id__put",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "GET",
     "path": "/api/v1/provider-disputes",
     "operation_id": "list_provider_disputes_api_v1_provider_disputes_get",
     "tags": [
@@ -1371,46 +1331,6 @@
     "method": "PUT",
     "path": "/api/v1/provider-idempotency-keys/{id}",
     "operation_id": "update_provider_idempotency_key_api_v1_provider_idempotency_keys__id__put",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/api/v1/provider-subscriptions",
-    "operation_id": "list_provider_subscriptions_api_v1_provider_subscriptions_get",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/provider-subscriptions",
-    "operation_id": "create_provider_subscription_api_v1_provider_subscriptions_post",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/api/v1/provider-subscriptions/{id}",
-    "operation_id": "delete_provider_subscription_api_v1_provider_subscriptions__id__delete",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/api/v1/provider-subscriptions/{id}",
-    "operation_id": "get_provider_subscription_api_v1_provider_subscriptions__id__get",
-    "tags": [
-      "Billing"
-    ]
-  },
-  {
-    "method": "PUT",
-    "path": "/api/v1/provider-subscriptions/{id}",
-    "operation_id": "update_provider_subscription_api_v1_provider_subscriptions__id__put",
     "tags": [
       "Billing"
     ]

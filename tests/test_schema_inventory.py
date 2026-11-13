@@ -53,6 +53,7 @@ from creator.infrastructure.database.final_schema import (
     render_schema_ddl,
     sha256_file,
 )
+from creator.infrastructure.database.schema_manifest import PDF_TABLES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = PROJECT_ROOT / "tests" / "contracts"
@@ -522,11 +523,11 @@ def test_declared_exceptions_leave_no_credit_ledger_debt() -> None:
     """Everything the declaration absorbs must disappear from its old category.
 
     The credit ledger was the last table owing column and index work (T15,
-    issue #162). Once it is aligned the target state is 53 gap items: 17
-    allowlisted tables, 35 declared exceptions and the single `brands`
-    UNIQUE the legacy consumers still require. The 31 enum checks include the
-    ledger vocabulary, which is `create_constraint=True` and not a hand-written
-    CHECK.
+    issue #162). T16 then retired the two provider cache tables, so the target
+    state is 51 gap items: 15 allowlisted tables, 35 declared exceptions and the
+    single `brands` UNIQUE the legacy consumers still require. The 31 enum checks
+    include the ledger vocabulary, which is `create_constraint=True` and not a
+    hand-written CHECK.
     """
     gap = _gap()
     counts = gap_counts(gap)
@@ -1065,22 +1066,158 @@ def test_t15_credit_ledger_amount_check_is_mapped_to_a_real_amount_rule() -> Non
 
 
 def test_t15_credit_ledger_leaves_the_target_gap_totals() -> None:
-    """The approved end state for T15 after the amount rule is restored.
+    """The approved end state for the credit ledger after the amount rule is restored.
 
     The source of truth for the gate is the budget, which the alignment PR lowers
-    in the same diff; these numbers are the contract the budget must equal.
+    in the same diff; these numbers are the contract the budget must equal. T16
+    lowered `allowlisted` from 17 to 15 by retiring the two provider cache tables,
+    so the total moved from 53 to 51 with the same single unexpected item.
     """
     gap = _gap()
     counts = gap_counts(gap)
 
-    assert counts["allowlisted"] == 17, gap.details.get("allowlisted")
+    assert counts["allowlisted"] == 15, gap.details.get("allowlisted")
     assert counts["declared_exception"] == 35, (
         "31 enum-generated checks (the ledger vocabulary included), 2 ADR-020 columns "
         f"and 2 dump inconsistencies; got {counts['declared_exception']}"
     )
-    assert gap.total() == 53, (
-        "17 allowlisted + 35 declared + 1 unexpected = 53; a different total means a "
+    assert gap.total() == 51, (
+        "15 allowlisted + 35 declared + 1 unexpected = 51; a different total means a "
         f"real divergence moved, got {gap.total()}"
     )
     assert gap.unexpected_total() == 1, gap.details
     assert counts["unique_extra"] == 1, gap.details.get("unique_extra")
+
+
+# --- T16: ADR-031 retires the provider cache tables (issue #164) -------------
+#
+# `provider_customers` and `provider_subscriptions` were the two `no_target`
+# tables of the parity ledger: the metadata carried them, the final modeling does
+# not, and nothing in the final model replaces them (`billing_accounts` and
+# `subscriptions` already own `external_id`/`external_code`). ADR-031 therefore
+# retires both, which lowers `allowlisted` from 17 to 15 and the gap total from 53
+# to 51. The eleven legacy tables of ADR-030 keep a declared retention deadline and
+# stay in the metadata; the four ADR extensions do not move at all.
+
+RETIRED_PROVIDER_TABLES = ("provider_customers", "provider_subscriptions")
+
+# The eleven legacy tables ADR-031 retains with a deadline. Frozen here on
+# purpose: dropping one of them is a T16-scope regression, not a detail of the
+# parity arithmetic.
+RETAINED_LEGACY_TABLES = (
+    "agent_workflow_runs",
+    "agent_workflow_steps",
+    "assets",
+    "brand_settings",
+    "contents",
+    "generation_job_status_events",
+    "generation_jobs",
+    "generations",
+    "images",
+    "projects",
+    "settings",
+)
+
+
+def test_t16_retired_provider_tables_are_absent_from_the_metadata() -> None:
+    """A retired table must leave `Base.metadata`, not only the allowlist."""
+    present = sorted(table for table in RETIRED_PROVIDER_TABLES if table in Base.metadata.tables)
+
+    assert not present, (
+        f"{present} are still registered in Base.metadata; ADR-031 retires both provider "
+        "cache tables because Creator_DB_final.sql has no target for them"
+    )
+
+
+def test_t16_retired_tables_leave_the_schema_manifest() -> None:
+    """`PDF_TABLES` is the inventory the matrix tests compare the metadata against."""
+    advertised = sorted(set(RETIRED_PROVIDER_TABLES) & set(PDF_TABLES))
+
+    assert not advertised, (
+        f"{advertised} are still advertised as tables of the final modeling; the dump never "
+        "declared them and ADR-031 retires them, so the manifest must agree with the metadata"
+    )
+
+
+def test_t16_retired_provider_tables_are_not_hiding_in_the_gap() -> None:
+    """Removing the allowlist entry must not turn the tables into `table_extra`."""
+    details = _gap().details
+
+    assert details.get("table_extra", []) == [], (
+        "the final modeling has no provider customer/subscription table, so a leftover "
+        f"metadata table would appear as extra: {details.get('table_extra')}"
+    )
+    still_allowlisted = [
+        item for item in details.get("allowlisted", []) if item.startswith("no_target:")
+    ]
+    assert still_allowlisted == [], (
+        "the `no_target` family of the parity ledger must be empty once ADR-031 decides "
+        f"the two tables: {still_allowlisted}"
+    )
+
+
+def test_t16_legacy_tables_are_retained_with_a_deadline() -> None:
+    """ADR-031 keeps eleven legacy tables; none of them may be dropped here."""
+    missing = sorted(table for table in RETAINED_LEGACY_TABLES if table not in Base.metadata.tables)
+
+    assert not missing, (
+        f"{missing} disappeared from Base.metadata; ADR-031 retains every legacy table "
+        "with a deadline, so T16 may only remove the two provider cache tables"
+    )
+    assert sorted(RETAINED_LEGACY_TABLES) == sorted(LEGACY_RETENTION), (
+        "the retained legacy set and final_schema.LEGACY_RETENTION must agree: "
+        f"{sorted(RETAINED_LEGACY_TABLES)} vs {sorted(LEGACY_RETENTION)}"
+    )
+
+
+def test_t16_allowlist_names_the_four_extensions_and_the_eleven_legacy_tables() -> None:
+    """The allowlist is enumerable: nothing else may ride along."""
+    allowlisted = sorted(_gap().details.get("allowlisted", []))
+    expected = sorted(
+        [f"adr_extension:{name}" for name in ADR_EXTENSIONS]
+        + [f"legacy:{name}" for name in RETAINED_LEGACY_TABLES]
+    )
+
+    assert allowlisted == expected, (
+        "the parity allowlist must be exactly the four ADR extensions plus the eleven "
+        f"legacy tables: expected {expected}, got {allowlisted}"
+    )
+
+
+def test_t16_parity_budget_targets_the_retirement() -> None:
+    """The approved T16 end state of the parity ledger.
+
+    The budget file is the gate's source of truth and must be lowered in the same
+    PR; these numbers are the contract it has to equal. `unique_extra` keeps the
+    `brands(id, workspace_id)` key, which ADR-031 declares a permanent extension, so
+    `unexpected_total` stays 1 by decision and not by leftover debt.
+    """
+    gap = _gap()
+    counts = gap_counts(gap)
+
+    assert counts["allowlisted"] == 15, (
+        "4 ADR extensions + 11 legacy tables; the two provider cache tables are "
+        f"retired. Got {counts['allowlisted']}: {gap.details.get('allowlisted')}"
+    )
+    assert counts["declared_exception"] == 35, gap.details.get("declared_exception")
+    assert counts["unique_extra"] == 1, gap.details.get("unique_extra")
+    assert gap.details.get("unique_extra") == ["brands['id', 'workspace_id']"], (
+        "the only UNIQUE the dump does not declare is the brands(id, workspace_id) key, "
+        f"kept as a permanent extension; got {gap.details.get('unique_extra')}"
+    )
+    assert gap.total() == 51, (
+        "15 allowlisted + 35 declared + 1 unexpected = 51; a different total means a "
+        f"real divergence moved, got {gap.total()}"
+    )
+    assert gap.unexpected_total() == 1, gap.details
+
+    unexpected = {
+        category: items
+        for category, items in counts.items()
+        if items and category not in {"allowlisted", "declared_exception"}
+    }
+    remaining = {category: gap.details.get(category) for category in unexpected}
+    assert unexpected == {"unique_extra": 1}, (
+        "every other gap category must be zero after T16; remaining counts: "
+        f"{unexpected}; items: {remaining}"
+    )
