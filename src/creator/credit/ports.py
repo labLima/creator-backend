@@ -13,12 +13,14 @@ class WorkspaceCreditTransactionRecord:
     id: UUID
     workspace_id: UUID
     amount: int
-    transaction_type: str
-    reference_type: str | None
-    reference_id: UUID | None
+    balance_after: int
+    type: str
+    order_id: UUID | None
+    invoice_id: UUID | None
+    generated_image_id: UUID | None
+    image_resize_id: UUID | None
+    created_by: UUID | None
     created_at: datetime
-    updated_at: datetime
-    deleted_at: datetime | None
 
 
 class WorkspaceCreditTransactionRepository(Protocol):
@@ -28,5 +30,3 @@ class WorkspaceCreditTransactionRepository(Protocol):
     def get_for_user(
         self, *, user_id: UUID, transaction_id: UUID
     ) -> WorkspaceCreditTransactionRecord | None: ...
-    def add(self, *, fields: dict[str, object]) -> WorkspaceCreditTransactionRecord: ...
-    def soft_delete(self, *, transaction_id: UUID) -> None: ...

@@ -1387,17 +1387,29 @@ CREATE TABLE workspace_credit_lots (
 )
 
 CREATE TABLE workspace_credit_transactions (
+	id CHAR(32) NOT NULL,
 	workspace_id CHAR(32) NOT NULL,
 	amount INTEGER NOT NULL,
-	transaction_type VARCHAR(30) NOT NULL,
-	reference_type VARCHAR(40),
-	reference_id CHAR(32),
-	id CHAR(32) NOT NULL,
+	balance_after BIGINT DEFAULT 0 NOT NULL,
+	type VARCHAR(19) NOT NULL,
+	order_id CHAR(32),
+	invoice_id CHAR(32),
+	generated_image_id CHAR(32),
+	image_resize_id CHAR(32),
+	created_by CHAR(32),
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	deleted_at DATETIME,
 	PRIMARY KEY (id),
-	FOREIGN KEY(workspace_id) REFERENCES workspaces (id)
+	CONSTRAINT chk_credit_tx_single_reference CHECK ((CASE WHEN order_id IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN invoice_id IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN generated_image_id IS NOT NULL THEN 1 ELSE 0 END) + (CASE WHEN image_resize_id IS NOT NULL THEN 1 ELSE 0 END) <= 1),
+	CONSTRAINT chk_credit_tx_balance_nonnegative CHECK (balance_after >= 0),
+	CONSTRAINT chk_credit_tx_amount_nonzero CHECK (amount <> 0),
+	CONSTRAINT chk_credit_tx_amount_by_type CHECK ((type IN ('SUBSCRIPTION_CREDIT', 'TOP_UP', 'COUPON_CREDIT', 'REFUND') AND amount > 0) OR (type IN ('GENERATION', 'EXPIRATION') AND amount < 0) OR type = 'ADJUSTMENT'),
+	CONSTRAINT fk_credit_tx_order FOREIGN KEY(order_id, workspace_id) REFERENCES orders (id, workspace_id) ON DELETE RESTRICT,
+	CONSTRAINT fk_credit_tx_workspace FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE RESTRICT,
+	CONSTRAINT fk_credit_tx_invoice FOREIGN KEY(invoice_id) REFERENCES invoices (id) ON DELETE RESTRICT,
+	CONSTRAINT fk_credit_tx_generated_image FOREIGN KEY(generated_image_id) REFERENCES generated_images (id) ON DELETE RESTRICT,
+	CONSTRAINT fk_credit_tx_image_resize FOREIGN KEY(image_resize_id) REFERENCES image_resizes (id) ON DELETE RESTRICT,
+	CONSTRAINT fk_credit_tx_created_by FOREIGN KEY(created_by) REFERENCES users (id) ON DELETE SET NULL,
+	CONSTRAINT credit_transaction_type CHECK (type IN ('SUBSCRIPTION_CREDIT', 'TOP_UP', 'COUPON_CREDIT', 'GENERATION', 'EXPIRATION', 'REFUND', 'ADJUSTMENT'))
 )
 
 CREATE TABLE workspace_invite_usages (
@@ -1852,7 +1864,19 @@ CREATE INDEX ix_workspace_credit_lots_workspace_id_expires_at ON workspace_credi
 
 CREATE UNIQUE INDEX uq_credit_lots_id_workspace ON workspace_credit_lots (id, workspace_id)
 
+CREATE INDEX idx_m8_workspace_credit_transactions_created_by ON workspace_credit_transactions (created_by) WHERE created_by IS NOT NULL
+
+CREATE INDEX ix_workspace_credit_transactions_workspace_id_created_at ON workspace_credit_transactions (workspace_id, created_at)
+
 CREATE UNIQUE INDEX uq_credit_tx_id_workspace ON workspace_credit_transactions (id, workspace_id)
+
+CREATE UNIQUE INDEX uq_credit_tx_image_resize ON workspace_credit_transactions (image_resize_id, type)
+
+CREATE UNIQUE INDEX uq_workspace_credit_transactions_generated_image_id_type ON workspace_credit_transactions (generated_image_id, type)
+
+CREATE UNIQUE INDEX uq_workspace_credit_transactions_invoice_id_type ON workspace_credit_transactions (invoice_id, type)
+
+CREATE UNIQUE INDEX uq_workspace_credit_transactions_order_id_type ON workspace_credit_transactions (order_id, type)
 
 CREATE INDEX ix_workspace_invite_usages_member_id ON workspace_invite_usages (member_id)
 

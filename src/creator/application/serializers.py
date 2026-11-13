@@ -477,12 +477,14 @@ def _workspace_credit_transaction_data(item: Any) -> dict[str, Any]:
         "id": str(item.id),
         "workspace_id": str(item.workspace_id),
         "amount": item.amount,
-        "transaction_type": item.transaction_type,
-        "reference_type": item.reference_type,
-        "reference_id": str(item.reference_id) if item.reference_id else None,
+        "balance_after": item.balance_after,
+        "type": item.type,
+        "order_id": str(item.order_id) if item.order_id else None,
+        "invoice_id": str(item.invoice_id) if item.invoice_id else None,
+        "generated_image_id": str(item.generated_image_id) if item.generated_image_id else None,
+        "image_resize_id": str(item.image_resize_id) if item.image_resize_id else None,
+        "created_by": str(item.created_by) if item.created_by else None,
         "created_at": item.created_at.isoformat(),
-        "updated_at": item.updated_at.isoformat(),
-        "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
     }
 
 

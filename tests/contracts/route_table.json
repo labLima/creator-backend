@@ -1688,22 +1688,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/api/v1/workspace-credit-transactions",
-    "operation_id": "create_workspace_credit_transaction_api_v1_workspace_credit_transactions_post",
-    "tags": [
-      "Workspaces"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/api/v1/workspace-credit-transactions/{id}",
-    "operation_id": "delete_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__delete",
-    "tags": [
-      "Workspaces"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/api/v1/workspace-credit-transactions/{id}",
     "operation_id": "get_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__get",

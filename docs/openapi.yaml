@@ -2907,66 +2907,12 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
           x-error-codes: [AUTHENTICATION_INVALID]
-    post:
-      tags:
-      - Workspaces
-      summary: Create Workspace Credit Transaction
-      operationId: create_workspace_credit_transaction_api_v1_workspace_credit_transactions_post
-      security:
-      - CreatorSessionCookie: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkspaceCreditTransactionCreateRequest'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        '429':
-          $ref: '#/components/responses/RateLimitExceeded'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-          x-error-codes: [AUTHENTICATION_INVALID]
   /api/v1/workspace-credit-transactions/{id}:
     get:
       tags:
       - Workspaces
       summary: Get Workspace Credit Transaction
       operationId: get_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__get
-      security:
-      - CreatorSessionCookie: []
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-          title: Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        '429':
-          $ref: '#/components/responses/RateLimitExceeded'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-          x-error-codes: [AUTHENTICATION_INVALID]
-    delete:
-      tags:
-      - Workspaces
-      summary: Delete Workspace Credit Transaction
-      operationId: delete_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__delete
       security:
       - CreatorSessionCookie: []
       parameters:
@@ -9969,35 +9915,6 @@ components:
       additionalProperties: false
       type: object
       title: UserUpdateRequest
-    WorkspaceCreditTransactionCreateRequest:
-      properties:
-        workspace_id:
-          type: string
-          format: uuid
-          title: Workspace Id
-        amount:
-          type: integer
-          title: Amount
-        transaction_type:
-          type: string
-          title: Transaction Type
-        reference_type:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Reference Type
-        reference_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Reference Id
-      type: object
-      required:
-      - workspace_id
-      - amount
-      - transaction_type
-      title: WorkspaceCreditTransactionCreateRequest
     WorkspaceInviteCreateRequest:
       properties:
         workspace_id:

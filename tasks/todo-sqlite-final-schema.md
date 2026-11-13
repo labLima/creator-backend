@@ -62,7 +62,7 @@
 ## Fase 4 — Alinhar tabelas comuns
 
 - [ ] **T14** (SHC-15, M) Lote A: identidade, notificações, brand, campanha e persona — depende de T13
-- [ ] **T15** (SHC-16, M) Lote B: billing, créditos e cupons — depende de T14
+- [x] **T15** (SHC-16, M) Lote B: billing, créditos e cupons - depende de T14
 
 ### Checkpoint — Fase 4 — Alinhar tabelas comuns
 

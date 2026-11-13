@@ -29,7 +29,7 @@ A person's platform-wide authority, independent of any individual Workspace. The
 _Avoid_: System permission, workspace role
 
 **Workspace Role**:
-A membership's authority inside one Workspace. The canonical values are `owner`, `admin`, `editor`, and `viewer`.
+A membership's authority inside one Workspace. The canonical values are `OWNER`, `MANAGER`, `EDITOR`, and `VIEWER`.
 _Avoid_: Global role, user type
 
 **Principal**:
@@ -153,19 +153,19 @@ A stored image produced by an Image Generation Job, with immutable bytes, MIME t
 _Avoid_: Asset, upload, image (when referring to generated output)
 
 **Credit**:
-A non-monetary unit consumed by a Generation or Agent Workflow, tracked in an append-only, Workspace-scoped ledger.
+A non-monetary unit consumed by a Generation or Agent Workflow, tracked in an append-only, Workspace-scoped ledger. Credits are granted as lots with an optional expiry, and spending is recorded as a negative ledger movement allocated to those lots.
 _Avoid_: Token, balance, billing unit
 
 **Credit Wallet**:
-The Workspace-scoped balance of available Credits, composed of a monthly allowance and purchased Credits.
+The Workspace-scoped balance of Credits derived from the ledger and lots. It is a computed view, not a persisted row: the ledger balance is `SUM(amount)` per Workspace, while available Credits are `SUM(remaining_amount)` of unexpired lots. The two numbers are distinct and must not be reported under the same name.
 _Avoid_: Balance, account
 
 **Credit Transaction**:
-An append-only ledger entry that changes a Credit Wallet. It records the action, quantity, balance after, idempotency key, and correlation metadata; corrections are new transactions, never edits.
+An append-only ledger entry that records a Credit movement. It records the `type`, the signed `amount`, the cumulative `balance_after`, and at most one dedicated reference (`order_id`, `invoice_id`, `generated_image_id`, `image_resize_id`); corrections are new transactions, never edits. It carries no idempotency key: repeating a grant or spend for the same reference and type is prevented by a UNIQUE constraint on the database.
 _Avoid_: Payment, invoice, usage record
 
 **Credit Price**:
-The configured number of Credits charged for an action key. Credit Prices are global configuration; they are not tenant data.
+The future number of Credits charged for an action key. The final data model does not persist Credit Prices; until the product adds a pricing decision and a new table, the use case that consumes Credits owns the cost of each action. Do not reintroduce `credit_prices` as if it were part of the current schema.
 _Avoid_: Cost, price (when referring to provider cost)
 
 **Provider Usage**:
@@ -246,7 +246,7 @@ _Avoid_: Campaign (when referring to the legacy entity)
 - Automated Review and Human Review are distinct. A Human Review Decision is required before Approval when policy requires it; an automated `APPROVED` never substitutes for human approval.
 - Publication is a separate capability; the current backend stops at Approval. A Publication record must never be inferred from Generation completion.
 - Content Feedback and Performance Signals are append-only inputs to future Generations; they never silently rewrite Content or Brand Context.
-- Credit Transactions are append-only; a Credit Wallet balance is derived from its ledger. Provider Usage is telemetry and does not itself change Credits.
+- Credit Transactions are append-only; a Credit Wallet is derived, not persisted: its ledger balance comes from `SUM(amount)` and its available Credits from the unexpired lots' `SUM(remaining_amount)`. Provider Usage is telemetry and does not itself change Credits.
 - A Project is legacy; new domain work uses Campaign.
 - Video, feed/community, media buying, and social publishing are out of current backend scope.
 - Design Structure currently carries no attributes; design composition and carousel layout are not implemented by the current Generation boundary.

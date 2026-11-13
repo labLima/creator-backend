@@ -185,3 +185,51 @@ def test_specific_paths_are_declared_before_catch_all_paths(specific: str, gener
 
     documented_order = list(document["paths"])
     assert documented_order.index(specific) < documented_order.index(generic)
+
+
+# --- T15: the credit ledger is read-only (issue #162) ------------------------
+#
+# Credits are an append-only ledger (CONTEXT.md, ADR-019). Writing a transaction
+# or deleting one from the HTTP surface contradicts the ledger invariant and the
+# final modeling, which has no `deleted_at` and no generic reference triple.
+# Corrections are new transactions, so only the two reads stay published.
+
+CREDIT_TRANSACTIONS_PATH = "/api/v1/workspace-credit-transactions"
+CREDIT_TRANSACTION_PATH = "/api/v1/workspace-credit-transactions/{id}"
+REMOVED_CREDIT_OPERATION_IDS = {
+    "create_workspace_credit_transaction_api_v1_workspace_credit_transactions_post",
+    "delete_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__delete",
+}
+KEPT_CREDIT_OPERATION_IDS = {
+    "list_workspace_credit_transactions_api_v1_workspace_credit_transactions_get",
+    "get_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__get",
+}
+
+
+def test_credit_ledger_exposes_no_write_operations() -> None:
+    """Only GET list and GET by id survive on the credit ledger."""
+    document = app.openapi()["paths"]
+
+    assert set(document[CREDIT_TRANSACTIONS_PATH]) == {"get"}, (
+        "POST must be removed from /api/v1/workspace-credit-transactions: a Credit "
+        "Transaction is written by the capability that consumes Credits, never by a "
+        f"client; got {sorted(document[CREDIT_TRANSACTIONS_PATH])}"
+    )
+    assert set(document[CREDIT_TRANSACTION_PATH]) == {"get"}, (
+        "DELETE must be removed from /api/v1/workspace-credit-transactions/{id}: the "
+        "ledger is append-only and has no soft delete, so corrections are new "
+        f"transactions; got {sorted(document[CREDIT_TRANSACTION_PATH])}"
+    )
+
+
+def test_credit_ledger_operation_ids_are_the_two_reads() -> None:
+    """Generated clients must lose the write identifiers, not keep orphan stubs."""
+    published = {str(row["operation_id"]) for row in _route_table()}
+
+    assert not (published & REMOVED_CREDIT_OPERATION_IDS), (
+        "these operationIds belong to removed write operations: "
+        f"{sorted(published & REMOVED_CREDIT_OPERATION_IDS)}"
+    )
+    assert KEPT_CREDIT_OPERATION_IDS <= published, (
+        f"the read operations must stay published: {sorted(KEPT_CREDIT_OPERATION_IDS - published)}"
+    )

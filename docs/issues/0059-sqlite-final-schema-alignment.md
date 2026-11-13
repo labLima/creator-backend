@@ -429,8 +429,53 @@ T15 (SHC-16), fatia B5c — coupon_redemptions:
   order/subscription, backfill e downgrade; CHECK_MAP +4.
 - Relatório: **94 divergências** (133 antes).
 
-Próximo passo: `workspace_credit_transactions` e `fiscal_invoices` (restante de
-T15), depois T20, T16, T17 e T18.
+T15 (SHC-16) concluída — workspace_credit_transactions (issue #162):
+
+- `workspace_credit_transactions` vira o ledger final: `balance_after`
+  (bigint, default 0, CHECK >= 0), `type` no enum `credit_transaction_type`
+  (CHECK gerado pelo `Enum`, `create_constraint=True`; entra em
+  `declared_exception`) e as quatro referências dedicadas
+  (`order_id`/`invoice_id`/`generated_image_id`/`image_resize_id`); saem
+  `transaction_type`/`reference_type`/`reference_id` e o par
+  `updated_at`/`deleted_at`.
+- CHECKs `chk_credit_tx_single_reference`, `chk_credit_tx_balance_nonnegative`,
+  `chk_credit_tx_amount_nonzero` e `chk_credit_tx_amount_by_type`; FK composta
+  `(order_id, workspace_id) ->
+  orders(id, workspace_id)` RESTRICT, FKs RESTRICT para as outras três
+  referências, `created_by` SET NULL e `workspace_id` RESTRICT.
+- `0035_credit_ledger_alignment` reconstrói a tabela, copia apenas linhas vivas
+  com `amount <> 0`, mapeia o vocabulário legado (aliases e `ADJUSTMENT` como
+  fallback), preenche as referências dedicadas só quando o alvo existe (a ordem
+  também precisa pertencer ao workspace) e calcula `balance_after` com
+  `SUM(amount) OVER (PARTITION BY workspace_id ORDER BY created_at, id)`.
+  Saldo cumulativo negativo aborta com `ValueError` nomeando workspace e saldo.
+  Downgrade restaura as colunas legadas e preserva as linhas sobreviventes
+  (perda do valor legado original e das linhas descartadas é documentada).
+- A API perde `POST` e `DELETE`: um Credit Transaction é append-only
+  (ADR-019), então sobram `GET` lista e `GET` por id; `docs/openapi.yaml`,
+  `route_table.json` (231 operações) e o schema de criação removidos.
+- `credit/ports.py` publica só `list_for_user`/`get_for_user`, ambos filtrando
+  `WorkspaceMembership.status == ACTIVE`; o payload publica os campos finais e
+  não vaza mais o triplo legado.
+- `CHECK_MAP` +4; orçamento de paridade: **53 divergências** (17 allowlisted,
+  35 declaradas, 1 `unique_extra` de `brands`), `gap_digest`
+  `c8e4803edd2c9092d5a8386c9b568cc030425605bca3f69e044388647fbd7e64`.
+
+Próximo passo: T15 encerrada; seguir para T20, T16, T17 e T18.
+
+### Progresso T15 (2026-11-13)
+
+- O ledger de créditos está alinhado ao modelo final: `workspace_credit_transactions`
+  + `workspace_credit_lots` + `workspace_credit_lot_consumptions`, sem
+  `credit_wallets`/`credit_prices` e sem `idempotency_key`.
+- Orçamento de paridade atual: **53 divergências totais e 1 não declarada**
+  (17 `allowlisted`, 35 `declared_exception`, 1 `unique_extra` de `brands`). O
+  total subiu de 52 para 53 porque o CHECK de vocabulário do ledger passou a ser
+  gerado pelo enum (`declared_exception` 34 -> 35), não por `fiscal_invoices`.
+- T20 continua dona dos triggers/guards de append-only, do recálculo de
+  `balance_after` e da validação de procedência de imagem/resize; nada disso
+  está implementado nesta entrega.
+- A issue **não** está concluída: restam T16, T17, T18 e T20.
 
 ## Rastreabilidade GitHub (2026-11-10)
 

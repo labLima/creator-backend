@@ -286,6 +286,30 @@ CHECK_MAP: Final[dict[str, tuple[str, str]]] = {
         "credit_packages.chk_credit_packages_currency_format",
         "currency is null or currency glob '[a-z][a-z][a-z]'",
     ),
+    "workspace_credit_transactions.chk_credit_tx_single_reference": (
+        "workspace_credit_transactions.chk_credit_tx_single_reference",
+        "(case when order_id is not null then 1 else 0 end) + "
+        "(case when invoice_id is not null then 1 else 0 end) + "
+        "(case when generated_image_id is not null then 1 else 0 end) + "
+        "(case when image_resize_id is not null then 1 else 0 end) <= 1",
+    ),
+    "workspace_credit_transactions.chk_credit_tx_balance_nonnegative": (
+        "workspace_credit_transactions.chk_credit_tx_balance_nonnegative",
+        "balance_after >= 0",
+    ),
+    "workspace_credit_transactions.chk_credit_tx_amount_by_type": (
+        "workspace_credit_transactions.chk_credit_tx_amount_by_type",
+        "(type in ('subscription_credit', 'top_up', 'coupon_credit', 'refund') and amount > 0) "
+        "or (type in ('generation', 'expiration') and amount < 0) or type = 'adjustment'",
+    ),
+    # The dump declares `CHECK (amount <> 0)` inline and therefore unnamed, so the
+    # portable rule carries its own name: `chk_credit_tx_amount_nonzero`. It is a
+    # rule of its own, not a branch of `chk_credit_tx_amount_by_type`, whose
+    # ADJUSTMENT arm accepts either sign and would let a no-op entry through.
+    "workspace_credit_transactions.workspace_credit_transactions.amount": (
+        "workspace_credit_transactions.chk_credit_tx_amount_nonzero",
+        "amount <> 0",
+    ),
     "charges.chk_charges_cents_nonnegative": (
         "charges.chk_charges_cents_nonnegative",
         "amount_cents >= 0 and (paid_amount_cents is null or paid_amount_cents >= 0) "

@@ -2,6 +2,9 @@
 
 Extracted verbatim from `creator.main.create_app`; handler names are part of
 the published `operationId` contract and must not be renamed.
+
+The Credit Transaction ledger is append-only (ADR-019), so only the two reads
+are published: a client cannot write or delete a ledger entry.
 """
 
 from __future__ import annotations
@@ -20,9 +23,6 @@ from creator.api.responses import (
     success_response,
 )
 from creator.credit import service
-from creator.credit.schemas import (
-    WorkspaceCreditTransactionCreateRequest,
-)
 from creator.uow import UnitOfWork
 from creator.user.ports import UserRecord
 
@@ -48,26 +48,6 @@ def list_workspace_credit_transactions(
     )
 
 
-@router.post(
-    "/api/v1/workspace-credit-transactions",
-    tags=["Workspaces"],
-    operation_id="create_workspace_credit_transaction_api_v1_workspace_credit_transactions_post",
-)
-def create_workspace_credit_transaction(
-    payload: WorkspaceCreditTransactionCreateRequest,
-    request: Request,
-    current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
-) -> JSONResponse:
-    return success_response(
-        service.create_workspace_credit_transaction(
-            uow=unit_of_work, actor=current_user, payload=payload, request=request
-        ),
-        request,
-        status_code=201,
-    )
-
-
 @router.get(
     "/api/v1/workspace-credit-transactions/{id}",
     tags=["Workspaces"],
@@ -81,25 +61,6 @@ def get_workspace_credit_transaction(
 ) -> JSONResponse:
     return success_response(
         service.get_workspace_credit_transaction(
-            uow=unit_of_work, actor=current_user, transaction_id=transaction_id, request=request
-        ),
-        request,
-    )
-
-
-@router.delete(
-    "/api/v1/workspace-credit-transactions/{id}",
-    tags=["Workspaces"],
-    operation_id="delete_workspace_credit_transaction_api_v1_workspace_credit_transactions__id__delete",
-)
-def delete_workspace_credit_transaction(
-    transaction_id: Annotated[UUID, Path(alias="id")],
-    request: Request,
-    current_user: Annotated[UserRecord, Depends(get_current_user)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_uow)],
-) -> JSONResponse:
-    return success_response(
-        service.delete_workspace_credit_transaction(
             uow=unit_of_work, actor=current_user, transaction_id=transaction_id, request=request
         ),
         request,

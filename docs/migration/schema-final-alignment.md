@@ -13,8 +13,8 @@
 - Índices: **173** (50 nomeados, 123 anônimos)
 - Foreign keys: **101** (10 compostas)
 - Funções/triggers/views: **70**
-- Divergências: **83**
-- Divergências não declaradas: **32** (exclui `allowlisted` e `declared_exception`)
+- Divergências: **53**
+- Divergências não declaradas: **1** (exclui `allowlisted` e `declared_exception`)
 
 ## Divergências por categoria
 
@@ -23,24 +23,24 @@
 | `table_missing` | 0 |
 | `table_extra` | 0 |
 | `allowlisted` | 17 |
-| `declared_exception` | 34 |
+| `declared_exception` | 35 |
 | `rename_collision` | 0 |
 | `pk_mismatch` | 0 |
-| `column_missing` | 7 |
-| `column_extra` | 5 |
+| `column_missing` | 0 |
+| `column_extra` | 0 |
 | `nullability` | 0 |
 | `width` | 0 |
 | `kind` | 0 |
 | `enum` | 0 |
 | `unique_missing` | 0 |
 | `unique_extra` | 1 |
-| `index_missing` | 6 |
+| `index_missing` | 0 |
 | `index_extra` | 0 |
-| `index_name` | 2 |
-| `fk_missing` | 5 |
-| `fk_extra` | 1 |
-| `fk_ondelete` | 1 |
-| `check_missing` | 4 |
+| `index_name` | 0 |
+| `fk_missing` | 0 |
+| `fk_extra` | 0 |
+| `fk_ondelete` | 0 |
+| `check_missing` | 0 |
 | `check_extra` | 0 |
 | `default_missing` | 0 |
 | `default_value` | 0 |
@@ -60,25 +60,9 @@ Nenhuma.
 
 ## 3. Colunas, tipos, nullability e defaults
 
-Total: **12**.
+Total: **0**.
 
-### `column_missing` (7)
-
-- `workspace_credit_transactions.balance_after`
-- `workspace_credit_transactions.created_by`
-- `workspace_credit_transactions.generated_image_id`
-- `workspace_credit_transactions.image_resize_id`
-- `workspace_credit_transactions.invoice_id`
-- `workspace_credit_transactions.order_id`
-- `workspace_credit_transactions.type`
-
-### `column_extra` (5)
-
-- `workspace_credit_transactions.deleted_at`
-- `workspace_credit_transactions.reference_id`
-- `workspace_credit_transactions.reference_type`
-- `workspace_credit_transactions.transaction_type`
-- `workspace_credit_transactions.updated_at`
+Sem divergência.
 
 ## 4. Enums
 
@@ -96,58 +80,27 @@ Total: **1**.
 
 ## 6. Índices
 
-Total: **8**.
+Total: **0**.
 
-### `index_missing` (6)
-
-- `workspace_credit_transactions: (created_by) WHERE created_by is not null`
-- `workspace_credit_transactions: (workspace_id, created_at)`
-- `workspace_credit_transactions: UNIQUE (generated_image_id, type)`
-- `workspace_credit_transactions: UNIQUE (image_resize_id, type)`
-- `workspace_credit_transactions: UNIQUE (invoice_id, type)`
-- `workspace_credit_transactions: UNIQUE (order_id, type)`
-
-### `index_name` (2)
-
-- `workspace_credit_transactions: missing index name idx_m8_workspace_credit_transactions_created_by`
-- `workspace_credit_transactions: missing index name uq_credit_tx_image_resize`
+Sem divergência.
 
 ## 7. Foreign keys
 
-Total: **7**.
+Total: **0**.
 
-### `fk_missing` (5)
-
-- `workspace_credit_transactions['created_by']->users['id'] [SET NULL]`
-- `workspace_credit_transactions['generated_image_id']->generated_images['id'] [RESTRICT]`
-- `workspace_credit_transactions['image_resize_id']->image_resizes['id'] [RESTRICT]`
-- `workspace_credit_transactions['invoice_id']->invoices['id'] [RESTRICT]`
-- `workspace_credit_transactions['order_id', 'workspace_id']->orders['id', 'workspace_id'] [RESTRICT]`
-
-### `fk_extra` (1)
-
-- `workspace_credit_transactions['workspace_id']->workspaces['id'] [NO ACTION]`
-
-### `fk_ondelete` (1)
-
-- `workspace_credit_transactions['workspace_id']->workspaces['id']: final RESTRICT vs model ['NO ACTION']`
+Sem divergência.
 
 ## 8. CHECK constraints
 
-Total: **4**.
+Total: **0**.
 
-### `check_missing` (4)
-
-- `unmapped:workspace_credit_transactions.chk_credit_tx_amount_by_type`
-- `unmapped:workspace_credit_transactions.chk_credit_tx_balance_nonnegative`
-- `unmapped:workspace_credit_transactions.chk_credit_tx_single_reference`
-- `unmapped:workspace_credit_transactions.workspace_credit_transactions.amount`
+Sem divergência.
 
 ## 9. Exceções declaradas
 
-Total: **34**.
+Total: **35**.
 
-### `declared_exception` (34)
+### `declared_exception` (35)
 
 - `adr-020:users.global_role`
 - `adr-020:users.password_hash`
@@ -178,6 +131,7 @@ Total: **34**.
 - `enum-check:user_consents.consent_type`
 - `enum-check:user_devices.device_platform`
 - `enum-check:users.global_role`
+- `enum-check:workspace_credit_transactions.credit_transaction_type`
 - `enum-check:workspace_invites.invite_status`
 - `enum-check:workspace_invites.invite_type`
 - `enum-check:workspace_invites.workspace_role`

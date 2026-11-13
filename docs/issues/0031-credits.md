@@ -1,5 +1,12 @@
 # Issue 0031: credits wallet and transactions
 
+> **Atualização 2026-11-13 (T15 / #162):** este documento é histórico. O modelo
+> final implementado é `workspace_credit_transactions` + `workspace_credit_lots`
+> + `workspace_credit_lot_consumptions`, descrito na emenda da
+> [ADR-019](../adr/0019-credit-ledger.md). `credit_wallets`, `credit_prices` e
+> `idempotency_key` não existem no schema atual. A API de crédito é somente
+> leitura; grants/spends pertencem aos casos de uso de billing/geração.
+
 - ADR primária: [`0005-postgresql-sqlalchemy-alembic`](../adr/0005-postgresql-sqlalchemy-alembic.md)
 - ADR relacionada: [`0019-credit-ledger`](../adr/0019-credit-ledger.md)
 - ADR tracker: [#38](https://github.com/labLima/creator-backend/issues/38)

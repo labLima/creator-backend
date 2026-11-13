@@ -36,9 +36,11 @@ from creator.main import app
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_PATH = PROJECT_ROOT / "docs" / "openapi.yaml"
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
-# 230 `/api/v1` operations plus the three System operations (/health,
-# /health/live, /metrics). The original 227 figure in issue 0051 predates Activity Events.
-EXPECTED_OPERATION_COUNT = 233
+# 228 `/api/v1` operations plus the three System operations (/health,
+# /health/live, /metrics). The original 227 figure in issue 0051 predates Activity
+# Events; the two credit-ledger write operations were removed in T15 (issue #162),
+# because a Credit Transaction belongs to an append-only ledger.
+EXPECTED_OPERATION_COUNT = 231
 
 NOTIFICATION_PREFERENCE_PATH = "/api/v1/notification-preferences/{id}"
 RESOURCE_ID_REF = {"$ref": "#/components/parameters/ResourceId"}
